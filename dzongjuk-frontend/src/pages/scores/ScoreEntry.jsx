@@ -144,7 +144,7 @@ export default function ScoreEntry() {
                 <select
                   value={scores[skill]}
                   onChange={e => setScores(prev => ({ ...prev, [skill]: e.target.value }))}
-                  className="w-full h-9 px-3 rounded-lg bg-surface-bg border border-surface-border text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-[#D4830A]/40 focus:border-brand-gold"
+                  className="w-full h-9 px-3 rounded-lg bg-surface-bg border border-surface-border text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]/40 focus:border-brand-gold"
                 >
                   <option value="">Select score</option>
                   {SCORES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -153,7 +153,7 @@ export default function ScoreEntry() {
             ))}
           </div>
           {avg && (
-            <div className="p-3 bg-[#D4830A]/5 border border-brand-gold/20 rounded-xl flex items-center justify-between">
+            <div className="p-3 bg-[#F59E0B]/5 border border-brand-gold/20 rounded-xl flex items-center justify-between">
               <span className="text-sm text-text-secondary">Overall Average Band Score</span>
               <span className="text-xl font-bold text-brand-gold">{avg}</span>
             </div>

@@ -149,8 +149,8 @@ export default function ProfilePage() {
     ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : '?';
 
-  const avatarColors = ['#D4830A', '#0D9488', '#3B82F6', '#8B5CF6'];
-  const avatarColor = user?.name ? avatarColors[user.name.charCodeAt(0) % avatarColors.length] : '#D4830A';
+  const avatarColors = ['#F59E0B', '#0D9488', '#3B82F6', '#8B5CF6'];
+  const avatarColor = user?.name ? avatarColors[user.name.charCodeAt(0) % avatarColors.length] : '#F59E0B';
 
   return (
     <div className="flex flex-col gap-5 w-full">

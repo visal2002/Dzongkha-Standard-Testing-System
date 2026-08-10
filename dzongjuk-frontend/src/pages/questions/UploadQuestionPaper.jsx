@@ -53,7 +53,7 @@ export default function UploadQuestionPaper() {
       onClick={() => fileRef.current?.click()}
       className={[
         'border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all',
-        dragging === field ? 'border-brand-gold bg-[#D4830A]/5' : 'border-surface-border hover:border-brand-gold/40 hover:bg-surface-bg',
+        dragging === field ? 'border-brand-gold bg-[#F59E0B]/5' : 'border-surface-border hover:border-brand-gold/40 hover:bg-surface-bg',
         files[field] ? 'border-emerald-500/40 bg-emerald-500/5' : '',
       ].join(' ')}
     >

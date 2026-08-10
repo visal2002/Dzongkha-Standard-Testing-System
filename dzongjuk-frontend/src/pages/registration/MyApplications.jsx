@@ -122,7 +122,7 @@ export default function MyApplications() {
                     {app.statusHistory.map((h, i) => (
                       <div key={i} className="flex items-center gap-0">
                         <div className="flex flex-col items-center">
-                          <div className="w-2 h-2 rounded-full bg-[#D4830A]" />
+                          <div className="w-2 h-2 rounded-full bg-[#F59E0B]" />
                           <div className="text-[9px] text-text-muted mt-1 text-center w-20 capitalize">{h.status.replace(/_/g, ' ')}</div>
                         </div>
                         {i < app.statusHistory.length - 1 && <div className="w-8 h-px bg-[var(--color-surface-border)] mb-3" />}

@@ -94,7 +94,7 @@ export default function RegistrationWindows() {
                     </div>
                     <div className="h-1.5 bg-[var(--color-surface-border)] rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${capacityPct >= 90 ? 'bg-red-400' : capacityPct >= 70 ? 'bg-amber-400' : 'bg-[#D4830A]'}`}
+                        className={`h-full rounded-full transition-all ${capacityPct >= 90 ? 'bg-red-400' : capacityPct >= 70 ? 'bg-amber-400' : 'bg-[#F59E0B]'}`}
                         style={{ width: `${Math.min(capacityPct, 100)}%` }}
                       />
                     </div>

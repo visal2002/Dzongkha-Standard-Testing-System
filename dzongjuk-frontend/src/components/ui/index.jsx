@@ -82,7 +82,7 @@ export function Spinner({ size = 24 }) {
 /* === Avatar === */
 export function Avatar({ name, size = 'md', src, className = '' }) {
   const initials = name ? name.split(' ').map(n => n[0]).join('').slice(0, 2) : '?';
-  const colors = ['#D4830A', '#0D9488', '#3B82F6', '#8B5CF6', '#EC4899', '#EF4444'];
+  const colors = ['#F59E0B', '#0D9488', '#3B82F6', '#8B5CF6', '#EC4899', '#EF4444'];
   const colorIdx = name ? name.charCodeAt(0) % colors.length : 0;
 
   return (

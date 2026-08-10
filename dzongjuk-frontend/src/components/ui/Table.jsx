@@ -163,7 +163,7 @@ export default function DataTable({
                   className={[
                     'w-8 h-8 rounded-lg text-xs font-medium transition-colors',
                     currentPage === page
-                      ? 'bg-[#D4830A] text-white'
+                      ? 'bg-[#F59E0B] text-white'
                       : 'text-text-secondary hover:bg-[var(--color-surface-border)]',
                   ].join(' ')}
                 >

@@ -56,7 +56,7 @@ const NotFoundPage = () => (
     <p className="text-6xl font-black text-surface-border mb-4">404</p>
     <p className="text-base font-semibold text-text-primary mb-1">Page not found</p>
     <p className="text-sm mb-4">The page you're looking for doesn't exist.</p>
-    <Link to="/dashboard" className="text-sm text-brand-gold hover:text-[#F0A030] transition-colors">← Back to Dashboard</Link>
+    <Link to="/dashboard" className="text-sm text-brand-gold hover:text-[#FCD34D] transition-colors">← Back to Dashboard</Link>
   </div>
 );
 

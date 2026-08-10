@@ -55,7 +55,7 @@ export default function DCDDDashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden bg-gradient-to-r from-[#1B2A4A] to-[#243660] border border-[#243055] rounded-2xl p-6"
       >
-        <div className="absolute right-0 top-0 w-48 h-48 bg-[#D4830A]/5 rounded-full -translate-y-1/2 translate-x-1/4 blur-2xl" />
+        <div className="absolute right-0 top-0 w-48 h-48 bg-[#F59E0B]/5 rounded-full -translate-y-1/2 translate-x-1/4 blur-2xl" />
         <div className="relative">
           <p className="text-xs text-brand-gold font-medium uppercase tracking-wider mb-1">DCDD Administration</p>
           <h1 className="text-xl font-bold text-white mb-1">Good morning, {user?.name?.split(' ')[0]}!</h1>
@@ -95,8 +95,8 @@ export default function DCDDDashboard() {
             <AreaChart data={registrationTrend}>
               <defs>
                 <linearGradient id="appGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#D4830A" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#D4830A" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="verGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10B981" stopOpacity={0.15} />
@@ -107,7 +107,7 @@ export default function DCDDDashboard() {
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="applications" stroke="#D4830A" fill="url(#appGrad)" strokeWidth={2} name="Applications" />
+              <Area type="monotone" dataKey="applications" stroke="#F59E0B" fill="url(#appGrad)" strokeWidth={2} name="Applications" />
               <Area type="monotone" dataKey="verified" stroke="#10B981" fill="url(#verGrad)" strokeWidth={2} name="Verified" />
             </AreaChart>
           </ResponsiveContainer>
@@ -143,7 +143,7 @@ export default function DCDDDashboard() {
         <div className="bg-surface-card border border-surface-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-text-primary">Recent Applications</h3>
-            <Link to="/verification" className="text-xs text-brand-gold hover:text-[#F0A030] transition-colors flex items-center gap-1">
+            <Link to="/verification" className="text-xs text-brand-gold hover:text-[#FCD34D] transition-colors flex items-center gap-1">
               View all <ArrowRight size={12} />
             </Link>
           </div>
@@ -169,7 +169,7 @@ export default function DCDDDashboard() {
         <div className="bg-surface-card border border-surface-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-text-primary">Exam Windows</h3>
-            <Link to="/registration/windows" className="text-xs text-brand-gold hover:text-[#F0A030] transition-colors flex items-center gap-1">
+            <Link to="/registration/windows" className="text-xs text-brand-gold hover:text-[#FCD34D] transition-colors flex items-center gap-1">
               Manage <ArrowRight size={12} />
             </Link>
           </div>
@@ -186,7 +186,7 @@ export default function DCDDDashboard() {
                 </div>
                 <div className="mt-2 h-1 bg-[var(--color-surface-border)] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[#D4830A] rounded-full transition-all"
+                    className="h-full bg-[#F59E0B] rounded-full transition-all"
                     style={{ width: `${(ew.currentRegistrations / ew.maxCapacity) * 100}%` }}
                   />
                 </div>

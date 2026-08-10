@@ -53,7 +53,7 @@ export default function ChiefDashboard() {
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-text-primary">Pending Score Revisions</h3>
-          <Link to="/appeals" className="text-xs text-brand-gold hover:text-[#F0A030] flex items-center gap-1">All appeals <ArrowRight size={12} /></Link>
+          <Link to="/appeals" className="text-xs text-brand-gold hover:text-[#FCD34D] flex items-center gap-1">All appeals <ArrowRight size={12} /></Link>
         </div>
           {pending.length === 0 ? (
             <div className="text-center py-10 text-text-muted">

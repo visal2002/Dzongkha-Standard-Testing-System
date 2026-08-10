@@ -18,7 +18,7 @@ export default function HomePage() {
           <img 
             src="/images/logo of DCDD.png" 
             alt="DCDD Logo" 
-            className="h-12 w-auto object-contain rounded-lg shadow-lg shadow-[#D4830A]/20"
+            className="h-12 w-auto object-contain rounded-lg shadow-lg shadow-[#F59E0B]/20"
           />
           <div>
             <div className="flex items-baseline gap-1">
@@ -30,14 +30,14 @@ export default function HomePage() {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-9">
-          <Link to="/" className="text-white font-medium hover:text-[#F0A030] transition-colors text-base drop-shadow-md">Home</Link>
+          <Link to="/" className="text-white font-medium hover:text-[#FCD34D] transition-colors text-base drop-shadow-md">Home</Link>
           <Link to="#" className="text-gray-300 font-medium hover:text-white transition-colors text-base drop-shadow-md">About DSTs</Link>
           <Link to="#" className="text-gray-300 font-medium hover:text-white transition-colors text-base drop-shadow-md">Contact Us</Link>
         </nav>
 
         <Link
           to="/login"
-          className="h-11 px-7 border border-[#F0A030]/80 text-white text-base font-medium rounded-xl transition-all hover:bg-[#F0A030]/20 shadow-[0_0_15px_rgba(212,131,10,0.3)] backdrop-blur-sm inline-flex items-center justify-center"
+          className="h-11 px-7 border border-[#FCD34D]/80 text-white text-base font-medium rounded-xl transition-all hover:bg-[#FCD34D]/20 shadow-[0_0_15px_rgba(212,131,10,0.3)] backdrop-blur-sm inline-flex items-center justify-center"
         >
           Sign In
         </Link>
@@ -59,7 +59,7 @@ export default function HomePage() {
             >
               <h1 className="text-6xl sm:text-[76px] font-black text-white leading-[1.1] mb-6 tracking-tight drop-shadow-lg">
                 <span className="inline-block sm:whitespace-nowrap">Dzongkha Standard</span><br />
-                <span className="text-[#F0A030]">Testing System</span>
+                <span className="text-[#FCD34D]">Testing System</span>
               </h1>
               <p className="text-lg sm:text-[19px] text-gray-200 mb-10 leading-relaxed max-w-2xl drop-shadow-md font-medium">
                 Bhutan's premier national platform for standardized Dzongkha<br />
@@ -70,15 +70,15 @@ export default function HomePage() {
               <div className="flex items-center gap-5 flex-wrap">
                 <Link
                   to="/login"
-                  className="h-14 px-8 text-[17px] bg-gradient-to-r from-[#D4830A] to-[#F0A030] hover:from-[#A86208] hover:to-[#D4830A] text-white font-semibold rounded-xl transition-all shadow-[0_4px_20px_rgba(212,131,10,0.4)] inline-flex items-center gap-2"
+                  className="h-14 px-8 text-[17px] bg-gradient-to-r from-[#F59E0B] to-[#FCD34D] hover:from-[#D97706] hover:to-[#F59E0B] text-white font-semibold rounded-xl transition-all shadow-[0_4px_20px_rgba(212,131,10,0.4)] inline-flex items-center gap-2"
                 >
                   Access Portal <ArrowRight size={20} />
                 </Link>
                 <Link
                   to="/ndi-login"
-                  className="h-14 px-8 text-[17px] bg-[#1A2540]/60 backdrop-blur-md border border-[#F0A030]/30 hover:border-[#F0A030]/70 text-white font-medium rounded-xl transition-all flex items-center gap-3 shadow-lg"
+                  className="h-14 px-8 text-[17px] bg-[#1A2540]/60 backdrop-blur-md border border-[#FCD34D]/30 hover:border-[#FCD34D]/70 text-white font-medium rounded-xl transition-all flex items-center gap-3 shadow-lg"
                 >
-                  <Fingerprint size={20} className="text-[#F0A030]" /> Sign in with NDI
+                  <Fingerprint size={20} className="text-[#FCD34D]" /> Sign in with NDI
                 </Link>
               </div>
             </motion.div>
@@ -100,9 +100,9 @@ export default function HomePage() {
             { icon: Award, title: 'Digital Certificates', desc: 'Secure, QR-verified certificates with official CEFR band scores' },
             { icon: ShieldCheck, title: 'Secure & Transparent', desc: 'Role-based access, comprehensive audit trails, and NDI authentication' },
           ].map(f => (
-            <div key={f.title} className="p-7 bg-[#172036]/80 backdrop-blur-md border border-[#243055] hover:border-[#F0A030]/30 transition-colors rounded-2xl text-left shadow-xl shadow-black/20 group">
-              <div className="w-12 h-12 rounded-xl bg-[#F0A030]/10 border border-[#F0A030]/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <f.icon size={22} className="text-[#F0A030]" />
+            <div key={f.title} className="p-7 bg-[#172036]/80 backdrop-blur-md border border-[#243055] hover:border-[#FCD34D]/30 transition-colors rounded-2xl text-left shadow-xl shadow-black/20 group">
+              <div className="w-12 h-12 rounded-xl bg-[#FCD34D]/10 border border-[#FCD34D]/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                <f.icon size={22} className="text-[#FCD34D]" />
               </div>
               <h3 className="text-[16px] font-semibold text-white mb-2">{f.title}</h3>
               <p className="text-[13px] text-gray-400 leading-relaxed">{f.desc}</p>

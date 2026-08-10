@@ -229,7 +229,7 @@ export default function Header({ collapsed, setCollapsed, isDesktop, onOpenMobil
           >
             <div
               className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold transition-all duration-300"
-              style={{ backgroundColor: user?.avatarColor || '#D4830A' }}
+              style={{ backgroundColor: user?.avatarColor || '#F59E0B' }}
             >
               {user?.name?.[0] || 'U'}
             </div>

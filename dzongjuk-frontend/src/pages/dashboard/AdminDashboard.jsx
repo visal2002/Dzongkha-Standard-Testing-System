@@ -66,7 +66,7 @@ export default function AdminDashboard() {
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="users" fill="#D4830A" radius={[4, 4, 0, 0]} name="Users" />
+              <Bar dataKey="users" fill="#F59E0B" radius={[4, 4, 0, 0]} name="Users" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -76,7 +76,7 @@ export default function AdminDashboard() {
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-text-primary">System Users</h3>
-          <Link to="/admin/users" className="text-xs text-brand-gold hover:text-[#F0A030] flex items-center gap-1">Manage <ArrowRight size={12} /></Link>
+          <Link to="/admin/users" className="text-xs text-brand-gold hover:text-[#FCD34D] flex items-center gap-1">Manage <ArrowRight size={12} /></Link>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">

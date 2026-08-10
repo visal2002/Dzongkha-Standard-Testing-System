@@ -64,7 +64,7 @@ export default function CommitteeDashboard() {
               <XAxis dataKey="band" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" fill="#D4830A" radius={[4, 4, 0, 0]} name="Candidates" />
+              <Bar dataKey="count" fill="#F59E0B" radius={[4, 4, 0, 0]} name="Candidates" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -73,7 +73,7 @@ export default function CommitteeDashboard() {
         <div className="bg-surface-card border border-surface-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-text-primary">Recent Band Scores</h3>
-            <Link to="/scores/view" className="text-xs text-brand-gold hover:text-[#F0A030] flex items-center gap-1">View all <ArrowRight size={12} /></Link>
+            <Link to="/scores/view" className="text-xs text-brand-gold hover:text-[#FCD34D] flex items-center gap-1">View all <ArrowRight size={12} /></Link>
           </div>
           <div className="space-y-2.5">
             {bandScores.map(bs => (
@@ -99,7 +99,7 @@ export default function CommitteeDashboard() {
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-text-primary">Committee — January 2026</h3>
-          {isHead && <Link to="/scores/committee" className="text-xs text-brand-gold hover:text-[#F0A030] flex items-center gap-1">Manage <ArrowRight size={12} /></Link>}
+          {isHead && <Link to="/scores/committee" className="text-xs text-brand-gold hover:text-[#FCD34D] flex items-center gap-1">Manage <ArrowRight size={12} /></Link>}
         </div>
         <div className="flex flex-wrap gap-3">
           {committeeMembers.map(m => (

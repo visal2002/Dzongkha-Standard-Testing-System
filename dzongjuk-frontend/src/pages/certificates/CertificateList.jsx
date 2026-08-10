@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 
 const getBandColor = (level) => {
   const map = { C2: 'from-purple-600 to-purple-800', C1: 'from-blue-600 to-blue-800', B2: 'from-teal-600 to-teal-800', B1: 'from-emerald-600 to-emerald-800', A2: 'from-amber-600 to-amber-800', A1: 'from-red-600 to-red-800' };
-  return map[level] || 'from-[#D4830A] to-[#A86208]';
+  return map[level] || 'from-[#F59E0B] to-[#D97706]';
 };
 
 function CertificateCard({ cert }) {

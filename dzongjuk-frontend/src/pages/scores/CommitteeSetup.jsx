@@ -65,7 +65,7 @@ export default function CommitteeSetup() {
       <div className="space-y-3">
         <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">Committee Head (Chief of Examiner)</p>
         {head ? (
-          <div className="flex items-center gap-4 p-4 bg-[#D4830A]/5 border border-brand-gold/20 rounded-xl">
+          <div className="flex items-center gap-4 p-4 bg-[#F59E0B]/5 border border-brand-gold/20 rounded-xl">
             <div className="w-12 h-12 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-lg font-bold shrink-0">{head.name[0]}</div>
             <div className="flex-1">
               <div className="flex items-center gap-2">

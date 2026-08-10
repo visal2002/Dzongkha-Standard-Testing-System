@@ -1,6 +1,6 @@
 const variants = {
   default: 'bg-[#1E2D4A] text-[#94A3C8] border border-[#243055]',
-  gold: 'bg-[#D4830A]/15 text-[#F0A030] border border-brand-gold/30',
+  gold: 'bg-[#F59E0B]/15 text-[#FCD34D] border border-brand-gold/30',
   success: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
   warning: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
   error: 'bg-red-500/10 text-red-400 border border-red-500/20',
@@ -31,7 +31,7 @@ export default function Badge({ children, variant = 'default', size = 'md', dot 
           variant === 'success' ? 'bg-emerald-400' :
           variant === 'warning' ? 'bg-amber-400' :
           variant === 'error' ? 'bg-red-400' :
-          variant === 'gold' ? 'bg-[#D4830A]' :
+          variant === 'gold' ? 'bg-[#F59E0B]' :
           variant === 'info' ? 'bg-blue-400' : 'bg-current'
         ].join(' ')} />
       )}

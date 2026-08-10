@@ -24,7 +24,7 @@ export default function SamplePapers() {
         icon={<BookOpen size={18} />}
       />
 
-      <div className="p-4 bg-[#D4830A]/5 border border-brand-gold/20 rounded-xl text-sm text-text-secondary">
+      <div className="p-4 bg-[#F59E0B]/5 border border-brand-gold/20 rounded-xl text-sm text-text-secondary">
         <p className="font-medium text-brand-gold mb-1">Study Resource</p>
         <p>These are past examination papers made available after results were declared. Use them to understand the question format, difficulty level, and time requirements.</p>
       </div>

@@ -55,7 +55,7 @@ export default function SubmitAppeal() {
       <div className="flex items-center gap-2">
         {STEPS.map((s, i) => (
           <div key={s} className="flex items-center gap-2 flex-1">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i < step ? 'bg-emerald-500 text-white' : i === step ? 'bg-[#D4830A] text-white' : 'bg-[var(--color-surface-border)] text-text-muted'}`}>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i < step ? 'bg-emerald-500 text-white' : i === step ? 'bg-[#F59E0B] text-white' : 'bg-[var(--color-surface-border)] text-text-muted'}`}>
               {i < step ? <CheckCircle size={14} /> : i + 1}
             </div>
             <span className={`text-xs font-medium hidden sm:block ${i === step ? 'text-text-primary' : 'text-text-muted'}`}>{s}</span>
@@ -91,7 +91,7 @@ export default function SubmitAppeal() {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <p className="text-sm font-semibold text-text-primary">{skill}</p>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-brand-gold bg-[#D4830A]' : 'border-surface-border'}`}>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-brand-gold bg-[#F59E0B]' : 'border-surface-border'}`}>
                         {isSelected && <CheckCircle size={12} className="text-white" />}
                       </div>
                     </div>
@@ -155,7 +155,7 @@ export default function SubmitAppeal() {
                 <p className="text-xs font-semibold text-text-muted uppercase mb-2">Reason</p>
                 <p className="text-sm text-text-primary">{reason}</p>
               </div>
-              <div className="p-4 bg-[#D4830A]/5 border border-brand-gold/20 rounded-xl flex items-center justify-between">
+              <div className="p-4 bg-[#F59E0B]/5 border border-brand-gold/20 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-2"><CreditCard size={16} className="text-brand-gold" /><span className="text-sm font-medium text-text-primary">Total Appeal Fee</span></div>
                 <span className="text-2xl font-bold text-brand-gold">Nu. {fee}</span>
               </div>

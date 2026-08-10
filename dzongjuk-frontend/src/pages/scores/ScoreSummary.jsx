@@ -63,7 +63,7 @@ export default function ScoreSummary() {
               <XAxis dataKey="skill" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
               <YAxis domain={[0, 9]} tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="avg" fill="#D4830A" radius={[4, 4, 0, 0]} name="Avg Score" />
+              <Bar dataKey="avg" fill="#F59E0B" radius={[4, 4, 0, 0]} name="Avg Score" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -75,7 +75,7 @@ export default function ScoreSummary() {
             <RadarChart data={radarData}>
               <PolarGrid stroke="var(--color-surface-border)" />
               <PolarAngleAxis dataKey="skill" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
-              <Radar name="Avg Score" dataKey="score" stroke="#D4830A" fill="#D4830A" fillOpacity={0.15} strokeWidth={2} />
+              <Radar name="Avg Score" dataKey="score" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.15} strokeWidth={2} />
             </RadarChart>
           </ResponsiveContainer>
         </div>

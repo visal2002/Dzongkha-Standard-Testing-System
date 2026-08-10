@@ -16,7 +16,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   return (
     <div className="bg-surface-card border border-surface-border rounded-xl p-3 shadow-xl text-xs">
       <p className="font-medium text-text-primary mb-1">{label}</p>
-      {payload.map(p => <p key={p.name} style={{ color: p.color || '#D4830A' }}>{p.name}: {p.value}</p>)}
+      {payload.map(p => <p key={p.name} style={{ color: p.color || '#F59E0B' }}>{p.name}: {p.value}</p>)}
     </div>
   );
 };
@@ -108,8 +108,8 @@ export default function Reports() {
                   <AreaChart data={registrationMonthly}>
                     <defs>
                       <linearGradient id="gradApp" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#D4830A" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#D4830A" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="gradVer" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#10B981" stopOpacity={0.15} />
@@ -121,7 +121,7 @@ export default function Reports() {
                     <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Area type="monotone" dataKey="applications" stroke="#D4830A" fill="url(#gradApp)" strokeWidth={2} name="Applications" />
+                    <Area type="monotone" dataKey="applications" stroke="#F59E0B" fill="url(#gradApp)" strokeWidth={2} name="Applications" />
                     <Area type="monotone" dataKey="verified" stroke="#10B981" fill="url(#gradVer)" strokeWidth={2} name="Verified" />
                     <Area type="monotone" dataKey="approved" stroke="#3B82F6" fill="none" strokeWidth={2} strokeDasharray="4 4" name="Approved" />
                   </AreaChart>
@@ -169,7 +169,7 @@ export default function Reports() {
                   <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="applications" fill="#D4830A" radius={[3, 3, 0, 0]} name="Total" barSize={20} />
+                  <Bar dataKey="applications" fill="#F59E0B" radius={[3, 3, 0, 0]} name="Total" barSize={20} />
                   <Bar dataKey="verified" fill="#10B981" radius={[3, 3, 0, 0]} name="Verified" barSize={20} />
                   <Bar dataKey="approved" fill="#3B82F6" radius={[3, 3, 0, 0]} name="Approved" barSize={20} />
                 </BarChart>
@@ -191,7 +191,7 @@ export default function Reports() {
                   <Line type="monotone" dataKey="writing" stroke="#3B82F6" strokeWidth={2} dot={false} name="Writing" />
                   <Line type="monotone" dataKey="reading" stroke="#10B981" strokeWidth={2} dot={false} name="Reading" />
                   <Line type="monotone" dataKey="listening" stroke="#7C3AED" strokeWidth={2} dot={false} name="Listening" />
-                  <Line type="monotone" dataKey="speaking" stroke="#D4830A" strokeWidth={2} dot={false} name="Speaking" />
+                  <Line type="monotone" dataKey="speaking" stroke="#F59E0B" strokeWidth={2} dot={false} name="Speaking" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
