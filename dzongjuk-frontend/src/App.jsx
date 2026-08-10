@@ -36,6 +36,7 @@ const MasterConfiguration = lazy(() => import('./pages/admin/MasterConfiguration
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const TechnicalSettings = lazy(() => import('./pages/admin/TechnicalSettings'));
+const OperationalSettings = lazy(() => import('./pages/dcdd/OperationalSettings'));
 
 
 // Page loader
@@ -119,6 +120,7 @@ function AppRoutes() {
           <Route path="/admin/roles" element={<PrivateRoute requiredRoles={['admin']}><RoleManagement /></PrivateRoute>} />
           <Route path="/admin/technical" element={<PrivateRoute requiredRoles={['admin']}><TechnicalSettings /></PrivateRoute>} />
           <Route path="/masters" element={<PrivateRoute requiredRoles={['dcdd', 'admin']}><MasterConfiguration /></PrivateRoute>} />
+          <Route path="/dcdd/operational" element={<PrivateRoute requiredRoles={['dcdd']}><OperationalSettings /></PrivateRoute>} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Route>

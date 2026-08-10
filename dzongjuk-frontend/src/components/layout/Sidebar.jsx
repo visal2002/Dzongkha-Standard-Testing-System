@@ -5,7 +5,8 @@ import {
   LayoutDashboard, FileText, CheckSquare, Users, Upload, ClipboardList,
   Award, AlertCircle, BarChart3, Settings, Shield, ChevronDown,
   ChevronRight, Bookmark, BookOpen, UserCog, Zap, Home, FileSearch,
-  GraduationCap, Scale, Wrench
+  GraduationCap, Scale, Wrench, Server, SlidersHorizontal, FileCog,
+  ClipboardCheck, FlaskConical, ScrollText
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Badge from '../ui/Badge';
@@ -14,17 +15,11 @@ import Badge from '../ui/Badge';
 const NAV_CONFIG = {
   admin: [
     { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
-    {
-      label: 'Administration',
-      icon: Shield,
-      children: [
-        { label: 'User Management', icon: Users, to: '/admin/users' },
-        { label: 'Role & Permissions', icon: UserCog, to: '/admin/roles' },
-        { label: 'Master Configuration', icon: Settings, to: '/masters' },
-        { label: 'Technical Settings', icon: Wrench, to: '/admin/technical' },
-      ]
-    },
-    { label: 'Reports', icon: BarChart3, to: '/reports' },
+    { label: 'User Management', icon: Users, to: '/admin/users' },
+    { label: 'Role Management', icon: UserCog, to: '/admin/roles' },
+    { label: 'Technical Settings', icon: Wrench, to: '/admin/technical' },
+    { label: 'Audit Logs', icon: ScrollText, to: '/admin/technical' },
+    { label: 'System Monitoring', icon: Server, to: '/admin/technical' },
   ],
   dcdd: [
     { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
@@ -36,11 +31,27 @@ const NAV_CONFIG = {
         { label: 'Applications', icon: ClipboardList, to: '/registration/applications', badge: 'pending' },
       ]
     },
-    { label: 'Verification', icon: CheckSquare, to: '/verification' },
+    { label: 'App. Verification', icon: CheckSquare, to: '/verification' },
     { label: 'Attendance', icon: Users, to: '/attendance' },
-    { label: 'Notifications', icon: Zap, to: '/notifications' },
+    {
+      label: 'Examination',
+      icon: ClipboardCheck,
+      children: [
+        { label: 'Exam Configuration', icon: Settings, to: '/masters' },
+        { label: 'Score Summary', icon: BarChart3, to: '/scores/summary' },
+      ]
+    },
+    {
+      label: 'Question Bank',
+      icon: BookOpen,
+      children: [
+        { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples' },
+      ]
+    },
+    { label: 'Certificate Management', icon: Award, to: '/certificates' },
     { label: 'Reports', icon: BarChart3, to: '/reports' },
-    { label: 'Master Config', icon: Settings, to: '/masters' },
+    { label: 'Notifications', icon: Zap, to: '/notifications' },
+    { label: 'Operational Settings', icon: SlidersHorizontal, to: '/dcdd/operational' },
   ],
   exam_head: [
     { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
