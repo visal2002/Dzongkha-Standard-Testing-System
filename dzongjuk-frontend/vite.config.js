@@ -15,6 +15,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    cssCodeSplit: true,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
+    chunkSizeWarningLimit: 800,
     rollupOptions: {
       output: {
         manualChunks: {
