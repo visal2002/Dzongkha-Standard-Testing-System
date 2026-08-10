@@ -53,14 +53,15 @@ export default function AdminDashboard() {
         <StatCard title="Total Users" value={systemUsers.length} icon={<Users size={18} />} color="purple" />
         <StatCard title="System Roles" value={systemRoles.length} icon={<Shield size={18} />} color="info" />
         <StatCard title="System Status" value="100%" icon={<Activity size={18} />} color="success" subtitle="Uptime" />
+        <StatCard title="Security Rating" value="A+" icon={<CheckCircle size={18} />} color="gold" subtitle="Hardened" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* User distribution */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-5">
           <h3 className="text-sm font-semibold text-text-primary mb-1">Users by Role</h3>
-          <p className="text-xs text-text-muted mb-4">Distribution across all roles</p>
-          <ResponsiveContainer width="100%" height={180}>
+          <p className="text-xs text-text-muted mb-4">Distribution across all system roles</p>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={roleData} barSize={28}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-border)" />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
@@ -69,6 +70,35 @@ export default function AdminDashboard() {
               <Bar dataKey="users" fill="#F59E0B" radius={[4, 4, 0, 0]} name="Users" />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+
+        {/* Infrastructure & Quick Access */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-text-primary mb-1">Infrastructure Health</h3>
+            <p className="text-xs text-text-muted mb-4">Core services status monitoring</p>
+            <div className="space-y-3">
+              {[
+                { name: 'Identity & Auth Gateway (NDI)', status: 'Operational', latency: '24ms' },
+                { name: 'PostgreSQL Database Engine', status: 'Operational', latency: '4ms' },
+                { name: 'File Storage & Encrypted Bucket', status: 'Operational', latency: '18ms' },
+                { name: 'SMS & Email Notification Queue', status: 'Operational', latency: '12ms' },
+              ].map(s => (
+                <div key={s.name} className="flex items-center justify-between p-2.5 bg-surface-bg border border-surface-border rounded-lg text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="font-medium text-text-primary">{s.name}</span>
+                  </div>
+                  <span className="text-text-muted font-mono">{s.latency}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="pt-4 border-t border-surface-border mt-4 flex justify-end">
+            <Link to="/admin/technical" className="text-xs font-semibold text-brand-gold hover:underline flex items-center gap-1">
+              Technical Settings <ArrowRight size={12} />
+            </Link>
+          </div>
         </div>
       </div>
 

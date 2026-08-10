@@ -20,7 +20,7 @@ export default function TestTakerDashboard() {
   ] : [];
 
   return (
-    <div className="h-full flex flex-col justify-between gap-2.5 w-full overflow-hidden">
+    <div className="space-y-6 w-full">
       {/* Welcome Banner */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}

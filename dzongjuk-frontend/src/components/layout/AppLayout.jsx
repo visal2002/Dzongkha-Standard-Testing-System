@@ -48,8 +48,8 @@ export default function AppLayout() {
           isDesktop={isDesktop}
           onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto lg:overflow-hidden flex flex-col">
-          <div className="w-full h-full flex flex-col min-h-0 p-3 sm:p-4">
+        <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
+          <div className="w-full min-h-full flex flex-col p-4 sm:p-6">
             <Outlet />
           </div>
         </main>
