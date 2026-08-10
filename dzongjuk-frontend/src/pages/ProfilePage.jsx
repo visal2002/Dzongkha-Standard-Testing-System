@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, CreditCard, Building2, Shield, Phone, Lock, Save, Edit2, X } from 'lucide-react';
+import { User, Mail, CreditCard, Building2, Shield, Phone, Lock, Save, Edit2, X, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/auth';
 import toast from 'react-hot-toast';
