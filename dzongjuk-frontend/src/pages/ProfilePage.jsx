@@ -21,15 +21,23 @@ function InfoRow({ icon: Icon, label, value, placeholder = '—' }) {
 
 function EditProfileForm({ user, onSave, onCancel }) {
   const [name, setName] = useState(user.name || '');
+  const [email, setEmail] = useState(user.email || '');
   const [phone, setPhone] = useState(user.phone || '');
+  const [department, setDepartment] = useState(user.department || '');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) return toast.error('Name is required.');
+    if (!email.trim()) return toast.error('Email address is required.');
     setLoading(true);
     try {
-      await onSave({ name: name.trim(), phone: phone.trim() });
+      await onSave({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        department: department.trim()
+      });
       toast.success('Profile updated successfully.');
     } catch {
       toast.error('Failed to update profile.');
@@ -42,13 +50,23 @@ function EditProfileForm({ user, onSave, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-xs text-text-muted mb-1.5 font-medium">Full Name</label>
-        <input value={name} onChange={e => setName(e.target.value)} className={inputCls} required />
-      </div>
-      <div>
-        <label className="block text-xs text-text-muted mb-1.5 font-medium">Contact Number</label>
-        <input value={phone} onChange={e => setPhone(e.target.value)} type="tel" placeholder="+975-17XXXXXX" className={inputCls} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs text-text-muted mb-1.5 font-medium">Full Name</label>
+          <input value={name} onChange={e => setName(e.target.value)} className={inputCls} required />
+        </div>
+        <div>
+          <label className="block text-xs text-text-muted mb-1.5 font-medium">Email Address</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} required />
+        </div>
+        <div>
+          <label className="block text-xs text-text-muted mb-1.5 font-medium font-medium">Contact Number (Phone)</label>
+          <input value={phone} onChange={e => setPhone(e.target.value)} type="tel" placeholder="+975-17XXXXXX" className={inputCls} />
+        </div>
+        <div>
+          <label className="block text-xs text-text-muted mb-1.5 font-medium">Department / Division</label>
+          <input value={department} onChange={e => setDepartment(e.target.value)} placeholder="e.g. Department of Culture and Dzongkha Development" className={inputCls} />
+        </div>
       </div>
       <div className="flex gap-2 pt-2">
         <button
