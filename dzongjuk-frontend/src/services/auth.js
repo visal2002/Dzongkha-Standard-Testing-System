@@ -108,6 +108,26 @@ export const authService = {
   },
 
   /**
+   * Upload profile picture (base64 data URL).
+   * @param {string} dataUrl - Base64 image string.
+   */
+  uploadProfilePicture: async (dataUrl) => {
+    if (USE_MOCK) {
+      await mockDelay(500);
+      // Update stored user avatar in local storage for mock mode.
+      const stored = localStorage.getItem('dsts_user');
+      if (stored) {
+        const userObj = JSON.parse(stored);
+        userObj.avatar = dataUrl;
+        localStorage.setItem('dsts_user', JSON.stringify(userObj));
+      }
+      return mockResponse({ avatar: dataUrl }, 'Profile picture uploaded');
+    }
+    const { data } = await apiClient.put('/auth/avatar', { avatar: dataUrl });
+    return data;
+  },
+
+  /**
    * Change the current user's password.
    * @param {string} currentPassword
    * @param {string} newPassword

@@ -167,12 +167,45 @@ export default function ProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           className="lg:col-span-1 bg-surface-card border border-surface-border rounded-xl p-6 flex flex-col items-center justify-center gap-4 text-center"
         >
-          <div
-            className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-black shadow-lg"
-            style={{ backgroundColor: avatarColor }}
-          >
-            {initials}
-          </div>
+// Updated Avatar display to show uploaded image if available
+          {user?.avatar ? (
+            <img src={user.avatar} alt="Profile" className="w-20 h-20 rounded-full object-cover" />
+          ) : (
+            <div
+              className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-black shadow-lg"
+              style={{ backgroundColor: avatarColor }}
+            >
+              {initials}
+            </div>
+          )}
+          <label className="mt-2 flex items-center gap-1 text-sm text-brand-gold cursor-pointer">
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                  const dataUrl = ev.target?.result as string;
+                  try {
+                    await authService.uploadProfilePicture(dataUrl);
+                    // Refresh user data after upload
+                    const updatedUser = { ...user, avatar: dataUrl };
+                    // Persist locally
+                    localStorage.setItem('dsts_user', JSON.stringify(updatedUser));
+                    // Trigger re-render by updating context (simplified)
+                    window.location.reload();
+                  } catch (err) {
+                    toast.error('Failed to upload profile picture');
+                  }
+                };
+                reader.readAsDataURL(file);
+              }}
+            />
+            <Camera size={16} className="text-brand-gold" /> Change Photo
+          </label>
           <div className="text-center">
             <p className="text-sm font-bold text-text-primary">{user?.name}</p>
             <span className="inline-flex items-center gap-1 mt-1 text-[10px] px-2 py-0.5 rounded-full bg-brand-gold/15 text-brand-gold border border-brand-gold/30 font-medium">
@@ -239,6 +272,22 @@ export default function ProfilePage() {
             </button>
           )}
         </div>
+        {/* New method to upload profile picture (stores base64 string in local storage for mock mode)
+  uploadProfilePicture: async (dataUrl) => {
+    if (USE_MOCK) {
+      await mockDelay(500);
+      // Save avatar to user storage
+      const stored = localStorage.getItem('dsts_user');
+      if (stored) {
+        const userObj = JSON.parse(stored);
+        userObj.avatar = dataUrl;
+        localStorage.setItem('dsts_user', JSON.stringify(userObj));
+      }
+      return mockResponse({ avatar: dataUrl }, 'Profile picture updated');
+    }
+    const { data } = await apiClient.put('/auth/avatar', { avatar: dataUrl });
+    return data;
+  }, */}
         {showPasswordForm && <ChangePasswordForm onClose={() => setShowPasswordForm(false)} />}
       </motion.div>
     </div>
