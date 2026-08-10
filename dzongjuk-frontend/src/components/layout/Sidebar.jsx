@@ -67,6 +67,7 @@ const NAV_CONFIG = {
     { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
     { label: 'View Scores', icon: FileText, to: '/scores/view' },
     { label: 'Score Summary', icon: ClipboardList, to: '/scores/summary' },
+    { label: 'Appeals Review', icon: Scale, to: '/appeals' },
   ],
   chief_executive: [
     { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },

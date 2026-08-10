@@ -1,20 +1,42 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Plus, Calendar, MapPin } from 'lucide-react';
+import { FileText, Plus, Calendar, MapPin, XCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
+import { ConfirmModal } from '../../components/ui/Modal';
 import { applications, examWindows } from '../../data/mockData';
+import toast from 'react-hot-toast';
 
 export default function MyApplications() {
   const { user } = useAuth();
-  const myApps = applications.filter(a => a.testTakerId === user?.id || a.testTakerId === 'USR-006');
+  const [appList, setAppList] = useState(applications);
+  const [cancellingApp, setCancellingApp] = useState(null);
+
+  const myApps = appList.filter(a => a.testTakerId === user?.id || a.testTakerId === 'USR-006');
+
+  const handleCancelApplication = () => {
+    if (!cancellingApp) return;
+    setAppList(prev => prev.map(a => {
+      if (a.id === cancellingApp.id) {
+        const newHistory = [
+          ...a.statusHistory,
+          { status: 'cancelled', timestamp: new Date().toISOString(), by: user?.name || 'Applicant', remarks: 'Cancelled by applicant' }
+        ];
+        return { ...a, status: 'cancelled', statusHistory: newHistory };
+      }
+      return a;
+    }));
+    toast.success(`Application ${cancellingApp.id} cancelled successfully.`);
+    setCancellingApp(null);
+  };
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="My Applications"
-        subtitle="Track all your DSTS examination applications"
+        subtitle="Track and manage all your DSTS examination applications"
         breadcrumbs={[{ label: 'Registration' }, { label: 'My Applications' }]}
         icon={<FileText size={18} />}
         action={
@@ -35,6 +57,7 @@ export default function MyApplications() {
         <div className="space-y-4">
           {myApps.map(app => {
             const exam = examWindows.find(e => e.id === app.examId);
+            const canCancel = app.status === 'submitted';
             return (
               <div key={app.id} className="bg-surface-card border border-surface-border rounded-2xl p-5">
                 <div className="flex items-start justify-between gap-4 mb-4">
@@ -42,7 +65,19 @@ export default function MyApplications() {
                     <p className="text-base font-semibold text-text-primary">{exam?.title || app.examId}</p>
                     <p className="text-xs text-text-muted mt-0.5">Application ID: {app.id}</p>
                   </div>
-                  <StatusBadge status={app.status} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={app.status} />
+                    {canCancel && (
+                      <Button
+                        variant="danger"
+                        size="xs"
+                        icon={<XCircle size={12} />}
+                        onClick={() => setCancellingApp(app)}
+                      >
+                        Cancel Application
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mb-4">
@@ -83,12 +118,12 @@ export default function MyApplications() {
                 {/* Status timeline */}
                 <div className="pt-3 border-t border-surface-border">
                   <p className="text-[10px] font-semibold text-text-muted uppercase mb-2">Status History</p>
-                  <div className="flex items-center gap-0">
+                  <div className="flex items-center gap-0 overflow-x-auto pb-1">
                     {app.statusHistory.map((h, i) => (
                       <div key={i} className="flex items-center gap-0">
                         <div className="flex flex-col items-center">
                           <div className="w-2 h-2 rounded-full bg-[#D4830A]" />
-                          <div className="text-[9px] text-text-muted mt-1 text-center w-20">{h.status.replace(/_/g, ' ')}</div>
+                          <div className="text-[9px] text-text-muted mt-1 text-center w-20 capitalize">{h.status.replace(/_/g, ' ')}</div>
                         </div>
                         {i < app.statusHistory.length - 1 && <div className="w-8 h-px bg-[var(--color-surface-border)] mb-3" />}
                       </div>
@@ -100,6 +135,15 @@ export default function MyApplications() {
           })}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!cancellingApp}
+        onClose={() => setCancellingApp(null)}
+        onConfirm={handleCancelApplication}
+        title="Cancel Registration Application"
+        message={`Are you sure you want to cancel application "${cancellingApp?.id}"? This action cannot be undone.`}
+        confirmLabel="Cancel Application"
+      />
     </div>
   );
 }
