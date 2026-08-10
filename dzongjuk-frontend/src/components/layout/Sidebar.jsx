@@ -5,7 +5,7 @@ import {
   LayoutDashboard, FileText, CheckSquare, Users, Upload, ClipboardList,
   Award, AlertCircle, BarChart3, Settings, Shield, ChevronDown,
   ChevronRight, Bookmark, BookOpen, UserCog, Zap, Home, FileSearch,
-  GraduationCap, Scale
+  GraduationCap, Scale, Wrench
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Badge from '../ui/Badge';
@@ -21,6 +21,7 @@ const NAV_CONFIG = {
         { label: 'User Management', icon: Users, to: '/admin/users' },
         { label: 'Role & Permissions', icon: UserCog, to: '/admin/roles' },
         { label: 'Master Configuration', icon: Settings, to: '/masters' },
+        { label: 'Technical Settings', icon: Wrench, to: '/admin/technical' },
       ]
     },
     { label: 'Reports', icon: BarChart3, to: '/reports' },
