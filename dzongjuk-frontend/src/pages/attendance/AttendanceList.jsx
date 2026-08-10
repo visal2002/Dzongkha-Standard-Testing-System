@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { UserX, CheckCircle, Users, AlertTriangle } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
@@ -52,7 +52,7 @@ export default function AttendanceList() {
     setAbsentSkills(prev => prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]);
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     columnHelper.accessor('registrationNumber', {
       header: 'Reg. Number',
       cell: i => <span className="font-mono text-xs font-medium text-brand-gold">{i.getValue() || '—'}</span>
@@ -99,7 +99,7 @@ export default function AttendanceList() {
         );
       }
     }),
-  ];
+  ], []);
 
   const absentCount = effectiveData.filter(a => a.status === 'absent').length;
 

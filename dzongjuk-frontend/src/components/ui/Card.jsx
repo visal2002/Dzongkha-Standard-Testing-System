@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 
 export default function Card({ children, className = '', hover = false, onClick, padding = true }) {
@@ -41,7 +42,7 @@ export function CardHeader({ title, subtitle, action, icon, className = '' }) {
   );
 }
 
-export function StatCard({ title, value, delta, icon, color = 'gold', subtitle, loading = false }) {
+export const StatCard = React.memo(function StatCard({ title, value, delta, icon, color = 'gold', subtitle, loading = false }) {
   const colors = {
     gold: { bg: 'bg-brand-gold/10', text: 'text-brand-gold', border: 'border-brand-gold/20' },
     teal: { bg: 'bg-teal-500/10', text: 'text-teal-400', border: 'border-teal-500/20' },
@@ -80,4 +81,4 @@ export function StatCard({ title, value, delta, icon, color = 'gold', subtitle, 
       )}
     </motion.div>
   );
-}
+});

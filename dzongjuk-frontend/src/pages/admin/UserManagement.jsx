@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Users, Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Shield } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
@@ -97,7 +97,7 @@ export default function UserManagement() {
     toast.success('User status updated');
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     columnHelper.accessor('name', {
       header: 'User',
       cell: i => (
@@ -140,7 +140,7 @@ export default function UserManagement() {
         </div>
       )
     }),
-  ];
+  ], []);
 
   return (
     <div className="space-y-6">

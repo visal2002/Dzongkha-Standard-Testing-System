@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Award, Download, QrCode, Search, Eye, Shield } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import PageHeader from '../../components/ui/PageHeader';
@@ -16,7 +16,7 @@ const getBandColor = (level) => {
   return map[level] || 'from-[#F59E0B] to-[#D97706]';
 };
 
-function CertificateCard({ cert }) {
+const CertificateCard = React.memo(function CertificateCard({ cert }) {
   const [showQR, setShowQR] = useState(false);
   const isValid = new Date(cert.validUntil) > new Date();
 
@@ -89,7 +89,7 @@ function CertificateCard({ cert }) {
       </Modal>
     </>
   );
-}
+});
 
 export default function CertificateList() {
   const { user } = useAuth();

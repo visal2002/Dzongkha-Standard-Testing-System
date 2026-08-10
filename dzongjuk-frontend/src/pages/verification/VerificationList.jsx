@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { CheckCircle, XCircle, Eye, RotateCcw, Filter } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
@@ -44,7 +44,7 @@ export default function VerificationList() {
 
   const filteredData = statusFilter ? data.filter(a => a.status === statusFilter) : data;
 
-  const columns = [
+  const columns = useMemo(() => [
     columnHelper.accessor('id', { header: 'Application ID', cell: i => <span className="font-mono text-xs text-text-muted">{i.getValue()}</span> }),
     columnHelper.accessor('testTakerName', {
       header: 'Applicant',
@@ -87,7 +87,7 @@ export default function VerificationList() {
         );
       }
     }),
-  ];
+  ], []);
 
   return (
     <div className="space-y-6">

@@ -39,11 +39,14 @@ const OperationalSettings = lazy(() => import('../pages/dcdd/OperationalSettings
 // Page loader
 export function PageLoader() {
   return (
-    <div className="flex items-center justify-center h-full py-24 w-full">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs text-text-muted">Loading...</p>
+    <div className="flex flex-col gap-6 w-full p-6 animate-pulse">
+      <div className="h-10 bg-surface-card border border-surface-border rounded-xl w-1/3"></div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-28 bg-surface-card border border-surface-border rounded-xl"></div>
+        ))}
       </div>
+      <div className="h-64 bg-surface-card border border-surface-border rounded-xl w-full mt-4"></div>
     </div>
   );
 }

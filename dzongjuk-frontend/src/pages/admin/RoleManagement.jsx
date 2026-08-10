@@ -47,7 +47,7 @@ export default function RoleManagement() {
     }
   };
 
-  const handleCreateRole = () => {
+  const handleCreateRole = async () => {
     if (!newRoleForm.name || !newRoleForm.code) {
       toast.error('Role name and code are required.');
       return;
