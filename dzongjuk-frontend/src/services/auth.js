@@ -93,6 +93,21 @@ export const authService = {
   },
 
   /**
+   * Update global system contact information.
+   * @param {{email:string, phone:string, department:string}} fields
+   */
+  updateSystemInfo: async (fields) => {
+    if (USE_MOCK) {
+      await mockDelay(500);
+      // In a real implementation, this would call a backend endpoint.
+      // Here we simply return the fields as confirmation.
+      return mockResponse(fields, 'System contact information updated.');
+    }
+    const { data } = await apiClient.put('/system/info', fields);
+    return data;
+  },
+
+  /**
    * Change the current user's password.
    * @param {string} currentPassword
    * @param {string} newPassword
