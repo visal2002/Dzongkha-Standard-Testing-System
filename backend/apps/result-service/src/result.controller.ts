@@ -8,7 +8,7 @@ import { Body, Controller, Get, Headers, Param, Post, Put, Req } from '@nestjs/c
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions, Public } from '@dzongjuk/security';
-import { CreateCommitteeDto, CreateScoringRuleDto, ScoreValuesDto } from './dtos';
+import { ApplyAppealRevisionDto, CreateCommitteeDto, CreateScoringRuleDto, ScoreValuesDto } from './dtos';
 import { ResultService } from './result.service';
 import { ScoringService } from './scoring.service';
 
@@ -51,6 +51,17 @@ export class ScoresController {
   @Public() @Get('internal/exams/:examId/certificate-results')
   certificateResults(@Param('examId') examId: string, @Headers('x-internal-service-key') key: string | undefined) {
     return this.results.certificateResults(examId, key);
+  }
+
+  @Public() @Post('internal/score-sheets/:scoreSheetId/appeal-revisions')
+  applyAppealRevision(
+    @Param('scoreSheetId') scoreSheetId: string,
+    @Body() dto: ApplyAppealRevisionDto,
+    @Headers('x-internal-service-key') internalKey: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string,
+    @Req() request: Request,
+  ) {
+    return this.results.applyAppealRevision(scoreSheetId, dto, internalKey, request.id, idempotencyKey);
   }
 }
 

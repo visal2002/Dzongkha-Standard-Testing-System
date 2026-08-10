@@ -31,6 +31,7 @@ import {
   ReconciliationStatus,
 } from './entities';
 import { ResultClientService } from './result-client.service';
+import { CertificateService } from './certificate.service';
 
 @Injectable()
 export class AppealService {
@@ -40,6 +41,7 @@ export class AppealService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly resultClient: ResultClientService,
+    private readonly certificateService: CertificateService,
     config: ConfigService,
     @InjectRepository(AppealEntity) private readonly appeals: Repository<AppealEntity>,
     @InjectRepository(FeeRuleEntity) private readonly fees: Repository<FeeRuleEntity>,
@@ -218,6 +220,70 @@ export class AppealService {
     });
   }
 
+  async applyApprovedRevision(appealId: string, actor: AccessClaims, requestId: string, idempotencyKey: string) {
+    this.assertPrivileged(actor);
+    if (!idempotencyKey) throw new DomainException('IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key header is required.');
+    const scope = `appeal.apply-revision:${appealId}`;
+    const replay = await this.idempotency.findOneBy({ scope, key: idempotencyKey });
+    if (replay) return replay.response;
+
+    const appeal = await this.appeals.findOneBy({ id: appealId });
+    if (!appeal) throw new DomainException('APPEAL_NOT_FOUND', 'Appeal not found.', 404);
+    if (appeal.status === AppealStatus.Completed && appeal.chiefDecision === AppealDecision.Approved) {
+      return this.detail(this.dataSource.manager, appealId);
+    }
+    if (appeal.status !== AppealStatus.ApprovedPendingScoreUpdate || appeal.chiefDecision !== AppealDecision.Approved) {
+      throw new DomainException('APPEAL_SCORE_UPDATE_STATE_INVALID', 'Only an approved appeal awaiting score update may be applied.', 409);
+    }
+    const skills = await this.dataSource.manager.findBy(AppealSkillEntity, { appealId });
+    const changes: Record<string, number> = {};
+    for (const skill of skills) {
+      if (skill.proposedScore === null) throw new DomainException('APPEAL_PROPOSED_SCORE_MISSING', `Proposed ${skill.skill} score is unavailable.`, 409);
+      changes[this.scoreProperty(skill.skill)] = Number(skill.proposedScore);
+    }
+    const revision = await this.resultClient.applyAppealRevision(
+      appeal.scoreSheetId, appeal.id, appeal.scoreVersionNumber, actor.sub, changes, requestId,
+    );
+    if (revision.examId !== appeal.examId || revision.applicationId !== appeal.applicationId || revision.testTakerUserId !== appeal.testTakerUserId) {
+      throw new DomainException('APPEAL_SCORE_UPDATE_MISMATCH', 'The revised result does not match the approved appeal.', 409);
+    }
+    const certificateUpdate = await this.certificateService.supersedeForScoreRevision(
+      revision.scoreSheetId, revision.version, actor, requestId,
+    );
+
+    return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+      const transactionReplay = await manager.findOneBy(AppealIdempotencyEntity, { scope, key: idempotencyKey });
+      if (transactionReplay) return transactionReplay.response;
+      const locked = await manager.findOne(AppealEntity, { where: { id: appealId }, lock: { mode: 'pessimistic_write' } });
+      if (!locked) throw new DomainException('APPEAL_NOT_FOUND', 'Appeal not found.', 404);
+      if (locked.status !== AppealStatus.ApprovedPendingScoreUpdate || locked.chiefDecision !== AppealDecision.Approved) {
+        if (locked.status === AppealStatus.Completed && locked.chiefDecision === AppealDecision.Approved) return this.detail(manager, appealId);
+        throw new DomainException('APPEAL_SCORE_UPDATE_STATE_INVALID', 'Appeal state changed before score revision completion.', 409);
+      }
+      const lockedSkills = await manager.findBy(AppealSkillEntity, { appealId });
+      for (const skill of lockedSkills) skill.finalScore = skill.proposedScore;
+      await manager.save(AppealSkillEntity, lockedSkills);
+      locked.completedAt = new Date();
+      await this.transition(manager, locked, AppealStatus.Completed, actor.sub, 'USER', requestId, `Approved score revision applied as version ${revision.version}.`);
+      await this.audit(manager, 'APPEAL_SCORE_REVISION_APPLIED', locked.id, actor.sub, requestId, {
+        scoreSheetId: revision.scoreSheetId, previousVersion: locked.scoreVersionNumber, version: revision.version,
+        supersededCertificateCount: certificateUpdate.supersededCount,
+      });
+      await this.outbox(manager, DomainEventTypes.AppealCompleted, locked.id, requestId, {
+        appealId: locked.id, examId: locked.examId, applicationId: locked.applicationId,
+        testTakerUserId: locked.testTakerUserId, outcome: AppealDecision.Approved,
+        scoreSheetId: revision.scoreSheetId, scoreVersionNumber: revision.version,
+      });
+      const response = {
+        ...await this.detail(manager, appealId),
+        scoreRevision: revision,
+        certificateUpdate: { ...certificateUpdate, replacementIssuanceRequired: certificateUpdate.supersededCount > 0 },
+      };
+      await manager.save(AppealIdempotencyEntity, manager.create(AppealIdempotencyEntity, { scope, key: idempotencyKey, response }));
+      return response;
+    });
+  }
+
   async listMine(actor: AccessClaims) {
     const appeals = await this.appeals.find({ where: { testTakerUserId: actor.sub }, order: { submittedAt: 'DESC' } });
     return Promise.all(appeals.map((appeal) => this.detail(this.dataSource.manager, appeal.id)));
@@ -295,6 +361,10 @@ export class AppealService {
     });
     if (!fee) throw new DomainException('APPEAL_FEE_NOT_CONFIGURED', 'No approved appeal fee is currently effective.', 409);
     return fee;
+  }
+
+  private scoreProperty(skill: Skill) {
+    return skill.toLowerCase();
   }
 
   private validateRecommendation(dto: CommitteeReviewDto, skills: AppealSkillEntity[]) {

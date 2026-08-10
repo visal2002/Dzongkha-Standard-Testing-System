@@ -5,7 +5,7 @@
  */
 
 import { Type } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Length, Max, Min, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsDateString, IsDefined, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Length, Max, Min, ValidateNested } from 'class-validator';
 import { CommitteeRole } from './entities';
 
 export class CommitteeMemberDto {
@@ -23,6 +23,20 @@ export class ScoreValuesDto {
   @IsNumber({ maxDecimalPlaces: 3 }) reading: number;
   @IsNumber({ maxDecimalPlaces: 3 }) listening: number;
   @IsNumber({ maxDecimalPlaces: 3 }) speaking: number;
+}
+
+export class AppealScoreChangesDto {
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 3 }) writing?: number;
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 3 }) reading?: number;
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 3 }) listening?: number;
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 3 }) speaking?: number;
+}
+
+export class ApplyAppealRevisionDto {
+  @IsUUID() appealId: string;
+  @IsInt() @Min(1) expectedVersion: number;
+  @IsUUID() approvedByUserId: string;
+  @IsDefined() @ValidateNested() @Type(() => AppealScoreChangesDto) changes: AppealScoreChangesDto;
 }
 
 export class BandRangeDto {

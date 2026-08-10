@@ -80,6 +80,12 @@ export class ScoringService {
     return rule;
   }
 
+  async ruleForRevision(manager: EntityManager, id: string) {
+    const rule = await manager.findOneBy(ScoringRuleEntity, { id });
+    if (!rule) throw new DomainException('SCORING_RULE_NOT_FOUND', 'The scoring rule used by the published result is unavailable.', 409);
+    return rule;
+  }
+
   calculate(scores: ScoreValues, rule: ScoringRuleEntity) {
     const values: number[] = [scores.WRITING, scores.READING, scores.LISTENING, scores.SPEAKING];
     const minimum = Number(rule.minimumScore);

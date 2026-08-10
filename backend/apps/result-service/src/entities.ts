@@ -108,7 +108,7 @@ export class ScoreVersionEntity {
   @Column({ type: 'varchar', length: 40, nullable: true }) cefrLevel: string | null;
   @Column({ type: 'uuid' }) scoringRuleId: string;
   @Column({ length: 30 }) source: 'ORIGINAL' | 'APPEAL_REVISION';
-  @Column({ type: 'uuid', nullable: true }) appealId: string | null;
+  @Index({ unique: true }) @Column({ type: 'uuid', nullable: true }) appealId: string | null;
   @Column({ type: 'uuid' }) createdByUserId: string;
   @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
 }

@@ -212,8 +212,9 @@ Log in using CID / User ID and password `password`.
 | Committee Head | `11104004004` | password |
 | Chief Executive | `11105005005` | password |
 | Test Taker | `11106006006` | password |
+| Local acceptance test taker | `local.acceptance@dzongjuk.test` | `LocalTestOnly!2026` |
 
-> **Note:** Use only the CID above to sign in. Email login is for display only.
+> **Note:** Standard demonstration roles use the listed CID. The local acceptance test taker uses the listed email address.
 
 ---
 

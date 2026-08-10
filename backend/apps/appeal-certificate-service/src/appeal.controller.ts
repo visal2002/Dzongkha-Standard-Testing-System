@@ -35,6 +35,11 @@ export class AppealsController {
   @Permissions('appeal.approve') @Post(':id/decision')
   decide(@Param('id') id: string, @Body() dto: ChiefDecisionDto, @Req() request: Request) { return this.appeals.decide(id, dto, request.user!, request.id); }
 
+  @Permissions('appeal.approve') @Post(':id/apply-revision')
+  applyRevision(@Param('id') id: string, @Headers('idempotency-key') key: string, @Req() request: Request) {
+    return this.appeals.applyApprovedRevision(id, request.user!, request.id, key);
+  }
+
   @Public() @Post(':id/payment/confirm')
   confirmPayment(@Param('id') id: string, @Body() dto: ConfirmAppealPaymentDto, @Headers('x-internal-service-key') internalKey: string | undefined, @Req() request: Request) {
     return this.appeals.confirmPayment(id, dto, internalKey, request.id);
