@@ -181,7 +181,7 @@ export default function Sidebar({ collapsed, isDesktop, mobileOpen }) {
     >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 h-13 border-b border-surface-border shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-[#D4830A] flex items-center justify-center shrink-0 shadow-sm relative overflow-hidden">
+        <div className="w-8 h-8 rounded-lg bg-[#F59E0B] flex items-center justify-center shrink-0 shadow-sm relative overflow-hidden">
           {/* Subtle gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="relative z-10 text-white">
@@ -207,7 +207,7 @@ export default function Sidebar({ collapsed, isDesktop, mobileOpen }) {
       {!collapsed && user && (
         <div className="px-3 py-3 border-t border-surface-border shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#D4830A]/20 flex items-center justify-center text-brand-gold font-semibold text-sm shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#F59E0B]/20 flex items-center justify-center text-brand-gold font-semibold text-sm shrink-0">
               {user.name[0]}
             </div>
             <div className="min-w-0">
