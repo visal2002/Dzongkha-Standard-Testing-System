@@ -1,0 +1,120 @@
+/**
+ * @fileoverview Auth Service
+ * Handles login, logout, token refresh, and NDI authentication.
+ */
+import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
+
+// Mock user data (preserved as fallback)
+const MOCK_USERS = {
+  '11101001001': { id: 'USR-001', name: 'Sonam Dorji', email: 'system.admin@demo.com', cid: '11101001001', role: 'admin', roleName: 'System Admin', avatar: null, department: 'GovTech', permissions: ['*'] },
+  '11102002002': { id: 'USR-002', name: 'Karma Wangchuk', email: 'dcdd.admin@demo.com', cid: '11102002002', role: 'dcdd', roleName: 'DCDD Admin', avatar: null, department: 'Department of Culture and Dzongkha Development', permissions: ['registration', 'verification', 'attendance', 'masters', 'reports', 'notifications'] },
+  '11103003003': { id: 'USR-003', name: 'Tshering Pem', email: 'exam.head@demo.com', cid: '11103003003', role: 'exam_head', roleName: 'Exam Head', avatar: null, department: 'DCDD - Examination Division', permissions: ['questions', 'scores', 'reports'] },
+  '11104004004': { id: 'USR-004', name: 'Ugyen Tenzin', email: 'committee.head@demo.com', cid: '11104004004', role: 'committee_head', roleName: 'Committee Head', avatar: null, department: 'Examination Committee', permissions: ['scores', 'appeals', 'reports'] },
+  '11105005005': { id: 'USR-005', name: 'Dorji Wangmo', email: 'chief.executive@demo.com', cid: '11105005005', role: 'chief_executive', roleName: 'Chief Executive', avatar: null, department: 'DCDD', permissions: ['appeals', 'reports'] },
+  '11106006006': { id: 'USR-006', name: 'Pema Choden', email: 'test.taker@demo.com', cid: '11106006006', role: 'test_taker', roleName: 'Test Taker', avatar: null, department: null, permissions: ['registration', 'certificates', 'appeals'] },
+};
+
+export const authService = {
+  /**
+   * Login with CID and password.
+   * @param {string} identifier - CID or email
+   * @param {string} password
+   * @returns {Promise<{success: boolean, user?: import('../types').AuthUser, token?: string, error?: string}>}
+   */
+  login: async (identifier, password) => {
+    if (USE_MOCK) {
+      await mockDelay(800);
+      const found = Object.values(MOCK_USERS).find(u => u.cid === identifier || u.email === identifier);
+      if (found && password === 'password') {
+        const token = btoa(JSON.stringify({ userId: found.id, role: found.role, exp: Date.now() + 86400000 }));
+        return { success: true, user: found, token };
+      }
+      return { success: false, error: 'Invalid credentials. Use your CID or email with password "password".' };
+    }
+
+    try {
+      const { data } = await apiClient.post('/auth/login', { identifier, password });
+      return { success: true, user: data.user, token: data.token };
+    } catch (err) {
+      return { success: false, error: err.message || 'Login failed.' };
+    }
+  },
+
+  /**
+   * Initiate NDI OAuth login flow.
+   * @returns {Promise<{success: boolean, user?: import('../types').AuthUser, token?: string, error?: string}>}
+   */
+  loginWithNDI: async () => {
+    if (USE_MOCK) {
+      await mockDelay(1500);
+      const defaultUser = MOCK_USERS['11106006006'];
+      return { success: true, user: defaultUser, token: 'ndi-mock-token' };
+    }
+
+    try {
+      // In production: redirect to NDI authorization URL
+      // The real flow requires a backend-initiated PKCE exchange
+      const { data } = await apiClient.post('/auth/ndi/initiate');
+      window.location.href = data.authorizationUrl;
+      return { success: true }; // Will not reach here due to redirect
+    } catch (err) {
+      return { success: false, error: err.message || 'NDI service unavailable.' };
+    }
+  },
+
+  /**
+   * Refresh the JWT token.
+   * @returns {Promise<{token: string}|null>}
+   */
+  refreshToken: async () => {
+    if (USE_MOCK) return null;
+    try {
+      const { data } = await apiClient.post('/auth/refresh');
+      return { token: data.token };
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Log out the current user.
+   */
+  logout: async () => {
+    if (!USE_MOCK) {
+      try {
+        await apiClient.post('/auth/logout');
+      } catch {
+        // Proceed with local logout even if server call fails
+      }
+    }
+    localStorage.removeItem('dsts_token');
+    localStorage.removeItem('dsts_user');
+  },
+
+  /**
+   * Change the current user's password.
+   * @param {string} currentPassword
+   * @param {string} newPassword
+   */
+  changePassword: async (currentPassword, newPassword) => {
+    if (USE_MOCK) {
+      await mockDelay(600);
+      return mockResponse(null, 'Password changed successfully.');
+    }
+    const { data } = await apiClient.put('/auth/password', { currentPassword, newPassword });
+    return data;
+  },
+
+  /**
+   * Update the authenticated user's profile.
+   * @param {Partial<import('../types').AuthUser>} fields
+   */
+  updateProfile: async (fields) => {
+    if (USE_MOCK) {
+      await mockDelay(500);
+      return mockResponse(fields, 'Profile updated.');
+    }
+    const { data } = await apiClient.put('/auth/profile', fields);
+    return data;
+  },
+};

@@ -1,0 +1,111 @@
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { Users, Shield, Settings, Activity, ArrowRight, TrendingUp, Server, Database, CheckCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { StatCard } from '../../components/ui/Card';
+import { StatusBadge } from '../../components/ui/Badge';
+import { systemUsers, systemRoles } from '../../data/mockData';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+const roleData = [
+  { name: 'Admin', users: 1 },
+  { name: 'DCDD', users: 3 },
+  { name: 'Exam Head', users: 1 },
+  { name: 'Committee', users: 6 },
+  { name: 'Chief Exec', users: 1 },
+  { name: 'Test Takers', users: 500 },
+];
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-surface-card border border-surface-border rounded-xl p-3 shadow-xl text-xs">
+      <p className="font-medium text-text-primary">{label}: {payload[0]?.value}</p>
+    </div>
+  );
+};
+
+export default function AdminDashboard() {
+  const { user } = useAuth();
+  return (
+    <div className="space-y-6">
+      {/* Welcome */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden bg-gradient-to-r from-[#2D1B69] via-[#1B2A4A] to-[#1B2A4A] border border-purple-900/30 rounded-2xl p-6"
+      >
+        <div className="absolute right-0 top-0 w-48 h-48 bg-purple-500/5 rounded-full -translate-y-1/2 translate-x-1/4 blur-2xl" />
+        <div className="relative">
+          <p className="text-xs text-purple-400 font-medium uppercase tracking-wider mb-1">System Administration</p>
+          <h1 className="text-xl font-bold text-white mb-1">Welcome, {user?.name?.split(' ')[0]}!</h1>
+          <p className="text-sm text-[#94A3C8]">System health is optimal. All services running normally.</p>
+          <div className="flex items-center gap-4 mt-3 text-xs text-[#94A3C8]">
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" />API: Online</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" />DB: Connected</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" />NDI: Active</span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Total Users" value={systemUsers.length} icon={<Users size={18} />} color="purple" />
+        <StatCard title="System Roles" value={systemRoles.length} icon={<Shield size={18} />} color="info" />
+        <StatCard title="System Status" value="100%" icon={<Activity size={18} />} color="success" subtitle="Uptime" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* User distribution */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-text-primary mb-1">Users by Role</h3>
+          <p className="text-xs text-text-muted mb-4">Distribution across all roles</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={roleData} barSize={28}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-border)" />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="users" fill="#D4830A" radius={[4, 4, 0, 0]} name="Users" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* System Users table */}
+      <div className="bg-surface-card border border-surface-border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-text-primary">System Users</h3>
+          <Link to="/admin/users" className="text-xs text-brand-gold hover:text-[#F0A030] flex items-center gap-1">Manage <ArrowRight size={12} /></Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-surface-border">
+                {['User', 'Role', 'CID', 'Status', 'Last Login'].map(h => (
+                  <th key={h} className="pb-2 text-left font-medium text-text-muted pr-4">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {systemUsers.map(u => (
+                <tr key={u.id} className="border-b border-surface-border/40 hover:bg-surface-bg transition-colors">
+                  <td className="py-2.5 pr-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold font-bold text-[10px]">{u.name[0]}</div>
+                      <span className="font-medium text-text-primary truncate max-w-28">{u.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-2.5 pr-4 text-text-secondary">{u.role}</td>
+                  <td className="py-2.5 pr-4 text-text-muted font-mono">{u.cid}</td>
+                  <td className="py-2.5 pr-4"><StatusBadge status={u.status} /></td>
+                  <td className="py-2.5 text-text-muted">{new Date(u.lastLogin).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
