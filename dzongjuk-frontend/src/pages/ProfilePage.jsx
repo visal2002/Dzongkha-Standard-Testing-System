@@ -188,7 +188,7 @@ export default function ProfilePage() {
                 if (!file) return;
                 const reader = new FileReader();
                 reader.onload = async (ev) => {
-                  const dataUrl = ev.target?.result as string;
+                  const dataUrl = ev.target?.result;
                   try {
                     await authService.uploadProfilePicture(dataUrl);
                     // Refresh user data after upload
