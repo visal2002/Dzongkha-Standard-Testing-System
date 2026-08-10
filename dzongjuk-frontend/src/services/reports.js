@@ -12,6 +12,21 @@ import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
 import { applications, bandScores, appeals, certificates, examWindows, dashboardStats } from '../data/mockData';
 
 export const reportService = {
+  /** Get the cross-module reporting KPI summary. */
+  getSummary: async () => {
+    if (USE_MOCK) {
+      await mockDelay(300);
+      return mockResponse({
+        totalApplications: applications.length,
+        totalScores: bandScores.length,
+        totalCertificates: certificates.length,
+        activeAppeals: appeals.filter(a => !['completed', 'rejected', 'no_change'].includes(a.status)).length,
+      });
+    }
+    const { data } = await apiClient.get('/reports/summary');
+    return data;
+  },
+
   /**
    * Get registration summary report.
    * @param {string} [examId] - Filter by exam window
@@ -92,6 +107,17 @@ export const reportService = {
   getDashboardStats: async (role) => {
     if (USE_MOCK) { await mockDelay(300); return mockResponse(dashboardStats[role] || dashboardStats.dcdd); }
     const { data } = await apiClient.get(`/dashboard/stats?role=${role}`);
+    return data;
+  },
+
+  /** Queue a governed report artifact in CSV, XLSX, or PDF format. */
+  createExport: async (format, query) => {
+    const { data } = await apiClient.post('/reports/jobs', { format, query });
+    return data;
+  },
+
+  getExport: async (jobId) => {
+    const { data } = await apiClient.get(`/reports/jobs/${jobId}`);
     return data;
   },
 };

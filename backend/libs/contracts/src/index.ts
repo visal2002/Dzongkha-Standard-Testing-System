@@ -96,6 +96,7 @@ export interface DomainEvent<T = Record<string, unknown>> {
 
 export const DomainEventTypes = {
   ExamCreated: 'ExamCreated',
+  ExamStatusChanged: 'ExamStatusChanged',
   ApplicationSubmitted: 'ApplicationSubmitted',
   ApplicationWaitlisted: 'ApplicationWaitlisted',
   ApplicationCancelled: 'ApplicationCancelled',
@@ -106,6 +107,7 @@ export const DomainEventTypes = {
   QuestionPaperUploaded: 'QuestionPaperUploaded',
   SamplePaperPublished: 'SamplePaperPublished',
   CandidateEligibleForScoring: 'CandidateEligibleForScoring',
+  CommitteeConfigured: 'CommitteeConfigured',
   ScoreSubmitted: 'ScoreSubmitted',
   ResultsDeclared: 'ResultsDeclared',
   AppealSubmitted: 'AppealSubmitted',

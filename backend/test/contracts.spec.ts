@@ -4,7 +4,7 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { AppealStatus, ApplicationStatus, CertificateStatus, ExamStatus, Skill } from '@dzongjuk/contracts';
+import { AppealStatus, ApplicationStatus, CertificateStatus, DomainEventTypes, ExamStatus, Skill } from '@dzongjuk/contracts';
 import { IS_PUBLIC } from '../libs/security/src/security.decorators';
 import { SamplePapersController } from '../apps/assessment-content-service/src/assessment.controller';
 import { AppealsController } from '../apps/appeal-certificate-service/src/appeal.controller';
@@ -62,5 +62,10 @@ describe('authoritative workflow contracts', () => {
   it('preserves explicit terminal certificate lifecycle states', () => {
     expect(CertificateStatus.Revoked).not.toBe(CertificateStatus.Expired);
     expect(CertificateStatus.Superseded).not.toBe(CertificateStatus.Revoked);
+  });
+
+  it('publishes explicit reporting events for mutable examinations and committees', () => {
+    expect(DomainEventTypes.ExamStatusChanged).toBe('ExamStatusChanged');
+    expect(DomainEventTypes.CommitteeConfigured).toBe('CommitteeConfigured');
   });
 });

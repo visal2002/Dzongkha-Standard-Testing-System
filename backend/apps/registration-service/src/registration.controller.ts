@@ -19,7 +19,7 @@ export class ExamsController {
   @Public() @Get() list() { return this.service.listExams(); }
   @Public() @Get(':id') get(@Param('id') id: string) { return this.service.getExam(id); }
   @ApiBearerAuth() @Permissions('exam.window.manage') @Post() create(@Body() dto: CreateExamDto, @Req() req: Request) { return this.service.createExam(dto, req.user!.sub, req.id); }
-  @ApiBearerAuth() @Permissions('exam.window.manage') @Patch(':id/status') status(@Param('id') id: string, @Body() dto: UpdateExamStatusDto) { return this.service.setExamStatus(id, dto.status); }
+  @ApiBearerAuth() @Permissions('exam.window.manage') @Patch(':id/status') status(@Param('id') id: string, @Body() dto: UpdateExamStatusDto, @Req() req: Request) { return this.service.setExamStatus(id, dto.status, req.user!.sub, req.id); }
 }
 
 @ApiBearerAuth()

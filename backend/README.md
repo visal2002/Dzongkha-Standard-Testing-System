@@ -35,9 +35,10 @@ The services are independently buildable and deployable. Each service owns an in
 - idempotent approved-appeal score revisions that retain the historical scoring rule, create a new immutable score version and supersede certificates tied to older versions;
 - approved versioned certificate templates, encrypted PDF artifacts in object storage, signed QR verification, owner-only downloads, certificate history/revocation and privacy-minimal public responses;
 - event-driven in-app notifications with versioned templates, idempotent RabbitMQ consumption, delivery records and owner-only read/archive APIs;
+- event-projected role dashboards, predefined and allow-listed ad-hoc reports, saved definitions, asynchronous CSV/XLSX/PDF artifacts and an append-only authorized audit viewer;
 - service-owned PostgreSQL databases and migrations, Redis, RabbitMQ, MinIO, gateway, Docker, Kubernetes baseline and GitLab pipeline.
 
-Reporting and external integrations currently have buildable service boundaries, health/OpenAPI, shared security, database isolation, gateway routing and capability contracts. Official certificate artwork/fonts, appeal-driven certificate reissue, SMS/email providers, and other external values remain tracked in [implementation status](docs/IMPLEMENTATION-STATUS.md); they are not falsely represented as production-complete.
+External integrations currently have buildable service boundaries, health/OpenAPI, shared security, database isolation, gateway routing and capability contracts. Official certificate artwork/fonts, automatic appeal-driven certificate reissue policy, SMS/email providers, and other external values remain tracked in [implementation status](docs/IMPLEMENTATION-STATUS.md); they are not falsely represented as production-complete.
 
 ## Local setup
 

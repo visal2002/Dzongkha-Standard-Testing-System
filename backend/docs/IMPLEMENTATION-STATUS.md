@@ -20,9 +20,9 @@ This file distinguishes implemented code from approved architecture and unresolv
 | Appeals/payments | Core workflow implemented; provider adapter open | effective-dated approved fee rules, idempotent ownership-safe submission, exact internal-key payment confirmation, committee assignment enforcement, no-change completion, privileged Chief decision, idempotent Result-service revision application, history/audit/outbox |
 | Certificates | Core workflow implemented; official template/automatic-reissue policy open | approved versioned templates, internal published-result/profile contracts, encrypted PDF storage, signed QR token, owner-only access, minimal public verification, history, revocation, appeal-driven supersession and explicit replacement generation |
 | Notifications | In-app workflow implemented; provider adapters open | versioned approved templates, idempotent RabbitMQ projection, delivery records, owner list/read/read-all/archive APIs; SMS/email credentials and retry workers remain |
-| Reports/audit viewer | Foundation | projections/export workers remain |
+| Reports/audit viewer | Implemented core workflow | idempotent RabbitMQ projections, role dashboards, predefined and allow-listed ad-hoc queries, saved definitions, durable CSV/XLSX/PDF jobs, owner-only artifacts and append-only permission-gated audit queries/exports |
 | Integration adapters | Foundation | official NDI/DCRC/payment/SMS/email specifications remain |
-| Service-owned PostgreSQL databases | Implemented through appeal score revisions | eight independently provisioned logical databases; additive migrations `0001` through `0005` execute only for their owning service and are tracked per database |
+| Service-owned PostgreSQL databases | Implemented through reporting | eight independently provisioned logical databases; additive migrations `0001` through `0006` execute only for their owning service and are tracked per database |
 | Redis/RabbitMQ/object storage | Implemented development topology | Compose platform and registration outbox publisher |
 | Docker/GitLab/Kubernetes | Baseline implemented | non-root image, CI pipeline, probes, HPA, PDB, network policy |
 | Observability | Partial | request IDs, health and Prometheus runtime metrics; OpenTelemetry collector/tracing remains |
