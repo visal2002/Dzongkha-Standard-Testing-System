@@ -40,6 +40,11 @@ const MOCK_USERS = {
   '11105005005': { id: 'USR-005', name: 'Dorji Wangmo', email: 'chief.executive@demo.com', cid: '11105005005', role: 'chief_executive', roleName: 'Chief Executive', avatar: null, department: 'DCDD', permissions: ['appeals', 'reports'] },
   '11106006006': { id: 'USR-006', name: 'Pema Choden', email: 'test.taker@demo.com', cid: '11106006006', role: 'test_taker', roleName: 'Test Taker', avatar: null, department: null, permissions: ['registration', 'certificates', 'appeals', 'questions'] },
   '11107007007': { id: 'USR-007', name: 'Kinley Dorji', email: 'member@dsts.bt', cid: '11107007007', role: 'committee_member', roleName: 'Committee Member', avatar: null, department: 'Examination Committee', permissions: ['scores', 'appeals'] },
+  'LOCALCID2026': { id: 'USR-LOCAL-ACCEPTANCE', name: 'Local Acceptance Test Taker', email: 'local.acceptance@dzongjuk.test', cid: 'LOCALCID2026', role: 'test_taker', roleName: 'Test Taker', avatar: null, department: null, permissions: ['registration', 'certificates', 'appeals', 'questions'] },
+};
+
+const MOCK_PASSWORDS = {
+  LOCALCID2026: 'LocalTestOnly!2026',
 };
 
 export const authService = {
@@ -53,11 +58,12 @@ export const authService = {
     if (USE_MOCK) {
       await mockDelay(800);
       const found = Object.values(MOCK_USERS).find(u => u.cid === identifier || u.email === identifier);
-      if (found && password === 'password') {
+      const expectedPassword = found ? MOCK_PASSWORDS[found.cid] || 'password' : null;
+      if (found && password === expectedPassword) {
         const token = btoa(JSON.stringify({ userId: found.id, role: found.role, exp: Date.now() + 86400000 }));
         return { success: true, user: found, token };
       }
-      return { success: false, error: 'Invalid credentials. Use your CID or email with password "password".' };
+      return { success: false, error: 'Invalid demonstration credentials.' };
     }
 
     try {

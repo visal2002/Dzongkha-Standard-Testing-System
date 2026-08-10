@@ -275,12 +275,12 @@ export default function LoginPage() {
                     {/* Sign-in form */}
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium text-slate-700 block mb-1.5">CID / User ID</label>
+                        <label className="text-sm font-medium text-slate-700 block mb-1.5">CID / Email / User ID</label>
                         <input
                           type="text"
                           value={userId}
                           onChange={e => setUserId(e.target.value)}
-                          placeholder="Enter your CID or User ID"
+                          placeholder="Enter your CID, email, or User ID"
                           required
                           className="w-full h-12 px-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
                         />
