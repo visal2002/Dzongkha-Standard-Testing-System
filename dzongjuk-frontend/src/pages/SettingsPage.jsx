@@ -77,125 +77,133 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4 h-full max-w-2xl mx-auto w-full">
+    <div className="flex flex-col gap-5 w-full">
       {/* Header */}
       <div>
-        <h1 className="text-lg font-bold text-text-primary">Settings</h1>
+        <h1 className="text-xl font-bold text-text-primary">Settings</h1>
         <p className="text-sm text-text-muted">Manage your preferences and account settings</p>
       </div>
 
-      {/* Appearance */}
-      <motion.section
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-surface-card border border-surface-border rounded-xl p-5"
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <Palette size={14} className="text-brand-gold" />
-          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Appearance</h2>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Left Column */}
+        <div className="space-y-5">
+          {/* Appearance */}
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-surface-card border border-surface-border rounded-xl p-5"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Palette size={14} className="text-brand-gold" />
+              <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Appearance</h2>
+            </div>
 
-        <SettingRow
-          icon={isDark ? Moon : Sun}
-          label="Theme"
-          description={isDark ? 'Dark mode is active' : 'Light mode is active'}
-        >
-          <div className="flex items-center gap-1 bg-surface-bg border border-surface-border rounded-lg p-0.5">
-            <button
-              onClick={() => !isDark && toggleTheme()}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${isDark ? 'bg-surface-card text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}
+            <SettingRow
+              icon={isDark ? Moon : Sun}
+              label="Theme"
+              description={isDark ? 'Dark mode is active' : 'Light mode is active'}
             >
-              <Moon size={12} /> Dark
-            </button>
-            <button
-              onClick={() => isDark && toggleTheme()}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${!isDark ? 'bg-surface-card text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}
+              <div className="flex items-center gap-1 bg-surface-bg border border-surface-border rounded-lg p-0.5">
+                <button
+                  onClick={() => !isDark && toggleTheme()}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${isDark ? 'bg-surface-card text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}
+                >
+                  <Moon size={12} /> Dark
+                </button>
+                <button
+                  onClick={() => isDark && toggleTheme()}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${!isDark ? 'bg-surface-card text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}
+                >
+                  <Sun size={12} /> Light
+                </button>
+              </div>
+            </SettingRow>
+          </motion.section>
+
+          {/* Language */}
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="bg-surface-card border border-surface-border rounded-xl p-5"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Globe size={14} className="text-brand-gold" />
+              <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Language</h2>
+            </div>
+
+            <SettingRow
+              icon={Globe}
+              label="Display Language"
+              description="Choose the interface language"
             >
-              <Sun size={12} /> Light
+              <div className="flex items-center gap-1 bg-surface-bg border border-surface-border rounded-lg p-0.5">
+                {LANGUAGES.map(lang => (
+                  <button
+                    key={lang.code}
+                    onClick={() => handleLanguageChange(lang.code)}
+                    className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${language === lang.code ? 'bg-surface-card text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}
+                  >
+                    {lang.native}
+                  </button>
+                ))}
+              </div>
+            </SettingRow>
+          </motion.section>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-5">
+          {/* Notifications */}
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-surface-card border border-surface-border rounded-xl p-5"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Bell size={14} className="text-brand-gold" />
+              <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Notifications</h2>
+            </div>
+
+            <SettingRow icon={Bell} label="In-App Notifications" description="Alerts and updates within the portal">
+              <Toggle checked={appNotifs} onChange={setAppNotifs} label="Toggle in-app notifications" />
+            </SettingRow>
+            <SettingRow icon={Mail} label="Email Notifications" description="Receive updates to your registered email">
+              <Toggle checked={emailNotifs} onChange={setEmailNotifs} label="Toggle email notifications" />
+            </SettingRow>
+            <SettingRow icon={BellOff} label="SMS Notifications" description="Receive SMS alerts for critical updates">
+              <Toggle checked={smsNotifs} onChange={setSmsNotifs} label="Toggle SMS notifications" />
+            </SettingRow>
+          </motion.section>
+
+          {/* Account */}
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-surface-card border border-surface-border rounded-xl p-5"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <LogOut size={14} className="text-red-400" />
+              <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Account</h2>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 py-3 text-red-400 hover:text-red-300 transition-colors text-sm font-medium group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                <LogOut size={15} className="text-red-400" />
+              </div>
+              Sign out of DSTS
+              <ChevronRight size={14} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
-          </div>
-        </SettingRow>
-      </motion.section>
-
-      {/* Language */}
-      <motion.section
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="bg-surface-card border border-surface-border rounded-xl p-5"
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <Globe size={14} className="text-brand-gold" />
-          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Language</h2>
+          </motion.section>
         </div>
+      </div>
 
-        <SettingRow
-          icon={Globe}
-          label="Display Language"
-          description="Choose the interface language"
-        >
-          <div className="flex items-center gap-1 bg-surface-bg border border-surface-border rounded-lg p-0.5">
-            {LANGUAGES.map(lang => (
-              <button
-                key={lang.code}
-                onClick={() => handleLanguageChange(lang.code)}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${language === lang.code ? 'bg-surface-card text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}
-              >
-                {lang.native}
-              </button>
-            ))}
-          </div>
-        </SettingRow>
-      </motion.section>
-
-      {/* Notifications */}
-      <motion.section
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-surface-card border border-surface-border rounded-xl p-5"
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <Bell size={14} className="text-brand-gold" />
-          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Notifications</h2>
-        </div>
-
-        <SettingRow icon={Bell} label="In-App Notifications" description="Alerts and updates within the portal">
-          <Toggle checked={appNotifs} onChange={setAppNotifs} label="Toggle in-app notifications" />
-        </SettingRow>
-        <SettingRow icon={Mail} label="Email Notifications" description="Receive updates to your registered email">
-          <Toggle checked={emailNotifs} onChange={setEmailNotifs} label="Toggle email notifications" />
-        </SettingRow>
-        <SettingRow icon={BellOff} label="SMS Notifications" description="Receive SMS alerts for critical updates">
-          <Toggle checked={smsNotifs} onChange={setSmsNotifs} label="Toggle SMS notifications" />
-        </SettingRow>
-      </motion.section>
-
-      {/* Account */}
-      <motion.section
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        className="bg-surface-card border border-surface-border rounded-xl p-5"
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <LogOut size={14} className="text-red-400" />
-          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Account</h2>
-        </div>
-
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 py-3 text-red-400 hover:text-red-300 transition-colors text-sm font-medium group"
-        >
-          <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
-            <LogOut size={15} className="text-red-400" />
-          </div>
-          Sign out of DSTS
-          <ChevronRight size={14} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-        </button>
-      </motion.section>
-
-      <p className="text-center text-[11px] text-text-muted pb-2">
+      <p className="text-center text-[11px] text-text-muted pb-2 pt-2">
         Dzongjuk DSTS v{import.meta.env.VITE_APP_VERSION || '1.0.0'} · Department of Culture and Dzongkha Development
       </p>
     </div>
