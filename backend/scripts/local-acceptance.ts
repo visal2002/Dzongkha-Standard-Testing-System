@@ -260,6 +260,16 @@ async function waitForCertificateNotification(token: string, certificateId: stri
   throw new Error('CertificateIssued notification was not projected.');
 }
 
+async function waitForScoreRevisionNotification(token: string, appealId: string) {
+  for (let attempt = 0; attempt < 15; attempt += 1) {
+    const notifications = await request<Array<{ eventType: string; safeMetadata: { appealId?: string } }>>('/notifications?limit=100', { token });
+    const match = notifications.find((item) => item.eventType === 'ScoreRevised' && item.safeMetadata.appealId === appealId);
+    if (match) return match;
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+  throw new Error('ScoreRevised notification was not projected.');
+}
+
 async function confirmAppealPayment(appeal: { id: string; payment: { amount: string; currency: string } }, suffix: string) {
   return request(`/appeals/${appeal.id}/payment/confirm`, {
     method: 'POST',
@@ -416,7 +426,7 @@ async function main() {
     method: 'POST',
     token: testTaker.accessToken,
     headers: { 'idempotency-key': `local-appeal-revision-${runId}` },
-    body: { applicationId: application.applicationId, examId: exam.id, skills: ['READING'], reason: 'Local acceptance verifies revision approval without score mutation.' },
+    body: { applicationId: application.applicationId, examId: exam.id, skills: ['READING'], reason: 'Local acceptance verifies approved immutable score revision application.' },
   });
   await confirmAppealPayment(revisionAppeal, 'REVISION');
   const revisedScore = score + Number(rule.increment) <= Number(rule.maximumScore)
@@ -427,11 +437,57 @@ async function main() {
     body: { recommendation: 'REVISE', remarks: 'Offline re-evaluation recommends a selected-skill revision.', proposedScores: { READING: revisedScore } },
   });
   const approvedAppeal = await request<{ status: string }>(`/appeals/${revisionAppeal.id}/decision`, {
-    method: 'POST', token: chiefToken, body: { decision: 'APPROVED', remarks: 'Local acceptance approval; score application remains deferred.' },
+    method: 'POST', token: chiefToken, body: { decision: 'APPROVED', remarks: 'Local acceptance approves controlled score revision application.' },
   });
-  if (approvedAppeal.status !== 'APPROVED_PENDING_SCORE_UPDATE') throw new Error('Approved appeal mutated or completed before score revision application.');
+  if (approvedAppeal.status !== 'APPROVED_PENDING_SCORE_UPDATE') throw new Error('Approved appeal skipped the controlled score revision state.');
   const appealHistory = await request<Array<{ toStatus: string }>>(`/appeals/${revisionAppeal.id}/history`, { token: testTaker.accessToken });
   if (!appealHistory.some((entry) => entry.toStatus === 'APPROVED_PENDING_SCORE_UPDATE')) throw new Error('Appeal history is missing the privileged approval transition.');
+
+  interface AppliedAppeal {
+    status: string;
+    scoreRevision: { version: number; status: string; scores: Record<string, number> };
+    certificateUpdate: { supersededCount: number; replacementIssuanceRequired: boolean };
+  }
+  const revisionKey = `local-apply-revision-${runId}`;
+  const appliedAppeal = await request<AppliedAppeal>(`/appeals/${revisionAppeal.id}/apply-revision`, {
+    method: 'POST', token: chiefToken, headers: { 'idempotency-key': revisionKey },
+  });
+  if (appliedAppeal.status !== 'COMPLETED' || appliedAppeal.scoreRevision.version !== 2) {
+    throw new Error('Approved appeal did not complete with immutable score version 2.');
+  }
+  if (appliedAppeal.scoreRevision.scores.READING !== revisedScore) throw new Error('Revised score version does not contain the approved reading score.');
+  if (appliedAppeal.certificateUpdate.supersededCount !== 1 || !appliedAppeal.certificateUpdate.replacementIssuanceRequired) {
+    throw new Error('The certificate tied to the previous score version was not superseded.');
+  }
+  const appliedReplay = await request<AppliedAppeal>(`/appeals/${revisionAppeal.id}/apply-revision`, {
+    method: 'POST', token: chiefToken, headers: { 'idempotency-key': revisionKey },
+  });
+  if (appliedReplay.scoreRevision.version !== appliedAppeal.scoreRevision.version) throw new Error('Appeal score revision idempotency replay failed.');
+
+  const revisedResults = await request<Array<{ id: string; status: string; currentVersion: number; score: { scores: Record<string, number> } }>>('/results/my', { token: testTaker.accessToken });
+  const revisedResult = revisedResults.find((result) => result.id === sheet.id);
+  if (!revisedResult || revisedResult.status !== 'REVISED' || revisedResult.currentVersion !== 2 || revisedResult.score.scores.READING !== revisedScore) {
+    throw new Error('The revised result is not visible to its test taker.');
+  }
+  const supersededVerification = await request<{ valid: boolean; status: string }>(`/public/certificates/verify/${encodeURIComponent(certificate.verificationToken)}`);
+  if (supersededVerification.valid || supersededVerification.status !== 'SUPERSEDED') throw new Error('The previous certificate remains publicly valid after score revision.');
+  await waitForScoreRevisionNotification(testTaker.accessToken, revisionAppeal.id);
+
+  const replacement = await request<{ issuedCount: number; certificates: Array<{ id: string; verificationToken: string }> }>('/certificates/generate', {
+    method: 'POST', token: dcddToken, headers: { 'idempotency-key': `local-certificate-replacement-${runId}` }, body: { examId: exam.id },
+  });
+  const replacementCertificate = replacement.certificates[0];
+  if (!replacementCertificate || replacement.issuedCount !== 1 || replacementCertificate.id === certificate.id) {
+    throw new Error('Explicit replacement certificate generation failed.');
+  }
+  const replacementVerification = await request<{ valid: boolean; certificateNumber: string }>(`/public/certificates/verify/${encodeURIComponent(replacementCertificate.verificationToken)}`);
+  if (!replacementVerification.valid) throw new Error('Replacement certificate did not pass public verification.');
+  const certificateHistory = await request<Array<{ id: string; status: string; scoreVersionNumber: number }>>(`/certificates/${replacementCertificate.id}/history`, { token: testTaker.accessToken });
+  if (!certificateHistory.some((item) => item.id === certificate.id && item.status === 'SUPERSEDED' && item.scoreVersionNumber === 1)
+    || !certificateHistory.some((item) => item.id === replacementCertificate.id && item.status === 'ACTIVE' && item.scoreVersionNumber === 2)) {
+    throw new Error('Certificate history does not preserve the superseded and replacement versions.');
+  }
+  await waitForCertificateNotification(testTaker.accessToken, replacementCertificate.id);
 
   process.stdout.write(`${JSON.stringify({
     success: true,
@@ -441,10 +497,11 @@ async function main() {
     questionPaperId: paper.id,
     scoreSheetId: sheet.id,
     declarationId: declaration.id,
-    certificateId: certificate.id,
-    certificateNumber: verification.certificateNumber,
+    supersededCertificateId: certificate.id,
+    replacementCertificateId: replacementCertificate.id,
+    certificateNumber: replacementVerification.certificateNumber,
     completedAppealId: noChangeAppeal.id,
-    approvedPendingAppealId: revisionAppeal.id,
+    revisedAppealId: revisionAppeal.id,
     overallScore: submitted.overallScore,
     scoringRule: rule.code,
     note: 'LOCAL_ACCEPTANCE scoring is test-only and is not an official formula.',

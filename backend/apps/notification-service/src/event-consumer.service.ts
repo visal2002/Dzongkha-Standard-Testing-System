@@ -19,7 +19,8 @@ const TARGETED_EVENTS = [
   DomainEventTypes.WaitlistCandidatePromoted, DomainEventTypes.ApplicationReturned, DomainEventTypes.ApplicationVerified,
   DomainEventTypes.CandidateMarkedAbsent, DomainEventTypes.AppealSubmitted, DomainEventTypes.AppealPaymentCompleted,
   DomainEventTypes.AppealRevisionRequested, DomainEventTypes.AppealApproved, DomainEventTypes.AppealRejected,
-  DomainEventTypes.AppealCompleted, DomainEventTypes.CertificateIssued, DomainEventTypes.CertificateRevoked,
+  DomainEventTypes.AppealCompleted, DomainEventTypes.ScoreRevised,
+  DomainEventTypes.CertificateIssued, DomainEventTypes.CertificateRevoked,
 ];
 
 @Injectable()
@@ -90,7 +91,7 @@ export class NotificationEventConsumer implements OnModuleInit, OnApplicationShu
   }
 
   private safeMetadata(payload: Record<string, unknown>) {
-    const allowed = ['applicationId', 'examId', 'appealId', 'certificateId', 'certificateNumber', 'outcome'];
+    const allowed = ['applicationId', 'examId', 'appealId', 'scoreSheetId', 'version', 'certificateId', 'certificateNumber', 'outcome'];
     return Object.fromEntries(allowed.filter((key) => payload[key] !== undefined).map((key) => [key, payload[key]]));
   }
 }

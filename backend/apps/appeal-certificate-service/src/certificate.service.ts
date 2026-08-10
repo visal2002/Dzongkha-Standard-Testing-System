@@ -148,6 +148,25 @@ export class CertificateService {
     });
   }
 
+  async supersedeForScoreRevision(scoreSheetId: string, currentScoreVersion: number, actor: AccessClaims, requestId: string) {
+    this.assertPrivileged(actor);
+    return this.dataSource.transaction(async (manager) => {
+      const active = await manager.find(CertificateEntity, {
+        where: { scoreSheetId, status: CertificateStatus.Active },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const stale = active.filter((certificate) => certificate.scoreVersionNumber < currentScoreVersion);
+      for (const certificate of stale) {
+        certificate.status = CertificateStatus.Superseded;
+        await manager.save(certificate);
+        await this.audit(manager, 'CERTIFICATE_SUPERSEDED', certificate.id, actor.sub, requestId, {
+          scoreSheetId, previousScoreVersion: certificate.scoreVersionNumber, currentScoreVersion,
+        });
+      }
+      return { supersededCount: stale.length, certificateIds: stale.map((certificate) => certificate.id) };
+    });
+  }
+
   private async issueOne(result: CertificateResultSource, template: CertificateTemplateEntity, actor: AccessClaims, requestId: string) {
     const existing = await this.certificates.findOneBy({ scoreSheetId: result.scoreSheetId, scoreVersionNumber: result.scoreVersionNumber });
     if (existing) return { ...this.ownerView(existing), alreadyIssued: true };
@@ -183,6 +202,18 @@ export class CertificateService {
         bandLabel: result.bandLabel, cefrLevel: result.cefrLevel, verificationTokenHash: createHash('sha256').update(token).digest('hex'),
         fileId, status: CertificateStatus.Active, issuedAt, validUntil,
       }));
+      const stale = await manager.find(CertificateEntity, {
+        where: { scoreSheetId: result.scoreSheetId, status: CertificateStatus.Active },
+        lock: { mode: 'pessimistic_write' },
+      });
+      for (const previous of stale.filter((item) => item.id !== saved.id && item.scoreVersionNumber < result.scoreVersionNumber)) {
+        previous.status = CertificateStatus.Superseded;
+        await manager.save(previous);
+        await this.audit(manager, 'CERTIFICATE_SUPERSEDED', previous.id, actor.sub, requestId, {
+          scoreSheetId: result.scoreSheetId, previousScoreVersion: previous.scoreVersionNumber,
+          currentScoreVersion: result.scoreVersionNumber,
+        });
+      }
       await this.audit(manager, 'CERTIFICATE_ISSUED', id, actor.sub, requestId, { examId: result.examId, applicationId: result.applicationId, templateVersionNumber: template.versionNumber });
       await this.outbox(manager, DomainEventTypes.CertificateIssued, id, requestId, { certificateId: id, testTakerUserId: result.testTakerUserId, certificateNumber, issuedAt });
       return saved;

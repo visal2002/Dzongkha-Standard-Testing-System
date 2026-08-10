@@ -9,6 +9,7 @@ import { IS_PUBLIC } from '../libs/security/src/security.decorators';
 import { SamplePapersController } from '../apps/assessment-content-service/src/assessment.controller';
 import { AppealsController } from '../apps/appeal-certificate-service/src/appeal.controller';
 import { CertificatesController, PublicCertificatesController } from '../apps/appeal-certificate-service/src/certificate.controller';
+import { ScoresController } from '../apps/result-service/src/result.controller';
 
 describe('authoritative workflow contracts', () => {
   it('contains exactly the four BRD examination skills', () => {
@@ -33,6 +34,13 @@ describe('authoritative workflow contracts', () => {
 
   it('does not treat privileged appeal approval as completed score revision', () => {
     expect(AppealStatus.ApprovedPendingScoreUpdate).not.toBe(AppealStatus.Completed);
+  });
+
+  it('protects the appeal revision command while internal-key result transport bypasses user authentication', () => {
+    const command = Reflect.get(AppealsController.prototype, 'applyRevision') as (...args: unknown[]) => unknown;
+    const transport = Reflect.get(ScoresController.prototype, 'applyAppealRevision') as (...args: unknown[]) => unknown;
+    expect(Reflect.getMetadata(IS_PUBLIC, command)).not.toBe(true);
+    expect(Reflect.getMetadata(IS_PUBLIC, transport)).toBe(true);
   });
 
   it('keeps ordinary appeal submission authenticated while allowing internal-key payment transport', () => {

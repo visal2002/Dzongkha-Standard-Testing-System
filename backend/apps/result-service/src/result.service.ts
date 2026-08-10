@@ -10,7 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import { AccessClaims, DomainEventTypes, ScoreSheetStatus } from '@dzongjuk/contracts';
 import { assertInternalService, DomainException } from '@dzongjuk/common';
-import { CreateCommitteeDto, ScoreValuesDto } from './dtos';
+import { AppealScoreChangesDto, ApplyAppealRevisionDto, CreateCommitteeDto, ScoreValuesDto } from './dtos';
 import { CandidateEligibilityEntity, CommitteeEntity, CommitteeMemberEntity, CommitteeRole, EligibilityStatus, ResultAuditEntity, ResultDeclarationEntity, ResultIdempotencyEntity, ResultOutboxEntity, ScoreSheetEntity, ScoreValues, ScoreVersionEntity } from './entities';
 import { ScoringService } from './scoring.service';
 
@@ -139,7 +139,7 @@ export class ResultService {
     const candidates = await this.eligibility.findBy({ testTakerUserId: userId });
     if (!candidates.length) return [];
     const applicationIds = candidates.map((candidate) => candidate.applicationId);
-    const sheets = await this.sheets.findBy({ applicationId: In(applicationIds), status: ScoreSheetStatus.Published });
+    const sheets = await this.sheets.findBy({ applicationId: In(applicationIds), status: In([ScoreSheetStatus.Published, ScoreSheetStatus.Revised]) });
     return Promise.all(sheets.map(async (sheet) => ({ ...sheet, score: await this.versions.findOneBy({ scoreSheetId: sheet.id, versionNumber: sheet.currentVersion }) })));
   }
 
@@ -147,7 +147,7 @@ export class ResultService {
     assertInternalService(this.config, internalKey);
     const declaration = await this.dataSource.getRepository(ResultDeclarationEntity).findOneBy({ examId });
     if (!declaration) throw new DomainException('RESULTS_NOT_DECLARED', 'Results have not been declared.', 409);
-    const sheets = await this.sheets.findBy({ examId, status: ScoreSheetStatus.Published });
+    const sheets = await this.sheets.findBy({ examId, status: In([ScoreSheetStatus.Published, ScoreSheetStatus.Revised]) });
     const candidates = await this.eligibility.findBy({ examId, status: EligibilityStatus.Eligible });
     const candidateByApplication = new Map(candidates.map((candidate) => [candidate.applicationId, candidate]));
     return Promise.all(sheets.map(async (sheet) => {
@@ -162,6 +162,74 @@ export class ResultService {
     }));
   }
 
+  async applyAppealRevision(
+    scoreSheetId: string,
+    dto: ApplyAppealRevisionDto,
+    internalKey: string | undefined,
+    requestId: string,
+    idempotencyKey: string,
+  ) {
+    assertInternalService(this.config, internalKey);
+    if (!idempotencyKey) throw new DomainException('IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key header is required.');
+    const scope = `score.appeal-revision:${dto.appealId}`;
+    return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+      const replay = await manager.findOneBy(ResultIdempotencyEntity, { scope, key: idempotencyKey });
+      if (replay) return replay.response;
+      const existing = await manager.findOneBy(ScoreVersionEntity, { appealId: dto.appealId });
+      if (existing) {
+        if (existing.scoreSheetId !== scoreSheetId) throw new DomainException('APPEAL_REVISION_CONFLICT', 'The appeal has already revised a different score sheet.', 409);
+        const existingSheet = await manager.findOneBy(ScoreSheetEntity, { id: scoreSheetId });
+        if (!existingSheet) throw new DomainException('SCORE_SHEET_NOT_FOUND', 'Score sheet not found.', 404);
+        const candidate = await manager.findOneBy(CandidateEligibilityEntity, { applicationId: existingSheet.applicationId });
+        if (!candidate) throw new DomainException('CANDIDATE_NOT_SCOREABLE', 'Candidate eligibility is unavailable.', 409);
+        const response = this.revisionResponse(existingSheet, existing, candidate.testTakerUserId);
+        await manager.save(ResultIdempotencyEntity, manager.create(ResultIdempotencyEntity, { scope, key: idempotencyKey, response }));
+        return response;
+      }
+
+      const sheet = await manager.findOne(ScoreSheetEntity, { where: { id: scoreSheetId }, lock: { mode: 'pessimistic_write' } });
+      if (!sheet) throw new DomainException('SCORE_SHEET_NOT_FOUND', 'Score sheet not found.', 404);
+      if (![ScoreSheetStatus.Published, ScoreSheetStatus.Revised].includes(sheet.status)) {
+        throw new DomainException('SCORE_REVISION_STATE_INVALID', 'Only a published result may receive an approved appeal revision.', 409);
+      }
+      if (sheet.currentVersion !== dto.expectedVersion) {
+        throw new DomainException('SCORE_REVISION_VERSION_CONFLICT', 'The appealed score version is no longer current.', 409);
+      }
+      const candidate = await manager.findOneBy(CandidateEligibilityEntity, { applicationId: sheet.applicationId });
+      if (!candidate || candidate.status !== EligibilityStatus.Eligible) throw new DomainException('CANDIDATE_NOT_SCOREABLE', 'Candidate is not eligible for scoring.', 409);
+      const current = await manager.findOneBy(ScoreVersionEntity, { scoreSheetId, versionNumber: sheet.currentVersion });
+      if (!current) throw new DomainException('SCORE_VERSION_NOT_FOUND', 'The current score version is unavailable.', 409);
+      const changes = this.toScoreChanges(dto.changes);
+      if (!Object.keys(changes).length) throw new DomainException('SCORE_REVISION_EMPTY', 'At least one skill score must be revised.');
+      const revisedScores: ScoreValues = { ...current.scores, ...changes };
+      if ((Object.keys(changes) as Array<keyof ScoreValues>).every((skill) => revisedScores[skill] === current.scores[skill])) {
+        throw new DomainException('SCORE_REVISION_UNCHANGED', 'An appeal revision must change at least one skill score.');
+      }
+      const rule = await this.scoring.ruleForRevision(manager, current.scoringRuleId);
+      const calculated = this.scoring.calculate(revisedScores, rule);
+      const version = await manager.save(ScoreVersionEntity, manager.create(ScoreVersionEntity, {
+        scoreSheetId: sheet.id, versionNumber: sheet.currentVersion + 1, scores: revisedScores,
+        overallScore: String(calculated.overall), bandLabel: calculated.bandLabel, cefrLevel: calculated.cefrLevel,
+        scoringRuleId: rule.id, source: 'APPEAL_REVISION', appealId: dto.appealId, createdByUserId: dto.approvedByUserId,
+      }));
+      sheet.currentVersion = version.versionNumber;
+      sheet.draftScores = revisedScores;
+      sheet.status = ScoreSheetStatus.Revised;
+      await manager.save(sheet);
+      await this.audit(manager, 'SCORE_REVISED', 'ScoreSheet', sheet.id, dto.approvedByUserId, requestId, {
+        appealId: dto.appealId, previousVersion: current.versionNumber, version: version.versionNumber, scoringRuleId: rule.id,
+        revisedSkills: Object.keys(changes),
+      });
+      await this.outbox(manager, DomainEventTypes.ScoreRevised, sheet.id, requestId, {
+        appealId: dto.appealId, scoreSheetId: sheet.id, examId: sheet.examId, applicationId: sheet.applicationId,
+        testTakerUserId: candidate.testTakerUserId, previousVersion: current.versionNumber, version: version.versionNumber,
+      });
+      const response = this.revisionResponse(sheet, version, candidate.testTakerUserId);
+      await manager.save(ResultIdempotencyEntity, manager.create(ResultIdempotencyEntity, { scope, key: idempotencyKey, response }));
+      return response;
+    });
+  }
+
   private async assertCommitteeHead(manager: EntityManager, committeeId: string, actor: AccessClaims) {
     if (actor.permissions.includes('*')) return;
     if (!await manager.existsBy(CommitteeMemberEntity, { committeeId, userId: actor.sub, role: CommitteeRole.Head, removedAt: IsNull() })) {
@@ -170,6 +238,22 @@ export class ResultService {
   }
 
   private toScores(dto: ScoreValuesDto): ScoreValues { return { WRITING: dto.writing, READING: dto.reading, LISTENING: dto.listening, SPEAKING: dto.speaking }; }
+  private toScoreChanges(dto: AppealScoreChangesDto): Partial<ScoreValues> {
+    const changes: Partial<ScoreValues> = {};
+    if (dto.writing !== undefined) changes.WRITING = dto.writing;
+    if (dto.reading !== undefined) changes.READING = dto.reading;
+    if (dto.listening !== undefined) changes.LISTENING = dto.listening;
+    if (dto.speaking !== undefined) changes.SPEAKING = dto.speaking;
+    return changes;
+  }
+  private revisionResponse(sheet: ScoreSheetEntity, version: ScoreVersionEntity, testTakerUserId: string) {
+    return {
+      scoreSheetId: sheet.id, examId: sheet.examId, applicationId: sheet.applicationId, testTakerUserId,
+      status: sheet.status, version: version.versionNumber, scores: version.scores, overallScore: version.overallScore,
+      bandLabel: version.bandLabel, cefrLevel: version.cefrLevel, scoringRuleId: version.scoringRuleId,
+      appealId: version.appealId,
+    };
+  }
   private audit(manager: EntityManager, action: string, resourceType: string, resourceId: string, actorUserId: string, requestId: string, safeData: Record<string, unknown>) { return manager.save(ResultAuditEntity, manager.create(ResultAuditEntity, { action, resourceType, resourceId, actorUserId, requestId, safeData })); }
   private outbox(manager: EntityManager, eventType: string, aggregateId: string, correlationId: string, payload: Record<string, unknown>) { return manager.save(ResultOutboxEntity, manager.create(ResultOutboxEntity, { eventType, aggregateId, correlationId, payload })); }
 }

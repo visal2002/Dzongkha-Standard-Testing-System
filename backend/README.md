@@ -32,6 +32,7 @@ The services are independently buildable and deployable. Each service owns an in
 - examination committees with exactly one head, event-projected candidate eligibility, four-skill score drafts, immutable submission versions and result declaration;
 - effective-dated scoring rules that cannot affect results until explicitly approved with privileged assurance;
 - effective-dated appeal fees, idempotent appeal submission, provider-neutral payment reconciliation, committee review, privileged Chief decisions, immutable history/audit and transactional appeal events;
+- idempotent approved-appeal score revisions that retain the historical scoring rule, create a new immutable score version and supersede certificates tied to older versions;
 - approved versioned certificate templates, encrypted PDF artifacts in object storage, signed QR verification, owner-only downloads, certificate history/revocation and privacy-minimal public responses;
 - event-driven in-app notifications with versioned templates, idempotent RabbitMQ consumption, delivery records and owner-only read/archive APIs;
 - service-owned PostgreSQL databases and migrations, Redis, RabbitMQ, MinIO, gateway, Docker, Kubernetes baseline and GitLab pipeline.
@@ -67,7 +68,7 @@ With the Docker Compose platform running, execute the live workflow against the 
 npm run test:local-acceptance
 ```
 
-The command registers or reuses this development-only test taker and exercises authentication, examination/application verification, attendance, eligibility projection, encrypted question-paper upload/download, committee setup, score submission, result declaration, sample publication, test-taker result retrieval, appeal payment reconciliation, no-change completion, and privileged revision approval.
+The command registers or reuses this development-only test taker and exercises authentication, examination/application verification, attendance, eligibility projection, encrypted question-paper upload/download, committee setup, score submission, result declaration, sample publication, test-taker result retrieval, appeal payment reconciliation, no-change completion, privileged revision application, stale-certificate supersession and explicit replacement generation.
 
 ```text
 Email: local.acceptance@dzongjuk.test
@@ -76,7 +77,7 @@ Frontend: http://localhost:5000
 Gateway: http://localhost:8000
 ```
 
-The acceptance script is blocked when `NODE_ENV=production`. If approved effective scoring or appeal-fee rules do not exist, it creates `LOCAL_ACCEPTANCE_V1` and `LOCAL_APPEAL_FEE_V1`; those rules and their derived local records are test-only. An approved appeal remains `APPROVED_PENDING_SCORE_UPDATE` and does not mutate a score until the official revision command and scoring rules are confirmed.
+The acceptance script is blocked when `NODE_ENV=production`. If approved effective scoring or appeal-fee rules do not exist, it creates `LOCAL_ACCEPTANCE_V1` and `LOCAL_APPEAL_FEE_V1`; those rules and their derived local records are test-only. Appeal revisions reuse the scoring rule stored on the published score version. Replacement certificate issuance remains an explicit privileged action until the official automatic-reissue policy is confirmed.
 
 ## Security constraints
 

@@ -17,12 +17,12 @@ This file distinguishes implemented code from approved architecture and unresolv
 | Secure question papers | Implemented; external platform confirmation open | AES-256-GCM envelope encryption, S3 storage, scan gate, timed ABAC, audit and result-gated sample publication |
 | Committees/scores/results | Implemented; official formula confirmation open | committee/head constraints, eligibility events, draft/submit lock, immutable versions, approved-rule gate and declaration |
 | Local end-to-end acceptance | Implemented | `npm run test:local-acceptance` exercises the live gateway, PostgreSQL, RabbitMQ, encrypted MinIO, appeals, certificate PDF/QR/ownership, and notification projection; fallback scoring, fee and certificate templates are test-only |
-| Appeals/payments | Core workflow implemented; provider adapter open | effective-dated approved fee rules, idempotent ownership-safe submission, exact internal-key payment confirmation, committee assignment enforcement, no-change completion, privileged Chief decision, history/audit/outbox; approved revisions remain pending Result-service application |
-| Certificates | Core workflow implemented; official template/reissue policy open | approved versioned templates, internal published-result/profile contracts, encrypted PDF storage, signed QR token, owner-only access, minimal public verification, history, revocation, audit and outbox |
+| Appeals/payments | Core workflow implemented; provider adapter open | effective-dated approved fee rules, idempotent ownership-safe submission, exact internal-key payment confirmation, committee assignment enforcement, no-change completion, privileged Chief decision, idempotent Result-service revision application, history/audit/outbox |
+| Certificates | Core workflow implemented; official template/automatic-reissue policy open | approved versioned templates, internal published-result/profile contracts, encrypted PDF storage, signed QR token, owner-only access, minimal public verification, history, revocation, appeal-driven supersession and explicit replacement generation |
 | Notifications | In-app workflow implemented; provider adapters open | versioned approved templates, idempotent RabbitMQ projection, delivery records, owner list/read/read-all/archive APIs; SMS/email credentials and retry workers remain |
 | Reports/audit viewer | Foundation | projections/export workers remain |
 | Integration adapters | Foundation | official NDI/DCRC/payment/SMS/email specifications remain |
-| Service-owned PostgreSQL databases | Implemented through certificates/notifications | eight independently provisioned logical databases; additive migrations `0001` through `0004` execute only for their owning service and are tracked per database |
+| Service-owned PostgreSQL databases | Implemented through appeal score revisions | eight independently provisioned logical databases; additive migrations `0001` through `0005` execute only for their owning service and are tracked per database |
 | Redis/RabbitMQ/object storage | Implemented development topology | Compose platform and registration outbox publisher |
 | Docker/GitLab/Kubernetes | Baseline implemented | non-root image, CI pipeline, probes, HPA, PDB, network policy |
 | Observability | Partial | request IDs, health and Prometheus runtime metrics; OpenTelemetry collector/tracing remains |
@@ -38,7 +38,7 @@ This file distinguishes implemented code from approved architecture and unresolv
 6. Official score range, rounding, overall formula and CEFR/band mapping.
 7. NDI protocol, claims, assurance level, sandbox and administrative-role classification.
 8. DCRC/census, payment, SMS and email provider contracts.
-9. Certificate public fields, template/signature controls and post-appeal reissue rule.
+9. Certificate public fields, template/signature controls and whether post-appeal replacement issuance is automatic.
 10. GovTech registry, Kubernetes, service mesh, secrets/KMS, storage, backup and approved CIDRs.
 
 These decisions cannot be safely invented in code. Adapters and boundaries isolate them so implementation can continue without rewriting completed domains.
