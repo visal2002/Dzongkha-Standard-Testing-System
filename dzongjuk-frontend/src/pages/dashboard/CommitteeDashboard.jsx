@@ -4,7 +4,6 @@ import { ClipboardList, Users, Scale, BarChart3, ArrowRight, CheckCircle } from 
 import { useAuth } from '../../context/AuthContext';
 import { StatCard } from '../../components/ui/Card';
 import { StatusBadge } from '../../components/ui/Badge';
-import { bandScores as mockScores, appeals as mockAppeals, committeeMembers as mockCommittee } from '../../data/mockData';
 import { scoreService } from '../../services/scores';
 import { appealService } from '../../services/appeals';
 import { useApi } from '../../hooks/useApi';

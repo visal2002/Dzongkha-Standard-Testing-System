@@ -5,15 +5,17 @@ import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Input, { Textarea } from '../../components/ui/Input';
-import { systemRoles } from '../../data/mockData';
+import { adminService } from '../../services/admin';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const MODULES = ['users', 'roles', 'registration', 'verification', 'attendance', 'questions', 'scores', 'appeals', 'certificates', 'reports', 'masters', 'audit'];
 const ACTIONS = ['create', 'read', 'update', 'delete'];
 
 export default function RoleManagement() {
-  const [roles, setRoles] = useState(systemRoles);
-  const [selectedRoleId, setSelectedRoleId] = useState(roles[0].id);
+  const { data: rolesData, loading, setData: setRoles } = useApi(adminService.getRoles);
+  const roles = rolesData || [];
+  const [selectedRoleId, setSelectedRoleId] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRoleForm, setNewRoleForm] = useState({ name: '', code: '', description: '' });
 
@@ -36,8 +38,13 @@ export default function RoleManagement() {
     }));
   };
 
-  const handleSavePermissions = () => {
-    toast.success(`Permissions updated for ${selectedRole.name}`);
+  const handleSavePermissions = async () => {
+    try {
+      await adminService.updateRolePermissions(selectedRole.id, selectedRole.permissions);
+      toast.success(`Permissions updated for ${selectedRole.name}`);
+    } catch {
+      toast.error('Failed to save permissions');
+    }
   };
 
   const handleCreateRole = () => {
@@ -59,11 +66,17 @@ export default function RoleManagement() {
       permissions: defaultPerms
     };
 
-    setRoles(prev => [...prev, newRole]);
-    setSelectedRoleId(newRole.id);
-    setShowCreateModal(false);
-    setNewRoleForm({ name: '', code: '', description: '' });
-    toast.success(`Role "${newRole.name}" created successfully.`);
+    try {
+      await adminService.createRole(newRole);
+      setRoles(prev => [...prev, newRole]);
+      setSelectedRoleId(newRole.id);
+      toast.success(`Role "${newRole.name}" created successfully.`);
+    } catch {
+      toast.error('Failed to create role');
+    } finally {
+      setShowCreateModal(false);
+      setNewRoleForm({ name: '', code: '', description: '' });
+    }
   };
 
   return (

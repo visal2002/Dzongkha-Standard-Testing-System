@@ -5,7 +5,6 @@ import { Scale, CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { StatCard } from '../../components/ui/Card';
 import { StatusBadge } from '../../components/ui/Badge';
-import { appeals as mockAppeals } from '../../data/mockData';
 import { appealService } from '../../services/appeals';
 import { useApi } from '../../hooks/useApi';
 import Button from '../../components/ui/Button';

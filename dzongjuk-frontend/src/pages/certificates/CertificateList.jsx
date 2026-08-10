@@ -6,7 +6,8 @@ import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
-import { certificates, masterConfig } from '../../data/mockData';
+import { certificateService } from '../../services/certificates';
+import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -92,6 +93,9 @@ function CertificateCard({ cert }) {
 
 export default function CertificateList() {
   const { user } = useAuth();
+  const { data: certificatesData, loading } = useApi(certificateService.getAll);
+  const certificates = certificatesData || [];
+
   const [search, setSearch] = useState('');
   const [verifyInput, setVerifyInput] = useState('');
   const [verifyResult, setVerifyResult] = useState(null);
@@ -105,9 +109,15 @@ export default function CertificateList() {
     c.cid?.includes(search)
   );
 
-  const handleVerify = () => {
-    const found = certificates.find(c => c.qrCode === verifyInput || c.registrationNumber === verifyInput || c.cid === verifyInput);
-    setVerifyResult(found || null);
+  const handleVerify = async () => {
+    try {
+      const result = await certificateService.verify(verifyInput);
+      setVerifyResult(result || null);
+    } catch {
+      // Fallback: search local data
+      const found = certificates.find(c => c.qrCode === verifyInput || c.registrationNumber === verifyInput || c.cid === verifyInput);
+      setVerifyResult(found || null);
+    }
   };
 
   return (
@@ -154,7 +164,9 @@ export default function CertificateList() {
       </div>
 
       {/* Grid */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-text-muted">
           <Award size={40} className="mx-auto mb-3 opacity-20" />
           <p className="text-sm font-medium text-text-primary">No certificates found</p>

@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import Badge, { StatusBadge } from '../../components/ui/Badge';
-import { notifications as mockNotifications } from '../../data/mockData';
+import { notificationService } from '../../services/notifications';
+import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -17,18 +18,26 @@ const TYPE_COLORS = {
 
 export default function Notifications() {
   const { user } = useAuth();
-  const [notifs, setNotifs] = useState(
-    [...mockNotifications, ...mockNotifications.map(n => ({ ...n, id: n.id + '-2', read: true }))]
-  );
+  const { data: apiNotifs, loading, setData: setNotifs } = useApi(notificationService.getAll);
+  const notifs = apiNotifs || [];
   const unread = notifs.filter(n => !n.read);
 
-  const markAll = () => {
-    setNotifs(prev => prev.map(n => ({ ...n, read: true })));
-    toast.success('All notifications marked as read');
+  const markAll = async () => {
+    try {
+      await notificationService.markAllRead();
+      setNotifs(prev => prev.map(n => ({ ...n, read: true })));
+      toast.success('All notifications marked as read');
+    } catch {
+      setNotifs(prev => prev.map(n => ({ ...n, read: true })));
+    }
   };
 
-  const dismiss = (id) => {
-    setNotifs(prev => prev.filter(n => n.id !== id));
+  const dismiss = async (id) => {
+    try {
+      await notificationService.dismiss(id);
+    } finally {
+      setNotifs(prev => prev.filter(n => n.id !== id));
+    }
   };
 
   return (

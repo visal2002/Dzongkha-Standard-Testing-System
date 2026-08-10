@@ -8,7 +8,9 @@ import {
   BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend
 } from 'recharts';
-import { applications, bandScores, appeals, certificates, examWindows } from '../../data/mockData';
+import { reportService } from '../../services/reports';
+import { examService } from '../../services/exams';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -67,6 +69,10 @@ const PREDEFINED_REPORTS = [
 ];
 
 export default function Reports() {
+  const { data: summary, loading } = useApi(reportService.getSummary);
+  const { data: examWindowsData } = useApi(examService.getAll);
+  const examWindows = examWindowsData || [];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -83,10 +89,10 @@ export default function Reports() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Applications" value={applications.length} icon={<Users size={18} />} color="gold" />
-        <StatCard title="Band Scores Entered" value={bandScores.length} icon={<BarChart3 size={18} />} color="teal" />
-        <StatCard title="Certificates Issued" value={certificates.length} icon={<Award size={18} />} color="success" />
-        <StatCard title="Active Appeals" value={appeals.filter(a => !['approved', 'rejected'].includes(a.status)).length} icon={<Scale size={18} />} color="warning" />
+        <StatCard title="Total Applications" value={loading ? '...' : (summary?.totalApplications ?? 0)} icon={<Users size={18} />} color="gold" />
+        <StatCard title="Band Scores Entered" value={loading ? '...' : (summary?.totalScores ?? 0)} icon={<BarChart3 size={18} />} color="teal" />
+        <StatCard title="Certificates Issued" value={loading ? '...' : (summary?.totalCertificates ?? 0)} icon={<Award size={18} />} color="success" />
+        <StatCard title="Active Appeals" value={loading ? '...' : (summary?.activeAppeals ?? 0)} icon={<Scale size={18} />} color="warning" />
       </div>
 
       <Tabs defaultValue="overview">

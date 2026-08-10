@@ -8,32 +8,44 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Input';
 import Alert from '../../components/ui/Alert';
-import { applications } from '../../data/mockData';
+import { attendanceService } from '../../services/attendance';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const columnHelper = createColumnHelper();
 const SKILLS = ['Writing', 'Reading', 'Listening', 'Speaking'];
 
 export default function AttendanceList() {
-  const eligibleApps = applications.filter(a => ['verified', 'approved', 'absent'].includes(a.status));
-  const [data, setData] = useState(eligibleApps);
+  const { data: appsData, loading, setData } = useApi(attendanceService.getEligible);
+  const eligibleApps = appsData || [];
+  const [data, setLocalData] = useState([]);
+  
+  // Sync local state when api data loads
+  const effectiveData = appsData ? (data.length ? data : eligibleApps) : [];
   const [markingApp, setMarkingApp] = useState(null);
   const [absentSkills, setAbsentSkills] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
 
   const filteredData = statusFilter === 'absent'
-    ? data.filter(a => a.status === 'absent')
+    ? effectiveData.filter(a => a.status === 'absent')
     : statusFilter === 'present'
-    ? data.filter(a => a.status !== 'absent')
-    : data;
+    ? effectiveData.filter(a => a.status !== 'absent')
+    : effectiveData;
 
-  const handleMarkAbsent = () => {
-    setData(prev => prev.map(a =>
-      a.id === markingApp.id ? { ...a, status: 'absent', absentSkills } : a
-    ));
-    toast.success(`${markingApp.testTakerName} marked as absent`);
-    setMarkingApp(null);
-    setAbsentSkills([]);
+  const handleMarkAbsent = async () => {
+    try {
+      await attendanceService.markAbsent(markingApp.id, absentSkills);
+      const updated = effectiveData.map(a =>
+        a.id === markingApp.id ? { ...a, status: 'absent', absentSkills } : a
+      );
+      setLocalData(updated);
+      toast.success(`${markingApp.testTakerName} marked as absent`);
+    } catch {
+      toast.error('Failed to mark absent');
+    } finally {
+      setMarkingApp(null);
+      setAbsentSkills([]);
+    }
   };
 
   const toggleSkill = (skill) => {
@@ -89,7 +101,7 @@ export default function AttendanceList() {
     }),
   ];
 
-  const absentCount = data.filter(a => a.status === 'absent').length;
+  const absentCount = effectiveData.filter(a => a.status === 'absent').length;
 
   return (
     <div className="space-y-6">
@@ -107,6 +119,9 @@ export default function AttendanceList() {
       )}
 
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
+        {loading ? (
+          <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+        ) : (
         <DataTable
           data={filteredData}
           columns={columns}
@@ -119,6 +134,7 @@ export default function AttendanceList() {
             </Select>
           }
         />
+        )}
       </div>
 
       {/* Mark Absent Modal */}

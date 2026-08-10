@@ -7,13 +7,18 @@ import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal, { ConfirmModal } from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
-import { systemUsers, systemRoles } from '../../data/mockData';
+import { adminService } from '../../services/admin';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const columnHelper = createColumnHelper();
 
 export default function UserManagement() {
-  const [users, setUsers] = useState(systemUsers);
+  const { data: usersData, loading, setData: setUsers } = useApi(adminService.getUsers);
+  const { data: rolesData } = useApi(adminService.getRoles);
+  const users = usersData || [];
+  const systemRoles = rolesData || [];
+
   const [showCreate, setShowCreate] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [deleting, setDeleting] = useState(null);

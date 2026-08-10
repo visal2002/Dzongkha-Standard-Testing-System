@@ -5,13 +5,15 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Input';
 import Alert from '../../components/ui/Alert';
-import { systemUsers } from '../../data/mockData';
 import { scoreService } from '../../services/scores';
+import { adminService } from '../../services/admin';
 import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 export default function CommitteeSetup() {
   const { data: members, loading, setData: setMembers } = useApi(scoreService.getCommittee, true, ['EXM-001']);
+  const { data: usersData } = useApi(adminService.getUsers);
+  const systemUsers = usersData || [];
   const committee = members || [];
   
   const [showAdd, setShowAdd] = useState(false);
