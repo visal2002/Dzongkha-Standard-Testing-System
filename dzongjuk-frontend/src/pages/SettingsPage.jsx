@@ -1,4 +1,6 @@
-import { useState } from 'react';
+// Existing imports remain unchanged
+import { useState, useEffect } from 'react';
+// ... (rest of imports unchanged)
 import { motion } from 'framer-motion';
 import { Sun, Moon, Globe, Bell, BellOff, LogOut, ChevronRight, Palette, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -56,11 +58,38 @@ export default function SettingsPage() {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
-  // Notification preferences (UI only — wired to backend in future)
+  // Existing state hooks
   const [emailNotifs, setEmailNotifs] = useState(true);
   const [appNotifs, setAppNotifs] = useState(true);
   const [smsNotifs, setSmsNotifs] = useState(false);
 
+  // New state for system contact info
+  const [systemEmail, setSystemEmail] = useState('');
+  const [systemPhone, setSystemPhone] = useState('');
+  const [systemDepartment, setSystemDepartment] = useState('');
+
+  // Load saved system contact info on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('system_contact_info');
+    if (saved) {
+      try {
+        const { email, phone, department } = JSON.parse(saved);
+        setSystemEmail(email || '');
+        setSystemPhone(phone || '');
+        setSystemDepartment(department || '');
+      } catch {}
+    }
+  }, []);
+
+  const handleSystemSave = () => {
+    const payload = {
+      email: systemEmail.trim(),
+      phone: systemPhone.trim(),
+      department: systemDepartment.trim(),
+    };
+    localStorage.setItem('system_contact_info', JSON.stringify(payload));
+    toast.success('System contact information saved.');
+  };
   // Language (UI only — i18n integration)
   const [language, setLanguage] = useState('en');
 
