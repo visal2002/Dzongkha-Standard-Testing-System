@@ -242,19 +242,16 @@ export const UserRole = {
  * @typedef {Object} Certificate
  * @property {string} id
  * @property {string} examId
- * @property {string} testTakerName
- * @property {string} cid
+ * @property {string} certificateNumber
+ * @property {string} holderName
  * @property {string} registrationNumber
- * @property {number} writing
- * @property {number} reading
- * @property {number} listening
- * @property {number} speaking
- * @property {number} average
- * @property {string} bandLevel - BandLevel value (A1–C2)
- * @property {string} issueDate - YYYY-MM-DD
+ * @property {{scores: Record<string, number>, overallScore: number}} scoreSnapshot
+ * @property {string} bandLabel
+ * @property {string} [cefrLevel] - CEFR value (A1-C2)
+ * @property {string} issuedAt - ISO datetime
  * @property {string} validUntil - YYYY-MM-DD
- * @property {string} qrCode - Verification token
- * @property {string} status - 'active' | 'expired' | 'revoked'
+ * @property {string} verificationToken - Signed verification token
+ * @property {string} status - 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'SUPERSEDED'
  * @property {number} downloadCount
  */
 
