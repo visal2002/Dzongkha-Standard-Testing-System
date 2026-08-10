@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 // ... (rest of imports unchanged)
 import { motion } from 'framer-motion';
-import { Sun, Moon, Globe, Bell, BellOff, LogOut, ChevronRight, Palette, Mail } from 'lucide-react';
+import { Sun, Moon, Globe, Bell, BellOff, LogOut, ChevronRight, Palette, Mail, Phone, Building2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
@@ -206,6 +206,55 @@ export default function SettingsPage() {
             </SettingRow>
           </motion.section>
 
+          {/* System Contact Info */}
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-surface-card border border-surface-border rounded-xl p-5"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Phone size={14} className="text-brand-gold" />
+              <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                System Contact Info
+              </h2>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <label className="w-24 text-sm text-text-muted">Email</label>
+                <input
+                  value={systemEmail}
+                  onChange={e => setSystemEmail(e.target.value)}
+                  placeholder="system@example.com"
+                  className="flex-1 h-9 px-2 rounded border border-surface-border bg-surface-bg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-gold/40"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="w-24 text-sm text-text-muted">Phone</label>
+                <input
+                  value={systemPhone}
+                  onChange={e => setSystemPhone(e.target.value)}
+                  placeholder="+975-17XXXXXX"
+                  className="flex-1 h-9 px-2 rounded border border-surface-border bg-surface-bg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-gold/40"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="w-24 text-sm text-text-muted">Department</label>
+                <input
+                  value={systemDepartment}
+                  onChange={e => setSystemDepartment(e.target.value)}
+                  placeholder="Department of Culture and Dzongkha Development"
+                  className="flex-1 h-9 px-2 rounded border border-surface-border bg-surface-bg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-gold/40"
+                />
+              </div>
+              <button
+                onClick={handleSystemSave}
+                className="mt-2 w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-brand-gold text-white text-sm font-medium hover:bg-brand-gold-dark transition-colors"
+              >
+                Save Contact Info
+              </button>
+            </div>
+          </motion.section>
           {/* Account */}
           <motion.section
             initial={{ opacity: 0, y: 8 }}
