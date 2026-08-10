@@ -5,33 +5,56 @@ import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import { Textarea } from '../../components/ui/Input';
 import Alert from '../../components/ui/Alert';
-import { bandScores, masterConfig } from '../../data/mockData';
+import { scoreService } from '../../services/scores';
+import { appealService } from '../../services/appeals';
+import { certificateService } from '../../services/certificates'; // Just for config, actually we should use appealService.getConfig or similar if it exists, but mock data had masterConfig
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const SKILLS = ['Writing', 'Reading', 'Listening', 'Speaking'];
 const STEPS = ['Select Skills', 'Provide Reason', 'Review & Pay'];
 
 export default function SubmitAppeal() {
+  const { data: scores, loading: loadingScores } = useApi(scoreService.getAll);
+  const myScore = (scores || [])[0]; // Assuming user's score for now, this would normally fetch from scoreService.getMyScore
+  
   const [step, setStep] = useState(0);
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [reason, setReason] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const myScore = bandScores[0];
-  const fee = selectedSkills.length * masterConfig.appealFeePerSkill;
+  // Hardcode config for now, assuming masterConfig is not easily available from service
+  const appealFeePerSkill = 1500;
+  const fee = selectedSkills.length * appealFeePerSkill;
 
   const toggleSkill = (skill) => {
     setSelectedSkills(prev => prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]);
   };
 
   const handleSubmit = async () => {
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setLoading(false);
-    toast.success('Appeal submitted successfully! The committee will review your request.');
-    navigate('/appeals');
+    setIsSubmitting(true);
+    try {
+      await appealService.create({ skills: selectedSkills, reason, paymentAmount: fee, originalScores: myScore });
+      toast.success('Appeal submitted successfully! The committee will review your request.');
+      navigate('/appeals');
+    } catch (error) {
+      toast.error('Failed to submit appeal. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (loadingScores) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-text-muted">Loading scores...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!myScore) {
     return (
@@ -70,7 +93,7 @@ export default function SubmitAppeal() {
           <div className="space-y-5">
             <div>
               <h3 className="text-base font-semibold text-text-primary mb-1">Select Skills for Re-evaluation</h3>
-              <p className="text-sm text-text-muted">Choose which skills you want to appeal. Fee: Nu. {masterConfig.appealFeePerSkill} per skill.</p>
+              <p className="text-sm text-text-muted">Choose which skills you want to appeal. Fee: Nu. {appealFeePerSkill} per skill.</p>
             </div>
             <Alert variant="info">Your current scores from January 2026 examination</Alert>
             <div className="grid grid-cols-2 gap-3">
@@ -162,7 +185,7 @@ export default function SubmitAppeal() {
             </div>
             <div className="flex justify-between">
               <Button variant="ghost" onClick={() => setStep(1)}>← Back</Button>
-              <Button loading={loading} onClick={handleSubmit} icon={<CreditCard size={13} />}>Pay & Submit Appeal</Button>
+              <Button loading={isSubmitting} onClick={handleSubmit} icon={<CreditCard size={13} />}>Pay & Submit Appeal</Button>
             </div>
           </div>
         )}

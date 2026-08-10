@@ -7,7 +7,8 @@ import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import { ConfirmModal } from '../../components/ui/Modal';
 import Alert from '../../components/ui/Alert';
-import { questionPapers } from '../../data/mockData';
+import { questionService } from '../../services/questions';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const SKILL_COLORS = {
@@ -19,14 +20,22 @@ const SKILL_COLORS = {
 
 export default function QuestionPapers() {
   const { user } = useAuth();
-  const [papers, setPapers] = useState(questionPapers);
+  const { data: papersData, loading, setData: setPapers } = useApi(questionService.getPapers);
+  const papers = papersData || [];
+  
   const [deleting, setDeleting] = useState(null);
   const isExamHead = user?.role === 'exam_head' || user?.role === 'admin';
 
-  const handleDelete = () => {
-    setPapers(prev => prev.filter(p => p.id !== deleting.id));
-    toast.success('Question paper removed');
-    setDeleting(null);
+  const handleDelete = async () => {
+    try {
+      await questionService.deletePaper(deleting.id);
+      setPapers(prev => prev.filter(p => p.id !== deleting.id));
+      toast.success('Question paper removed');
+    } catch (e) {
+      toast.error('Failed to remove question paper');
+    } finally {
+      setDeleting(null);
+    }
   };
 
   return (
@@ -60,6 +69,10 @@ export default function QuestionPapers() {
         })}
       </div>
 
+      {loading ? (
+        <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+      ) : (
+      <>
       {/* Papers list */}
       <div className="grid gap-3">
         {papers.map(paper => (
@@ -102,6 +115,8 @@ export default function QuestionPapers() {
           </div>
         ))}
       </div>
+      </>
+      )}
 
       <ConfirmModal
         isOpen={!!deleting}

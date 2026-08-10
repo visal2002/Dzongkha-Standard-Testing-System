@@ -4,7 +4,10 @@ import { ClipboardList, Users, Scale, BarChart3, ArrowRight, CheckCircle } from 
 import { useAuth } from '../../context/AuthContext';
 import { StatCard } from '../../components/ui/Card';
 import { StatusBadge } from '../../components/ui/Badge';
-import { bandScores, appeals, committeeMembers } from '../../data/mockData';
+import { bandScores as mockScores, appeals as mockAppeals, committeeMembers as mockCommittee } from '../../data/mockData';
+import { scoreService } from '../../services/scores';
+import { appealService } from '../../services/appeals';
+import { useApi } from '../../hooks/useApi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const scoreDistData = [
@@ -25,6 +28,22 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function CommitteeDashboard() {
   const { user } = useAuth();
   const isHead = user?.role === 'committee_head';
+  const { data: bandScores, loading: loadingScores } = useApi(scoreService.getAll);
+  const { data: appeals, loading: loadingAppeals } = useApi(appealService.getAll);
+  const { data: committeeMembers, loading: loadingCommittee } = useApi(scoreService.getCommittee, true, ['EXM-001']);
+
+  const isLoading = loadingScores || loadingAppeals || loadingCommittee;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-text-muted">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -47,13 +66,13 @@ export default function CommitteeDashboard() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Scores Entered" value={bandScores.length} icon={<ClipboardList size={18} />} color="gold" />
-        <StatCard title="Published" value={bandScores.filter(b => b.status === 'published').length} icon={<CheckCircle size={18} />} color="success" />
-        <StatCard title="Committee Members" value={committeeMembers.length} icon={<Users size={18} />} color="info" />
-        {isHead && <StatCard title="Pending Appeals" value={appeals.filter(a => a.status === 'pending_committee').length} icon={<Scale size={18} />} color="warning" />}
+        <StatCard title="Scores Entered" value={bandScores?.length ?? 0} icon={<ClipboardList size={18} />} color="gold" />
+        <StatCard title="Published" value={bandScores?.filter(b => b.status === 'published').length ?? 0} icon={<CheckCircle size={18} />} color="success" />
+        <StatCard title="Committee Members" value={committeeMembers?.length ?? 0} icon={<Users size={18} />} color="info" />
+        {isHead && <StatCard title="Pending Appeals" value={appeals?.filter(a => a.status === 'pending_committee').length ?? 0} icon={<Scale size={18} />} color="warning" />}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {/* Score Distribution */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-5">
           <h3 className="text-sm font-semibold text-text-primary mb-1">Score Distribution</h3>
@@ -76,7 +95,7 @@ export default function CommitteeDashboard() {
             <Link to="/scores/view" className="text-xs text-brand-gold hover:text-[#FCD34D] flex items-center gap-1">View all <ArrowRight size={12} /></Link>
           </div>
           <div className="space-y-2.5">
-            {bandScores.map(bs => (
+            {(bandScores || []).map(bs => (
               <div key={bs.id} className="flex items-center justify-between gap-3 py-2 border-b border-surface-border/40 last:border-0">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-text-primary truncate">{bs.testTakerName}</p>
@@ -102,7 +121,7 @@ export default function CommitteeDashboard() {
           {isHead && <Link to="/scores/committee" className="text-xs text-brand-gold hover:text-[#FCD34D] flex items-center gap-1">Manage <ArrowRight size={12} /></Link>}
         </div>
         <div className="flex flex-wrap gap-3">
-          {committeeMembers.map(m => (
+          {(committeeMembers || []).map(m => (
             <div key={m.id} className="flex items-center gap-2.5 px-3 py-2 bg-surface-bg border border-surface-border rounded-xl">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${m.isHead ? 'bg-brand-gold/10 text-brand-gold' : 'bg-blue-500/10 text-blue-400'}`}>
                 {m.name[0]}

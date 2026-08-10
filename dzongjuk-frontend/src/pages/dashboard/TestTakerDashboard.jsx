@@ -2,15 +2,37 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Award, FileText, AlertCircle, Calendar, ArrowRight, Download, CheckCircle, BarChart2, Edit3, Check, Headphones, MessageCircle, BookOpen } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { applications, certificates, examWindows, bandScores } from '../../data/mockData';
+import { applicationService } from '../../services/applications';
+import { certificateService } from '../../services/certificates';
+import { examService } from '../../services/exams';
+import { scoreService } from '../../services/scores';
+import { useApi } from '../../hooks/useApi';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, PolarRadiusAxis } from 'recharts';
 
 export default function TestTakerDashboard() {
   const { user } = useAuth();
-  const myApps = applications.filter(a => a.testTakerId === user?.id || a.testTakerId === 'USR-006');
-  const myCerts = certificates.slice(0, 2);
-  const myScore = bandScores[0];
-  const openExam = examWindows.find(e => e.status === 'open');
+  const { data: applications, loading: loadingApps } = useApi(applicationService.getAll);
+  const { data: certificates, loading: loadingCerts } = useApi(certificateService.getAll);
+  const { data: examWindows, loading: loadingExams } = useApi(examService.getAll);
+  const { data: bandScores, loading: loadingScores } = useApi(scoreService.getAll);
+
+  const isLoading = loadingApps || loadingCerts || loadingExams || loadingScores;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-text-muted">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const myApps = (applications || []).filter(a => a.testTakerId === user?.id || a.testTakerId === 'USR-006');
+  const myCerts = (certificates || []).slice(0, 2);
+  const myScore = (bandScores || [])[0];
+  const openExam = (examWindows || []).find(e => e.status === 'open');
 
   const radarData = myScore ? [
     { skill: 'Writing', score: myScore.writing },
@@ -136,7 +158,7 @@ export default function TestTakerDashboard() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+      <div className="flex-1 min-h-0 grid grid-cols-1 gap-2.5">
         {/* Latest Skill Scores */}
         {myScore && (
           <div className="bg-surface-card border border-surface-border rounded-xl p-4 shadow-sm flex flex-col justify-between overflow-hidden h-full">

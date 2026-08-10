@@ -4,11 +4,29 @@ import { BookOpen, Upload, FileText, Lock, ArrowRight, FileSearch } from 'lucide
 import { useAuth } from '../../context/AuthContext';
 import { StatCard } from '../../components/ui/Card';
 import { StatusBadge } from '../../components/ui/Badge';
-import { questionPapers, bandScores } from '../../data/mockData';
+import { questionService } from '../../services/questions';
+import { scoreService } from '../../services/scores';
+import { useApi } from '../../hooks/useApi';
 import Button from '../../components/ui/Button';
 
 export default function ExamHeadDashboard() {
   const { user } = useAuth();
+  const { data: questionPapers, loading: loadingQP } = useApi(questionService.getAll);
+  const { data: bandScores, loading: loadingScores } = useApi(scoreService.getAll);
+
+  const isLoading = loadingQP || loadingScores;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-text-muted">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -24,13 +42,13 @@ export default function ExamHeadDashboard() {
       </motion.div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Question Papers" value={questionPapers.length} icon={<BookOpen size={18} />} color="gold" />
-        <StatCard title="Encrypted Files" value={questionPapers.filter(q => q.isEncrypted).length} icon={<Lock size={18} />} color="warning" />
-        <StatCard title="Published" value={questionPapers.filter(q => q.status === 'published').length} icon={<FileText size={18} />} color="success" />
-        <StatCard title="Total Scores" value={bandScores.length} icon={<FileSearch size={18} />} color="info" />
+        <StatCard title="Question Papers" value={questionPapers?.length ?? 0} icon={<BookOpen size={18} />} color="gold" />
+        <StatCard title="Encrypted Files" value={questionPapers?.filter(q => q.isEncrypted).length ?? 0} icon={<Lock size={18} />} color="warning" />
+        <StatCard title="Published" value={questionPapers?.filter(q => q.status === 'published').length ?? 0} icon={<FileText size={18} />} color="success" />
+        <StatCard title="Total Scores" value={bandScores?.length ?? 0} icon={<FileSearch size={18} />} color="info" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {/* Upload area */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-5">
           <h3 className="text-sm font-semibold text-text-primary mb-4">Quick Upload</h3>
@@ -51,7 +69,7 @@ export default function ExamHeadDashboard() {
             <Link to="/questions" className="text-xs text-brand-gold hover:text-[#FCD34D] flex items-center gap-1">View all <ArrowRight size={12} /></Link>
           </div>
           <div className="space-y-3">
-            {questionPapers.map(qp => (
+            {(questionPapers || []).map(qp => (
               <div key={qp.id} className="flex items-center gap-3 p-3 bg-surface-bg rounded-xl border border-surface-border">
                 <div className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
                   <FileText size={16} className="text-red-400" />

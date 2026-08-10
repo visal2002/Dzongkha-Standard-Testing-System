@@ -5,15 +5,31 @@ import { Scale, CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { StatCard } from '../../components/ui/Card';
 import { StatusBadge } from '../../components/ui/Badge';
-import { appeals } from '../../data/mockData';
+import { appeals as mockAppeals } from '../../data/mockData';
+import { appealService } from '../../services/appeals';
+import { useApi } from '../../hooks/useApi';
 import Button from '../../components/ui/Button';
 import toast from 'react-hot-toast';
 
 export default function ChiefDashboard() {
   const { user } = useAuth();
-  const [appealData, setAppealData] = useState(appeals);
+  const { data: appealsData, loading, setData: setAppealData } = useApi(appealService.getAll);
+  const appealData = appealsData || [];
   const pending = appealData.filter(a => a.status === 'pending_chief_approval');
   const approved = appealData.filter(a => a.chiefApproval === 'approved');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-text-muted">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+
 
   const handleDecision = (id, decision) => {
     setAppealData(prev => prev.map(a =>

@@ -5,15 +5,20 @@ import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import Input, { Select } from '../../components/ui/Input';
 import Alert from '../../components/ui/Alert';
-import { examWindows } from '../../data/mockData';
+import { examService } from '../../services/exams';
+import { questionService } from '../../services/questions';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const SKILLS = ['Writing', 'Reading', 'Listening', 'Speaking'];
 
 export default function UploadQuestionPaper() {
+  const { data: examWindowsData, loading: loadingExams } = useApi(examService.getAll);
+  const examWindows = examWindowsData || [];
+
   const [files, setFiles] = useState({ paper: null, answerSheet: null });
   const [form, setForm] = useState({ examId: '', skill: '', title: '' });
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragging, setDragging] = useState(null);
   const paperRef = useRef(null);
   const answerRef = useRef(null);
@@ -38,11 +43,21 @@ export default function UploadQuestionPaper() {
     e.preventDefault();
     if (!files.paper) { toast.error('Please upload a question paper'); return; }
     if (!form.examId || !form.skill || !form.title) { toast.error('Please fill all required fields'); return; }
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setLoading(false);
-    toast.success('Question paper uploaded and encrypted successfully!');
-    navigate('/questions');
+    
+    setIsSubmitting(true);
+    try {
+      await questionService.uploadPaper({
+        ...form,
+        paperFile: files.paper,
+        answerSheetFile: files.answerSheet
+      });
+      toast.success('Question paper uploaded and encrypted successfully!');
+      navigate('/questions');
+    } catch (error) {
+      toast.error('Failed to upload question paper');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const DropZone = ({ field, label, fileRef }) => (
@@ -110,8 +125,9 @@ export default function UploadQuestionPaper() {
             required
             value={form.examId}
             onChange={e => setForm(p => ({ ...p, examId: e.target.value }))}
+            disabled={loadingExams}
           >
-            <option value="">Select exam window</option>
+            <option value="">{loadingExams ? 'Loading exams...' : 'Select exam window'}</option>
             {examWindows.map(ew => <option key={ew.id} value={ew.id}>{ew.title}</option>)}
           </Select>
           <Select
@@ -140,7 +156,7 @@ export default function UploadQuestionPaper() {
 
         <div className="flex gap-3 pt-2">
           <Button variant="ghost" type="button" onClick={() => navigate('/questions')}>Cancel</Button>
-          <Button type="submit" loading={loading} icon={<Upload size={13} />}>
+          <Button type="submit" loading={isSubmitting} icon={<Upload size={13} />}>
             Upload & Encrypt
           </Button>
         </div>

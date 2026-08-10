@@ -2,7 +2,8 @@ import { BookOpen, Download, Eye, FileText } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
-import { questionPapers } from '../../data/mockData';
+import { questionService } from '../../services/questions';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const SKILL_COLORS = {
@@ -12,9 +13,10 @@ const SKILL_COLORS = {
   Speaking: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
 };
 
-const published = questionPapers.filter(q => q.status === 'published');
-
 export default function SamplePapers() {
+  const { data: papersData, loading } = useApi(questionService.getPapers);
+  const published = (papersData || []).filter(q => q.status === 'published');
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -29,6 +31,9 @@ export default function SamplePapers() {
         <p>These are past examination papers made available after results were declared. Use them to understand the question format, difficulty level, and time requirements.</p>
       </div>
 
+      {loading ? (
+        <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+      ) : (
       <div className="grid gap-3">
         {published.map(paper => (
           <div key={paper.id} className="bg-surface-card border border-surface-border rounded-xl p-5 flex items-center gap-4 hover:border-brand-gold/20 transition-colors">
@@ -51,6 +56,7 @@ export default function SamplePapers() {
           </div>
         ))}
       </div>
+      )}
 
       {published.length === 0 && (
         <div className="text-center py-16 text-text-muted">

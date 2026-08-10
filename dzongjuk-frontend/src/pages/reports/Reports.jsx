@@ -101,7 +101,7 @@ export default function Reports() {
         <div className="mt-4 space-y-4">
           {/* Overview */}
           <TabPanel value="overview">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="bg-surface-card border border-surface-border rounded-xl p-5">
                 <h3 className="text-sm font-semibold text-text-primary mb-4">Registration Trend — 2026</h3>
                 <ResponsiveContainer width="100%" height={220}>

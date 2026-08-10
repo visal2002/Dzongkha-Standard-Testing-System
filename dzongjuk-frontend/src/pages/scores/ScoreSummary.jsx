@@ -1,7 +1,8 @@
 import { BarChart3, TrendingUp, Users } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/Card';
-import { bandScores } from '../../data/mockData';
+import { scoreService } from '../../services/scores';
+import { useApi } from '../../hooks/useApi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PieChart, Pie, Cell } from 'recharts';
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -14,28 +15,36 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-const skillAvg = (skill) => (bandScores.reduce((s, b) => s + b[skill], 0) / bandScores.length);
-
-const skillData = [
-  { skill: 'Writing', avg: skillAvg('writing') },
-  { skill: 'Reading', avg: skillAvg('reading') },
-  { skill: 'Listening', avg: skillAvg('listening') },
-  { skill: 'Speaking', avg: skillAvg('speaking') },
-];
-
-const radarData = skillData.map(d => ({ skill: d.skill, score: d.avg * 10 }));
-
-const bandDist = [
-  { band: 'C1', count: bandScores.filter(b => b.average >= 7.0).length, color: '#3B82F6' },
-  { band: 'B2', count: bandScores.filter(b => b.average >= 5.5 && b.average < 7.0).length, color: '#0D9488' },
-  { band: 'B1', count: bandScores.filter(b => b.average >= 4.0 && b.average < 5.5).length, color: '#10B981' },
-];
-
 export default function ScoreSummary() {
+  const { data: bandScoresData, loading } = useApi(scoreService.getAll);
+  const bandScores = bandScoresData || [];
+
   const totalScored = bandScores.length;
-  const overallAvg = (bandScores.reduce((s, b) => s + b.average, 0) / totalScored).toFixed(2);
-  const highestScore = Math.max(...bandScores.map(b => b.average));
-  const lowestScore = Math.min(...bandScores.map(b => b.average));
+  const overallAvg = totalScored ? (bandScores.reduce((s, b) => s + b.average, 0) / totalScored).toFixed(2) : 0;
+  const highestScore = totalScored ? Math.max(...bandScores.map(b => b.average)) : 0;
+  const lowestScore = totalScored ? Math.min(...bandScores.map(b => b.average)) : 0;
+
+  const skillAvg = (skill) => totalScored ? (bandScores.reduce((s, b) => s + b[skill], 0) / totalScored) : 0;
+
+  const skillData = [
+    { skill: 'Writing', avg: skillAvg('writing') },
+    { skill: 'Reading', avg: skillAvg('reading') },
+    { skill: 'Listening', avg: skillAvg('listening') },
+    { skill: 'Speaking', avg: skillAvg('speaking') },
+  ];
+
+  const radarData = skillData.map(d => ({ skill: d.skill, score: d.avg * 10 }));
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-text-muted">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -53,7 +62,7 @@ export default function ScoreSummary() {
         <StatCard title="Lowest Score" value={lowestScore.toFixed(1)} icon={<TrendingUp size={18} />} color="warning" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {/* Skill Averages */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-5">
           <h3 className="text-sm font-semibold text-text-primary mb-4">Average Score by Skill</h3>

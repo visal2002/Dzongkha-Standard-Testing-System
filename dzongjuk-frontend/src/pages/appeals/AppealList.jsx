@@ -9,14 +9,16 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Input, { Textarea } from '../../components/ui/Input';
 import Alert from '../../components/ui/Alert';
-import { appeals } from '../../data/mockData';
+import { appealService } from '../../services/appeals';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const columnHelper = createColumnHelper();
 
 export default function AppealList() {
   const { user } = useAuth();
-  const [data, setData] = useState(appeals);
+  const { data: appealsData, loading, setData } = useApi(appealService.getAll);
+  const data = appealsData || [];
   const [selected, setSelected] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [revisedInput, setRevisedInput] = useState({});
@@ -25,50 +27,63 @@ export default function AppealList() {
   const isCommitteeHead = user?.role === 'committee_head';
   const isCommitteeMember = user?.role === 'committee_member';
 
-  const handleApprove = (id, decision) => {
-    setData(prev => prev.map(a => {
-      if (a.id === id) {
-        const newHistory = [
-          ...a.statusHistory,
-          { status: decision === 'approved' ? 'approved' : 'rejected', timestamp: new Date().toISOString(), by: user?.name || 'Chief Executive', remarks: remarks || undefined }
-        ];
-        return {
-          ...a,
-          chiefApproval: decision,
-          status: decision === 'approved' ? 'approved' : 'rejected',
-          chiefRemarks: remarks || (decision === 'approved' ? 'Score revision approved' : 'Score revision rejected'),
-          statusHistory: newHistory
-        };
-      }
-      return a;
-    }));
-    toast.success(`Appeal score revision ${decision === 'approved' ? 'approved' : 'rejected'} successfully.`);
-    setSelected(null);
-    setRemarks('');
+  const handleApprove = async (id, decision) => {
+    try {
+      await appealService.decide(id, decision, remarks);
+      setData(prev => prev.map(a => {
+        if (a.id === id) {
+          const newHistory = [
+            ...a.statusHistory,
+            { status: decision === 'approved' ? 'approved' : 'rejected', timestamp: new Date().toISOString(), by: user?.name || 'Chief Executive', remarks: remarks || undefined }
+          ];
+          return {
+            ...a,
+            chiefApproval: decision,
+            status: decision === 'approved' ? 'approved' : 'rejected',
+            chiefRemarks: remarks || (decision === 'approved' ? 'Score revision approved' : 'Score revision rejected'),
+            statusHistory: newHistory
+          };
+        }
+        return a;
+      }));
+      toast.success(`Appeal score revision ${decision === 'approved' ? 'approved' : 'rejected'} successfully.`);
+    } catch (e) {
+      toast.error('Failed to update appeal status.');
+    } finally {
+      setSelected(null);
+      setRemarks('');
+    }
   };
 
-  const handleCommitteeHeadSubmit = (id) => {
-    setData(prev => prev.map(a => {
-      if (a.id === id) {
-        const revisedScores = { ...(a.revisedScores || a.originalScores), ...revisedInput };
-        const newHistory = [
-          ...a.statusHistory,
-          { status: 'pending_chief_approval', timestamp: new Date().toISOString(), by: user?.name || 'Committee Head', remarks: remarks || 'Score revision requested' }
-        ];
-        return {
-          ...a,
-          status: 'pending_chief_approval',
-          committeeRemarks: remarks || 'Manual re-evaluation conducted. Score revision requested.',
-          revisedScores,
-          statusHistory: newHistory
-        };
-      }
-      return a;
-    }));
-    toast.success('Score revision request submitted to Chief Executive for final approval.');
-    setSelected(null);
-    setRemarks('');
-    setRevisedInput({});
+  const handleCommitteeHeadSubmit = async (id) => {
+    try {
+      const revisedScores = { ...(selected.revisedScores || selected.originalScores), ...revisedInput };
+      await appealService.submitRevision(id, { revisedScores, committeeRemarks: remarks });
+      
+      setData(prev => prev.map(a => {
+        if (a.id === id) {
+          const newHistory = [
+            ...a.statusHistory,
+            { status: 'pending_chief_approval', timestamp: new Date().toISOString(), by: user?.name || 'Committee Head', remarks: remarks || 'Score revision requested' }
+          ];
+          return {
+            ...a,
+            status: 'pending_chief_approval',
+            committeeRemarks: remarks || 'Manual re-evaluation conducted. Score revision requested.',
+            revisedScores,
+            statusHistory: newHistory
+          };
+        }
+        return a;
+      }));
+      toast.success('Score revision request submitted to Chief Executive for final approval.');
+    } catch (e) {
+      toast.error('Failed to submit score revision request.');
+    } finally {
+      setSelected(null);
+      setRemarks('');
+      setRevisedInput({});
+    }
   };
 
   const handleMemberSaveNotes = (id) => {
@@ -153,7 +168,11 @@ export default function AppealList() {
       )}
 
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <DataTable data={data} columns={columns} searchPlaceholder="Search by test taker or CID..." />
+        {loading ? (
+          <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+        ) : (
+          <DataTable data={data} columns={columns} searchPlaceholder="Search by test taker or CID..." />
+        )}
       </div>
 
       {/* Detail Modal */}

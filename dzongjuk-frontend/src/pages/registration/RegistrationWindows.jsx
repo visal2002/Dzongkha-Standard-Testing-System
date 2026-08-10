@@ -7,13 +7,16 @@ import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Input, { Select } from '../../components/ui/Input';
-import { examWindows } from '../../data/mockData';
+import { examService } from '../../services/exams';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 export default function RegistrationWindows() {
   const { user } = useAuth();
-  const [windows, setWindows] = useState(examWindows);
+  const { data: windows, loading: loadingWindows, setData: setWindows } = useApi(examService.getAll);
   const [showCreate, setShowCreate] = useState(false);
+  const [editTarget, setEditTarget] = useState(null); // holds the window being edited
+  const [editForm, setEditForm] = useState({});
   const isAdmin = user?.role === 'dcdd' || user?.role === 'admin';
 
   const handleApply = (ew) => {
@@ -21,6 +24,22 @@ export default function RegistrationWindows() {
       toast('You will be placed on the waitlist.', { icon: '⚠️' });
     }
     toast.success(`Application submitted for ${ew.title}!`);
+  };
+
+  const openEdit = (ew) => {
+    setEditTarget(ew);
+    setEditForm({ 
+      ...ew,
+      examDate: ew.examDate ? new Date(ew.examDate).toISOString().split('T')[0] : '',
+      registrationStart: ew.registrationStart ? new Date(ew.registrationStart).toISOString().split('T')[0] : '',
+      registrationEnd: ew.registrationEnd ? new Date(ew.registrationEnd).toISOString().split('T')[0] : ''
+    });
+  };
+
+  const handleEditSave = () => {
+    setWindows(prev => prev.map(w => w.id === editTarget.id ? { ...w, ...editForm } : w));
+    toast.success('Exam window updated successfully!');
+    setEditTarget(null);
   };
 
   return (
@@ -37,8 +56,11 @@ export default function RegistrationWindows() {
         )}
       />
 
-      <div className="grid gap-4">
-        {windows.map((ew, i) => {
+      {loadingWindows ? (
+        <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+      ) : (
+        <div className="grid gap-4">
+          {(windows || []).map((ew, i) => {
           const capacityPct = (ew.currentRegistrations / ew.maxCapacity) * 100;
           const isFull = ew.currentRegistrations >= ew.maxCapacity;
           return (
@@ -115,7 +137,7 @@ export default function RegistrationWindows() {
                     </Button>
                   )}
                   {isAdmin && (
-                    <Button variant="secondary" size="sm">Edit Window</Button>
+                    <Button variant="secondary" size="sm" onClick={() => openEdit(ew)}>Edit Window</Button>
                   )}
                 </div>
               </div>
@@ -123,6 +145,7 @@ export default function RegistrationWindows() {
           );
         })}
       </div>
+      )}
 
       {/* Create Exam Window Modal */}
       <Modal
@@ -148,6 +171,43 @@ export default function RegistrationWindows() {
           <Input label="Maximum Capacity" type="number" placeholder="e.g. 150" required />
           <Input label="Registration Fee (Nu.)" type="number" placeholder="e.g. 500" required />
         </div>
+      </Modal>
+
+      {/* Edit Exam Window Modal */}
+      <Modal
+        isOpen={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        title="Edit Exam Window"
+        size="lg"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setEditTarget(null)}>Cancel</Button>
+            <Button onClick={handleEditSave}>Save Changes</Button>
+          </>
+        }
+      >
+        {editTarget && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <Input label="Examination Title" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} required />
+            </div>
+            <Input label="Exam Date" type="date" value={editForm.examDate} onChange={e => setEditForm({ ...editForm, examDate: e.target.value })} required />
+            <Input label="Venue" value={editForm.venue} onChange={e => setEditForm({ ...editForm, venue: e.target.value })} required />
+            <Input label="Registration Opens" type="date" value={editForm.registrationStart} onChange={e => setEditForm({ ...editForm, registrationStart: e.target.value })} required />
+            <Input label="Registration Closes" type="date" value={editForm.registrationEnd} onChange={e => setEditForm({ ...editForm, registrationEnd: e.target.value })} required />
+            <Input label="Maximum Capacity" type="number" value={editForm.maxCapacity} onChange={e => setEditForm({ ...editForm, maxCapacity: parseInt(e.target.value, 10) })} required />
+            <Input label="Registration Fee (Nu.)" type="number" value={editForm.paymentAmount} onChange={e => setEditForm({ ...editForm, paymentAmount: parseInt(e.target.value, 10) })} required />
+            
+            <div className="col-span-2">
+              <Select label="Status" value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })}>
+                <option value="draft">Draft</option>
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
+                <option value="completed">Completed</option>
+              </Select>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

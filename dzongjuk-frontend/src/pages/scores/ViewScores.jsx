@@ -3,7 +3,8 @@ import { BarChart3, Award } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import DataTable from '../../components/ui/Table';
 import { StatusBadge } from '../../components/ui/Badge';
-import { bandScores } from '../../data/mockData';
+import { scoreService } from '../../services/scores';
+import { useApi } from '../../hooks/useApi';
 
 const columnHelper = createColumnHelper();
 
@@ -22,6 +23,8 @@ const ScoreCell = ({ value }) => {
 };
 
 export default function ViewScores() {
+  const { data: bandScoresData, loading } = useApi(scoreService.getAll);
+  const bandScores = bandScoresData || [];
   const columns = [
     columnHelper.accessor('registrationNumber', {
       header: 'Reg. Number',
@@ -69,6 +72,10 @@ export default function ViewScores() {
       />
 
       {/* Summary */}
+      {loading ? (
+        <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+      ) : (
+      <>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total Scored', value: bandScores.length, color: 'text-brand-gold' },
@@ -86,6 +93,8 @@ export default function ViewScores() {
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         <DataTable data={bandScores} columns={columns} searchPlaceholder="Search by name or reg. number..." onExport={() => {}} />
       </div>
+      </>
+      )}
 
       {/* CEFR Guide */}
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">

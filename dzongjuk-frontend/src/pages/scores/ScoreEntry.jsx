@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { ClipboardList, Save, CheckCircle, Info } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
@@ -7,7 +7,9 @@ import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Alert from '../../components/ui/Alert';
-import { applications, committeeMembers, examWindows } from '../../data/mockData';
+import { applicationService } from '../../services/applications';
+import { scoreService } from '../../services/scores';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const SKILLS = ['writing', 'reading', 'listening', 'speaking'];
@@ -17,11 +19,24 @@ const SCORES = Array.from({ length: 19 }, (_, i) => (i * 0.5 + 1).toFixed(1));
 const columnHelper = createColumnHelper();
 
 export default function ScoreEntry() {
-  const eligibles = applications.filter(a => a.status === 'approved' || a.status === 'verified');
-  const [data] = useState(eligibles);
+  const { data: applications, loading: loadingApps } = useApi(applicationService.getAll);
+  const { data: committeeMembers, loading: loadingCommittee } = useApi(scoreService.getCommittee, true, ['EXM-001']);
+  
+  const eligibles = (applications || []).filter(a => a.status === 'approved' || a.status === 'verified');
+  const [data, setData] = useState([]);
+  
+  // Update data when applications load
+  useEffect(() => {
+    if (applications) {
+      setData(applications.filter(a => a.status === 'approved' || a.status === 'verified'));
+    }
+  }, [applications]);
+
   const [scoring, setScoring] = useState(null);
   const [scores, setScores] = useState({ writing: '', reading: '', listening: '', speaking: '' });
   const [submitted, setSubmitted] = useState([]);
+
+  const isLoading = loadingApps || loadingCommittee;
 
   const handleSubmit = () => {
     if (Object.values(scores).some(v => !v)) {
@@ -101,11 +116,15 @@ export default function ScoreEntry() {
         Only the designated Committee Head can enter and submit band scores. Committee members have view-only access.
       </Alert>
 
-      {/* Committee info */}
+      {isLoading ? (
+        <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+      ) : (
+        <>
+          {/* Committee info */}
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         <p className="text-sm font-semibold text-text-primary mb-3">Exam Committee — January 2026</p>
         <div className="flex flex-wrap gap-2">
-          {committeeMembers.map(m => (
+          {(committeeMembers || []).map(m => (
             <div key={m.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs ${m.isHead ? 'bg-brand-gold/10 border-brand-gold/20 text-brand-gold' : 'bg-surface-bg border-surface-border text-text-secondary'}`}>
               <div className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center font-bold text-[10px]">{m.name[0]}</div>
               {m.name} {m.isHead && '(Head)'}
@@ -117,6 +136,8 @@ export default function ScoreEntry() {
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         <DataTable data={data} columns={columns} searchPlaceholder="Search test takers..." />
       </div>
+      </>
+      )}
 
       {/* Score Entry Modal */}
       <Modal
@@ -161,7 +182,7 @@ export default function ScoreEntry() {
           <div className="p-3 bg-surface-bg rounded-xl border border-surface-border">
             <p className="text-[10px] font-semibold text-text-muted uppercase mb-1">Committee Signatories</p>
             <div className="flex flex-wrap gap-1">
-              {committeeMembers.map(m => (
+              {(committeeMembers || []).map(m => (
                 <span key={m.id} className="text-xs text-text-muted px-2 py-0.5 bg-[var(--color-surface-border)] rounded-full">{m.name}</span>
               ))}
             </div>

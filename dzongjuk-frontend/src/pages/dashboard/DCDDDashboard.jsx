@@ -7,7 +7,10 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { StatCard } from '../../components/ui/Card';
 import { StatusBadge } from '../../components/ui/Badge';
-import { dashboardStats, applications, examWindows, appeals } from '../../data/mockData';
+import { scoreService } from '../../services/scores';
+import { applicationService } from '../../services/applications';
+import { examService } from '../../services/exams';
+import { useApi } from '../../hooks/useApi';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell
@@ -43,9 +46,24 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function DCDDDashboard() {
   const { user } = useAuth();
-  const stats = dashboardStats.dcdd;
-  const activeExam = examWindows.find(e => e.status === 'open');
-  const pendingApps = applications.filter(a => a.status === 'submitted').length;
+  const { data: stats, loading: loadingStats } = useApi(() => scoreService.getDashboardStats('dcdd'));
+  const { data: applications, loading: loadingApps } = useApi(applicationService.getAll);
+  const { data: examWindows, loading: loadingExams } = useApi(examService.getAll);
+
+  const isLoading = loadingStats || loadingApps || loadingExams;
+  const activeExam = examWindows?.find(e => e.status === 'open');
+  const pendingApps = applications?.filter(a => a.status === 'submitted').length || 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-text-muted">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -75,10 +93,10 @@ export default function DCDDDashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Registrations" value={stats.totalRegistrations} icon={<Users size={18} />} color="gold" subtitle="Current window" />
-        <StatCard title="Pending Verification" value={stats.pendingVerifications} icon={<Clock size={18} />} color="warning" subtitle="Requires action" />
-        <StatCard title="Approved Applications" value={stats.approvedApplications} icon={<CheckSquare size={18} />} color="success" subtitle="Ready for exam" />
-        <StatCard title="Active Appeals" value={stats.activeAppeals} icon={<AlertCircle size={18} />} color="error" subtitle="Needs attention" />
+        <StatCard title="Total Registrations" value={stats?.totalRegistrations ?? 0} icon={<Users size={18} />} color="gold" subtitle="Current window" />
+        <StatCard title="Pending Verification" value={stats?.pendingVerifications ?? 0} icon={<Clock size={18} />} color="warning" subtitle="Requires action" />
+        <StatCard title="Approved Applications" value={stats?.approvedApplications ?? 0} icon={<CheckSquare size={18} />} color="success" subtitle="Ready for exam" />
+        <StatCard title="Active Appeals" value={stats?.activeAppeals ?? 0} icon={<AlertCircle size={18} />} color="error" subtitle="Needs attention" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -138,7 +156,7 @@ export default function DCDDDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {/* Recent Applications */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
@@ -148,7 +166,7 @@ export default function DCDDDashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {applications.slice(0, 4).map(app => (
+            {(applications || []).slice(0, 4).map(app => (
               <div key={app.id} className="flex items-center justify-between gap-3 py-2 border-b border-surface-border/50 last:border-0">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xs font-bold shrink-0">
@@ -174,7 +192,7 @@ export default function DCDDDashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {examWindows.map(ew => (
+            {(examWindows || []).map(ew => (
               <div key={ew.id} className="p-3 bg-surface-bg rounded-xl border border-surface-border">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <p className="text-xs font-medium text-text-primary leading-tight">{ew.title}</p>

@@ -7,27 +7,39 @@ import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal, { ConfirmModal } from '../../components/ui/Modal';
 import { Textarea, Select } from '../../components/ui/Input';
-import { applications } from '../../data/mockData';
+import { applicationService } from '../../services/applications';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const columnHelper = createColumnHelper();
 
 export default function VerificationList() {
-  const [data, setData] = useState(applications);
+  const { data: dataArray, loading, setData } = useApi(applicationService.getAll);
+  const data = dataArray || [];
+  
   const [selected, setSelected] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [returnRemarks, setReturnRemarks] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  const handleAction = (action, app) => {
+  const handleAction = async (action, app) => {
     const statusMap = { verify: 'verified', approve: 'approved', return: 'returned', reject: 'rejected' };
     const labelMap = { verify: 'verified', approve: 'approved', return: 'returned', reject: 'rejected' };
-    setData(prev => prev.map(a =>
-      a.id === app.id ? { ...a, status: statusMap[action] } : a
-    ));
-    toast.success(`Application ${labelMap[action]} successfully`);
-    setConfirmAction(null);
-    setSelected(null);
+    
+    try {
+       await applicationService.updateStatus(app.id, statusMap[action], action === 'return' ? returnRemarks : '');
+       
+       setData(prev => prev.map(a =>
+         a.id === app.id ? { ...a, status: statusMap[action] } : a
+       ));
+       toast.success(`Application ${labelMap[action]} successfully`);
+    } catch (err) {
+       toast.error(`Failed to ${action} application.`);
+    } finally {
+       setConfirmAction(null);
+       setSelected(null);
+       if (action === 'return') setReturnRemarks('');
+    }
   };
 
   const filteredData = statusFilter ? data.filter(a => a.status === statusFilter) : data;
@@ -87,8 +99,11 @@ export default function VerificationList() {
       />
 
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <DataTable
-          data={filteredData}
+        {loading ? (
+          <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+        ) : (
+          <DataTable
+            data={filteredData}
           columns={columns}
           searchPlaceholder="Search applicants..."
           toolbar={
@@ -103,6 +118,7 @@ export default function VerificationList() {
             </Select>
           }
         />
+        )}
       </div>
 
       {/* Detail Modal */}

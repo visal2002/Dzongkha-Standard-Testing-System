@@ -6,15 +6,22 @@ import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
 import { ConfirmModal } from '../../components/ui/Modal';
-import { applications, examWindows } from '../../data/mockData';
+import { applicationService } from '../../services/applications';
+import { examService } from '../../services/exams';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 export default function MyApplications() {
   const { user } = useAuth();
-  const [appList, setAppList] = useState(applications);
   const [cancellingApp, setCancellingApp] = useState(null);
+  
+  const { data: applications, loading: loadingApps, setData: setAppList } = useApi(
+    () => applicationService.getByUser(user?.id)
+  );
+  const { data: examWindows, loading: loadingExams } = useApi(examService.getAll);
 
-  const myApps = appList.filter(a => a.testTakerId === user?.id || a.testTakerId === 'USR-006');
+  const isLoading = loadingApps || loadingExams;
+  const myApps = applications || [];
 
   const handleCancelApplication = () => {
     if (!cancellingApp) return;
@@ -46,7 +53,9 @@ export default function MyApplications() {
         }
       />
 
-      {myApps.length === 0 ? (
+      {isLoading ? (
+        <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+      ) : myApps.length === 0 ? (
         <div className="text-center py-16 bg-surface-card border border-surface-border rounded-2xl text-text-muted">
           <FileText size={40} className="mx-auto mb-3 opacity-20" />
           <p className="text-sm font-medium text-text-primary">No applications yet</p>
@@ -56,7 +65,7 @@ export default function MyApplications() {
       ) : (
         <div className="space-y-4">
           {myApps.map(app => {
-            const exam = examWindows.find(e => e.id === app.examId);
+            const exam = (examWindows || []).find(e => e.id === app.examId);
             const canCancel = app.status === 'submitted';
             return (
               <div key={app.id} className="bg-surface-card border border-surface-border rounded-2xl p-5">

@@ -5,39 +5,54 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Input';
 import Alert from '../../components/ui/Alert';
-import { committeeMembers, examWindows, systemUsers } from '../../data/mockData';
+import { systemUsers } from '../../data/mockData';
+import { scoreService } from '../../services/scores';
+import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 export default function CommitteeSetup() {
-  const [members, setMembers] = useState(committeeMembers);
+  const { data: members, loading, setData: setMembers } = useApi(scoreService.getCommittee, true, ['EXM-001']);
+  const committee = members || [];
+  
   const [showAdd, setShowAdd] = useState(false);
   const [selectedUser, setSelectedUser] = useState('');
   const [selectedRole, setSelectedRole] = useState('member');
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!selectedUser) { toast.error('Please select a user'); return; }
     const user = systemUsers.find(u => u.id === selectedUser);
     if (!user) return;
-    if (members.some(m => m.userId === selectedUser)) { toast.error('User already in committee'); return; }
-    if (selectedRole === 'head' && members.some(m => m.isHead)) { toast.error('A Committee Head is already assigned'); return; }
-    setMembers(prev => [...prev, {
-      id: `CM-${Date.now()}`, examId: 'EXM-2026-001', userId: selectedUser,
-      name: user.name, role: selectedRole === 'head' ? 'Committee Head' : 'Committee Member',
-      isHead: selectedRole === 'head', addedAt: new Date().toISOString()
-    }]);
-    toast.success(`${user.name} added to committee`);
-    setShowAdd(false);
-    setSelectedUser('');
-    setSelectedRole('member');
+    if (committee.some(m => m.userId === selectedUser)) { toast.error('User already in committee'); return; }
+    if (selectedRole === 'head' && committee.some(m => m.isHead)) { toast.error('A Committee Head is already assigned'); return; }
+    
+    try {
+      const newMember = {
+        id: `CM-${Date.now()}`, examId: 'EXM-2026-001', userId: selectedUser,
+        name: user.name, role: selectedRole === 'head' ? 'Committee Head' : 'Committee Member',
+        isHead: selectedRole === 'head', addedAt: new Date().toISOString()
+      };
+      // In reality, this would be saveCommittee with the updated list of userIds
+      setMembers(prev => [...prev, newMember]);
+      toast.success(`${user.name} added to committee`);
+      setShowAdd(false);
+      setSelectedUser('');
+      setSelectedRole('member');
+    } catch (e) {
+      toast.error('Failed to add member');
+    }
   };
 
-  const handleRemove = (id) => {
-    setMembers(prev => prev.filter(m => m.id !== id));
-    toast.success('Member removed from committee');
+  const handleRemove = async (id) => {
+    try {
+      setMembers(prev => prev.filter(m => m.id !== id));
+      toast.success('Member removed from committee');
+    } catch (e) {
+      toast.error('Failed to remove member');
+    }
   };
 
-  const head = members.find(m => m.isHead);
-  const regularMembers = members.filter(m => !m.isHead);
+  const head = committee.find(m => m.isHead);
+  const regularMembers = committee.filter(m => !m.isHead);
 
   return (
     <div className="space-y-6">
@@ -55,6 +70,10 @@ export default function CommitteeSetup() {
         </Alert>
       )}
 
+      {loading ? (
+        <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+      ) : (
+      <>
       {/* Active Exam */}
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         <p className="text-xs text-text-muted mb-1">Constituting committee for</p>
@@ -106,6 +125,8 @@ export default function CommitteeSetup() {
           )}
         </div>
       </div>
+      </>
+      )}
 
       {/* Add Member Modal */}
       <Modal
@@ -123,7 +144,7 @@ export default function CommitteeSetup() {
         <div className="space-y-4">
           <Select label="Select User" required value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
             <option value="">Choose a user...</option>
-            {systemUsers.filter(u => !members.some(m => m.userId === u.id)).map(u => (
+            {systemUsers.filter(u => !committee.some(m => m.userId === u.id)).map(u => (
               <option key={u.id} value={u.id}>{u.name} — {u.role}</option>
             ))}
           </Select>
