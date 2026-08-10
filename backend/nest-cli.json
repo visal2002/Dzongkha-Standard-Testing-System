@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "monorepo": true,
+  "root": "apps/identity-service",
+  "sourceRoot": "apps/identity-service/src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "webpack": true,
+    "tsConfigPath": "apps/identity-service/tsconfig.app.json"
+  },
+  "projects": {
+    "identity-service": { "type": "application", "root": "apps/identity-service", "entryFile": "main", "sourceRoot": "apps/identity-service/src", "compilerOptions": { "tsConfigPath": "apps/identity-service/tsconfig.app.json" } },
+    "registration-service": { "type": "application", "root": "apps/registration-service", "entryFile": "main", "sourceRoot": "apps/registration-service/src", "compilerOptions": { "tsConfigPath": "apps/registration-service/tsconfig.app.json" } },
+    "assessment-content-service": { "type": "application", "root": "apps/assessment-content-service", "entryFile": "main", "sourceRoot": "apps/assessment-content-service/src", "compilerOptions": { "tsConfigPath": "apps/assessment-content-service/tsconfig.app.json" } },
+    "result-service": { "type": "application", "root": "apps/result-service", "entryFile": "main", "sourceRoot": "apps/result-service/src", "compilerOptions": { "tsConfigPath": "apps/result-service/tsconfig.app.json" } },
+    "appeal-certificate-service": { "type": "application", "root": "apps/appeal-certificate-service", "entryFile": "main", "sourceRoot": "apps/appeal-certificate-service/src", "compilerOptions": { "tsConfigPath": "apps/appeal-certificate-service/tsconfig.app.json" } },
+    "notification-service": { "type": "application", "root": "apps/notification-service", "entryFile": "main", "sourceRoot": "apps/notification-service/src", "compilerOptions": { "tsConfigPath": "apps/notification-service/tsconfig.app.json" } },
+    "reporting-service": { "type": "application", "root": "apps/reporting-service", "entryFile": "main", "sourceRoot": "apps/reporting-service/src", "compilerOptions": { "tsConfigPath": "apps/reporting-service/tsconfig.app.json" } },
+    "integration-service": { "type": "application", "root": "apps/integration-service", "entryFile": "main", "sourceRoot": "apps/integration-service/src", "compilerOptions": { "tsConfigPath": "apps/integration-service/tsconfig.app.json" } }
+  }
+}

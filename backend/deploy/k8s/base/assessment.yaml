@@ -1,0 +1,49 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: assessment-content-service }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: assessment-content-service } }
+  template:
+    metadata: { labels: { app: assessment-content-service } }
+    spec:
+      serviceAccountName: assessment-content-service
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: assessment-content-service
+          image: registry.example.gov.bt/dzongjuk/assessment-content-service:replace
+          ports: [{ containerPort: 8003 }]
+          env: [{ name: DATABASE_NAME, value: dzongjuk_assessment }]
+          envFrom: [{ configMapRef: { name: dzongjuk-config } }, { secretRef: { name: dzongjuk-secrets } }]
+          readinessProbe: { httpGet: { path: /health/ready, port: 8003 }, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8003 }, periodSeconds: 15 }
+          resources: { requests: { cpu: 200m, memory: 384Mi }, limits: { cpu: 1500m, memory: 1Gi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: assessment-content-service }
+spec: { selector: { app: assessment-content-service }, ports: [{ port: 8003, targetPort: 8003 }] }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: assessment-content-service }
+automountServiceAccountToken: false
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: assessment-content-service }
+spec: { minAvailable: 1, selector: { matchLabels: { app: assessment-content-service } } }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: assessment-content-service }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: assessment-content-service }
+  minReplicas: 2
+  maxReplicas: 6
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 60 } } }]

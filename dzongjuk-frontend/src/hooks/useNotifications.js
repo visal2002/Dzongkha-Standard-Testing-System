@@ -1,3 +1,9 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
 /**
  * @fileoverview useNotifications — Notification data hook
  *
@@ -28,7 +34,7 @@ export function useNotifications() {
     try {
       setLoading(true);
       const result = await notificationService.getUserNotifications(user.id);
-      setNotifications(result?.data ?? []);
+      setNotifications((result?.data ?? []).map(item => ({ ...item, read: Boolean(item.readAt), type: notificationType(item.eventType) })));
     } catch {
       // Silently fail — notifications are non-critical
     } finally {
@@ -74,6 +80,13 @@ export function useNotifications() {
     markAllAsRead,
     refresh: fetchNotifications,
   };
+}
+
+function notificationType(eventType = '') {
+  if (eventType.includes('Rejected') || eventType.includes('Revoked') || eventType.includes('Absent')) return 'error';
+  if (eventType.includes('Returned') || eventType.includes('Waitlisted') || eventType.includes('Revision')) return 'warning';
+  if (eventType.includes('Verified') || eventType.includes('Issued') || eventType.includes('Completed')) return 'success';
+  return 'info';
 }
 
 export default useNotifications;

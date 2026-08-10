@@ -1,3 +1,9 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Fingerprint, Monitor, Award, ShieldCheck } from 'lucide-react';

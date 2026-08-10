@@ -1,0 +1,11 @@
+{
+  "git.enabled": true,
+  "git.autofetch": true,
+  "git.openRepositoryInParentFolders": "never",
+  "explorer.compactFolders": false,
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true
+  },
+  "typescript.tsdk": "backend/node_modules/typescript/lib"
+}

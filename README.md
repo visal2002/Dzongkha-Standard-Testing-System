@@ -1,13 +1,14 @@
-# 🏰 Dzongjuk (DSTS) Frontend
+# Dzongjuk - Dzongkha Standard Testing System
+
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![React](https://img.shields.io/badge/React-19-61dafb.svg?logo=react)
 ![Vite](https://img.shields.io/badge/Vite-6-646cff.svg?logo=vite)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind-4-38b2ac.svg?logo=tailwind-css)
 
-> **Dzongjuk** is a modern, polished frontend application for the **Dzongkha Standard Testing System (DSTS)**, developed for the Department of Culture and Dzongkha Development (DCDD) in Bhutan.
+> **Dzongjuk** is the frontend and microservice backend for the **Dzongkha Standard Testing System (DSTS)**, developed for the Department of Culture and Dzongkha Development (DCDD) in Bhutan.
 
-It provides a secure, role-based administration portal covering the entire examination lifecycle — from candidate registration and verification, to scoring, appeals, certificate generation, and system administration. The frontend is **fully refactored for backend integration**: all data flows through a centralized `src/services/` layer and a `useApi` hook, with mock responses in `src/services/api.js` that are ready to be replaced with real API endpoints.
+It provides a secure, role-based administration portal covering the examination lifecycle from registration and verification through scoring, appeals, encrypted certificate generation, and notifications. Live workflows use the versioned APIs in `backend/`; mock responses remain available only as an explicit frontend demonstration mode. Each backend microservice owns an independent PostgreSQL database so a bounded feature can be deployed, retained, or removed without deleting another service's persistence.
 
 ---
 
@@ -63,24 +64,48 @@ The application presents a complete internal workflow for exam administration. I
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 22+
 - npm or yarn
+- Docker Desktop with Docker Compose
 
 ### Installation
 
-1. Clone the repository and install dependencies:
+From the repository root, the common development commands are:
+
+```bash
+npm run backend:up
+npm run dev
+```
+
+`npm start` is also an alias for the frontend development server. Keep the backend containers running while using the frontend.
+
+1. Configure and start the backend:
+   ```bash
+   cd backend
+   cp .env.example .env
+   # Replace every placeholder and generate local encryption/signing keys.
+   docker compose up --build
+   ```
+
+   Compose creates and migrates eight service-owned databases before starting the APIs. See `backend/database/README.md` for ownership and removal rules.
+
+2. Install frontend dependencies and enable live APIs:
    ```bash
    cd dzongjuk-frontend
    npm install
+   cp .env.example .env.local
+   # Set VITE_USE_MOCK_DATA=false in .env.local.
    ```
 
-2. Start the development server:
+3. Start the development server:
    ```bash
    npm run dev
    ```
 
-3. Open the app in your browser:
+4. Open the app in your browser:
    [http://localhost:5000](http://localhost:5000)
+
+The API gateway runs at `http://localhost:8000`. Backend implementation evidence and unresolved external decisions are documented in `backend/docs/IMPLEMENTATION-STATUS.md`.
 
 ### Building for Production
 

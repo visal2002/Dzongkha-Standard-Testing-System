@@ -1,3 +1,9 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
 /**
  * @fileoverview DZONGJUK (DSTS) — Axios API Client
  *
@@ -27,6 +33,7 @@ const DEBUG = import.meta.env.VITE_API_DEBUG === 'true';
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -58,9 +65,11 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     const status = error?.response?.status;
+    const apiError = error?.response?.data?.error;
     const message =
+      apiError?.message ||
       error?.response?.data?.message ||
-      error?.response?.data?.error ||
+      (typeof apiError === 'string' ? apiError : null) ||
       error?.message ||
       'Network error. Please check your connection.';
 

@@ -1,0 +1,17 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: dzongjuk-production
+resources: [../../base]
+images:
+  - name: registry.example.gov.bt/dzongjuk/identity-service
+    newTag: production
+  - name: registry.example.gov.bt/dzongjuk/registration-service
+    newTag: production
+  - name: registry.example.gov.bt/dzongjuk/assessment-content-service
+    newTag: production
+  - name: registry.example.gov.bt/dzongjuk/result-service
+    newTag: production

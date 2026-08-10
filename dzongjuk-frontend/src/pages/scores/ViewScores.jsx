@@ -1,120 +1,123 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
+import { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import { BarChart3, Award } from 'lucide-react';
+import { AlertCircle, BarChart3 } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import DataTable from '../../components/ui/Table';
 import { StatusBadge } from '../../components/ui/Badge';
+import { useAuth } from '../../context/AuthContext';
 import { scoreService } from '../../services/scores';
-import { useApi } from '../../hooks/useApi';
 
 const columnHelper = createColumnHelper();
 
-const getBandLevel = (avg) => {
-  if (avg >= 8.5) return { level: 'C2', color: 'text-purple-400' };
-  if (avg >= 7.0) return { level: 'C1', color: 'text-blue-400' };
-  if (avg >= 5.5) return { level: 'B2', color: 'text-teal-400' };
-  if (avg >= 4.0) return { level: 'B1', color: 'text-emerald-400' };
-  if (avg >= 2.5) return { level: 'A2', color: 'text-amber-400' };
-  return { level: 'A1', color: 'text-red-400' };
+const asNumber = value => Number(value ?? 0);
+
+const normalizeResult = result => {
+  const version = result.score || {};
+  const values = version.scores || result.draftScores || {};
+  return {
+    id: result.id,
+    applicationId: result.applicationId,
+    examId: result.examId,
+    writing: asNumber(values.WRITING ?? values.writing),
+    reading: asNumber(values.READING ?? values.reading),
+    listening: asNumber(values.LISTENING ?? values.listening),
+    speaking: asNumber(values.SPEAKING ?? values.speaking),
+    overall: asNumber(version.overallScore),
+    bandLabel: version.bandLabel || 'Pending',
+    cefrLevel: version.cefrLevel || 'Pending',
+    status: result.status,
+    publishedAt: result.publishedAt || version.createdAt,
+  };
 };
 
-const ScoreCell = ({ value }) => {
-  const color = value >= 7 ? 'text-emerald-400' : value >= 5 ? 'text-amber-400' : 'text-red-400';
-  return <span className={`font-semibold text-sm ${color}`}>{value.toFixed(1)}</span>;
-};
+const ScoreCell = ({ value }) => (
+  <span className="font-semibold text-sm text-text-primary">{value.toFixed(2)}</span>
+);
 
 export default function ViewScores() {
-  const { data: bandScoresData, loading } = useApi(scoreService.getAll);
-  const bandScores = bandScoresData || [];
-  const columns = [
-    columnHelper.accessor('registrationNumber', {
-      header: 'Reg. Number',
-      cell: i => <span className="font-mono text-xs font-medium text-brand-gold">{i.getValue()}</span>
-    }),
-    columnHelper.accessor('testTakerName', {
-      header: 'Test Taker',
-      cell: i => (
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xs font-bold shrink-0">{i.getValue()[0]}</div>
-          <p className="text-xs font-medium text-text-primary">{i.getValue()}</p>
-        </div>
-      )
-    }),
-    columnHelper.accessor('writing', { header: 'Writing', cell: i => <ScoreCell value={i.getValue()} /> }),
-    columnHelper.accessor('reading', { header: 'Reading', cell: i => <ScoreCell value={i.getValue()} /> }),
-    columnHelper.accessor('listening', { header: 'Listening', cell: i => <ScoreCell value={i.getValue()} /> }),
-    columnHelper.accessor('speaking', { header: 'Speaking', cell: i => <ScoreCell value={i.getValue()} /> }),
-    columnHelper.accessor('average', {
-      header: 'Average',
-      cell: i => {
-        const { level, color } = getBandLevel(i.getValue());
-        return (
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-text-primary">{i.getValue().toFixed(2)}</span>
-            <span className={`text-xs font-bold ${color}`}>{level}</span>
-          </div>
-        );
+  const { user } = useAuth();
+  const [scores, setScores] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        if (user?.role !== 'test_taker') {
+          if (active) setScores([]);
+          return;
+        }
+        const response = await scoreService.getMyScores(user.id);
+        if (active) setScores((response.data || []).map(normalizeResult));
+      } catch (requestError) {
+        if (active) setError(requestError.message || 'Unable to load results.');
+      } finally {
+        if (active) setLoading(false);
       }
+    };
+    load();
+    return () => { active = false; };
+  }, [user?.id, user?.role]);
+
+  const columns = [
+    columnHelper.accessor('applicationId', {
+      header: 'Application',
+      cell: info => <span className="font-mono text-xs font-medium text-brand-gold">{info.getValue()}</span>,
     }),
-    columnHelper.accessor('status', { header: 'Status', cell: i => <StatusBadge status={i.getValue()} /> }),
-    columnHelper.accessor('enteredAt', {
-      header: 'Entered On',
-      cell: i => <span className="text-xs text-text-muted">{new Date(i.getValue()).toLocaleDateString()}</span>
+    columnHelper.accessor('writing', { header: 'Writing', cell: info => <ScoreCell value={info.getValue()} /> }),
+    columnHelper.accessor('reading', { header: 'Reading', cell: info => <ScoreCell value={info.getValue()} /> }),
+    columnHelper.accessor('listening', { header: 'Listening', cell: info => <ScoreCell value={info.getValue()} /> }),
+    columnHelper.accessor('speaking', { header: 'Speaking', cell: info => <ScoreCell value={info.getValue()} /> }),
+    columnHelper.accessor('overall', { header: 'Overall', cell: info => <ScoreCell value={info.getValue()} /> }),
+    columnHelper.accessor('cefrLevel', {
+      header: 'Level',
+      cell: info => {
+        const row = info.row.original;
+        return <span className="text-xs font-semibold text-text-primary">{info.getValue()} / {row.bandLabel}</span>;
+      },
+    }),
+    columnHelper.accessor('status', { header: 'Status', cell: info => <StatusBadge status={info.getValue()} /> }),
+    columnHelper.accessor('publishedAt', {
+      header: 'Published',
+      cell: info => <span className="text-xs text-text-muted">{info.getValue() ? new Date(info.getValue()).toLocaleDateString() : '-'}</span>,
     }),
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Band Scores"
-        subtitle="View published band scores for all test takers"
-        breadcrumbs={[{ label: 'Scores' }, { label: 'View Scores' }]}
+        title={user?.role === 'test_taker' ? 'My Results' : 'Results'}
+        subtitle="Published DSTS examination results"
+        breadcrumbs={[{ label: 'Scores' }, { label: 'View Results' }]}
         icon={<BarChart3 size={18} />}
       />
 
-      {/* Summary */}
-      {loading ? (
-        <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
-      ) : (
-      <>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: 'Total Scored', value: bandScores.length, color: 'text-brand-gold' },
-          { label: 'Avg. Writing', value: (bandScores.reduce((s, b) => s + b.writing, 0) / bandScores.length).toFixed(1), color: 'text-teal-400' },
-          { label: 'Avg. Reading', value: (bandScores.reduce((s, b) => s + b.reading, 0) / bandScores.length).toFixed(1), color: 'text-blue-400' },
-          { label: 'Avg. Speaking', value: (bandScores.reduce((s, b) => s + b.speaking, 0) / bandScores.length).toFixed(1), color: 'text-emerald-400' },
-        ].map(s => (
-          <div key={s.label} className="bg-surface-card border border-surface-border rounded-xl p-4">
-            <p className="text-xs text-text-muted mb-1">{s.label}</p>
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
+      <div className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-text-secondary">
+        <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-400" />
+        <p>Scores and labels are displayed exactly as calculated by the backend's active approved rule. The official DSTS scoring formula and band mapping still require written confirmation.</p>
       </div>
 
-      <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <DataTable data={bandScores} columns={columns} searchPlaceholder="Search by name or reg. number..." onExport={() => {}} />
-      </div>
-      </>
+      {error && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">{error}</div>
       )}
 
-      {/* CEFR Guide */}
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <p className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2"><Award size={15} className="text-brand-gold" /> CEFR Band Reference</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          {[
-            { level: 'C2', range: '8.5–9.0', label: 'Mastery', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
-            { level: 'C1', range: '7.0–8.0', label: 'Effective Op.', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
-            { level: 'B2', range: '5.5–6.5', label: 'Vantage', color: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
-            { level: 'B1', range: '4.0–5.0', label: 'Threshold', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-            { level: 'A2', range: '2.5–3.5', label: 'Waystage', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-            { level: 'A1', range: '1.0–2.0', label: 'Breakthrough', color: 'text-red-400 bg-red-500/10 border-red-500/20' },
-          ].map(b => (
-            <div key={b.level} className={`p-2.5 rounded-xl border text-center ${b.color}`}>
-              <p className="text-lg font-bold">{b.level}</p>
-              <p className="text-[10px] opacity-80">{b.range}</p>
-              <p className="text-[10px] opacity-70 mt-0.5">{b.label}</p>
-            </div>
-          ))}
-        </div>
+        <DataTable
+          data={scores}
+          columns={columns}
+          loading={loading}
+          searchPlaceholder="Search by application ID..."
+          emptyMessage={user?.role === 'test_taker' ? 'No published results are available yet' : 'Open an examination to view its committee results'}
+        />
       </div>
     </div>
   );

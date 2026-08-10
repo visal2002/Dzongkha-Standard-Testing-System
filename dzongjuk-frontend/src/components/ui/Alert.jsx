@@ -1,3 +1,9 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
 import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react';
 import { useState } from 'react';
 
