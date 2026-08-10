@@ -22,8 +22,9 @@ function CertificateCard({ cert }) {
   const [showQR, setShowQR] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const scores = cert.scoreSnapshot?.scores ?? {};
-  const active = cert.status === 'ACTIVE' && new Date(cert.validUntil) > new Date();
-  const verificationUrl = `${API_BASE_URL}/public/certificates/verify/${cert.verificationToken}`;
+  const status = String(cert.status || 'UNKNOWN').toUpperCase();
+  const active = status === 'ACTIVE' && new Date(cert.validUntil) > new Date();
+  const verificationUrl = `${API_BASE_URL}/public/certificates/verify/${encodeURIComponent(cert.verificationToken || '')}`;
 
   const download = async () => {
     try {
@@ -66,7 +67,7 @@ function CertificateCard({ cert }) {
               <p className="text-base font-bold text-text-primary">{cert.holderName}</p>
               <p className="text-xs text-text-muted mt-0.5">{cert.registrationNumber}</p>
             </div>
-            <StatusBadge status={cert.status.toLowerCase()} />
+            <StatusBadge status={status.toLowerCase()} />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -122,11 +123,9 @@ export default function CertificateList() {
       .catch(error => toast.error(error.message || 'Could not load certificates.')).finally(() => setLoading(false));
   }, []);
 
-  const filtered = certificates.filter(cert =>
-    cert.holderName.toLowerCase().includes(search.toLowerCase()) ||
-    cert.registrationNumber.toLowerCase().includes(search.toLowerCase()) ||
-    cert.certificateNumber.toLowerCase().includes(search.toLowerCase())
-  );
+  const searchTerm = search.trim().toLowerCase();
+  const filtered = certificates.filter(cert => [cert.holderName, cert.registrationNumber, cert.certificateNumber]
+    .some(value => String(value || '').toLowerCase().includes(searchTerm)));
 
   const verify = async () => {
     const token = verifyInput.trim().split('/').filter(Boolean).at(-1);
@@ -151,7 +150,9 @@ export default function CertificateList() {
         </div>
         {verifyResult !== undefined && (
           <div className={`mt-3 p-3 rounded-xl border text-sm ${verifyResult?.valid ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-            {verifyResult ? `${verifyResult.certificateNumber}: ${verifyResult.status}. Valid until ${new Date(verifyResult.validUntil).toLocaleDateString()}.` : 'No certificate matches this signed verification token.'}
+            {verifyResult?.valid
+              ? `${verifyResult.certificateNumber}: ${verifyResult.status}. Valid until ${new Date(verifyResult.validUntil).toLocaleDateString()}.`
+              : 'No active certificate matches this signed verification token.'}
           </div>
         )}
       </div>
