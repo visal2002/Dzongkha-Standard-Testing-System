@@ -7,7 +7,7 @@
 
 > **Dzongjuk** is a modern, polished frontend application for the **Dzongkha Standard Testing System (DSTS)**, developed for the Department of Culture and Dzongkha Development (DCDD) in Bhutan.
 
-It provides a secure, role-based administration portal covering the entire examination lifecycle — from candidate registration and verification, to scoring, appeals, and certificate generation. Currently, there is no backend — all data is served from `src/data/mockData.js` with simulated async delays.
+It provides a secure, role-based administration portal covering the entire examination lifecycle — from candidate registration and verification, to scoring, appeals, certificate generation, and system administration. Currently, there is no backend — all data is served from `src/data/mockData.js` with simulated async delays.
 
 ---
 
@@ -17,8 +17,9 @@ It provides a secure, role-based administration portal covering the entire exami
 - [Tech Stack](#-tech-stack)
 - [Getting Started](#-getting-started)
 - [Project Architecture](#-project-architecture)
-- [Available Roles](#-available-roles)
-- [Developer Notes & Preferences](#-developer-notes--preferences)
+- [Available Roles & Navigation](#-available-roles--navigation)
+- [Demo Accounts](#-demo-accounts)
+- [Developer Notes & Design Tokens](#-developer-notes--design-tokens)
 - [Performance & Security](#-performance--security)
 - [License](#-license)
 
@@ -26,19 +27,22 @@ It provides a secure, role-based administration portal covering the entire exami
 
 ## 📖 Overview
 
-The application presents a complete internal workflow for exam administration. It features a modern interface, role-based access control, responsive layouts, and robust themed styling (Dark/Light). It is designed to be production-ready and easily integrable with a backend API.
+The application presents a complete internal workflow for exam administration. It features a modern dark-first interface, role-based access control (RBAC), full-screen responsive layouts, profile picture uploads, and robust themed styling (Dark/Light). It is designed to be production-ready and easily integrable with a backend API.
 
 ---
 
 ## ✨ Key Features
 
-- 🔐 **Role-Based Access Control (RBAC):** Custom dashboards for System Admin, DCDD Admin, Exam Heads, Committee roles, and Test Takers.
-- 📝 **Registration Workflow:** Multi-step wizard forms with Zod validation for robust application submissions.
-- ✅ **Verification & Attendance:** Streamlined data tables for application verification and test day attendance tracking.
-- 📊 **Scoring & Appeals:** Secure band score entry and re-evaluation appeal workflows.
-- 🎓 **Certificates:** Automated certificate generation with embedded QR codes.
+- 🔐 **Role-Based Access Control (RBAC):** Custom dashboards and navigation for 6 distinct roles.
+- 📝 **Registration Workflow:** Multi-step forms with Zod validation for robust application submissions.
+- ✅ **Verification & Attendance:** Streamlined data tables for application verification and test day attendance.
+- 📊 **Scoring & Appeals:** Secure band score entry and re-evaluation appeal workflows with chief approval.
+- 🎓 **Certificates:** Automated certificate generation with embedded QR codes and PDF export.
 - 📈 **Analytics & Reporting:** Interactive charts (Recharts) for real-time system metrics.
-- 🌓 **Theming:** Full dark/light mode support using custom Tailwind configuration.
+- 🌓 **Theming:** Full dark/light mode support using custom Tailwind CSS v4 design tokens.
+- 🖥️ **Technical Settings:** Full IT/infrastructure configuration module for System Administrator (16 sections).
+- ⚙️ **Operational Settings:** Exam business rules, fees, certificates, notifications & workflow for DCDD Admin (7 sections).
+- 👤 **Profile & Settings:** Profile picture upload, password change, and system contact info management for all roles.
 
 ---
 
@@ -51,6 +55,7 @@ The application presents a complete internal workflow for exam administration. I
 | **Styling** | Tailwind CSS v4, Framer Motion v11, Lucide React |
 | **Forms** | React Hook Form, Zod |
 | **Data Viz** | Recharts, TanStack Table v8 |
+| **PDF** | @react-pdf/renderer v4 |
 | **Utils** | React Hot Toast, qrcode.react |
 
 ---
@@ -58,15 +63,15 @@ The application presents a complete internal workflow for exam administration. I
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 
 ### Installation
 
-1. Clone the repository and install dependencies. **Note: `--legacy-peer-deps` is required** due to React 19 peer dependency conflicts with `@react-pdf/renderer`:
+1. Clone the repository and install dependencies:
    ```bash
    cd dzongjuk-frontend
-   npm install --legacy-peer-deps
+   npm install
    ```
 
 2. Start the development server:
@@ -79,7 +84,6 @@ The application presents a complete internal workflow for exam administration. I
 
 ### Building for Production
 
-To create an optimized production build (includes chunk splitting and lazy loading):
 ```bash
 npm run build
 npm run preview
@@ -92,38 +96,84 @@ npm run preview
 ```text
 dzongjuk-frontend/
 ├── src/
-│   ├── components/       # Reusable UI primitives (Button, Input, Modal, Table)
-│   │   ├── layout/       # Shell, Sidebar, Headers
-│   │   └── ui/           # Core design system components
-│   ├── context/          # React Context (AuthContext, ThemeContext)
-│   ├── data/             # mockData.js — all mock data
-│   ├── pages/            # Feature-driven route modules
-│   │   ├── admin/        # System configuration
-│   │   ├── auth/         # Login & authentication flows
-│   │   ├── dashboard/    # Role-specific dashboard variants
-│   │   └── ...           # (registration, scores, appeals, certificates, reports)
-│   ├── App.jsx           # Routing configuration & Lazy loading
-│   └── main.jsx          # Application entry point
+│   ├── components/
+│   │   ├── layout/         # AppLayout, Sidebar, Header
+│   │   └── ui/             # Button, Input, Modal, Table, Badge, Card, Tabs, Alert, PageHeader
+│   ├── context/            # AuthContext, ThemeContext
+│   ├── data/               # mockData.js — all mock data
+│   ├── pages/
+│   │   ├── admin/          # UserManagement, RoleManagement, MasterConfiguration, TechnicalSettings
+│   │   ├── auth/           # LoginPage
+│   │   ├── appeals/        # AppealList, SubmitAppeal
+│   │   ├── attendance/     # AttendanceList
+│   │   ├── certificates/   # CertificateList
+│   │   ├── dashboard/      # AdminDashboard, DCDDDashboard, ExamHeadDashboard,
+│   │   │                   # CommitteeDashboard, ChiefDashboard, TestTakerDashboard
+│   │   ├── dcdd/           # OperationalSettings (NEW)
+│   │   ├── notifications/  # Notifications
+│   │   ├── questions/      # QuestionPapers, UploadQuestionPaper, SamplePapers
+│   │   ├── registration/   # RegistrationWindows, ApplicationForm, MyApplications
+│   │   ├── reports/        # Reports
+│   │   ├── scores/         # ScoreEntry, ViewScores, ScoreSummary, CommitteeSetup
+│   │   ├── verification/   # VerificationList
+│   │   ├── ProfilePage.jsx
+│   │   └── SettingsPage.jsx
+│   ├── services/           # auth.js — API service stubs
+│   ├── App.jsx             # Routing configuration & lazy loading
+│   └── main.jsx            # Application entry point
 ```
 
 ---
 
-## 👥 Available Roles
+## 👥 Available Roles & Navigation
 
-Use the following demo credentials to explore different features. See the Demo Accounts table below for exact CIDs.
+### System Administrator
+> Manages IT infrastructure, security, and platform administration.
 
-Role examples:
+| Nav Item | Route |
+|---|---|
+| Dashboard | `/dashboard` |
+| User Management | `/admin/users` |
+| Role Management | `/admin/roles` |
+| Technical Settings | `/admin/technical` |
+| Audit Logs | `/admin/technical` |
+| System Monitoring | `/admin/technical` |
 
-- **System Admin:** Full system configuration, user management
-- **DCDD Admin:** Verification, attendance, masters
-- **Exam Head:** Exam window management, question paper uploads
-- **Committee Head:** Score entry, committee constitution
-- **Chief Executive:** Final approval for appeals and certificates
-- **Test Taker:** Registration, view scores, submit appeals, download certificates
+### DCDD Administrator
+> Manages examination operations, business rules, and certifications.
+
+| Nav Item | Route |
+|---|---|
+| Dashboard | `/dashboard` |
+| Registration → Exam Windows | `/registration/windows` |
+| Registration → Applications | `/registration/applications` |
+| Application Verification | `/verification` |
+| Attendance | `/attendance` |
+| Examination → Config | `/masters` |
+| Examination → Score Summary | `/scores/summary` |
+| Question Bank → Sample Papers | `/questions/samples` |
+| Certificate Management | `/certificates` |
+| Reports | `/reports` |
+| Notifications | `/notifications` |
+| **Operational Settings** | `/dcdd/operational` |
+
+### Exam Head
+- Dashboard, Upload Papers, My Uploads, Sample Papers, Score Summary, Reports
+
+### Committee Head / Member
+- Dashboard, Committee Setup, Band Score Entry, Score Summary, Appeals, Reports
+
+### Chief Executive
+- Dashboard, Appeal Approvals, Reports
+
+### Test Taker
+- Dashboard, Register for Exam, My Applications, My Results, Certificates, Submit Appeal, My Appeals, Sample Papers
+
+---
 
 ## 🧪 Demo Accounts
 
-For the demo environment, log in using your **CID / User ID** and password `password`.
+Log in using CID / User ID and password `password`.
 
 | Role | CID / User ID | Password |
 |---|---|---|
@@ -134,27 +184,42 @@ For the demo environment, log in using your **CID / User ID** and password `pass
 | Chief Executive | `11105005005` | password |
 | Test Taker | `11106006006` | password |
 
-> **Note:** Email login is disabled. Use only the CID above to sign in.
+> **Note:** Use only the CID above to sign in. Email login is for display only.
 
 ---
 
-## 📝 Developer Notes & Preferences
+## 📝 Developer Notes & Design Tokens
 
-- **Design Tokens:** 
-  - **Saffron Gold**: `#D4830A` — primary brand color
-  - **Deep Navy**: `#1B2A4A` — dark surface
-  - **Teal**: `#0D9488` — secondary accent
-- **Dark Mode:** The application uses a dark-first design. Light mode is toggled via the `.light` class on the `<html>` tag.
-- **Component Imports:** Always import `Select` from `../../components/ui/Input` (not the old Select.jsx).
-- **Routing:** All role-specific pages dispatch from `Dashboard.jsx` based on `user.role`.
+### Brand Color Palette
+
+| Token | Value | Usage |
+|---|---|---|
+| `--color-brand-gold` | `#F59E0B` | Primary accent — buttons, active states, highlights |
+| `--color-brand-gold-light` | `#FCD34D` | Hover states |
+| `--color-brand-gold-dark` | `#D97706` | Pressed/dark variant |
+| `--color-surface-bg` | `#0F1629` | Page background |
+| `--color-surface-card` | `#1A2540` | Card backgrounds |
+| `--color-brand-navy` | `#1B2A4A` | Dark navy surface |
+| `--color-brand-teal` | `#0D9488` | Secondary accent |
+
+### Architecture Notes
+
+- **Dark Mode First:** Light mode toggled via `.light` class on `<html>`.
+- **Routing:** All role-specific dashboards dispatch from `Dashboard.jsx` via `user.role`.
+- **Mock Persistence:** Profile picture and settings use `localStorage` keys (`dsts_user`, `system_contact_info`, `ts_*`, `ops_*`) for demo state.
+- **Component Imports:** Always import `Select` from `../../components/ui/Input`.
+- **Settings Separation:**
+  - *System Admin* → `/admin/technical` — infrastructure, security, integrations, backup, audit, API, QR, performance.
+  - *DCDD Admin* → `/dcdd/operational` — exam dates, fees, certificate templates, notification messages, workflow, dashboard widgets.
 
 ---
 
 ## ⚡ Performance & Security
 
-- **Code Splitting:** Route-level `React.lazy()` and `Suspense` implementation.
-- **Vendor Chunking:** Dedicated chunks for React, charting libraries, tables, and forms configured via Rollup to ensure minimal initial bundle size.
-- **Route Guards:** Robust `PrivateRoute` wrappers that restrict access based on authenticated role permissions.
+- **Code Splitting:** Route-level `React.lazy()` and `Suspense` for all feature pages.
+- **Vendor Chunking:** Dedicated chunks for React, Recharts, TanStack Table, forms, Framer Motion, and PDF renderer via Rollup.
+- **Route Guards:** `PrivateRoute` wrappers restrict access based on authenticated role permissions.
+- **Build Output:** ~13s clean Vite build, gzipped bundle ~129 KB (main chunk).
 
 ---
 
