@@ -1,0 +1,90 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+@Entity('permissions')
+export class PermissionEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Index({ unique: true }) @Column({ length: 120 }) name: string;
+  @Column({ length: 240, default: '' }) description: string;
+}
+
+@Entity('roles')
+export class RoleEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Index({ unique: true }) @Column({ length: 64 }) code: string;
+  @Column({ length: 120 }) name: string;
+  @Column({ default: false }) administrative: boolean;
+  @Column({ default: true }) active: boolean;
+  @ManyToMany(() => PermissionEntity, { eager: true })
+  @JoinTable({ name: 'role_permissions' })
+  permissions: PermissionEntity[];
+}
+
+@Entity('users')
+export class UserEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Index({ unique: true }) @Column({ length: 254 }) email: string;
+  @Index({ unique: true }) @Column({ type: 'varchar', length: 32, nullable: true }) cid: string | null;
+  @Column({ length: 160 }) fullName: string;
+  @Column({ type: 'varchar', select: false, nullable: true }) passwordHash: string | null;
+  @Column({ default: 'ACTIVE' }) status: 'ACTIVE' | 'DISABLED' | 'LOCKED';
+  @Column({ default: 0 }) failedLoginCount: number;
+  @Column({ type: 'timestamptz', nullable: true }) lockedUntil: Date | null;
+  @Column({ type: 'timestamptz', nullable: true }) ndiLinkedAt: Date | null;
+  @ManyToMany(() => RoleEntity, { eager: true })
+  @JoinTable({ name: 'user_roles' })
+  roles: RoleEntity[];
+  @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updatedAt: Date;
+}
+
+@Entity('sessions')
+export class SessionEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @ManyToOne(() => UserEntity, { eager: true, onDelete: 'CASCADE' }) user: UserEntity;
+  @Index({ unique: true }) @Column({ length: 64 }) refreshTokenHash: string;
+  @Column({ length: 16 }) assurance: 'LOCAL' | 'NDI' | 'MFA';
+  @Column({ type: 'timestamptz' }) lastActivityAt: Date;
+  @Column({ type: 'timestamptz' }) expiresAt: Date;
+  @Column({ type: 'timestamptz', nullable: true }) revokedAt: Date | null;
+  @Column({ type: 'varchar', length: 64, nullable: true }) ipHash: string | null;
+  @Column({ type: 'varchar', length: 512, nullable: true }) userAgent: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
+}
+
+@Entity('login_attempts')
+export class LoginAttemptEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Index() @Column({ length: 254 }) identifier: string;
+  @Column() success: boolean;
+  @Column({ type: 'varchar', length: 64, nullable: true }) ipHash: string | null;
+  @Column({ type: 'varchar', length: 64, nullable: true }) reason: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) occurredAt: Date;
+}
+
+@Entity('audit_events')
+export class AuditEventEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Index() @Column({ length: 80 }) action: string;
+  @Column({ length: 80 }) resourceType: string;
+  @Index() @Column({ type: 'varchar', length: 80, nullable: true }) resourceId: string | null;
+  @Column({ type: 'uuid', nullable: true }) actorUserId: string | null;
+  @Column({ length: 64 }) requestId: string;
+  @Column({ type: 'jsonb', default: {} }) safeData: Record<string, unknown>;
+  @CreateDateColumn({ type: 'timestamptz' }) occurredAt: Date;
+}

@@ -1,0 +1,121 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+name: dzongjuk
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_USER: dzongjuk
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-development-only}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U dzongjuk"], interval: 10s, timeout: 5s, retries: 10 }
+  database-provisioner:
+    image: postgres:17.6-alpine
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: dzongjuk
+      PGPASSWORD: ${DATABASE_PASSWORD:-development-only}
+      IDENTITY_DATABASE_NAME: ${IDENTITY_DATABASE_NAME:-dzongjuk_identity}
+      REGISTRATION_DATABASE_NAME: ${REGISTRATION_DATABASE_NAME:-dzongjuk_registration}
+      ASSESSMENT_DATABASE_NAME: ${ASSESSMENT_DATABASE_NAME:-dzongjuk_assessment}
+      RESULT_DATABASE_NAME: ${RESULT_DATABASE_NAME:-dzongjuk_result}
+      APPEAL_CERTIFICATE_DATABASE_NAME: ${APPEAL_CERTIFICATE_DATABASE_NAME:-dzongjuk_appeal_certificate}
+      NOTIFICATION_DATABASE_NAME: ${NOTIFICATION_DATABASE_NAME:-dzongjuk_notification}
+      REPORTING_DATABASE_NAME: ${REPORTING_DATABASE_NAME:-dzongjuk_reporting}
+      INTEGRATION_DATABASE_NAME: ${INTEGRATION_DATABASE_NAME:-dzongjuk_integration}
+    volumes:
+      - ./database/provision-service-databases.sh:/provision-service-databases.sh:ro
+      - ./database/migrations:/migrations:ro
+    command: ["sh", "/provision-service-databases.sh"]
+    depends_on: { postgres: { condition: service_healthy } }
+  redis:
+    image: redis:8.2-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis-data:/data"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 10s, timeout: 3s, retries: 10 }
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    environment: { RABBITMQ_DEFAULT_USER: dzongjuk, RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD:-development-only}" }
+    volumes: ["rabbitmq-data:/var/lib/rabbitmq"]
+    healthcheck: { test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"], interval: 10s, timeout: 5s, retries: 10 }
+  identity-service:
+    build: { context: ., args: { SERVICE: identity-service } }
+    env_file:
+      - path: .env
+        required: false
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${IDENTITY_DATABASE_NAME:-dzongjuk_identity}", IDENTITY_PORT: 8001 }
+    depends_on: { database-provisioner: { condition: service_completed_successfully }, redis: { condition: service_healthy } }
+  registration-service:
+    build: { context: ., args: { SERVICE: registration-service } }
+    env_file:
+      - path: .env
+        required: false
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${REGISTRATION_DATABASE_NAME:-dzongjuk_registration}", REGISTRATION_PORT: 8002 }
+    depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
+  assessment-content-service:
+    build: { context: ., args: { SERVICE: assessment-content-service } }
+    env_file:
+      - path: .env
+        required: false
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${ASSESSMENT_DATABASE_NAME:-dzongjuk_assessment}", ASSESSMENT_PORT: 8003, S3_ENDPOINT: "http://minio:9000" }
+    depends_on: { database-provisioner: { condition: service_completed_successfully }, minio: { condition: service_started } }
+  result-service:
+    build: { context: ., args: { SERVICE: result-service } }
+    env_file:
+      - path: .env
+        required: false
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${RESULT_DATABASE_NAME:-dzongjuk_result}", RESULT_PORT: 8004 }
+    depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
+  appeal-certificate-service:
+    build: { context: ., args: { SERVICE: appeal-certificate-service } }
+    env_file:
+      - path: .env
+        required: false
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${APPEAL_CERTIFICATE_DATABASE_NAME:-dzongjuk_appeal_certificate}", APPEAL_PORT: 8005, RESULT_SERVICE_URL: "http://result-service:8004/api/v1", REGISTRATION_SERVICE_URL: "http://registration-service:8002/api/v1", S3_ENDPOINT: "http://minio:9000" }
+    depends_on: { database-provisioner: { condition: service_completed_successfully }, minio: { condition: service_started }, result-service: { condition: service_started }, registration-service: { condition: service_started } }
+  notification-service:
+    build: { context: ., args: { SERVICE: notification-service } }
+    env_file:
+      - path: .env
+        required: false
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${NOTIFICATION_DATABASE_NAME:-dzongjuk_notification}", NOTIFICATION_PORT: 8006 }
+    depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
+  reporting-service:
+    build: { context: ., args: { SERVICE: reporting-service } }
+    env_file:
+      - path: .env
+        required: false
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${REPORTING_DATABASE_NAME:-dzongjuk_reporting}", REPORTING_PORT: 8007 }
+    depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
+  integration-service:
+    build: { context: ., args: { SERVICE: integration-service } }
+    env_file:
+      - path: .env
+        required: false
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${INTEGRATION_DATABASE_NAME:-dzongjuk_integration}", INTEGRATION_PORT: 8008 }
+    depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
+  gateway:
+    image: nginx:1.29-alpine
+    ports: ["8000:8000"]
+    volumes: ["./deploy/docker/nginx.conf:/etc/nginx/nginx.conf:ro"]
+    depends_on: [identity-service, registration-service, assessment-content-service, result-service, appeal-certificate-service, notification-service, reporting-service, integration-service]
+  minio:
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z
+    command: server /data --console-address :9001
+    environment: { MINIO_ROOT_USER: dzongjuk, MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-development-only-change-me}" }
+    volumes: ["object-data:/data"]
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
+  object-data:
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${DOCKER_SUBNET:-192.168.240.0/24}

@@ -1,3 +1,9 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
 /**
  * @fileoverview Scores Service
  * Band score entry and retrieval for examination committees.
@@ -19,7 +25,7 @@ export const scoreService = {
    */
   getByExam: async (examId) => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(bandScores.filter(s => s.examId === examId)); }
-    const { data } = await apiClient.get(`/scores?examId=${examId}`);
+    const { data } = await apiClient.get(`/exams/${examId}/scores`);
     return data;
   },
 
@@ -34,9 +40,11 @@ export const scoreService = {
       const userScores = bandScores.filter(s => userApps.some(a => a.id === s.applicationId));
       return mockResponse(userScores);
     }
-    const { data } = await apiClient.get('/scores/my');
+    const { data } = await apiClient.get('/results/my');
     return data;
   },
+
+  getMyScore: async (userId) => scoreService.getMyScores(userId),
 
   /**
    * Submit band scores for a batch of applicants.
@@ -45,8 +53,15 @@ export const scoreService = {
    */
   submit: async (examId, scores) => {
     if (USE_MOCK) { await mockDelay(800); return mockResponse(scores, 'Scores submitted.'); }
-    const { data } = await apiClient.post('/scores', { examId, scores });
-    return data;
+    const responses = await Promise.all(scores.map(async ({ applicationId, ...values }) => {
+      const { data: draftEnvelope } = await apiClient.put(`/score-sheets/${applicationId}/draft`, values);
+      const { data: submitEnvelope } = await apiClient.post(
+        `/score-sheets/${draftEnvelope.data.id}/submit`, null,
+        { headers: { 'Idempotency-Key': globalThis.crypto.randomUUID() } },
+      );
+      return submitEnvelope.data;
+    }));
+    return { data: responses };
   },
 
   /**
@@ -66,7 +81,7 @@ export const scoreService = {
    */
   publish: async (examId) => {
     if (USE_MOCK) { await mockDelay(600); return mockResponse({ examId }, 'Scores published.'); }
-    const { data } = await apiClient.post(`/scores/${examId}/publish`);
+    const { data } = await apiClient.post(`/exams/${examId}/declare-results`);
     return data;
   },
 
@@ -76,7 +91,7 @@ export const scoreService = {
    */
   getCommittee: async (examId) => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(committeeMembers.filter(m => m.examId === examId)); }
-    const { data } = await apiClient.get(`/scores/${examId}/committee`);
+    const { data } = await apiClient.get(`/exams/${examId}/committee`);
     return data;
   },
 
@@ -87,7 +102,8 @@ export const scoreService = {
    */
   saveCommittee: async (examId, userIds) => {
     if (USE_MOCK) { await mockDelay(); return mockResponse({ examId, userIds }); }
-    const { data } = await apiClient.put(`/scores/${examId}/committee`, { userIds });
+    const members = userIds.map((userId, index) => ({ userId, role: index === 0 ? 'HEAD' : 'MEMBER' }));
+    const { data } = await apiClient.put(`/exams/${examId}/committee`, { members });
     return data;
   },
 

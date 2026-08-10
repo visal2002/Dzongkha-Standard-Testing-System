@@ -1,3 +1,9 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
 /* Barrel export for all UI components */
 export { default as Button } from './Button';
 export { default as Badge, StatusBadge } from './Badge';

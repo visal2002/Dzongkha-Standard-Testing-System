@@ -1,3 +1,9 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
 import { useState } from 'react';
 import { Users, Plus, Trash2, Crown, UserCheck } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';

@@ -1,12 +1,16 @@
-import { useState } from 'react';
-import { Bell, CheckCheck, Trash2, Filter } from 'lucide-react';
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
+import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import Badge, { StatusBadge } from '../../components/ui/Badge';
+import { useNotifications } from '../../hooks/useNotifications';
 import { notificationService } from '../../services/notifications';
-import { useApi } from '../../hooks/useApi';
-import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const TYPE_COLORS = {
@@ -17,27 +21,17 @@ const TYPE_COLORS = {
 };
 
 export default function Notifications() {
-  const { user } = useAuth();
-  const { data: apiNotifs, loading, setData: setNotifs } = useApi(notificationService.getAll);
-  const notifs = apiNotifs || [];
+  const { notifications: notifs, unreadCount, markAsRead, markAllAsRead, refresh, loading } = useNotifications();
   const unread = notifs.filter(n => !n.read);
 
   const markAll = async () => {
-    try {
-      await notificationService.markAllRead();
-      setNotifs(prev => prev.map(n => ({ ...n, read: true })));
-      toast.success('All notifications marked as read');
-    } catch {
-      setNotifs(prev => prev.map(n => ({ ...n, read: true })));
-    }
+    await markAllAsRead();
+    toast.success('All notifications marked as read');
   };
 
   const dismiss = async (id) => {
-    try {
-      await notificationService.dismiss(id);
-    } finally {
-      setNotifs(prev => prev.filter(n => n.id !== id));
-    }
+    try { await notificationService.delete(id); await refresh(); }
+    catch (error) { toast.error(error.message || 'Could not archive notification.'); }
   };
 
   return (
@@ -58,12 +52,14 @@ export default function Notifications() {
 
       {unread.length > 0 && (
         <div className="flex items-center gap-2">
-          <Badge variant="gold" dot>{unread.length} unread</Badge>
+          <Badge variant="gold" dot>{unreadCount} unread</Badge>
         </div>
       )}
 
       <div className="space-y-2">
-        {notifs.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-16 text-text-muted">Loading notifications...</div>
+        ) : notifs.length === 0 ? (
           <div className="text-center py-16 text-text-muted">
             <Bell size={40} className="mx-auto mb-3 opacity-20" />
             <p className="text-sm font-medium text-text-primary">No notifications</p>
@@ -90,7 +86,7 @@ export default function Notifications() {
             <div className="flex items-center gap-1 shrink-0">
               {!n.read && (
                 <button
-                  onClick={() => setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))}
+                  onClick={() => markAsRead(n.id)}
                   className="text-[10px] text-text-muted hover:text-text-primary px-2 py-1 rounded transition-colors"
                 >
                   Mark read

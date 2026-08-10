@@ -1,3 +1,7 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
 from PIL import Image
 
 def remove_white(input_path, output_path):

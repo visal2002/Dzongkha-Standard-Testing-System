@@ -1,0 +1,24 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - identity.yaml
+  - registration.yaml
+  - assessment.yaml
+  - result.yaml
+  - network-policy.yaml
+configMapGenerator:
+  - name: dzongjuk-config
+    literals:
+      - NODE_ENV=production
+      - DATABASE_PORT=5432
+      - SESSION_IDLE_MINUTES=15
+      - ASSESSMENT_BUCKET=dzongjuk-assessment
+      - ASSESSMENT_KEY_VERSION=1
+      - MALWARE_SCAN_REQUIRED=true
+      - PRIVILEGED_ASSURANCE_LEVELS=MFA
+generatorOptions:
+  disableNameSuffixHash: true

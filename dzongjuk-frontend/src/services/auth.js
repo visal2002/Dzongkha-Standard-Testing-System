@@ -1,8 +1,35 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
 /**
  * @fileoverview Auth Service
  * Handles login, logout, token refresh, and NDI authentication.
  */
 import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
+
+const decodeClaims = (token) => {
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(payload));
+  } catch {
+    return {};
+  }
+};
+
+const normalizeUser = (user, token) => {
+  const claims = decodeClaims(token);
+  const role = user.roles?.[0] || claims.roles?.[0] || 'test_taker';
+  return {
+    ...user,
+    name: user.fullName,
+    role,
+    roleName: role.replace(/_/g, ' ').replace(/\b\w/g, character => character.toUpperCase()),
+    permissions: claims.permissions || [],
+  };
+};
 
 // Mock user data (preserved as fallback)
 const MOCK_USERS = {
@@ -34,8 +61,9 @@ export const authService = {
     }
 
     try {
-      const { data } = await apiClient.post('/auth/login', { identifier, password });
-      return { success: true, user: data.user, token: data.token };
+      const { data: envelope } = await apiClient.post('/auth/login', { identifier, password });
+      const { accessToken, user } = envelope.data;
+      return { success: true, user: normalizeUser(user, accessToken), token: accessToken };
     } catch (err) {
       return { success: false, error: err.message || 'Login failed.' };
     }
@@ -55,8 +83,8 @@ export const authService = {
     try {
       // In production: redirect to NDI authorization URL
       // The real flow requires a backend-initiated PKCE exchange
-      const { data } = await apiClient.post('/auth/ndi/initiate');
-      window.location.href = data.authorizationUrl;
+      const { data: envelope } = await apiClient.post('/auth/ndi/initiate');
+      window.location.href = envelope.data.authorizationUrl;
       return { success: true }; // Will not reach here due to redirect
     } catch (err) {
       return { success: false, error: err.message || 'NDI service unavailable.' };
@@ -70,8 +98,8 @@ export const authService = {
   refreshToken: async () => {
     if (USE_MOCK) return null;
     try {
-      const { data } = await apiClient.post('/auth/refresh');
-      return { token: data.token };
+      const { data: envelope } = await apiClient.post('/auth/refresh');
+      return { token: envelope.data.accessToken };
     } catch {
       return null;
     }

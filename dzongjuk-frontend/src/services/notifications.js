@@ -1,3 +1,9 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
 /**
  * @fileoverview Notifications Service
  * In-app notification management.
@@ -6,6 +12,8 @@ import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
 import { notifications } from '../data/mockData';
 
 export const notificationService = {
+  getAll: async (limit = 50) => notificationService.getUserNotifications(undefined, limit),
+
   /**
    * Get all notifications for a specific user.
    * @param {string} userId
@@ -40,6 +48,8 @@ export const notificationService = {
     return data;
   },
 
+  markAllRead: async () => notificationService.markAllAsRead(),
+
   /**
    * Delete a notification.
    * @param {string} id
@@ -49,4 +59,6 @@ export const notificationService = {
     const { data } = await apiClient.delete(`/notifications/${id}`);
     return data;
   },
+
+  dismiss: async (id) => notificationService.delete(id),
 };

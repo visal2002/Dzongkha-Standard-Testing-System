@@ -1,3 +1,9 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
 import { useState, useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { UserX, CheckCircle, Users, AlertTriangle } from 'lucide-react';

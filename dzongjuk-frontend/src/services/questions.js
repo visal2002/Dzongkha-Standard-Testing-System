@@ -1,8 +1,14 @@
+/*
+ * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+ * Website: ambhutan.com | aakash-pradhan.com
+ * Phone: +975 - 1750 - 5267
+ */
+
 /**
  * @fileoverview Questions Service
  * Question paper upload and retrieval.
  */
-import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
+import apiClient, { API_BASE_URL, USE_MOCK, mockDelay, mockResponse } from './api';
 import { questionPapers, examWindows } from '../data/mockData';
 
 export const questionService = {
@@ -34,9 +40,13 @@ export const questionService = {
    */
   getSamples: async () => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(questionPapers.filter(q => q.status === 'published')); }
-    const { data } = await apiClient.get('/questions/samples');
+    const { data } = await apiClient.get('/sample-papers');
     return data;
   },
+
+  sampleDownloadUrl: (id, type = 'question') => `${API_BASE_URL}/sample-papers/${id}/${type}`,
+
+  getPapers: async () => questionService.getAll(),
 
   /**
    * Upload a new question paper.
@@ -69,4 +79,7 @@ export const questionService = {
     const { data } = await apiClient.delete(`/questions/${id}`);
     return data;
   },
+
+  uploadPaper: async (formData) => questionService.upload(formData),
+  deletePaper: async (id) => questionService.delete(id),
 };
