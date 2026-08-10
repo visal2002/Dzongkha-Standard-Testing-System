@@ -7,7 +7,7 @@
 
 > **Dzongjuk** is a modern, polished frontend application for the **Dzongkha Standard Testing System (DSTS)**, developed for the Department of Culture and Dzongkha Development (DCDD) in Bhutan.
 
-It provides a secure, role-based administration portal covering the entire examination lifecycle — from candidate registration and verification, to scoring, appeals, certificate generation, and system administration. Currently, there is no backend — all data is served from `src/data/mockData.js` with simulated async delays.
+It provides a secure, role-based administration portal covering the entire examination lifecycle — from candidate registration and verification, to scoring, appeals, certificate generation, and system administration. The frontend is **fully refactored for backend integration**: all data flows through a centralized `src/services/` layer and a `useApi` hook, with mock responses in `src/services/api.js` that are ready to be replaced with real API endpoints.
 
 ---
 
@@ -100,7 +100,8 @@ dzongjuk-frontend/
 │   │   ├── layout/         # AppLayout, Sidebar, Header
 │   │   └── ui/             # Button, Input, Modal, Table, Badge, Card, Tabs, Alert, PageHeader
 │   ├── context/            # AuthContext, ThemeContext
-│   ├── data/               # mockData.js — all mock data
+│   ├── data/               # mockData.js — seed data (no longer imported by pages)
+│   ├── hooks/              # useApi.js — centralized async data-fetching hook
 │   ├── pages/
 │   │   ├── admin/          # UserManagement, RoleManagement, MasterConfiguration, TechnicalSettings
 │   │   ├── auth/           # LoginPage
@@ -109,7 +110,7 @@ dzongjuk-frontend/
 │   │   ├── certificates/   # CertificateList
 │   │   ├── dashboard/      # AdminDashboard, DCDDDashboard, ExamHeadDashboard,
 │   │   │                   # CommitteeDashboard, ChiefDashboard, TestTakerDashboard
-│   │   ├── dcdd/           # OperationalSettings (NEW)
+│   │   ├── dcdd/           # OperationalSettings
 │   │   ├── notifications/  # Notifications
 │   │   ├── questions/      # QuestionPapers, UploadQuestionPaper, SamplePapers
 │   │   ├── registration/   # RegistrationWindows, ApplicationForm, MyApplications
@@ -118,8 +119,11 @@ dzongjuk-frontend/
 │   │   ├── verification/   # VerificationList
 │   │   ├── ProfilePage.jsx
 │   │   └── SettingsPage.jsx
-│   ├── services/           # auth.js — API service stubs
-│   ├── App.jsx             # Routing configuration & lazy loading
+│   ├── services/           # Per-module API services (admin, appeals, applications, attendance,
+│   │                       # auth, certificates, exams, masters, notifications, questions,
+│   │                       # reports, scores, verification) — all backed by apiClient (Axios)
+│   ├── routes/             # index.jsx — React Router v7 route configuration with lazy loading
+│   ├── App.jsx             # App entry with providers
 │   └── main.jsx            # Application entry point
 ```
 
@@ -206,6 +210,8 @@ Log in using CID / User ID and password `password`.
 
 - **Dark Mode First:** Light mode toggled via `.light` class on `<html>`.
 - **Routing:** All role-specific dashboards dispatch from `Dashboard.jsx` via `user.role`.
+- **Service Layer:** All data fetched via `useApi(serviceFunction)` in `src/hooks/useApi.js`. Each module has a corresponding service in `src/services/`. To connect a real backend, update `src/services/api.js` (Axios baseURL) and implement real endpoints in each service.
+- **Mock Responses:** Services fall back to `mockData.js` in development until a real backend is connected.
 - **Mock Persistence:** Profile picture and settings use `localStorage` keys (`dsts_user`, `system_contact_info`, `ts_*`, `ops_*`) for demo state.
 - **Component Imports:** Always import `Select` from `../../components/ui/Input`.
 - **Settings Separation:**
