@@ -143,7 +143,10 @@ export class CertificateService {
       certificate.revokedAt = new Date(); certificate.revocationReason = reason; certificate.revokedByUserId = actor.sub;
       await manager.save(certificate);
       await this.audit(manager, 'CERTIFICATE_REVOKED', id, actor.sub, requestId, { reason });
-      await this.outbox(manager, DomainEventTypes.CertificateRevoked, id, requestId, { certificateId: id, testTakerUserId: certificate.testTakerUserId, certificateNumber: certificate.certificateNumber });
+      await this.outbox(manager, DomainEventTypes.CertificateRevoked, id, requestId, {
+        certificateId: id, examId: certificate.examId, testTakerUserId: certificate.testTakerUserId,
+        certificateNumber: certificate.certificateNumber, version: certificate.versionNumber, actorId: actor.sub,
+      });
       return this.ownerView(certificate);
     });
   }
@@ -215,7 +218,10 @@ export class CertificateService {
         });
       }
       await this.audit(manager, 'CERTIFICATE_ISSUED', id, actor.sub, requestId, { examId: result.examId, applicationId: result.applicationId, templateVersionNumber: template.versionNumber });
-      await this.outbox(manager, DomainEventTypes.CertificateIssued, id, requestId, { certificateId: id, testTakerUserId: result.testTakerUserId, certificateNumber, issuedAt });
+      await this.outbox(manager, DomainEventTypes.CertificateIssued, id, requestId, {
+        certificateId: id, examId: result.examId, applicationId: result.applicationId, testTakerUserId: result.testTakerUserId,
+        certificateNumber, issuedAt, validUntil, version: saved.versionNumber, actorId: actor.sub,
+      });
       return saved;
     });
     return this.ownerView(certificate);

@@ -39,24 +39,33 @@ export class RegistrationService {
         ...dto, examDate: new Date(dto.examDate), registrationStart: new Date(dto.registrationStart),
         registrationEnd: new Date(dto.registrationEnd), status: ExamStatus.Draft,
       }));
-      await this.outbox(manager, DomainEventTypes.ExamCreated, exam.id, requestId, { examId: exam.id, code: exam.code, actorId });
+      await this.outbox(manager, DomainEventTypes.ExamCreated, exam.id, requestId, {
+        examId: exam.id, code: exam.code, title: exam.title, examDate: exam.examDate, registrationStart: exam.registrationStart,
+        registrationEnd: exam.registrationEnd, capacity: exam.capacity, venue: exam.venue, status: exam.status, actorId,
+      });
       return exam;
     });
   }
 
-  async setExamStatus(id: string, status: ExamStatus) {
-    const exam = await this.getExam(id);
-    const allowed: Partial<Record<ExamStatus, ExamStatus[]>> = {
-      [ExamStatus.Draft]: [ExamStatus.Published, ExamStatus.Cancelled],
-      [ExamStatus.Published]: [ExamStatus.RegistrationOpen, ExamStatus.Cancelled],
-      [ExamStatus.RegistrationOpen]: [ExamStatus.RegistrationClosed, ExamStatus.Cancelled],
-      [ExamStatus.RegistrationClosed]: [ExamStatus.InProgress, ExamStatus.Cancelled],
-      [ExamStatus.InProgress]: [ExamStatus.ResultsDeclared],
-      [ExamStatus.ResultsDeclared]: [ExamStatus.Archived],
-    };
-    if (!allowed[exam.status]?.includes(status)) throw new DomainException('EXAM_TRANSITION_INVALID', `Cannot change examination from ${exam.status} to ${status}.`, 409);
-    exam.status = status;
-    return this.exams.save(exam);
+  async setExamStatus(id: string, status: ExamStatus, actorId: string, requestId: string) {
+    return this.dataSource.transaction(async (manager) => {
+      const exam = await manager.findOne(ExamEntity, { where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!exam) throw new DomainException('EXAM_NOT_FOUND', 'Examination not found.', 404);
+      const allowed: Partial<Record<ExamStatus, ExamStatus[]>> = {
+        [ExamStatus.Draft]: [ExamStatus.Published, ExamStatus.Cancelled],
+        [ExamStatus.Published]: [ExamStatus.RegistrationOpen, ExamStatus.Cancelled],
+        [ExamStatus.RegistrationOpen]: [ExamStatus.RegistrationClosed, ExamStatus.Cancelled],
+        [ExamStatus.RegistrationClosed]: [ExamStatus.InProgress, ExamStatus.Cancelled],
+        [ExamStatus.InProgress]: [ExamStatus.ResultsDeclared],
+        [ExamStatus.ResultsDeclared]: [ExamStatus.Archived],
+      };
+      if (!allowed[exam.status]?.includes(status)) throw new DomainException('EXAM_TRANSITION_INVALID', `Cannot change examination from ${exam.status} to ${status}.`, 409);
+      const previousStatus = exam.status;
+      exam.status = status;
+      await manager.save(exam);
+      await this.outbox(manager, DomainEventTypes.ExamStatusChanged, exam.id, requestId, { examId: exam.id, previousStatus, status, actorId });
+      return exam;
+    });
   }
 
   async submit(examId: string, dto: SubmitApplicationDto, userId: string, requestId: string, idempotencyKey: string) {

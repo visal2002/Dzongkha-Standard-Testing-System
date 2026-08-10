@@ -40,6 +40,10 @@ export class ResultService {
       await manager.delete(CommitteeMemberEntity, { committeeId: committee.id });
       const savedMembers = await manager.save(CommitteeMemberEntity, dto.members.map((member) => manager.create(CommitteeMemberEntity, { committeeId: committee.id, userId: member.userId, role: member.role })));
       await this.audit(manager, 'COMMITTEE_CONFIGURED', 'Committee', committee.id, actor.sub, requestId, { examId, memberCount: dto.members.length });
+      await this.outbox(manager, DomainEventTypes.CommitteeConfigured, committee.id, requestId, {
+        committeeId: committee.id, examId, memberCount: savedMembers.length,
+        headUserId: savedMembers.find((member) => member.role === CommitteeRole.Head)!.userId, actorId: actor.sub,
+      });
       return { ...committee, members: savedMembers };
     });
   }
@@ -100,7 +104,12 @@ export class ResultService {
       sheet.submittedAt = new Date();
       await manager.save(sheet);
       await this.audit(manager, 'SCORE_SUBMITTED', 'ScoreSheet', sheet.id, actor.sub, requestId, { version: 1, scoringRuleId: rule.id });
-      await this.outbox(manager, DomainEventTypes.ScoreSubmitted, sheet.id, requestId, { scoreSheetId: sheet.id, examId: sheet.examId, applicationId: sheet.applicationId, version: 1 });
+      await this.outbox(manager, DomainEventTypes.ScoreSubmitted, sheet.id, requestId, {
+        scoreSheetId: sheet.id, examId: sheet.examId, applicationId: sheet.applicationId, testTakerUserId: candidate.testTakerUserId,
+        version: 1, overallScore: version.overallScore, bandLabel: version.bandLabel, cefrLevel: version.cefrLevel,
+        writing: version.scores.WRITING, reading: version.scores.READING, listening: version.scores.LISTENING,
+        speaking: version.scores.SPEAKING, actorId: actor.sub,
+      });
       const response = { scoreSheetId: sheet.id, status: sheet.status, version: version.versionNumber, overallScore: version.overallScore, bandLabel: version.bandLabel, cefrLevel: version.cefrLevel };
       await manager.save(ResultIdempotencyEntity, manager.create(ResultIdempotencyEntity, { scope, key: idempotencyKey, response }));
       return response;
@@ -121,7 +130,10 @@ export class ResultService {
       for (const sheet of submitted) { sheet.status = ScoreSheetStatus.Published; sheet.publishedAt = publishedAt; }
       await manager.save(ScoreSheetEntity, submitted);
       await this.audit(manager, 'RESULTS_DECLARED', 'ResultDeclaration', declaration.id, actor.sub, requestId, { examId, candidateCount: eligibleCount, scoringRuleId: rule.id });
-      await this.outbox(manager, DomainEventTypes.ResultsDeclared, declaration.id, requestId, { declarationId: declaration.id, examId, scoringRuleId: rule.id, candidateCount: eligibleCount, declaredAt: declaration.declaredAt });
+      await this.outbox(manager, DomainEventTypes.ResultsDeclared, declaration.id, requestId, {
+        declarationId: declaration.id, examId, scoringRuleId: rule.id, candidateCount: eligibleCount,
+        declaredAt: declaration.declaredAt, actorId: actor.sub,
+      });
       return declaration;
     });
   }
@@ -223,6 +235,9 @@ export class ResultService {
       await this.outbox(manager, DomainEventTypes.ScoreRevised, sheet.id, requestId, {
         appealId: dto.appealId, scoreSheetId: sheet.id, examId: sheet.examId, applicationId: sheet.applicationId,
         testTakerUserId: candidate.testTakerUserId, previousVersion: current.versionNumber, version: version.versionNumber,
+        overallScore: version.overallScore, bandLabel: version.bandLabel, cefrLevel: version.cefrLevel,
+        writing: version.scores.WRITING, reading: version.scores.READING, listening: version.scores.LISTENING,
+        speaking: version.scores.SPEAKING, approvedByUserId: dto.approvedByUserId,
       });
       const response = this.revisionResponse(sheet, version, candidate.testTakerUserId);
       await manager.save(ResultIdempotencyEntity, manager.create(ResultIdempotencyEntity, { scope, key: idempotencyKey, response }));
