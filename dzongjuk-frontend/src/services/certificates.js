@@ -10,11 +10,10 @@
  */
 import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
 import { certificates, masterConfig } from '../data/mockData';
-
-const pdfEscape = value => String(value ?? '').replace(/([\\()])/g, '\\$1').replace(/[^\x20-\x7E]/g, '?');
+import { createMockPdf } from '../utils/mockPdf';
 
 function createMockCertificatePdf(certificate) {
-  const lines = [
+  return createMockPdf([
     'Dzongkha Standard Testing System',
     `Certificate: ${certificate.certificateNumber}`,
     `Holder: ${certificate.holderName}`,
@@ -23,27 +22,7 @@ function createMockCertificatePdf(certificate) {
     `Issued: ${String(certificate.issuedAt).slice(0, 10)}`,
     `Valid until: ${String(certificate.validUntil).slice(0, 10)}`,
     'LOCAL ACCEPTANCE CERTIFICATE - NOT AN OFFICIAL CERTIFICATE',
-  ];
-  const text = lines.map((line, index) => `${index === 0 ? '' : '0 -24 Td '}(${pdfEscape(line)}) Tj`).join('\n');
-  const stream = `BT /F1 14 Tf 72 750 Td\n${text}\nET`;
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
-    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-  ];
-  let content = '%PDF-1.4\n';
-  const offsets = [0];
-  objects.forEach((object, index) => {
-    offsets.push(content.length);
-    content += `${index + 1} 0 obj\n${object}\nendobj\n`;
-  });
-  const xrefOffset = content.length;
-  content += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  content += offsets.slice(1).map(offset => `${String(offset).padStart(10, '0')} 00000 n \n`).join('');
-  content += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-  return new Blob([content], { type: 'application/pdf' });
+  ]);
 }
 
 export const certificateService = {

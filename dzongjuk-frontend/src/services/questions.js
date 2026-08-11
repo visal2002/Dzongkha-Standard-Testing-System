@@ -8,8 +8,39 @@
  * @fileoverview Questions Service
  * Question paper upload and retrieval.
  */
-import apiClient, { API_BASE_URL, USE_MOCK, mockDelay, mockResponse } from './api';
-import { questionPapers, examWindows } from '../data/mockData';
+import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
+import { questionPapers } from '../data/mockData';
+import { createMockPdf } from '../utils/mockPdf';
+
+const fileSizeToBytes = (value) => {
+  const match = String(value || '').match(/^([\d.]+)\s*(KB|MB)$/i);
+  if (!match) return 0;
+  return Math.round(Number(match[1]) * (match[2].toUpperCase() === 'MB' ? 1024 * 1024 : 1024));
+};
+
+const toSamplePaper = paper => ({
+  ...paper,
+  status: 'SAMPLE_PUBLISHED',
+  createdAt: paper.createdAt || paper.uploadedAt,
+  documents: Array.isArray(paper.documents) ? paper.documents : [
+    {
+      id: `${paper.id}-question`,
+      type: 'QUESTION_PAPER',
+      originalName: paper.fileName || `${paper.id}.pdf`,
+      sizeBytes: fileSizeToBytes(paper.fileSize),
+      encrypted: true,
+      scanStatus: 'CLEAN',
+    },
+    ...(paper.hasAnswerSheet ? [{
+      id: `${paper.id}-answer`,
+      type: 'ANSWER_SHEET',
+      originalName: `${paper.id}-answer-sheet.pdf`,
+      sizeBytes: 256 * 1024,
+      encrypted: true,
+      scanStatus: 'CLEAN',
+    }] : []),
+  ],
+});
 
 export const questionService = {
   /** @returns {Promise<{data: import('../types').QuestionPaper[]}>} */
@@ -39,12 +70,30 @@ export const questionService = {
    * Get sample papers (publicly available).
    */
   getSamples: async () => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(questionPapers.filter(q => q.status === 'published')); }
+    if (USE_MOCK) {
+      await mockDelay();
+      return mockResponse(questionPapers.filter(q => q.status === 'published').map(toSamplePaper));
+    }
     const { data } = await apiClient.get('/sample-papers');
     return data;
   },
 
-  sampleDownloadUrl: (id, type = 'question') => `${API_BASE_URL}/sample-papers/${id}/${type}`,
+  downloadSample: async (id, type = 'question') => {
+    if (USE_MOCK) {
+      await mockDelay(200);
+      const paper = questionPapers.find(item => item.id === id && item.status === 'published');
+      if (!paper) throw new Error('Sample paper not found.');
+      return { data: createMockPdf([
+        'Dzongkha Standard Testing System',
+        type === 'answer' ? 'Sample Answer Sheet' : 'Sample Question Paper',
+        paper.title,
+        `Skill: ${paper.skill}`,
+        `Published: ${String(paper.uploadedAt).slice(0, 10)}`,
+        'LOCAL ACCEPTANCE DOCUMENT - NOT AN OFFICIAL EXAMINATION PAPER',
+      ]) };
+    }
+    return apiClient.get(`/sample-papers/${id}/${type}`, { responseType: 'blob' });
+  },
 
   getPapers: async () => questionService.getAll(),
 
