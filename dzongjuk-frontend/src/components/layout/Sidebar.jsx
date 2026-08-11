@@ -24,8 +24,6 @@ const NAV_CONFIG = {
     { label: 'User Management', icon: Users, to: '/admin/users' },
     { label: 'Role Management', icon: UserCog, to: '/admin/roles' },
     { label: 'Technical Settings', icon: Wrench, to: '/admin/technical' },
-    { label: 'Audit Logs', icon: ScrollText, to: '/admin/technical' },
-    { label: 'System Monitoring', icon: Server, to: '/admin/technical' },
   ],
   dcdd: [
     { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
