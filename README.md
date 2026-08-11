@@ -17,6 +17,7 @@ It provides a secure, role-based administration portal covering the examination 
 - [Key Features](#-key-features)
 - [Tech Stack](#-tech-stack)
 - [Getting Started](#-getting-started)
+- [Quality Checks](#quality-checks)
 - [Project Architecture](#-project-architecture)
 - [Available Roles & Navigation](#-available-roles--navigation)
 - [Demo Accounts](#-demo-accounts)
@@ -113,6 +114,22 @@ The API gateway runs at `http://localhost:8000`. Backend implementation evidence
 npm run build
 npm run preview
 ```
+
+## Quality Checks
+
+Run the fast frontend service contracts from the repository root:
+
+```bash
+npm run frontend:test
+```
+
+Run the production-style Chromium route suite from the repository root:
+
+```bash
+npm run frontend:test:e2e
+```
+
+The route suite signs in as every demonstration role and checks all role-specific routes for rendering failures, browser errors, and runtime exception messages. GitHub Actions runs these checks together with the backend build, lint, tests, and production dependency audits on every pull request and every push to `main`.
 
 ---
 
