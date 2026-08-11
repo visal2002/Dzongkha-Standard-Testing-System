@@ -27,6 +27,14 @@ export default function RoleManagement() {
 
   const selectedRole = roles.find(r => r.id === selectedRoleId) || roles[0];
 
+  if (loading && !rolesData) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold"></div>
+      </div>
+    );
+  }
+
   const handleTogglePermission = (mod, action) => {
     setRoles(prevRoles => prevRoles.map(role => {
       if (role.id === selectedRoleId) {
@@ -126,8 +134,9 @@ export default function RoleManagement() {
         </div>
 
         {/* Permission matrix */}
-        <div className="lg:col-span-3 bg-surface-card border border-surface-border rounded-xl p-5">
-          <div className="flex items-start justify-between gap-4 mb-5">
+        {selectedRole ? (
+          <div className="lg:col-span-3 bg-surface-card border border-surface-border rounded-xl p-5">
+            <div className="flex items-start justify-between gap-4 mb-5">
             <div>
               <h3 className="text-base font-semibold text-text-primary">{selectedRole.name}</h3>
               <p className="text-xs text-text-muted mt-0.5">{selectedRole.description}</p>
@@ -185,6 +194,11 @@ export default function RoleManagement() {
             </table>
           </div>
         </div>
+        ) : (
+          <div className="lg:col-span-3 bg-surface-card border border-surface-border rounded-xl p-8 flex items-center justify-center text-text-muted">
+            No role selected or available. Create a role to manage permissions.
+          </div>
+        )}
       </div>
 
       {/* Create Role Modal */}
