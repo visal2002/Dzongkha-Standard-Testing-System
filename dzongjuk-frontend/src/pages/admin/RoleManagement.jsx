@@ -25,11 +25,12 @@ export default function RoleManagement() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRoleForm, setNewRoleForm] = useState({ name: '', code: '', description: '' });
 
-  const selectedRole = roles.find(r => r.id === selectedRoleId) || roles[0];
+  const activeRoleId = selectedRoleId || roles[0]?.id;
+  const selectedRole = roles.find(r => r.id === activeRoleId);
 
   const handleTogglePermission = (mod, action) => {
     setRoles(prevRoles => prevRoles.map(role => {
-      if (role.id === selectedRoleId) {
+      if (role.id === activeRoleId) {
         const currentModPerms = role.permissions[mod] || { create: false, read: false, update: false, delete: false };
         const updatedModPerms = { ...currentModPerms, [action]: !currentModPerms[action] };
         return {
@@ -85,6 +86,14 @@ export default function RoleManagement() {
     }
   };
 
+  if (loading) {
+    return <div className="py-16 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  if (!selectedRole) {
+    return <div className="py-16 text-center text-sm text-text-muted">No roles are configured.</div>;
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -108,12 +117,12 @@ export default function RoleManagement() {
               onClick={() => setSelectedRoleId(role.id)}
               className={[
                 'w-full text-left p-3 rounded-xl border transition-all',
-                selectedRole.id === role.id
+                activeRoleId === role.id
                   ? 'bg-brand-gold/10 border-brand-gold/30'
                   : 'bg-surface-card border-surface-border hover:border-brand-gold/20',
               ].join(' ')}
             >
-              <p className={`text-sm font-semibold ${selectedRole.id === role.id ? 'text-brand-gold' : 'text-text-primary'}`}>{role.name}</p>
+              <p className={`text-sm font-semibold ${activeRoleId === role.id ? 'text-brand-gold' : 'text-text-primary'}`}>{role.name}</p>
               <div className="flex items-center justify-between mt-1">
                 <div className="flex items-center gap-1.5">
                   <Users size={10} className="text-text-muted" />

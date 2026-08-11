@@ -1,0 +1,77 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+name: Dzongjuk quality checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend contracts and routes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dzongjuk-frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dzongjuk-frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run service contract tests
+        run: npm test
+      - name: Check production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run role route tests
+        run: npm run test:e2e:ci
+      - name: Upload browser test report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: dzongjuk-frontend/playwright-report/
+          retention-days: 14
+
+  backend:
+    name: Backend build, lint, and tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build all services
+        run: npm run build:all
+      - name: Run lint
+        run: npm run lint
+      - name: Run tests
+        run: npm test
+      - name: Check production dependencies
+        run: npm audit --omit=dev --audit-level=high
