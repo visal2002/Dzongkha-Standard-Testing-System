@@ -55,6 +55,19 @@
 .ndi-focus-ring:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(90, 201, 148, 0.25); }
 .ndi-shadow-soft { box-shadow: 0 24px 50px rgba(18,65,67,0.16); }
 
+/* NDI helper sizing and interactive utilities to avoid arbitrary Tailwind classes */
+.ndi-btn { display: inline-flex; align-items: center; justify-content: center; gap: 12px; max-width: 330px; min-height: 50px; padding: 0 16px; border-radius: 16px; font-weight: 600; }
+.ndi-btn-large { height: 50px; min-width: 300px; border-radius: 14px; padding: 0 24px; }
+.ndi-btn-full { height: 50px; width: 100%; border-radius: 14px; padding: 0 24px; }
+.ndi-button-filled { background: var(--ndi-primary); color: var(--ndi-white); border: 1px solid var(--ndi-border); }
+.ndi-button-outline { background: var(--ndi-white); color: var(--ndi-primary); border: 2px solid var(--ndi-primary); }
+.ndi-btn-hover-lift { transition: transform .15s ease, box-shadow .15s ease; }
+.ndi-btn-hover-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(18,65,67,0.12); }
+.ndi-hover-border { transition: border-color .12s ease, color .12s ease; }
+.ndi-hover-border:hover { border-color: var(--ndi-primary); color: var(--ndi-primary); }
+.ndi-qr-box { height: 260px; width: 260px; border-radius: 32px; }
+.ndi-qr-box-sm { height: 240px; width: 240px; border-radius: 28px; }
+
 /* Light theme */
 .light {
   --color-surface-bg: #F1F5F9;

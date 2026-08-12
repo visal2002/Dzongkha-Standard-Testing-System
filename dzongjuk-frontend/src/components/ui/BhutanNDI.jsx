@@ -95,11 +95,8 @@ export function BhutanNDIButton({
       onClick={onClick}
       aria-label={ariaLabel || 'Login with Bhutan NDI'}
       className={[
-        'inline-flex items-center justify-center w-full max-w-[330px] min-h-[50px] gap-3 rounded-[16px] border px-4 text-sm font-semibold transition-transform duration-200 ease-out shadow-sm',
-        'hover:-translate-y-[2px] hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-        isFilled
-          ? 'bg-[var(--ndi-primary-dark)] text-white border-[var(--ndi-border)]'
-          : 'bg-white text-[var(--ndi-primary-dark)] border-[var(--ndi-border)]',
+        isFilled ? 'ndi-button-filled' : 'ndi-button-outline',
+        'ndi-btn ndi-btn-hover-lift',
         className,
       ].join(' ')}
       {...props}
@@ -110,11 +107,20 @@ export function BhutanNDIButton({
   );
 }
 
+// Small utility components/styles that may still use canonical Tailwind classes
+export function NDISectionTitle({ children, highlight }) {
+  return (
+    <h3 className="text-lg font-semibold text-slate-800">
+      {children} <span className="ndi-text-primary">{highlight}</span>
+    </h3>
+  );
+}
+
 function NDISectionTitle({ children, highlight }) {
   return (
     <h2 className="text-3xl font-semibold text-slate-950">
       {children}{' '}
-      <span className="text-[var(--ndi-primary)]">{highlight}</span>
+      <span className="ndi-text-primary">{highlight}</span>
     </h2>
   );
 }
@@ -124,7 +130,7 @@ function NDIInstruction({ assets, className = '' }) {
     <div className={['flex flex-col gap-4 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm', className].join(' ')}>
       <div className="flex items-center gap-3">
         <img src={assets.scanIcon} alt="Scan icon" className="h-10 w-10 shrink-0" />
-        <p className="text-sm leading-6 text-[var(--ndi-text-secondary)]">
+        <p className="text-sm leading-6 ndi-text-secondary">
           Tap the scan button located on the menu bar and scan the QR code
         </p>
       </div>
@@ -135,11 +141,11 @@ function NDIInstruction({ assets, className = '' }) {
 function NDISupportSection({ assets }) {
   return (
     <div className="space-y-4 rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-lg font-semibold text-[var(--ndi-primary)]">Get Support</p>
+      <p className="text-lg font-semibold ndi-text-primary">Get Support</p>
       <div className="space-y-3 text-sm text-slate-700">
         <a
           href="mailto:ndifeedback@dhi.bt"
-          className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-[var(--ndi-popup-bg)] px-4 py-3 transition hover:border-[var(--ndi-primary)] hover:text-[var(--ndi-primary)]"
+          className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 ndi-bg-popup px-4 py-3 transition ndi-hover-border"
           aria-label="Email Bhutan NDI support"
         >
           <img src={assets.mailIcon} alt="" aria-hidden="true" className="h-5 w-5 shrink-0" />
@@ -147,7 +153,7 @@ function NDISupportSection({ assets }) {
         </a>
         <a
           href="tel:1199"
-          className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-[var(--ndi-popup-bg)] px-4 py-3 transition hover:border-[var(--ndi-primary)] hover:text-[var(--ndi-primary)]"
+          className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 ndi-bg-popup px-4 py-3 transition ndi-hover-border"
           aria-label="Call Bhutan NDI support"
         >
           <img src={assets.callIcon} alt="" aria-hidden="true" className="h-5 w-5 shrink-0" />
@@ -160,9 +166,9 @@ function NDISupportSection({ assets }) {
 
 function NDISupplementaryText() {
   return (
-    <p className="text-sm text-[var(--ndi-text-secondary)]">
+    <p className="text-sm ndi-text-secondary">
       Don’t have the Bhutan NDI Wallet?{' '}
-      <span className="font-semibold text-[var(--ndi-primary)]">Download Now!</span>
+      <span className="font-semibold ndi-text-primary">Download Now!</span>
     </p>
   );
 }
@@ -190,13 +196,13 @@ function BhutanNDIModal({
         onClick={onClose}
         aria-hidden="true"
       />
-      <div
+        <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="ndi-modal-title"
         className={[
-          'relative w-full overflow-hidden rounded-[32px] border border-slate-200 bg-[var(--ndi-popup-bg)] shadow-[0_24px_60px_rgba(18,65,67,0.16)]',
+          'relative w-full overflow-hidden rounded-4xl border border-slate-200 ndi-bg-popup shadow-[0_24px_60px_rgba(18,65,67,0.16)]',
           size === 'lg' ? 'max-w-[720px]' : 'max-w-[590px]',
         ].join(' ')}
         onClick={(event) => event.stopPropagation()}
