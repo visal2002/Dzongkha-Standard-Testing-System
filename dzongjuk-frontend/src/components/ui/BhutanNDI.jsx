@@ -116,14 +116,7 @@ export function NDISectionTitle({ children, highlight }) {
   );
 }
 
-function NDISectionTitle({ children, highlight }) {
-  return (
-    <h2 className="text-3xl font-semibold text-slate-950">
-      {children}{' '}
-      <span className="ndi-text-primary">{highlight}</span>
-    </h2>
-  );
-}
+
 
 function NDIInstruction({ assets, className = '' }) {
   return (
