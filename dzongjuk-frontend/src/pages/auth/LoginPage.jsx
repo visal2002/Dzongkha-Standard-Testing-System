@@ -4,13 +4,16 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, ChevronLeft, User, Mail, Lock, CreditCard, Calendar, Phone, PlayCircle, Scan, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, ChevronLeft, User, Mail, Lock, CreditCard, Calendar, Phone, PlayCircle, Scan, ArrowLeft, AlertTriangle, X, Smartphone, RefreshCw } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
 import toast from 'react-hot-toast';
+
+const IS_NDI_PREVIEW = import.meta.env.VITE_USE_MOCK_DATA !== 'false';
 
 function NdiQrCode({ qrUrl, isLoading, error, onErrorClose, onError }) {
   return (
@@ -110,6 +113,63 @@ function NdiQrCode({ qrUrl, isLoading, error, onErrorClose, onError }) {
   );
 }
 
+function NdiProofModal({ login, status, error, onClose, onRetry }) {
+  if (!login) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="ndi-login-title">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="relative max-h-[95vh] w-full max-w-147.5 overflow-y-auto rounded-4xl bg-[#F8F8F8] px-6 py-8 text-center shadow-2xl sm:px-12"
+      >
+        <button type="button" onClick={onClose} aria-label="Close Bhutan NDI login" className="absolute right-5 top-5 rounded-full p-2 text-slate-400 transition hover:bg-white hover:text-slate-700">
+          <X size={20} />
+        </button>
+        <h2 id="ndi-login-title" className="mb-7 text-lg font-semibold text-black">
+          <span className="hidden sm:inline">Scan with </span><span className="sm:hidden">Login with </span><span className="text-[#5AC994]">Bhutan NDI</span> Wallet
+        </h2>
+        {IS_NDI_PREVIEW && (
+          <div className="mx-auto mb-5 max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-medium leading-5 text-amber-800">
+            Preview mode: wallet approval is simulated for interface testing. No identity data is verified.
+          </div>
+        )}
+        {login.deepLinkUrl && (
+          <>
+            <a href={login.deepLinkUrl} className="mx-auto mb-5 inline-flex h-12.5 w-full max-w-75 items-center justify-center gap-2 rounded-lg bg-[#5AC994] px-5 text-base font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg sm:hidden">
+              <Smartphone size={18} /> Open Bhutan NDI Wallet
+            </a>
+            <div className="mb-5 flex items-center gap-3 text-sm font-semibold text-[#8d8d8d] sm:hidden"><span className="h-px flex-1 bg-[#A1A0A0]" />OR<span className="h-px flex-1 bg-[#A1A0A0]" /></div>
+          </>
+        )}
+        {error ? (
+          <div className="mx-auto mb-7 flex min-h-55 max-w-sm flex-col items-center justify-center rounded-3xl border border-amber-200 bg-white p-6">
+            <AlertTriangle size={38} className="mb-3 text-amber-500" />
+            <p className="mb-5 text-sm leading-6 text-slate-600">{error}</p>
+            <button type="button" onClick={onRetry} className="inline-flex items-center gap-2 rounded-full border-2 border-[#5AC994] px-5 py-2 text-sm font-medium text-[#38ad78] hover:bg-[#5AC994] hover:text-white"><RefreshCw size={16} /> Try again</button>
+          </div>
+        ) : (
+          <div className="mx-auto mb-7 w-fit rounded-3xl border-4 border-[#5AC994] bg-white p-3 shadow-sm">
+            <QRCodeSVG value={login.proofRequestUrl} size={190} level="H" marginSize={1} imageSettings={{ src: '/images/NDI Bhutan Logo.ico', width: 38, height: 38, excavate: true }} title="Bhutan NDI login QR code" />
+          </div>
+        )}
+        {!error && (
+          <div className="mb-7 space-y-2 text-sm font-medium leading-5 text-[#A1A0A0]">
+            <p>1. Open Bhutan NDI Wallet on your phone</p>
+            <p className="flex flex-wrap items-center justify-center gap-1.5">2. Tap the Scan button <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#5AC994] text-white"><Scan size={14} /></span> and scan the QR code</p>
+            {status === 'PENDING' && <p className="pt-2 text-xs text-[#38ad78]" aria-live="polite">Waiting for approval in your wallet...</p>}
+          </div>
+        )}
+        <a href="https://www.youtube.com/@bhutanndi" target="_blank" rel="noreferrer" className="mx-auto mb-7 inline-flex min-h-10 items-center gap-2 rounded-full border-2 border-[#5AC994] px-5 text-sm font-medium text-[#38ad78] transition hover:bg-[#5AC994] hover:text-white">Watch video guide <PlayCircle size={17} /></a>
+        <p className="mb-3 text-sm text-[#A1A0A0]">Don't have the Bhutan NDI Wallet? <a href="https://www.bhutanndi.com" target="_blank" rel="noreferrer" className="font-semibold text-[#5AC994] hover:underline">Download Now!</a></p>
+        <p className="mb-2 mt-7 text-sm font-semibold text-[#5AC994]">Get Support</p>
+        <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-700">
+          <a href="mailto:ndifeedback@dhi.bt" className="inline-flex items-center gap-1.5 hover:text-[#38ad78]"><Mail size={16} className="text-[#5AC994]" />ndifeedback@dhi.bt</a>
+          <a href="tel:1199" className="inline-flex items-center gap-1.5 hover:text-[#38ad78]"><Phone size={16} className="text-[#5AC994]" />1199</a>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState('signin');
   const [registerMode, setRegisterMode] = useState('ndi'); // 'ndi' | 'form'
@@ -118,6 +178,9 @@ export default function LoginPage() {
   const [ndiQrUrl, setNdiQrUrl] = useState(null);
   const [isNdiLoading, setIsNdiLoading] = useState(false);
   const [ndiErrorMessage, setNdiErrorMessage] = useState(null);
+  const [ndiLogin, setNdiLogin] = useState(null);
+  const [ndiLoginStatus, setNdiLoginStatus] = useState('IDLE');
+  const pollInFlight = useRef(false);
 
   // Sign-in state
   const [userId, setUserId] = useState('');
@@ -134,7 +197,7 @@ export default function LoginPage() {
   const [regPassword, setRegPassword] = useState('');
   const [showRegPass, setShowRegPass] = useState(false);
 
-  const { login, loginWithNDI, isLoading } = useAuth();
+  const { login, loginWithNDI, checkNDILogin, cancelNDILogin, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -154,17 +217,69 @@ export default function LoginPage() {
   };
 
   const handleNDI = async () => {
+    setIsNdiLoading(true);
+    setNdiErrorMessage(null);
     try {
       const result = await loginWithNDI();
       if (result.success) {
-        toast.success('Signed in via NDI');
-        navigate('/dashboard');
+        setNdiLogin(result);
+        setNdiLoginStatus('PENDING');
       } else {
         setNdiErrorMessage(result.error || 'NDI service is currently unreachable.');
+        setNdiLogin({ proofRequestUrl: 'https://invalid.local', deepLinkUrl: null });
+        setNdiLoginStatus('FAILED');
       }
     } catch (err) {
-      setNdiErrorMessage(err.message || "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON");
+      setNdiErrorMessage(err.message || 'Bhutan NDI is currently unavailable. Please try again.');
+      setNdiLogin({ proofRequestUrl: 'https://invalid.local', deepLinkUrl: null });
+      setNdiLoginStatus('FAILED');
+    } finally {
+      setIsNdiLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (!ndiLogin?.pollToken || ndiLoginStatus !== 'PENDING') return undefined;
+    let stopped = false;
+    const poll = async () => {
+      if (pollInFlight.current || stopped) return;
+      pollInFlight.current = true;
+      try {
+        const result = await checkNDILogin(ndiLogin.pollToken);
+        if (stopped) return;
+        if (result.status === 'VALIDATED') {
+          setNdiLoginStatus('VALIDATED');
+          toast.success(`Welcome, ${result.user.name}!`);
+          navigate('/dashboard');
+        } else if (result.status !== 'PENDING') {
+          setNdiLoginStatus(result.status);
+          const messages = {
+            REJECTED: 'The proof request was declined in Bhutan NDI Wallet.',
+            EXPIRED: 'This QR code has expired. Please create a new one.',
+            CANCELLED: 'This Bhutan NDI login was cancelled.',
+            FAILED: 'Bhutan NDI could not validate this identity or no account is linked to it.',
+          };
+          setNdiErrorMessage(messages[result.status] || 'Bhutan NDI login could not be completed.');
+        }
+      } catch (err) {
+        if (!stopped) {
+          setNdiLoginStatus('FAILED');
+          setNdiErrorMessage(err.message || 'Unable to check Bhutan NDI login status.');
+        }
+      } finally {
+        pollInFlight.current = false;
+      }
+    };
+    poll();
+    const timer = window.setInterval(poll, 2000);
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [ndiLogin, ndiLoginStatus, checkNDILogin, navigate]);
+
+  const closeNdiLogin = () => {
+    if (ndiLogin?.pollToken && ndiLoginStatus === 'PENDING') void cancelNDILogin(ndiLogin.pollToken);
+    setNdiLogin(null);
+    setNdiLoginStatus('IDLE');
+    setNdiErrorMessage(null);
   };
 
   const tabs = [
@@ -256,9 +371,9 @@ export default function LoginPage() {
                     <div className="mb-5">
                       <button
                         onClick={handleNDI}
-                        disabled={isLoading}
+                        disabled={isLoading || isNdiLoading}
                         className="w-full h-12 inline-flex items-center justify-center gap-2.5 rounded-full text-white shadow-md transition-opacity hover:opacity-90 disabled:opacity-50"
-                        style={{ backgroundColor: '#214042' }}
+                        style={{ backgroundColor: '#124143' }}
                       >
                         <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="h-8 w-8 object-contain" />
                         <span className="tracking-wider font-medium">Login with Bhutan NDI</span>
@@ -598,6 +713,17 @@ export default function LoginPage() {
           </div>
         </motion.div>
       </div>
+      <AnimatePresence>
+        {ndiLogin && (
+          <NdiProofModal
+            login={ndiLogin}
+            status={ndiLoginStatus}
+            error={ndiErrorMessage}
+            onClose={closeNdiLogin}
+            onRetry={() => { closeNdiLogin(); void handleNDI(); }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
