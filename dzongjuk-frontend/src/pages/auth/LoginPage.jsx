@@ -110,6 +110,128 @@ function NdiQrCode({ qrUrl, isLoading, error, onErrorClose, onError }) {
   );
 }
 
+export function NdiLoginPage() {
+  const ndiQrUrl = null;
+  const isNdiLoading = false;
+  const ndiErrorMessage = null;
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen bg-slate-50 py-12">
+      <div className="mx-auto max-w-3xl px-4">
+        <div className="rounded-[32px] border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] overflow-hidden">
+          <div className="p-8 sm:p-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+              <div>
+                <h1 className="text-3xl font-semibold text-slate-900">
+                  Scan with <span className="text-[#3ec49c]">Bhutan NDI Wallet</span>
+                </h1>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="text-sm font-medium text-slate-600 hover:text-slate-900 transition"
+              >
+                Back to portal
+              </button>
+            </div>
+
+            <div className="border-2 border-[#3ec49c] rounded-[32px] p-6 bg-[#effcf3] flex justify-center mb-8">
+              <NdiQrCode
+                qrUrl={ndiQrUrl}
+                isLoading={isNdiLoading}
+                error={ndiErrorMessage}
+                onErrorClose={() => setNdiErrorMessage(null)}
+                onError={(err) => setNdiErrorMessage(err)}
+              />
+            </div>
+
+            <div className="space-y-2 text-sm text-slate-600 mb-7">
+              <p>1. Open Bhutan NDI Wallet on your phone</p>
+              <p className="flex flex-wrap items-center gap-2">
+                <span>2. Tap the scan button</span>
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#3ec49c] text-white">
+                  <Scan size={16} />
+                </span>
+                <span>located on the menu bar and scan the QR code</span>
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <button
+                type="button"
+                onClick={() => window.open('https://www.youtube.com/@bhutanndi', '_blank')}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#3ec49c] px-6 py-3 text-sm font-semibold text-[#1d5e4f] transition hover:bg-[#ecfff3]"
+              >
+                <PlayCircle size={18} />
+                Watch video guide
+              </button>
+
+              <p className="text-sm text-slate-500">
+                Don&apos;t have the Bhutan NDI Wallet?{' '}
+                <a
+                  href="https://www.bhutanndi.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-[#3ec49c] hover:underline"
+                >
+                  Download Now!
+                </a>
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3 mb-7">
+              <a
+                href="https://play.google.com/store/search?q=NDI%20Bhutan&c=apps&hl=en"
+                target="_blank"
+                rel="noreferrer"
+                className="bg-black text-white rounded-2xl px-4 py-3 inline-flex items-center gap-3 shadow-sm hover:bg-slate-900 transition"
+              >
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L18.81,13.96C20.39,13.04 20.39,10.96 18.81,10.04L16.81,8.88L14.8,10.89L16.81,15.12M4.6,1.4L14.07,10.88L15.93,9.02L5.84,0.31C5.23,0 4.6,0.2 4.6,1.4M4.6,22.6C4.6,23.8 5.23,24 5.84,23.69L15.93,14.98L14.07,13.12L4.6,22.6Z" />
+                </svg>
+                <div className="text-left text-white">
+                  <div className="text-[9px] uppercase tracking-wider">GET IT ON</div>
+                  <div className="text-xs font-semibold">Google Play</div>
+                </div>
+              </a>
+
+              <a
+                href="https://apps.apple.com/bt/app/bhutan-ndi/id1645493166"
+                target="_blank"
+                rel="noreferrer"
+                className="bg-black text-white rounded-2xl px-4 py-3 inline-flex items-center gap-3 shadow-sm hover:bg-slate-900 transition"
+              >
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.12-1.96.99-3.1-.97.04-2.14.65-2.84 1.46-.62.72-1.16 1.88-1.01 3 .01 0 .04.01.07.01 1.08 0 2.18-.55 2.79-1.37z" />
+                </svg>
+                <div className="text-left text-white">
+                  <div className="text-[9px] uppercase tracking-wider">Download on the</div>
+                  <div className="text-xs font-semibold">App Store</div>
+                </div>
+              </a>
+            </div>
+
+            <div className="text-center">
+              <p className="text-sm font-semibold text-[#3ec49c] mb-3">Get Support</p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-slate-600">
+                <a href="mailto:ndifeedback@dhi.bt" className="inline-flex items-center gap-2 hover:text-[#3ec49c] transition-colors">
+                  <Mail size={16} className="text-[#3ec49c]" />
+                  ndifeedback@dhi.bt
+                </a>
+                <a href="tel:1199" className="inline-flex items-center gap-2 hover:text-[#3ec49c] transition-colors">
+                  <Phone size={16} className="text-[#3ec49c]" />
+                  1199
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState('signin');
   const [registerMode, setRegisterMode] = useState('ndi'); // 'ndi' | 'form'

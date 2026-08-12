@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import AppLayout from '../components/layout/AppLayout';
 
 // Eagerly loaded critical pages
-import LoginPage from '../pages/auth/LoginPage';
+import LoginPage, { NdiLoginPage } from '../pages/auth/LoginPage';
 import HomePage from '../pages/HomePage';
 import Dashboard from '../pages/dashboard/Dashboard';
 
@@ -85,6 +85,7 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+        <Route path="/ndi-login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <NdiLoginPage />} />
 
         <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
