@@ -75,3 +75,39 @@ jobs:
         run: npm test
       - name: Check production dependencies
         run: npm audit --omit=dev --audit-level=high
+
+  deployment-package:
+    name: Kubernetes deployment package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.34.1
+      - name: Render GovTech manifests
+        run: |
+          kubectl kustomize backend/deploy/k8s/govtech/platform > /tmp/platform.yaml
+          kubectl kustomize backend/deploy/k8s/govtech/apps > /tmp/apps.yaml
+          cat /tmp/platform.yaml /tmp/apps.yaml > /tmp/dzongjuk.yaml
+      - name: Verify deployment inventory
+        run: |
+          test "$(grep -c '^kind: Deployment$' /tmp/dzongjuk.yaml)" -eq 14
+          test "$(grep -c '^kind: Service$' /tmp/dzongjuk.yaml)" -eq 14
+          test "$(grep -c '^kind: PersistentVolumeClaim$' /tmp/dzongjuk.yaml)" -eq 4
+          test "$(grep -c '^kind: Ingress$' /tmp/dzongjuk.yaml)" -eq 1
+      - name: Parse deployment script
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'backend/scripts/deploy-govtech.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }

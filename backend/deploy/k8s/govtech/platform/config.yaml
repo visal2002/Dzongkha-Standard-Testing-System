@@ -1,0 +1,44 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dzongjuk-config
+data:
+  NODE_ENV: production
+  DATABASE_HOST: postgres
+  DATABASE_PORT: "5432"
+  IDENTITY_DATABASE_NAME: dzongjuk_identity
+  REGISTRATION_DATABASE_NAME: dzongjuk_registration
+  ASSESSMENT_DATABASE_NAME: dzongjuk_assessment
+  RESULT_DATABASE_NAME: dzongjuk_result
+  APPEAL_CERTIFICATE_DATABASE_NAME: dzongjuk_appeal_certificate
+  NOTIFICATION_DATABASE_NAME: dzongjuk_notification
+  REPORTING_DATABASE_NAME: dzongjuk_reporting
+  INTEGRATION_DATABASE_NAME: dzongjuk_integration
+  S3_ENDPOINT: http://minio:9000
+  S3_REGION: ap-south-1
+  ASSESSMENT_BUCKET: dzongjuk-assessment
+  ASSESSMENT_KEY_VERSION: "1"
+  MAX_ASSESSMENT_FILE_BYTES: "52428800"
+  MALWARE_SCAN_REQUIRED: "false"
+  CERTIFICATE_BUCKET: dzongjuk-certificates
+  CERTIFICATE_KEY_VERSION: "1"
+  RESULT_SERVICE_URL: http://result-service:8004/api/v1
+  REGISTRATION_SERVICE_URL: http://registration-service:8002/api/v1
+  PUBLIC_API_BASE_URL: https://replace-with-official-domain.example/api/v1
+  CORS_ORIGINS: https://replace-with-official-domain.example
+  SESSION_IDLE_MINUTES: "15"
+  LOCKOUT_MINUTES: "30"
+  SCORING_CONFIG_APPROVAL_REQUIRED: "true"
+  PRIVILEGED_ASSURANCE_LEVELS: MFA
+  IDENTITY_PORT: "8001"
+  REGISTRATION_PORT: "8002"
+  ASSESSMENT_PORT: "8003"
+  RESULT_PORT: "8004"
+  APPEAL_PORT: "8005"
+  NOTIFICATION_PORT: "8006"
+  REPORTING_PORT: "8007"
+  INTEGRATION_PORT: "8008"

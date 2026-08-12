@@ -1,0 +1,19 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: dzongjuk
+resources:
+  - config.yaml
+  - infrastructure.yaml
+images:
+  - name: dev-harbor.systems.gov.bt/dzongjuk/postgres
+    newTag: deployment-tag
+  - name: dev-harbor.systems.gov.bt/dzongjuk/redis
+    newTag: 8.2-alpine
+  - name: dev-harbor.systems.gov.bt/dzongjuk/rabbitmq
+    newTag: 4.1-management-alpine
+  - name: dev-harbor.systems.gov.bt/dzongjuk/minio
+    newTag: RELEASE.2025-07-23T15-54-02Z

@@ -108,6 +108,10 @@ npm run dev
 
 The API gateway runs at `http://localhost:8000`. Backend implementation evidence and unresolved external decisions are documented in `backend/docs/IMPLEMENTATION-STATUS.md`.
 
+### GovTech Kubernetes deployment
+
+The production deployment package for the assigned `dzongjuk` namespace is documented in `backend/deploy/k8s/govtech/README.md`. It deploys the frontend, gateway, all eight microservices, eight service-owned databases, Redis, RabbitMQ, and encrypted object storage through the supplied GovTech kubeconfig and Harbor registry.
+
 ### Building for Production
 
 ```bash

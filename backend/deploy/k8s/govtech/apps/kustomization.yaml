@@ -1,0 +1,23 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: dzongjuk
+resources:
+  - services.yaml
+  - gateway.yaml
+  - frontend.yaml
+  - ingress.yaml
+images:
+  - { name: dev-harbor.systems.gov.bt/dzongjuk/identity-service, newTag: deployment-tag }
+  - { name: dev-harbor.systems.gov.bt/dzongjuk/registration-service, newTag: deployment-tag }
+  - { name: dev-harbor.systems.gov.bt/dzongjuk/assessment-content-service, newTag: deployment-tag }
+  - { name: dev-harbor.systems.gov.bt/dzongjuk/result-service, newTag: deployment-tag }
+  - { name: dev-harbor.systems.gov.bt/dzongjuk/appeal-certificate-service, newTag: deployment-tag }
+  - { name: dev-harbor.systems.gov.bt/dzongjuk/notification-service, newTag: deployment-tag }
+  - { name: dev-harbor.systems.gov.bt/dzongjuk/reporting-service, newTag: deployment-tag }
+  - { name: dev-harbor.systems.gov.bt/dzongjuk/integration-service, newTag: deployment-tag }
+  - { name: dev-harbor.systems.gov.bt/dzongjuk/api-gateway, newTag: deployment-tag }
+  - { name: dev-harbor.systems.gov.bt/dzongjuk/frontend, newTag: deployment-tag }

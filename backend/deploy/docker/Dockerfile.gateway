@@ -1,0 +1,13 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+FROM nginx:1.29-alpine
+
+RUN rm /etc/nginx/conf.d/default.conf \
+    && mkdir -p /tmp/nginx/client-body /tmp/nginx/proxy /tmp/nginx/fastcgi /tmp/nginx/uwsgi /tmp/nginx/scgi \
+    && chown -R nginx:nginx /tmp/nginx
+COPY deploy/docker/nginx.kubernetes.conf /etc/nginx/nginx.conf
+
+USER nginx
+EXPOSE 8000

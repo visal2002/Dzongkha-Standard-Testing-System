@@ -41,3 +41,10 @@ lerna-debug.log*
 *.sw?
 .DS_Store
 Thumbs.db
+
+# Deployment credentials and cluster access files
+*-kubeconfig.yaml
+*kubeconfig*.yml
+mail-details.txt
+*.registry-credentials
+backend/deploy/k8s/govtech/generated/

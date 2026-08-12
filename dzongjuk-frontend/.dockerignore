@@ -4,9 +4,8 @@
 
 node_modules
 dist
-coverage
 .env
 .git
-deploy/k8s
-test
+playwright-report
+test-results
 *.log

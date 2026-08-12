@@ -1,0 +1,296 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dzongjuk-app
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: identity-service }
+  template:
+    metadata:
+      labels: { app: identity-service, app.kubernetes.io/part-of: dzongjuk }
+    spec:
+      serviceAccountName: dzongjuk-app
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext: { runAsNonRoot: true, fsGroup: 101, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: identity-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:deployment-tag
+          envFrom:
+            - configMapRef: { name: dzongjuk-config }
+            - secretRef: { name: dzongjuk-secrets }
+          ports: [{ name: http, containerPort: 8001 }]
+          readinessProbe:
+            httpGet: { path: /health/ready, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: { path: /health/live, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { cpu: 750m, memory: 768Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: identity-service }
+spec:
+  selector: { app: identity-service }
+  ports: [{ name: http, port: 8001, targetPort: http }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: registration-service }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: registration-service } }
+  template:
+    metadata: { labels: { app: registration-service, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      serviceAccountName: dzongjuk-app
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext: { runAsNonRoot: true, fsGroup: 101, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: registration-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/registration-service:deployment-tag
+          envFrom:
+            - configMapRef: { name: dzongjuk-config }
+            - secretRef: { name: dzongjuk-secrets }
+          ports: [{ name: http, containerPort: 8002 }]
+          readinessProbe: { httpGet: { path: /health/ready, port: http }, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6 }
+          livenessProbe: { httpGet: { path: /health/live, port: http }, initialDelaySeconds: 30, periodSeconds: 20, timeoutSeconds: 3 }
+          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 750m, memory: 768Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: registration-service }
+spec:
+  selector: { app: registration-service }
+  ports: [{ name: http, port: 8002, targetPort: http }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: assessment-content-service }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: assessment-content-service } }
+  template:
+    metadata: { labels: { app: assessment-content-service, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      serviceAccountName: dzongjuk-app
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext: { runAsNonRoot: true, fsGroup: 101, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: assessment-content-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/assessment-content-service:deployment-tag
+          envFrom:
+            - configMapRef: { name: dzongjuk-config }
+            - secretRef: { name: dzongjuk-secrets }
+          ports: [{ name: http, containerPort: 8003 }]
+          readinessProbe: { httpGet: { path: /health/ready, port: http }, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6 }
+          livenessProbe: { httpGet: { path: /health/live, port: http }, initialDelaySeconds: 30, periodSeconds: 20, timeoutSeconds: 3 }
+          resources:
+            requests: { cpu: 150m, memory: 256Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: assessment-content-service }
+spec:
+  selector: { app: assessment-content-service }
+  ports: [{ name: http, port: 8003, targetPort: http }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: result-service }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: result-service } }
+  template:
+    metadata: { labels: { app: result-service, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      serviceAccountName: dzongjuk-app
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext: { runAsNonRoot: true, fsGroup: 101, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: result-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/result-service:deployment-tag
+          envFrom:
+            - configMapRef: { name: dzongjuk-config }
+            - secretRef: { name: dzongjuk-secrets }
+          ports: [{ name: http, containerPort: 8004 }]
+          readinessProbe: { httpGet: { path: /health/ready, port: http }, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6 }
+          livenessProbe: { httpGet: { path: /health/live, port: http }, initialDelaySeconds: 30, periodSeconds: 20, timeoutSeconds: 3 }
+          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 750m, memory: 768Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: result-service }
+spec:
+  selector: { app: result-service }
+  ports: [{ name: http, port: 8004, targetPort: http }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: appeal-certificate-service }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: appeal-certificate-service } }
+  template:
+    metadata: { labels: { app: appeal-certificate-service, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      serviceAccountName: dzongjuk-app
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext: { runAsNonRoot: true, fsGroup: 101, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: appeal-certificate-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/appeal-certificate-service:deployment-tag
+          envFrom:
+            - configMapRef: { name: dzongjuk-config }
+            - secretRef: { name: dzongjuk-secrets }
+          ports: [{ name: http, containerPort: 8005 }]
+          readinessProbe: { httpGet: { path: /health/ready, port: http }, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6 }
+          livenessProbe: { httpGet: { path: /health/live, port: http }, initialDelaySeconds: 30, periodSeconds: 20, timeoutSeconds: 3 }
+          resources:
+            requests: { cpu: 150m, memory: 256Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: appeal-certificate-service }
+spec:
+  selector: { app: appeal-certificate-service }
+  ports: [{ name: http, port: 8005, targetPort: http }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: notification-service }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: notification-service } }
+  template:
+    metadata: { labels: { app: notification-service, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      serviceAccountName: dzongjuk-app
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext: { runAsNonRoot: true, fsGroup: 101, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: notification-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/notification-service:deployment-tag
+          envFrom:
+            - configMapRef: { name: dzongjuk-config }
+            - secretRef: { name: dzongjuk-secrets }
+          ports: [{ name: http, containerPort: 8006 }]
+          readinessProbe: { httpGet: { path: /health/ready, port: http }, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6 }
+          livenessProbe: { httpGet: { path: /health/live, port: http }, initialDelaySeconds: 30, periodSeconds: 20, timeoutSeconds: 3 }
+          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 750m, memory: 768Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: notification-service }
+spec:
+  selector: { app: notification-service }
+  ports: [{ name: http, port: 8006, targetPort: http }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: reporting-service }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: reporting-service } }
+  template:
+    metadata: { labels: { app: reporting-service, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      serviceAccountName: dzongjuk-app
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext: { runAsNonRoot: true, fsGroup: 101, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: reporting-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/reporting-service:deployment-tag
+          envFrom:
+            - configMapRef: { name: dzongjuk-config }
+            - secretRef: { name: dzongjuk-secrets }
+          ports: [{ name: http, containerPort: 8007 }]
+          readinessProbe: { httpGet: { path: /health/ready, port: http }, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6 }
+          livenessProbe: { httpGet: { path: /health/live, port: http }, initialDelaySeconds: 30, periodSeconds: 20, timeoutSeconds: 3 }
+          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 750m, memory: 768Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: reporting-service }
+spec:
+  selector: { app: reporting-service }
+  ports: [{ name: http, port: 8007, targetPort: http }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: integration-service }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: integration-service } }
+  template:
+    metadata: { labels: { app: integration-service, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      serviceAccountName: dzongjuk-app
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext: { runAsNonRoot: true, fsGroup: 101, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: integration-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/integration-service:deployment-tag
+          envFrom:
+            - configMapRef: { name: dzongjuk-config }
+            - secretRef: { name: dzongjuk-secrets }
+          ports: [{ name: http, containerPort: 8008 }]
+          readinessProbe: { httpGet: { path: /health/ready, port: http }, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6 }
+          livenessProbe: { httpGet: { path: /health/live, port: http }, initialDelaySeconds: 30, periodSeconds: 20, timeoutSeconds: 3 }
+          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 750m, memory: 768Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: integration-service }
+spec:
+  selector: { app: integration-service }
+  ports: [{ name: http, port: 8008, targetPort: http }]

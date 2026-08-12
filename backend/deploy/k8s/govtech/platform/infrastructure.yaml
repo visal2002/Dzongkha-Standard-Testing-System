@@ -1,0 +1,282 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dzongjuk-platform
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: openebs-rwx
+  resources:
+    requests:
+      storage: "20Gi"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: openebs-rwx
+  resources:
+    requests:
+      storage: "2Gi"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rabbitmq-data
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: openebs-rwx
+  resources:
+    requests:
+      storage: "5Gi"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: object-data
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: openebs-rwx
+  resources:
+    requests:
+      storage: "20Gi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: postgres }
+  template:
+    metadata:
+      labels: { app: postgres, app.kubernetes.io/part-of: dzongjuk }
+    spec:
+      serviceAccountName: dzongjuk-platform
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext:
+        fsGroup: 70
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: postgres
+          image: dev-harbor.systems.gov.bt/dzongjuk/postgres:deployment-tag
+          imagePullPolicy: IfNotPresent
+          ports: [{ name: postgres, containerPort: 5432 }]
+          envFrom:
+            - configMapRef: { name: dzongjuk-config }
+          env:
+            - name: POSTGRES_DB
+              value: postgres
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: dzongjuk-secrets, key: DATABASE_USER } }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: dzongjuk-secrets, key: DATABASE_PASSWORD } }
+            - name: DZONGJUK_WRITE_READINESS_MARKER
+              value: "true"
+          readinessProbe:
+            exec: { command: [sh, -c, 'test -f "$PGDATA/.dzongjuk-provisioned" && pg_isready -U "$POSTGRES_USER" -d postgres'] }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            exec: { command: [sh, -c, "pg_isready -U $POSTGRES_USER -d postgres"] }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { cpu: "2", memory: 2Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: postgres-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector: { app: postgres }
+  ports: [{ name: postgres, port: 5432, targetPort: postgres }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: redis }
+  template:
+    metadata:
+      labels: { app: redis, app.kubernetes.io/part-of: dzongjuk }
+    spec:
+      serviceAccountName: dzongjuk-platform
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext:
+        fsGroup: 999
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: redis
+          image: dev-harbor.systems.gov.bt/dzongjuk/redis:8.2-alpine
+          command: [sh, -c, 'exec redis-server --appendonly yes --requirepass "$REDIS_PASSWORD"']
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom: { secretKeyRef: { name: dzongjuk-secrets, key: REDIS_PASSWORD } }
+          ports: [{ name: redis, containerPort: 6379 }]
+          readinessProbe:
+            exec: { command: [sh, -c, 'redis-cli -a "$REDIS_PASSWORD" ping | grep PONG'] }
+            initialDelaySeconds: 5
+          livenessProbe:
+            exec: { command: [sh, -c, 'redis-cli -a "$REDIS_PASSWORD" ping | grep PONG'] }
+            initialDelaySeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          volumeMounts: [{ name: data, mountPath: /data }]
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: redis-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector: { app: redis }
+  ports: [{ name: redis, port: 6379, targetPort: redis }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: rabbitmq }
+  template:
+    metadata:
+      labels: { app: rabbitmq, app.kubernetes.io/part-of: dzongjuk }
+    spec:
+      serviceAccountName: dzongjuk-platform
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext:
+        fsGroup: 999
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: rabbitmq
+          image: dev-harbor.systems.gov.bt/dzongjuk/rabbitmq:4.1-management-alpine
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom: { secretKeyRef: { name: dzongjuk-secrets, key: RABBITMQ_USER } }
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom: { secretKeyRef: { name: dzongjuk-secrets, key: RABBITMQ_PASSWORD } }
+          ports:
+            - { name: amqp, containerPort: 5672 }
+            - { name: management, containerPort: 15672 }
+          readinessProbe:
+            exec: { command: [rabbitmq-diagnostics, -q, ping] }
+            initialDelaySeconds: 15
+          livenessProbe:
+            exec: { command: [rabbitmq-diagnostics, -q, ping] }
+            initialDelaySeconds: 45
+          resources:
+            requests: { cpu: 200m, memory: 384Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          volumeMounts: [{ name: data, mountPath: /var/lib/rabbitmq }]
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: rabbitmq-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+spec:
+  selector: { app: rabbitmq }
+  ports:
+    - { name: amqp, port: 5672, targetPort: amqp }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: minio }
+  template:
+    metadata:
+      labels: { app: minio, app.kubernetes.io/part-of: dzongjuk }
+    spec:
+      serviceAccountName: dzongjuk-platform
+      imagePullSecrets: [{ name: harbor-registry }]
+      securityContext:
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: minio
+          image: "dev-harbor.systems.gov.bt/dzongjuk/minio:RELEASE.2025-07-23T15-54-02Z"
+          args: [server, /data, --console-address, ":9001"]
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom: { secretKeyRef: { name: dzongjuk-secrets, key: S3_ACCESS_KEY } }
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom: { secretKeyRef: { name: dzongjuk-secrets, key: S3_SECRET_KEY } }
+          ports:
+            - { name: api, containerPort: 9000 }
+            - { name: console, containerPort: 9001 }
+          readinessProbe:
+            httpGet: { path: /minio/health/ready, port: api }
+            initialDelaySeconds: 10
+          livenessProbe:
+            httpGet: { path: /minio/health/live, port: api }
+            initialDelaySeconds: 30
+          resources:
+            requests: { cpu: 200m, memory: 256Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          volumeMounts: [{ name: data, mountPath: /data }]
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: object-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+spec:
+  selector: { app: minio }
+  ports:
+    - { name: api, port: 9000, targetPort: api }

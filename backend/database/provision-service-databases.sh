@@ -7,6 +7,9 @@ set -eu
 
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-/migrations}"
 ADMIN_DATABASE="${POSTGRES_ADMIN_DATABASE:-postgres}"
+PGUSER="${PGUSER:-${POSTGRES_USER:-dzongjuk}}"
+PGPASSWORD="${PGPASSWORD:-${POSTGRES_PASSWORD:-}}"
+export PGUSER PGPASSWORD
 
 database_name() {
   case "$1" in
@@ -79,5 +82,9 @@ for service in identity registration assessment result appeal_certificate notifi
   fi
   apply_migrations "$service" "$database"
 done
+
+if [ "${DZONGJUK_WRITE_READINESS_MARKER:-false}" = "true" ]; then
+  : > "${PGDATA:?PGDATA is required for the readiness marker}/.dzongjuk-provisioned"
+fi
 
 echo "All service databases are provisioned."
