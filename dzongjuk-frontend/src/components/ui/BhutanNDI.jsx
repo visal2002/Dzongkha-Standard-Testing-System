@@ -195,7 +195,7 @@ function BhutanNDIModal({
         aria-modal="true"
         aria-labelledby="ndi-modal-title"
         className={[
-          'relative w-full overflow-hidden rounded-4xl border border-slate-200 ndi-bg-popup shadow-[0_24px_60px_rgba(18,65,67,0.16)]',
+          'relative w-full overflow-hidden rounded-4xl border border-slate-200 ndi-bg-popup ndi-shadow-soft',
           size === 'lg' ? 'max-w-180' : 'max-w-147.5',
         ].join(' ')}
         onClick={(event) => event.stopPropagation()}
@@ -211,7 +211,7 @@ function BhutanNDIModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-2xl p-3 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
+                className="rounded-2xl p-3 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 ndi-focus-ring"
                 aria-label="Close Bhutan NDI modal"
               >
                 <span aria-hidden="true">✕</span>
@@ -239,7 +239,7 @@ export function BhutanNDIDeeplinkModal({
         <button
           type="button"
           onClick={onOpenWallet}
-          className="inline-flex h-12.5 min-w-75 items-center justify-center rounded-lg bg-(--ndi-primary) px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
+          className="inline-flex h-12.5 min-w-75 items-center justify-center rounded-lg bg-(--ndi-primary) px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg ndi-focus-ring"
         >
           Open Bhutan NDI Wallet
         </button>
@@ -249,7 +249,7 @@ export function BhutanNDIDeeplinkModal({
         <button
           type="button"
           onClick={onWatchGuide}
-          className="inline-flex h-12.5 min-w-75 items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
+          className="inline-flex h-12.5 min-w-75 items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white ndi-focus-ring"
         >
           <img src={assets.playButton} alt="" aria-hidden="true" className="h-5 w-5" />
           Watch Video Guide
@@ -294,7 +294,7 @@ export function BhutanNDIQRScanModal({
         <button
           type="button"
           onClick={onWatchGuide}
-          className="inline-flex h-12.5 w-full items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
+          className="inline-flex h-12.5 w-full items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white ndi-focus-ring"
         >
           <img src={assets.playButton} alt="" aria-hidden="true" className="h-5 w-5" />
           Watch Video Guide
@@ -323,12 +323,12 @@ export function BhutanNDICombinedModal({
         <button
           type="button"
           onClick={onOpenWallet}
-          className="inline-flex h-12.5 w-full items-center justify-center rounded-lg bg-(--ndi-primary) px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
+          className="inline-flex h-12.5 w-full items-center justify-center rounded-lg bg-(--ndi-primary) px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg ndi-focus-ring"
         >
           Open Bhutan NDI Wallet
         </button>
 
-        <div className="rounded-[28px] border border-slate-200 bg-white p-5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mx-auto mb-4 flex ndi-qr-box-sm items-center justify-center rounded-2xl border border-slate-200 bg-(--ndi-popup-bg)">
             <img src={assets.qrLogo} alt="QR code placeholder" className="h-36 w-36 object-contain" />
           </div>
@@ -340,7 +340,7 @@ export function BhutanNDICombinedModal({
         <button
           type="button"
           onClick={onWatchGuide}
-          className="inline-flex h-12.5 w-full items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
+          className="inline-flex h-12.5 w-full items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white ndi-focus-ring"
         >
           <img src={assets.playButton} alt="" aria-hidden="true" className="h-5 w-5" />
           Watch Video Guide
@@ -359,7 +359,7 @@ export function BhutanNDICombinedModal({
 export function BhutanNDIPageShell({ children }) {
   return (
     <section className="min-h-screen bg-slate-50 py-12 sm:py-16">
-      <div className="mx-auto w-full max-w-[1200px] px-4">{children}</div>
+      <div className="mx-auto w-full max-w-300 px-4">{children}</div>
     </section>
   );
 }

@@ -20,13 +20,13 @@ import toast from 'react-hot-toast';
 
 function NdiQrCode({ qrUrl, isLoading, error, onErrorClose, onError }) {
   return (
-    <div className="relative border-4 border-[var(--ndi-primary)] rounded-3xl p-3 bg-white shadow-sm flex flex-col items-center justify-center min-w-[200px] min-h-[200px]">
+    <div className="relative border-4 border-(--ndi-primary) rounded-3xl p-3 bg-white shadow-sm flex flex-col items-center justify-center min-w-50 min-h-50">
       {error ? (
         <div className="flex flex-col items-center text-center p-2 w-44">
           <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mb-3 text-amber-500 shadow-inner">
             <AlertTriangle size={28} className="text-amber-500 fill-amber-100" />
           </div>
-          <div className="text-slate-600 text-xs font-medium mb-4 break-words leading-relaxed w-full">
+          <div className="text-slate-600 text-xs font-medium mb-4 wrap-break-word leading-relaxed w-full">
             {error}
           </div>
           <button
@@ -106,7 +106,7 @@ function NdiQrCode({ qrUrl, isLoading, error, onErrorClose, onError }) {
 
           {/* Center NDI Badge Logo */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-[#1b3d39] border-4 border-[var(--ndi-primary)] p-1 shadow-md flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-[#1b3d39] border-4 border-(--ndi-primary) p-1 shadow-md flex items-center justify-center">
               <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="w-8 h-8 object-contain" />
             </div>
           </div>
@@ -127,11 +127,11 @@ export function NdiLoginPage() {
     <div className="min-h-screen bg-slate-50 py-12">
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
+          <div className="rounded-4xl border border-slate-200 bg-white p-8 shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--ndi-primary)]">
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-(--ndi-primary)">
                     Bhutan NDI Integration
                   </p>
                   <h1 className="mt-3 text-4xl font-semibold text-slate-950">
@@ -160,7 +160,7 @@ export function NdiLoginPage() {
                 <button
                   type="button"
                   onClick={() => setActiveModal('qr')}
-                  className="rounded-[18px] border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition hover:border-[var(--ndi-primary)] hover:shadow-lg"
+                  className="rounded-[18px] border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition hover:border-(--ndi-primary) hover:shadow-lg"
                 >
                   <p className="text-sm font-semibold text-slate-900">Open website QR scan popup</p>
                   <p className="mt-2 text-sm text-[var(--ndi-text-secondary)]">
@@ -170,7 +170,7 @@ export function NdiLoginPage() {
                 <button
                   type="button"
                   onClick={() => setActiveModal('deeplink')}
-                  className="rounded-[18px] border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition hover:border-[var(--ndi-primary)] hover:shadow-lg"
+                  className="rounded-[18px] border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition hover:border-(--ndi-primary) hover:shadow-lg"
                 >
                   <p className="text-sm font-semibold text-slate-900">Open mobile deeplink popup</p>
                   <p className="mt-2 text-sm text-[var(--ndi-text-secondary)]">
@@ -181,7 +181,7 @@ export function NdiLoginPage() {
             </div>
           </div>
 
-          <div className="rounded-[32px] border border-slate-200 bg-[var(--ndi-popup-bg)] p-6 shadow-sm">
+          <div className="rounded-4xl border border-slate-200 bg-(--ndi-popup-bg) p-6 shadow-sm">
             <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--ndi-primary)] mb-3">
                 Scan with Bhutan NDI Wallet
@@ -189,7 +189,7 @@ export function NdiLoginPage() {
               <div className="mb-6 flex items-center justify-center">
                 <img src="/images/NDI/QRlogo.svg" alt="QR code placeholder" className="h-44 w-44 object-contain" />
               </div>
-              <p className="text-sm leading-6 text-[var(--ndi-text-secondary)]">
+              <p className="text-sm leading-6 text-(--ndi-text-secondary)">
                 Tap the scan button located on the menu bar and scan the QR code
               </p>
             </div>
@@ -198,14 +198,14 @@ export function NdiLoginPage() {
               <button
                 type="button"
                 onClick={openWallet}
-                className="inline-flex h-[50px] items-center justify-center rounded-[14px] bg-[var(--ndi-primary)] px-6 text-sm font-semibold text-white transition hover:-translate-y-[1px] hover:shadow-lg"
+                className="inline-flex h-12.5 items-center justify-center rounded-[14px] bg-(--ndi-primary) px-6 text-sm font-semibold text-white transition hover:-translate-y-px hover:shadow-lg"
               >
                 Open Bhutan NDI Wallet
               </button>
               <button
                 type="button"
                 onClick={openGuide}
-                className="inline-flex h-[50px] items-center justify-center rounded-[14px] border-2 border-[var(--ndi-primary)] bg-white px-6 text-sm font-semibold text-[var(--ndi-primary)] transition hover:bg-[var(--ndi-primary)] hover:text-white"
+                className="inline-flex h-12.5 items-center justify-center rounded-[14px] border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition hover:bg-(--ndi-primary) hover:text-white"
               >
                 Watch Video Guide
               </button>
@@ -216,13 +216,13 @@ export function NdiLoginPage() {
                 </a>
               </p>
               <div className="space-y-3 rounded-[20px] border border-slate-200 bg-white p-5">
-                <p className="text-lg font-semibold text-[var(--ndi-primary)]">Get Support</p>
+                <p className="text-lg font-semibold text-(--ndi-primary)">Get Support</p>
                 <div className="space-y-3">
-                  <a href="mailto:ndifeedback@dhi.bt" className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-[var(--ndi-popup-bg)] px-4 py-3 text-sm transition hover:border-[var(--ndi-primary)] hover:text-[var(--ndi-primary)]">
+                  <a href="mailto:ndifeedback@dhi.bt" className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-(--ndi-popup-bg) px-4 py-3 text-sm transition hover:border-(--ndi-primary) hover:text-(--ndi-primary)">
                     <img src="/images/NDI/Mail.svg" alt="Email icon" className="h-5 w-5" />
                     ndifeedback@dhi.bt
                   </a>
-                  <a href="tel:1199" className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-[var(--ndi-popup-bg)] px-4 py-3 text-sm transition hover:border-[var(--ndi-primary)] hover:text-[var(--ndi-primary)]">
+                  <a href="tel:1199" className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-(--ndi-popup-bg) px-4 py-3 text-sm transition hover:border-(--ndi-primary) hover:text-(--ndi-primary)">
                     <img src="/images/NDI/Call.svg" alt="Phone icon" className="h-5 w-5" />
                     1199
                   </a>
