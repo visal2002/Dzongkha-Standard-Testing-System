@@ -107,8 +107,6 @@ export function BhutanNDIButton({
   );
 }
 
-<<<<<<< HEAD
-=======
 // Small utility components/styles that may still use canonical Tailwind classes
 export function NDISectionTitle({ children, highlight }) {
   return (
@@ -118,7 +116,6 @@ export function NDISectionTitle({ children, highlight }) {
   );
 }
 
->>>>>>> 6f4162b65dba31b22f5c516f937717bdfc977b96
 function NDIInstruction({ assets, className = '' }) {
   return (
     <div className={['flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm', className].join(' ')}>
