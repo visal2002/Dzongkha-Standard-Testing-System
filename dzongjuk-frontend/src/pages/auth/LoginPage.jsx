@@ -20,7 +20,7 @@ import toast from 'react-hot-toast';
 
 function NdiQrCode({ qrUrl, isLoading, error, onErrorClose, onError }) {
   return (
-    <div className="relative border-2 border-[#3ec49c] rounded-3xl p-3 bg-white shadow-sm flex flex-col items-center justify-center min-w-[200px] min-h-[200px]">
+    <div className="relative border-4 border-[var(--ndi-primary)] rounded-3xl p-3 bg-white shadow-sm flex flex-col items-center justify-center min-w-[200px] min-h-[200px]">
       {error ? (
         <div className="flex flex-col items-center text-center p-2 w-44">
           <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mb-3 text-amber-500 shadow-inner">
@@ -106,7 +106,7 @@ function NdiQrCode({ qrUrl, isLoading, error, onErrorClose, onError }) {
 
           {/* Center NDI Badge Logo */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-[#1b3d39] border-2 border-[#3ec49c] p-1 shadow-md flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-[#1b3d39] border-4 border-[var(--ndi-primary)] p-1 shadow-md flex items-center justify-center">
               <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="w-8 h-8 object-contain" />
             </div>
           </div>
