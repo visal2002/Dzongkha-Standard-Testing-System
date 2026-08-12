@@ -163,7 +163,7 @@ export function NdiLoginPage() {
                   className="rounded-[18px] border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition hover:border-(--ndi-primary) hover:shadow-lg"
                 >
                   <p className="text-sm font-semibold text-slate-900">Open website QR scan popup</p>
-                  <p className="mt-2 text-sm text-[var(--ndi-text-secondary)]">
+                  <p className="mt-2 text-sm text-(--ndi-text-secondary)">
                     Preview the QR scan flow for desktop users.
                   </p>
                 </button>
@@ -173,7 +173,7 @@ export function NdiLoginPage() {
                   className="rounded-[18px] border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition hover:border-(--ndi-primary) hover:shadow-lg"
                 >
                   <p className="text-sm font-semibold text-slate-900">Open mobile deeplink popup</p>
-                  <p className="mt-2 text-sm text-[var(--ndi-text-secondary)]">
+                  <p className="mt-2 text-sm text-(--ndi-text-secondary)">
                     Preview the mobile deep link pattern for NDI Wallet launch.
                   </p>
                 </button>
@@ -209,7 +209,7 @@ export function NdiLoginPage() {
               >
                 Watch Video Guide
               </button>
-              <p className="text-sm text-[var(--ndi-text-secondary)]">
+              <p className="text-sm text-(--ndi-text-secondary)">
                 Don’t have the Bhutan NDI Wallet?{' '}
                 <a href="https://www.bhutanndi.com" target="_blank" rel="noreferrer" className="font-semibold text-[var(--ndi-primary)] hover:underline">
                   Download Now!
@@ -469,7 +469,7 @@ export default function LoginPage() {
                         </button>
                       </div>
 
-                      <Button type="submit" fullWidth size="lg" loading={isLoading} className="!rounded-full !h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#214042' }}>
+                      <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full! h-12! tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#214042' }}>
                         Sign in to DSTS
                       </Button>
                     </form>
@@ -716,7 +716,7 @@ export default function LoginPage() {
                             </div>
                           </div>
 
-                          <Button type="submit" fullWidth size="lg" loading={isLoading} className="!rounded-full !h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#214042' }}>
+                          <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full! h-12! tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#214042' }}>
                             Create Account
                           </Button>
 

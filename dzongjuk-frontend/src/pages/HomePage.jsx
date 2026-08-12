@@ -36,14 +36,14 @@ export default function HomePage() {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-9">
-          <Link to="/" className="text-white font-medium hover:text-[#FCD34D] transition-colors text-base drop-shadow-md">Home</Link>
+          <Link to="/" className="text-white font-medium hover:text-brand-gold-light transition-colors text-base drop-shadow-md">Home</Link>
           <Link to="#" className="text-gray-300 font-medium hover:text-white transition-colors text-base drop-shadow-md">About DSTs</Link>
           <Link to="#" className="text-gray-300 font-medium hover:text-white transition-colors text-base drop-shadow-md">Contact Us</Link>
         </nav>
 
         <Link
           to="/login"
-          className="h-11 px-7 border border-[#FCD34D]/80 text-white text-base font-medium rounded-xl transition-all hover:bg-[#FCD34D]/20 shadow-[0_0_15px_rgba(212,131,10,0.3)] backdrop-blur-sm inline-flex items-center justify-center"
+          className="h-11 px-7 border border-brand-gold-light/80 text-white text-base font-medium rounded-xl transition-all hover:bg-brand-gold-light/20 shadow-[0_0_15px_rgba(212,131,10,0.3)] backdrop-blur-sm inline-flex items-center justify-center"
         >
           Sign In
         </Link>
@@ -65,7 +65,7 @@ export default function HomePage() {
             >
               <h1 className="text-6xl sm:text-[76px] font-black text-white leading-[1.1] mb-6 tracking-tight drop-shadow-lg">
                 <span className="inline-block sm:whitespace-nowrap">Dzongkha Standard</span><br />
-                <span className="text-[#FCD34D]">Testing System</span>
+                <span className="text-brand-gold-light">Testing System</span>
               </h1>
               <p className="text-lg sm:text-[19px] text-gray-200 mb-10 leading-relaxed max-w-2xl drop-shadow-md font-medium">
                 Bhutan's premier national platform for standardized Dzongkha<br />
@@ -76,15 +76,15 @@ export default function HomePage() {
               <div className="flex items-center gap-5 flex-wrap">
                 <Link
                   to="/login"
-                  className="h-14 px-8 text-[17px] bg-gradient-to-r from-[#F59E0B] to-[#FCD34D] hover:from-[#D97706] hover:to-[#F59E0B] text-white font-semibold rounded-xl transition-all shadow-[0_4px_20px_rgba(212,131,10,0.4)] inline-flex items-center gap-2"
+                  className="h-14 px-8 text-[17px] bg-linear-to-r from-brand-gold to-brand-gold-light hover:from-brand-gold-dark hover:to-brand-gold text-white font-semibold rounded-xl transition-all shadow-[0_4px_20px_rgba(212,131,10,0.4)] inline-flex items-center gap-2"
                 >
                   Access Portal <ArrowRight size={20} />
                 </Link>
                 <Link
                   to="/ndi-login"
-                  className="h-14 px-8 text-[17px] bg-[#1A2540]/60 backdrop-blur-md border border-[#FCD34D]/30 hover:border-[#FCD34D]/70 text-white font-medium rounded-xl transition-all flex items-center gap-3 shadow-lg"
+                  className="h-14 px-8 text-[17px] bg-surface-card/60 backdrop-blur-md border border-brand-gold-light/30 hover:border-brand-gold-light/70 text-white font-medium rounded-xl transition-all flex items-center gap-3 shadow-lg"
                 >
-                  <Fingerprint size={20} className="text-[#FCD34D]" /> Sign in with NDI
+                  <Fingerprint size={20} className="text-brand-gold-light" /> Sign in with NDI
                 </Link>
               </div>
             </motion.div>
