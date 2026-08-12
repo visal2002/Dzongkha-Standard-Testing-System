@@ -77,6 +77,22 @@ export class LoginAttemptEntity {
   @CreateDateColumn({ type: 'timestamptz' }) occurredAt: Date;
 }
 
+@Entity('ndi_login_requests')
+export class NdiLoginRequestEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Index({ unique: true }) @Column({ length: 80 }) threadId: string;
+  @Index({ unique: true }) @Column({ length: 64 }) pollTokenHash: string;
+  @Column({ length: 16, default: 'PENDING' }) status: 'PENDING' | 'VALIDATED' | 'REJECTED' | 'FAILED' | 'CANCELLED' | 'CONSUMED';
+  @Column({ type: 'text' }) proofRequestUrl: string;
+  @Column({ type: 'text', nullable: true }) deepLinkUrl: string | null;
+  @Column({ type: 'jsonb', default: {} }) verifiedIdentity: { cid?: string; fullName?: string; relationshipDid?: string };
+  @ManyToOne(() => UserEntity, { eager: true, nullable: true, onDelete: 'SET NULL' }) user: UserEntity | null;
+  @Column({ type: 'timestamptz' }) expiresAt: Date;
+  @Column({ type: 'timestamptz', nullable: true }) completedAt: Date | null;
+  @Column({ type: 'timestamptz', nullable: true }) consumedAt: Date | null;
+  @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
+}
+
 @Entity('audit_events')
 export class AuditEventEntity {
   @PrimaryGeneratedColumn('uuid') id: string;

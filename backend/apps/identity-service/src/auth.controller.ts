@@ -4,12 +4,12 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Post, Req, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { Public } from '@dzongjuk/security';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshDto, RegisterDto } from './dtos';
+import { LoginDto, NdiStatusDto, RefreshDto, RegisterDto } from './dtos';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -44,6 +44,25 @@ export class AuthController {
 
   @Public() @Post('ndi/initiate')
   ndiInitiate() { return this.auth.ndiInitiate(); }
+
+  @Public() @Post('ndi/status')
+  async ndiStatus(@Body() dto: NdiStatusDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    const result = await this.auth.ndiStatus(dto.pollToken, this.context(request));
+    if ('refreshToken' in result) {
+      const { refreshToken, ...publicResult } = result;
+      this.setRefreshCookie(response, refreshToken);
+      return publicResult;
+    }
+    return result;
+  }
+
+  @Public() @Post('ndi/cancel')
+  ndiCancel(@Body() dto: NdiStatusDto) { return this.auth.ndiCancel(dto.pollToken); }
+
+  @Public() @Post('ndi/webhook') @HttpCode(202)
+  ndiWebhook(@Headers('authorization') authorization: string | undefined, @Body() payload: Record<string, unknown>) {
+    return this.auth.ndiWebhook(authorization, payload);
+  }
 
   @ApiBearerAuth() @Get('me')
   me(@Req() request: Request) { return request.user; }

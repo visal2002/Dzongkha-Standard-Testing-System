@@ -14,17 +14,18 @@ import { AdminService } from './admin.service';
 import { AuditService } from './audit.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { AuditEventEntity, LoginAttemptEntity, PermissionEntity, RoleEntity, SessionEntity, UserEntity } from './entities';
+import { NdiProviderService } from './ndi-provider.service';
+import { AuditEventEntity, LoginAttemptEntity, NdiLoginRequestEntity, PermissionEntity, RoleEntity, SessionEntity, UserEntity } from './entities';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({ inject: [ConfigService], useFactory: (config: ConfigService) => databaseOptions(config, 'identity') }),
-    TypeOrmModule.forFeature([UserEntity, RoleEntity, PermissionEntity, SessionEntity, LoginAttemptEntity, AuditEventEntity]),
+    TypeOrmModule.forFeature([UserEntity, RoleEntity, PermissionEntity, SessionEntity, LoginAttemptEntity, NdiLoginRequestEntity, AuditEventEntity]),
     SecurityModule,
     PlatformModule,
   ],
   controllers: [AuthController, AdminController],
-  providers: [AuthService, AdminService, AuditService],
+  providers: [AuthService, NdiProviderService, AdminService, AuditService],
 })
 export class AppModule {}
