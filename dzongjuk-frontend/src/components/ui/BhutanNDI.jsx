@@ -107,17 +107,6 @@ export function BhutanNDIButton({
   );
 }
 
-// Small utility components/styles that may still use canonical Tailwind classes
-export function NDISectionTitle({ children, highlight }) {
-  return (
-    <h3 className="text-lg font-semibold text-slate-800">
-      {children} <span className="ndi-text-primary">{highlight}</span>
-    </h3>
-  );
-}
-
-
-
 function NDIInstruction({ assets, className = '' }) {
   return (
     <div className={['flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm', className].join(' ')}>
