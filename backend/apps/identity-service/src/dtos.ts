@@ -22,6 +22,10 @@ export class RefreshDto {
   @IsOptional() @IsString() refreshToken?: string;
 }
 
+export class NdiStatusDto {
+  @IsString() @Length(32, 256) pollToken: string;
+}
+
 export class CreateUserDto extends RegisterDto {
   @IsArray() @IsString({ each: true }) roleCodes: string[];
 }

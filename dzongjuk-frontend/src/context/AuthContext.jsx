@@ -56,17 +56,23 @@ export function AuthProvider({ children }) {
   const loginWithNDI = useCallback(async () => {
     setIsLoading(true);
     try {
-      const result = await authService.loginWithNDI();
-      if (result.success && result.user) {
-        writeStorage('dsts_token', result.token);
-        writeStorage('dsts_user', JSON.stringify(result.user));
-        setUser(result.user);
-      }
-      return result;
+      return await authService.loginWithNDI();
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  const checkNDILogin = useCallback(async (pollToken) => {
+    const result = await authService.checkNDILogin(pollToken);
+    if (result.status === 'VALIDATED' && result.user) {
+      writeStorage('dsts_token', result.token);
+      writeStorage('dsts_user', JSON.stringify(result.user));
+      setUser(result.user);
+    }
+    return result;
+  }, []);
+
+  const cancelNDILogin = useCallback((pollToken) => authService.cancelNDILogin(pollToken), []);
 
   /**
    * Log out the current user.
@@ -138,6 +144,8 @@ export function AuthProvider({ children }) {
     isLoading,
     login,
     loginWithNDI,
+    checkNDILogin,
+    cancelNDILogin,
     logout,
     switchRole,
     updateProfile,
