@@ -120,7 +120,7 @@ export function NDISectionTitle({ children, highlight }) {
 
 function NDIInstruction({ assets, className = '' }) {
   return (
-    <div className={['flex flex-col gap-4 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm', className].join(' ')}>
+    <div className={['flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm', className].join(' ')}>
       <div className="flex items-center gap-3">
         <img src={assets.scanIcon} alt="Scan icon" className="h-10 w-10 shrink-0" />
         <p className="text-sm leading-6 ndi-text-secondary">
@@ -196,7 +196,7 @@ function BhutanNDIModal({
         aria-labelledby="ndi-modal-title"
         className={[
           'relative w-full overflow-hidden rounded-4xl border border-slate-200 ndi-bg-popup shadow-[0_24px_60px_rgba(18,65,67,0.16)]',
-          size === 'lg' ? 'max-w-[720px]' : 'max-w-[590px]',
+          size === 'lg' ? 'max-w-180' : 'max-w-147.5',
         ].join(' ')}
         onClick={(event) => event.stopPropagation()}
       >
@@ -239,7 +239,7 @@ export function BhutanNDIDeeplinkModal({
         <button
           type="button"
           onClick={onOpenWallet}
-          className="inline-flex h-[50px] min-w-[300px] items-center justify-center rounded-[14px] bg-[var(--ndi-primary)] px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-translate-y-[2px] hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
+          className="inline-flex h-12.5 min-w-75 items-center justify-center rounded-lg bg-(--ndi-primary) px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
         >
           Open Bhutan NDI Wallet
         </button>
