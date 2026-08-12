@@ -39,12 +39,15 @@ export default function SamplePapers() {
       .then((response) => {
         if (!active) return;
         setPublished(response.data.map((paper) => {
-          const questionDocument = paper.documents.find(document => document.type === 'QUESTION_PAPER');
+          const documents = paper.documents || [];
+          const questionDocument = documents.find(document => document.type === 'QUESTION_PAPER');
           return {
             ...paper,
-            fileSize: formatBytes(questionDocument?.sizeBytes),
-            hasAnswerSheet: paper.documents.some(document => document.type === 'ANSWER_SHEET'),
-            uploadedAt: paper.createdAt,
+            fileSize: questionDocument ? formatBytes(questionDocument.sizeBytes) : (paper.fileSize ?? '—'),
+            hasAnswerSheet: documents.length > 0
+              ? documents.some(document => document.type === 'ANSWER_SHEET')
+              : (paper.hasAnswerSheet ?? false),
+            uploadedAt: paper.createdAt || paper.uploadedAt,
           };
         }));
       })

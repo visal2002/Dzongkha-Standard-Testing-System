@@ -196,12 +196,12 @@ export default function Sidebar({ collapsed, isDesktop, mobileOpen }) {
     >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 h-13 border-b border-surface-border shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-[#F59E0B] flex items-center justify-center shrink-0 shadow-sm relative overflow-hidden">
-          {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="relative z-10 text-white">
-            <path d="M4 6H20M4 12H20M4 18H12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+        <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 shadow-sm bg-white flex items-center justify-center">
+          <img
+            src="/images/logo of DCDD.jpg"
+            alt="DCDD Logo"
+            className="w-full h-full object-cover"
+          />
         </div>
         {!collapsed && (
           <div className="min-w-0 flex flex-col justify-center">
