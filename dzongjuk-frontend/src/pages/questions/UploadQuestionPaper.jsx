@@ -86,7 +86,7 @@ export default function UploadQuestionPaper() {
             <p className="text-sm font-medium text-text-primary truncate max-w-48">{files[field].name}</p>
             <p className="text-xs text-emerald-400">{(files[field].size / 1024 / 1024).toFixed(1)} MB · PDF</p>
           </div>
-          <button onClick={e => { e.stopPropagation(); setFiles(prev => ({ ...prev, [field]: null })); }} className="p-1 hover:bg-[var(--color-surface-border)] rounded transition-colors">
+          <button onClick={e => { e.stopPropagation(); setFiles(prev => ({ ...prev, [field]: null })); }} className="p-1 hover:bg-surface-border rounded transition-colors">
             <X size={14} className="text-text-muted" />
           </button>
         </div>

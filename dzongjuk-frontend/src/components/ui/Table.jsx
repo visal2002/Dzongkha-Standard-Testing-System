@@ -170,7 +170,7 @@ export default function DataTable({
                     'w-8 h-8 rounded-lg text-xs font-medium transition-colors',
                     currentPage === page
                       ? 'bg-[#F59E0B] text-white'
-                      : 'text-text-secondary hover:bg-[var(--color-surface-border)]',
+                      : 'text-text-secondary hover:bg-surface-border',
                   ].join(' ')}
                 >
                   {page + 1}

@@ -92,7 +92,7 @@ export default function Notifications() {
                   Mark read
                 </button>
               )}
-              <button onClick={() => dismiss(n.id)} className="p-1 hover:bg-[var(--color-surface-border)] rounded transition-colors">
+              <button onClick={() => dismiss(n.id)} className="p-1 hover:bg-surface-border rounded transition-colors">
                 <Trash2 size={12} className="text-text-muted" />
               </button>
             </div>

@@ -122,7 +122,7 @@ function NavItem({ item, collapsed }) {
             'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
             isActive
               ? 'bg-brand-gold/10 text-brand-gold'
-              : 'text-text-muted hover:text-text-secondary hover:bg-[var(--color-surface-border)]/60',
+              : 'text-text-muted hover:text-text-secondary hover:bg-surface-border/60',
           ].join(' ')}
         >
           <item.icon size={16} className="shrink-0" />
@@ -151,7 +151,7 @@ function NavItem({ item, collapsed }) {
                       'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150',
                       isActive
                         ? 'bg-brand-gold/10 text-brand-gold'
-                        : 'text-text-muted hover:text-text-secondary hover:bg-[var(--color-surface-border)]/40',
+                        : 'text-text-muted hover:text-text-secondary hover:bg-surface-border/40',
                     ].join(' ')}
                   >
                     <child.icon size={13} className="shrink-0" />
@@ -174,7 +174,7 @@ function NavItem({ item, collapsed }) {
         'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
         isActive
           ? 'bg-brand-gold/10 text-brand-gold shadow-sm'
-          : 'text-text-muted hover:text-text-secondary hover:bg-[var(--color-surface-border)]/60',
+          : 'text-text-muted hover:text-text-secondary hover:bg-surface-border/60',
       ].join(' ')}
     >
       <item.icon size={16} className="shrink-0" />

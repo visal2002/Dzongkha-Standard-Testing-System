@@ -221,7 +221,7 @@ function CertificateSection() {
         </Field>
       </div>
       <Field label="Declaration Statement">
-        <textarea rows={3} className={inputCls + ' !h-auto py-2'} value={cfg.declarationStatement} onChange={e => set('declarationStatement', e.target.value)} />
+        <textarea rows={3} className={inputCls + ' h-auto! py-2'} value={cfg.declarationStatement} onChange={e => set('declarationStatement', e.target.value)} />
       </Field>
 
       {/* Image uploads */}
@@ -267,7 +267,7 @@ function NotificationTemplatesSection() {
       </div>
       {TEMPLATES.map(t => (
         <Field key={t.key} label={t.label} hint={t.hint}>
-          <textarea rows={2} className={inputCls + ' !h-auto py-2'} value={cfg[t.key]} onChange={e => set(t.key, e.target.value)} />
+          <textarea rows={2} className={inputCls + ' h-auto! py-2'} value={cfg[t.key]} onChange={e => set(t.key, e.target.value)} />
         </Field>
       ))}
       <SaveBtn onClick={onSave} loading={saving} />
