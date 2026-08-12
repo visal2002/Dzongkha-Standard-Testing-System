@@ -9,6 +9,8 @@ dist/
 **/dist/
 build/
 **/build/
+**/playwright-report/
+**/test-results/
 
 # Local Environment variables
 .env

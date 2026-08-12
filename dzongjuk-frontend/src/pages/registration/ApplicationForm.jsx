@@ -197,13 +197,13 @@ export default function ApplicationForm() {
 
             {/* Navigation */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-8)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--surface-divider)' }}>
-              <Button type="button" variant="secondary" icon={ArrowLeft} onClick={() => step > 0 ? setStep(step - 1) : navigate(-1)}>
+              <Button type="button" variant="secondary" icon={<ArrowLeft size={14} />} onClick={() => step > 0 ? setStep(step - 1) : navigate(-1)}>
                 {step === 0 ? 'Cancel' : 'Previous'}
               </Button>
               {step < steps.length - 1 ? (
-                <Button type="button" icon={ArrowRight} onClick={handleNext}>Next</Button>
+                <Button type="button" icon={<ArrowRight size={14} />} onClick={handleNext}>Next</Button>
               ) : (
-                <Button type="submit" icon={Send}>Submit Application</Button>
+                <Button type="submit" icon={<Send size={14} />}>Submit Application</Button>
               )}
             </div>
           </form>

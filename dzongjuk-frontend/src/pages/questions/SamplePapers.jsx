@@ -39,7 +39,7 @@ export default function SamplePapers() {
       .then((response) => {
         if (!active) return;
         setPublished(response.data.map((paper) => {
-          const documents = paper.documents || [];
+          const documents = Array.isArray(paper.documents) ? paper.documents : [];
           const questionDocument = documents.find(document => document.type === 'QUESTION_PAPER');
           return {
             ...paper,
@@ -56,8 +56,30 @@ export default function SamplePapers() {
     return () => { active = false; };
   }, []);
 
-  const openSample = (paper, type = 'question') => {
-    window.open(questionService.sampleDownloadUrl(paper.id, type), '_blank', 'noopener,noreferrer');
+  const openSample = async (paper, type = 'question', download = false) => {
+    const previewWindow = download ? null : window.open('about:blank', '_blank');
+    if (previewWindow) previewWindow.opener = null;
+    try {
+      const response = await questionService.downloadSample(paper.id, type);
+      const url = URL.createObjectURL(response.data);
+      if (download) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${paper.id}-${type}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast.success('Sample paper downloaded.');
+      } else if (previewWindow) {
+        previewWindow.location.href = url;
+      } else {
+        throw new Error('The preview popup was blocked. Allow popups and try again.');
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      previewWindow?.close();
+      toast.error(error.message || 'Unable to open sample paper.');
+    }
   };
 
   return (
@@ -91,7 +113,7 @@ export default function SamplePapers() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Button variant="ghost" size="sm" icon={<Eye size={13} />} onClick={() => openSample(paper)}>Preview</Button>
-              <Button variant="secondary" size="sm" icon={<Download size={13} />} onClick={() => openSample(paper)}>Download</Button>
+              <Button variant="secondary" size="sm" icon={<Download size={13} />} onClick={() => openSample(paper, 'question', true)}>Download</Button>
             </div>
           </div>
         ))}

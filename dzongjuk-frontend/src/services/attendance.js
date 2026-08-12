@@ -13,6 +13,18 @@ import { applications } from '../data/mockData';
 
 export const attendanceService = {
   /**
+   * Get all applications eligible for attendance marking.
+   */
+  getEligible: async () => {
+    if (USE_MOCK) {
+      await mockDelay();
+      return mockResponse(applications.filter(a => ['approved', 'verified'].includes(a.status)));
+    }
+    const { data } = await apiClient.get('/attendance/eligible');
+    return data;
+  },
+
+  /**
    * Get approved applications for attendance marking for a given exam.
    * @param {string} examId
    */
@@ -37,6 +49,16 @@ export const attendanceService = {
     const { data } = await apiClient.patch(`/attendance/${applicationId}`, payload);
     return data;
   },
+
+  /**
+   * Mark an applicant absent for one or more tested skills.
+   * @param {string} applicationId
+   * @param {string[]} absentSkills
+   */
+  markAbsent: async (applicationId, absentSkills) => attendanceService.markAttendance(applicationId, {
+    present: false,
+    absentSkills,
+  }),
 
   /**
    * Bulk mark attendance for multiple applicants.
