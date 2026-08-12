@@ -133,7 +133,7 @@ function NDIInstruction({ assets, className = '' }) {
 
 function NDISupportSection({ assets }) {
   return (
-    <div className="space-y-4 rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-lg font-semibold ndi-text-primary">Get Support</p>
       <div className="space-y-3 text-sm text-slate-700">
         <a
@@ -235,7 +235,7 @@ export function BhutanNDIDeeplinkModal({
 }) {
   return (
     <BhutanNDIModal isOpen={isOpen} onClose={onClose} title="Login with Bhutan NDI Wallet" assets={assets}>
-      <div className="flex flex-col items-center gap-5 rounded-[24px] bg-white p-6 shadow-sm">
+      <div className="flex flex-col items-center gap-5 rounded-3xl bg-white p-6 shadow-sm">
         <button
           type="button"
           onClick={onOpenWallet}
@@ -249,13 +249,13 @@ export function BhutanNDIDeeplinkModal({
         <button
           type="button"
           onClick={onWatchGuide}
-          className="inline-flex h-[50px] min-w-[300px] items-center justify-center gap-3 rounded-[14px] border-2 border-[var(--ndi-primary)] bg-white px-6 text-sm font-semibold text-[var(--ndi-primary)] transition-colors duration-200 hover:bg-[var(--ndi-primary)] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
+          className="inline-flex h-12.5 min-w-75 items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
         >
           <img src={assets.playButton} alt="" aria-hidden="true" className="h-5 w-5" />
           Watch Video Guide
         </button>
 
-        <div className="w-full rounded-[20px] bg-[var(--ndi-popup-bg)] p-5 text-center">
+        <div className="w-full rounded-3xl bg-(--ndi-popup-bg) p-5 text-center">
           <NDISupplementaryText />
         </div>
 
@@ -282,11 +282,11 @@ export function BhutanNDIQRScanModal({
           />
         </div>
 
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6">
-          <div className="mx-auto mb-4 flex h-[260px] w-[260px] items-center justify-center rounded-[32px] border border-slate-200 bg-[var(--ndi-popup-bg)]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          <div className="mx-auto mb-4 flex ndi-qr-box items-center justify-center rounded-4xl border border-slate-200 bg-(--ndi-popup-bg)">
             <img src={assets.qrLogo} alt="QR code placeholder" className="h-36 w-36 object-contain" />
           </div>
-          <p className="text-center text-sm leading-6 text-[var(--ndi-text-secondary)]">
+          <p className="text-center text-sm leading-6 ndi-text-secondary">
             Tap the scan button located on the menu bar and scan the QR code
           </p>
         </div>
@@ -294,13 +294,13 @@ export function BhutanNDIQRScanModal({
         <button
           type="button"
           onClick={onWatchGuide}
-          className="inline-flex h-[50px] w-full items-center justify-center gap-3 rounded-[14px] border-2 border-[var(--ndi-primary)] bg-white px-6 text-sm font-semibold text-[var(--ndi-primary)] transition-colors duration-200 hover:bg-[var(--ndi-primary)] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
+          className="inline-flex h-12.5 w-full items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
         >
           <img src={assets.playButton} alt="" aria-hidden="true" className="h-5 w-5" />
           Watch Video Guide
         </button>
 
-        <div className="rounded-[20px] bg-[var(--ndi-popup-bg)] p-5 text-center">
+        <div className="rounded-3xl bg-(--ndi-popup-bg) p-5 text-center">
           <NDISupplementaryText />
         </div>
 
@@ -323,16 +323,16 @@ export function BhutanNDICombinedModal({
         <button
           type="button"
           onClick={onOpenWallet}
-          className="inline-flex h-[50px] w-full items-center justify-center rounded-[14px] bg-[var(--ndi-primary)] px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-translate-y-[2px] hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
+          className="inline-flex h-12.5 w-full items-center justify-center rounded-lg bg-(--ndi-primary) px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
         >
           Open Bhutan NDI Wallet
         </button>
 
         <div className="rounded-[28px] border border-slate-200 bg-white p-5">
-          <div className="mx-auto mb-4 flex h-[240px] w-[240px] items-center justify-center rounded-[28px] border border-slate-200 bg-[var(--ndi-popup-bg)]">
+          <div className="mx-auto mb-4 flex ndi-qr-box-sm items-center justify-center rounded-2xl border border-slate-200 bg-(--ndi-popup-bg)">
             <img src={assets.qrLogo} alt="QR code placeholder" className="h-36 w-36 object-contain" />
           </div>
-          <p className="text-center text-sm leading-6 text-[var(--ndi-text-secondary)]">
+          <p className="text-center text-sm leading-6 ndi-text-secondary">
             Tap the scan button located on the menu bar and scan the QR code
           </p>
         </div>
@@ -340,13 +340,13 @@ export function BhutanNDICombinedModal({
         <button
           type="button"
           onClick={onWatchGuide}
-          className="inline-flex h-[50px] w-full items-center justify-center gap-3 rounded-[14px] border-2 border-[var(--ndi-primary)] bg-white px-6 text-sm font-semibold text-[var(--ndi-primary)] transition-colors duration-200 hover:bg-[var(--ndi-primary)] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
+          className="inline-flex h-12.5 w-full items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(90,201,148,0.25)]"
         >
           <img src={assets.playButton} alt="" aria-hidden="true" className="h-5 w-5" />
           Watch Video Guide
         </button>
 
-        <div className="rounded-[20px] bg-[var(--ndi-popup-bg)] p-5 text-center">
+        <div className="rounded-3xl bg-(--ndi-popup-bg) p-5 text-center">
           <NDISupplementaryText />
         </div>
 
