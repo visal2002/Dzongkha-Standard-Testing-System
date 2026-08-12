@@ -106,9 +106,9 @@ export default function HomePage() {
             { icon: Award, title: 'Digital Certificates', desc: 'Secure, QR-verified certificates with official CEFR band scores' },
             { icon: ShieldCheck, title: 'Secure & Transparent', desc: 'Role-based access, comprehensive audit trails, and NDI authentication' },
           ].map(f => (
-            <div key={f.title} className="p-7 bg-[#172036]/80 backdrop-blur-md border border-[#243055] hover:border-[#FCD34D]/30 transition-colors rounded-2xl text-left shadow-xl shadow-black/20 group">
-              <div className="w-12 h-12 rounded-xl bg-[#FCD34D]/10 border border-[#FCD34D]/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <f.icon size={22} className="text-[#FCD34D]" />
+            <div key={f.title} className="p-7 bg-[#172036]/80 backdrop-blur-md border border-surface-border hover:border-brand-gold-light/30 transition-colors rounded-2xl text-left shadow-xl shadow-black/20 group">
+              <div className="w-12 h-12 rounded-xl bg-brand-gold-light/10 border border-brand-gold-light/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                <f.icon size={22} className="text-brand-gold-light" />
               </div>
               <h3 className="text-[16px] font-semibold text-white mb-2">{f.title}</h3>
               <p className="text-[13px] text-gray-400 leading-relaxed">{f.desc}</p>

@@ -509,7 +509,7 @@ function MaintenanceSection() {
       )}
       <ToggleRow id="ts-maint-mode" label="Enable Maintenance Mode" checked={cfg.enabled} onChange={v => set('enabled', v)} />
       <Field label="Maintenance Message">
-        <textarea rows={2} className={inputCls + ' !h-auto py-2'} value={cfg.message} onChange={e => set('message', e.target.value)} />
+        <textarea rows={2} className={inputCls + ' h-auto! py-2'} value={cfg.message} onChange={e => set('message', e.target.value)} />
       </Field>
       <Field label="Scheduled Maintenance Window">
         <input className={inputCls} value={cfg.window} onChange={e => set('window', e.target.value)} placeholder="e.g. Every Sunday 01:00–03:00 AM" />

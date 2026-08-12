@@ -183,7 +183,7 @@ export function NdiLoginPage() {
 
           <div className="rounded-4xl border border-slate-200 bg-(--ndi-popup-bg) p-6 shadow-sm">
             <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--ndi-primary)] mb-3">
+              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-(--ndi-primary) mb-3">
                 Scan with Bhutan NDI Wallet
               </p>
               <div className="mb-6 flex items-center justify-center">
@@ -211,7 +211,7 @@ export function NdiLoginPage() {
               </button>
               <p className="text-sm text-(--ndi-text-secondary)">
                 Don’t have the Bhutan NDI Wallet?{' '}
-                <a href="https://www.bhutanndi.com" target="_blank" rel="noreferrer" className="font-semibold text-[var(--ndi-primary)] hover:underline">
+                <a href="https://www.bhutanndi.com" target="_blank" rel="noreferrer" className="font-semibold text-(--ndi-primary) hover:underline">
                   Download Now!
                 </a>
               </p>

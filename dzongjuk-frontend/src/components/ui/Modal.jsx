@@ -55,7 +55,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
               {closable && (
                 <button
                   onClick={onClose}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-[var(--color-surface-border)] transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-border transition-colors"
                 >
                   <X size={16} />
                 </button>
