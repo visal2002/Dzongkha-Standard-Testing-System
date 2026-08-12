@@ -19,6 +19,13 @@
   --color-brand-teal: #0D9488;
   --color-brand-teal-light: #14B8A6;
 
+  --ndi-primary-dark: #124143;
+  --ndi-primary: #5AC994;
+  --ndi-white: #FFFFFF;
+  --ndi-popup-bg: #F8F8F8;
+  --ndi-text-secondary: #A1A0A0;
+  --ndi-border: #124143;
+
   --color-surface-bg: #0F1629;
   --color-surface-card: #1A2540;
   --color-surface-card-hover: #1E2D4A;
@@ -38,6 +45,15 @@
   --color-info: #3B82F6;
   --color-info-bg: rgba(59, 130, 246, 0.1);
 }
+
+.ndi-bg-popup { background-color: var(--ndi-popup-bg); }
+.ndi-text-secondary { color: var(--ndi-text-secondary); }
+.ndi-text-primary { color: var(--ndi-primary-dark); }
+.ndi-border-primary { border-color: var(--ndi-border); }
+.ndi-button-filled { background-color: var(--ndi-primary-dark); color: var(--ndi-white); border-color: var(--ndi-border); }
+.ndi-button-outline { background-color: var(--ndi-white); color: var(--ndi-primary-dark); border-color: var(--ndi-border); }
+.ndi-focus-ring:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(90, 201, 148, 0.25); }
+.ndi-shadow-soft { box-shadow: 0 24px 50px rgba(18,65,67,0.16); }
 
 /* Light theme */
 .light {
