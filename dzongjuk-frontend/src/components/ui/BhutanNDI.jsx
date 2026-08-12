@@ -116,8 +116,6 @@ export function NDISectionTitle({ children, highlight }) {
   );
 }
 
-
-
 function NDIInstruction({ assets, className = '' }) {
   return (
     <div className={['flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm', className].join(' ')}>
@@ -160,7 +158,7 @@ function NDISupportSection({ assets }) {
 function NDISupplementaryText() {
   return (
     <p className="text-sm ndi-text-secondary">
-      Don’t have the Bhutan NDI Wallet?{' '}
+      Don't have the Bhutan NDI Wallet?{' '}
       <span className="font-semibold ndi-text-primary">Download Now!</span>
     </p>
   );
@@ -239,7 +237,7 @@ export function BhutanNDIDeeplinkModal({
         <button
           type="button"
           onClick={onOpenWallet}
-          className="inline-flex h-12.5 min-w-75 items-center justify-center rounded-lg bg-(--ndi-primary) px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg ndi-focus-ring"
+          className="inline-flex h-12.5 min-w-75 items-center justify-center rounded-lg bg-(--ndi-primary) px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-[...]
         >
           Open Bhutan NDI Wallet
         </button>
@@ -249,7 +247,7 @@ export function BhutanNDIDeeplinkModal({
         <button
           type="button"
           onClick={onWatchGuide}
-          className="inline-flex h-12.5 min-w-75 items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white ndi-focus-ring"
+          className="inline-flex h-12.5 min-w-75 items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-c[...]
         >
           <img src={assets.playButton} alt="" aria-hidden="true" className="h-5 w-5" />
           Watch Video Guide
@@ -294,7 +292,7 @@ export function BhutanNDIQRScanModal({
         <button
           type="button"
           onClick={onWatchGuide}
-          className="inline-flex h-12.5 w-full items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white ndi-focus-ring"
+          className="inline-flex h-12.5 w-full items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-col[...]
         >
           <img src={assets.playButton} alt="" aria-hidden="true" className="h-5 w-5" />
           Watch Video Guide
@@ -323,7 +321,7 @@ export function BhutanNDICombinedModal({
         <button
           type="button"
           onClick={onOpenWallet}
-          className="inline-flex h-12.5 w-full items-center justify-center rounded-lg bg-(--ndi-primary) px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg ndi-focus-ring"
+          className="inline-flex h-12.5 w-full items-center justify-center rounded-lg bg-(--ndi-primary) px-6 text-sm font-semibold text-white transition-transform duration-200 ease-out hover:-tr[...]
         >
           Open Bhutan NDI Wallet
         </button>
@@ -340,7 +338,7 @@ export function BhutanNDICombinedModal({
         <button
           type="button"
           onClick={onWatchGuide}
-          className="inline-flex h-12.5 w-full items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-colors duration-200 hover:bg-(--ndi-primary) hover:text-white ndi-focus-ring"
+          className="inline-flex h-12.5 w-full items-center justify-center gap-3 rounded-lg border-2 border-(--ndi-primary) bg-white px-6 text-sm font-semibold text-(--ndi-primary) transition-col[...]
         >
           <img src={assets.playButton} alt="" aria-hidden="true" className="h-5 w-5" />
           Watch Video Guide
