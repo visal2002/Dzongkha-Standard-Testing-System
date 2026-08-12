@@ -49,8 +49,8 @@ export class AuthController {
   async ndiStatus(@Body() dto: NdiStatusDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const result = await this.auth.ndiStatus(dto.pollToken, this.context(request));
     if ('refreshToken' in result) {
-      this.setRefreshCookie(response, result.refreshToken);
-      const { refreshToken: _refreshToken, ...publicResult } = result;
+      const { refreshToken, ...publicResult } = result;
+      this.setRefreshCookie(response, refreshToken);
       return publicResult;
     }
     return result;

@@ -13,7 +13,7 @@ export class NdiProviderService {
     const token = await this.accessToken();
     const schema = this.required('NDI_FOUNDATIONAL_ID_SCHEMA_URL');
     const response = await this.request<NDIEnvelope<ProofRequestResult>>(
-      `${this.config.get('NDI_VERIFIER_URL', 'https://demo-client.bhutanndi.com/verifier').replace(/\/$/, '')}/v1/proof-request`,
+      `${this.config.get<string>('NDI_VERIFIER_URL', 'https://demo-client.bhutanndi.com/verifier').replace(/\/$/, '')}/v1/proof-request`,
       {
         method: 'POST',
         headers: this.headers(token),
@@ -35,7 +35,7 @@ export class NdiProviderService {
     try {
       const token = await this.accessToken();
       await this.request(
-        `${this.config.get('NDI_WEBHOOK_URL', 'https://demo-client.bhutanndi.com/webhook').replace(/\/$/, '')}/v1/unsubscribe`,
+        `${this.config.get<string>('NDI_WEBHOOK_URL', 'https://demo-client.bhutanndi.com/webhook').replace(/\/$/, '')}/v1/unsubscribe`,
         { method: 'POST', headers: this.headers(token), body: JSON.stringify({ threadId }) },
       );
     } catch {
@@ -46,7 +46,7 @@ export class NdiProviderService {
   private async subscribe(threadId: string, token: string): Promise<void> {
     const webhookId = this.required('NDI_WEBHOOK_ID');
     await this.request(
-      `${this.config.get('NDI_WEBHOOK_URL', 'https://demo-client.bhutanndi.com/webhook').replace(/\/$/, '')}/v1/subscribe`,
+      `${this.config.get<string>('NDI_WEBHOOK_URL', 'https://demo-client.bhutanndi.com/webhook').replace(/\/$/, '')}/v1/subscribe`,
       { method: 'POST', headers: this.headers(token), body: JSON.stringify({ webhookId, threadId }) },
     );
   }
