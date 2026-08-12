@@ -14,13 +14,13 @@ import toast from 'react-hot-toast';
 
 function NdiQrCode({ qrUrl, isLoading, error, onErrorClose, onError }) {
   return (
-    <div className="relative border-2 border-[#3ec49c] rounded-3xl p-3 bg-white shadow-sm flex flex-col items-center justify-center min-w-[200px] min-h-[200px]">
+    <div className="relative border-2 border-[#3ec49c] rounded-3xl p-3 bg-white shadow-sm flex flex-col items-center justify-center min-w-50 min-h-50">
       {error ? (
         <div className="flex flex-col items-center text-center p-2 w-44">
           <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mb-3 text-amber-500 shadow-inner">
             <AlertTriangle size={28} className="text-amber-500 fill-amber-100" />
           </div>
-          <div className="text-slate-600 text-xs font-medium mb-4 break-words leading-relaxed w-full">
+          <div className="text-slate-600 text-xs font-medium mb-4 wrap-break-word leading-relaxed w-full">
             {error}
           </div>
           <button
@@ -325,7 +325,7 @@ export default function LoginPage() {
                         </button>
                       </div>
 
-                      <Button type="submit" fullWidth size="lg" loading={isLoading} className="!rounded-full !h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#214042' }}>
+                      <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full! h-12! tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#214042' }}>
                         Sign in to DSTS
                       </Button>
                     </form>
@@ -572,7 +572,7 @@ export default function LoginPage() {
                             </div>
                           </div>
 
-                          <Button type="submit" fullWidth size="lg" loading={isLoading} className="!rounded-full !h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#214042' }}>
+                          <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full! h-12! tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#214042' }}>
                             Create Account
                           </Button>
 
