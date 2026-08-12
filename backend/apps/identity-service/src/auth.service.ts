@@ -4,7 +4,7 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -15,7 +15,8 @@ import { AccessClaims, CanonicalRole } from '@dzongjuk/contracts';
 import { DomainException } from '@dzongjuk/common';
 import { AuditService } from './audit.service';
 import { LoginDto, RegisterDto } from './dtos';
-import { LoginAttemptEntity, RoleEntity, SessionEntity, UserEntity } from './entities';
+import { LoginAttemptEntity, NdiLoginRequestEntity, RoleEntity, SessionEntity, UserEntity } from './entities';
+import { NdiProviderService } from './ndi-provider.service';
 
 interface RequestContext {
   requestId: string;
@@ -30,9 +31,11 @@ export class AuthService {
     @InjectRepository(RoleEntity) private readonly roles: Repository<RoleEntity>,
     @InjectRepository(SessionEntity) private readonly sessions: Repository<SessionEntity>,
     @InjectRepository(LoginAttemptEntity) private readonly attempts: Repository<LoginAttemptEntity>,
+    @InjectRepository(NdiLoginRequestEntity) private readonly ndiLogins: Repository<NdiLoginRequestEntity>,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly audit: AuditService,
+    private readonly ndi: NdiProviderService,
   ) {}
 
   async register(dto: RegisterDto, context: RequestContext) {
@@ -103,20 +106,126 @@ export class AuthService {
     await this.audit.record({ action: 'LOGOUT', resourceType: 'Session', resourceId: session.id, actorUserId: session.user.id, requestId: context.requestId });
   }
 
-  ndiInitiate() {
-    const url = this.config.get<string>('NDI_AUTHORIZATION_URL');
-    const clientId = this.config.get<string>('NDI_CLIENT_ID');
-    const redirectUri = this.config.get<string>('NDI_REDIRECT_URI');
-    if (!url || !clientId || !redirectUri) {
-      throw new DomainException('NDI_NOT_CONFIGURED', 'NDI integration credentials have not been configured.', HttpStatus.SERVICE_UNAVAILABLE);
+  async ndiInitiate() {
+    const proof = await this.ndi.createProofRequest();
+    const pollToken = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + this.config.get<number>('NDI_LOGIN_TTL_SECONDS', 300) * 1000);
+    await this.ndiLogins.save(this.ndiLogins.create({
+      threadId: proof.proofRequestThreadId,
+      pollTokenHash: this.hash(pollToken),
+      status: 'PENDING',
+      proofRequestUrl: proof.proofRequestURL,
+      deepLinkUrl: proof.deepLinkURL ?? null,
+      verifiedIdentity: {}, user: null, expiresAt, completedAt: null, consumedAt: null,
+    }));
+    return {
+      pollToken,
+      proofRequestUrl: proof.proofRequestURL,
+      deepLinkUrl: proof.deepLinkURL ?? null,
+      expiresAt: expiresAt.toISOString(),
+    };
+  }
+
+  async ndiStatus(pollToken: string, context: RequestContext) {
+    const login = await this.ndiLogins.findOneBy({ pollTokenHash: this.hash(pollToken) });
+    if (!login) throw new DomainException('NDI_LOGIN_NOT_FOUND', 'This Bhutan NDI login request is no longer available.', 404);
+    if (login.expiresAt <= new Date() && login.status === 'PENDING') {
+      login.status = 'FAILED';
+      login.completedAt = new Date();
+      await this.ndiLogins.save(login);
+      void this.ndi.unsubscribe(login.threadId);
+      return { status: 'EXPIRED' };
     }
-    const state = randomBytes(32).toString('base64url');
-    const authorizationUrl = new URL(url);
-    authorizationUrl.searchParams.set('client_id', clientId);
-    authorizationUrl.searchParams.set('redirect_uri', redirectUri);
-    authorizationUrl.searchParams.set('response_type', 'code');
-    authorizationUrl.searchParams.set('state', state);
-    return { authorizationUrl: authorizationUrl.toString(), state };
+    if (login.status === 'PENDING') return { status: 'PENDING', expiresAt: login.expiresAt.toISOString() };
+    if (login.status === 'REJECTED') return { status: 'REJECTED' };
+    if (login.status === 'FAILED') return { status: 'FAILED' };
+    if (login.status === 'CANCELLED') return { status: 'CANCELLED' };
+    if (login.status === 'CONSUMED' || login.consumedAt) {
+      throw new DomainException('NDI_LOGIN_CONSUMED', 'This Bhutan NDI login request has already been used.', 409);
+    }
+    if (!login.user) throw new DomainException('NDI_ACCOUNT_NOT_LINKED', 'No Dzongjuk account is linked to this verified identity.', 403);
+    const claimed = await this.ndiLogins.update(
+      { id: login.id, status: 'VALIDATED', consumedAt: IsNull() },
+      { status: 'CONSUMED', consumedAt: new Date() },
+    );
+    if (claimed.affected !== 1) throw new DomainException('NDI_LOGIN_CONSUMED', 'This Bhutan NDI login request has already been used.', 409);
+    void this.ndi.unsubscribe(login.threadId);
+    const session = await this.createSession(login.user, 'NDI', context);
+    return { status: 'VALIDATED', ...session };
+  }
+
+  async ndiCancel(pollToken: string) {
+    const login = await this.ndiLogins.findOneBy({ pollTokenHash: this.hash(pollToken) });
+    if (!login || login.status !== 'PENDING') return { cancelled: true };
+    login.status = 'CANCELLED';
+    login.completedAt = new Date();
+    await this.ndiLogins.save(login);
+    void this.ndi.unsubscribe(login.threadId);
+    return { cancelled: true };
+  }
+
+  async ndiWebhook(authorization: string | undefined, payload: Record<string, unknown>) {
+    this.assertWebhookAuthorization(authorization);
+    const threadId = typeof payload.thid === 'string' ? payload.thid : null;
+    if (!threadId) throw new DomainException('NDI_WEBHOOK_INVALID', 'The Bhutan NDI webhook is missing thid.', 400);
+    const login = await this.ndiLogins.findOneBy({ threadId });
+    if (!login || login.status !== 'PENDING') return { accepted: true };
+
+    if (payload.type === 'present-proof/rejected') {
+      login.status = 'REJECTED';
+      login.completedAt = new Date();
+      await this.ndiLogins.save(login);
+      return { accepted: true };
+    }
+    if (payload.type !== 'present-proof/presentation-result' || payload.verification_result !== 'ProofValidated') {
+      login.status = 'FAILED';
+      login.completedAt = new Date();
+      await this.ndiLogins.save(login);
+      return { accepted: true };
+    }
+
+    const presentation = payload.requested_presentation as Record<string, unknown> | undefined;
+    const attributes = presentation?.revealed_attrs as Record<string, unknown> | undefined;
+    const cid = this.revealedValue(attributes?.['ID Number']);
+    const fullName = this.revealedValue(attributes?.['Full Name']);
+    if (!cid || !fullName) {
+      login.status = 'FAILED';
+      login.completedAt = new Date();
+      await this.ndiLogins.save(login);
+      return { accepted: true };
+    }
+
+    let user = await this.users.findOneBy({ cid });
+    if (!user && this.config.get('NDI_ALLOW_TEST_TAKER_PROVISIONING', 'false') === 'true') {
+      const role = await this.roles.findOneByOrFail({ code: CanonicalRole.TestTaker, active: true });
+      user = await this.users.save(this.users.create({
+        email: `ndi-${this.hash(cid).slice(0, 24)}@users.dzongjuk.bt`, cid, fullName,
+        passwordHash: null, roles: [role], status: 'ACTIVE', ndiLinkedAt: new Date(),
+      }));
+    }
+    if (!user || user.status !== 'ACTIVE') {
+      login.status = 'FAILED';
+      login.completedAt = new Date();
+      login.verifiedIdentity = { cid, fullName };
+      await this.ndiLogins.save(login);
+      return { accepted: true };
+    }
+
+    user.ndiLinkedAt = new Date();
+    await this.users.save(user);
+    login.user = user;
+    login.status = 'VALIDATED';
+    login.completedAt = new Date();
+    login.verifiedIdentity = {
+      cid, fullName,
+      relationshipDid: typeof payload.relationship_did === 'string' ? payload.relationship_did : undefined,
+    };
+    await this.ndiLogins.save(login);
+    await this.audit.record({
+      action: 'NDI_PROOF_VALIDATED', resourceType: 'User', resourceId: user.id,
+      actorUserId: user.id, requestId: `ndi:${threadId}`, safeData: { threadId },
+    });
+    return { accepted: true };
   }
 
   private async createSession(user: UserEntity, assurance: 'LOCAL' | 'NDI' | 'MFA', context: RequestContext) {
@@ -151,6 +260,24 @@ export class AuthService {
 
   private async logAttempt(identifier: string, success: boolean, context: RequestContext, reason: string | null) {
     await this.attempts.save(this.attempts.create({ identifier, success, reason, ipHash: context.ip ? this.hash(context.ip) : null }));
+  }
+
+  private assertWebhookAuthorization(authorization: string | undefined) {
+    const expected = this.config.get<string>('NDI_WEBHOOK_BEARER_TOKEN');
+    const received = authorization?.replace(/^Bearer\s+/i, '');
+    if (!expected || !received) throw new DomainException('NDI_WEBHOOK_UNAUTHORIZED', 'Webhook authentication failed.', HttpStatus.UNAUTHORIZED);
+    const left = Buffer.from(expected);
+    const right = Buffer.from(received);
+    if (left.length !== right.length || !timingSafeEqual(left, right)) {
+      throw new DomainException('NDI_WEBHOOK_UNAUTHORIZED', 'Webhook authentication failed.', HttpStatus.UNAUTHORIZED);
+    }
+  }
+
+  private revealedValue(value: unknown): string | null {
+    const first = Array.isArray(value) ? value[0] : value;
+    if (!first || typeof first !== 'object') return null;
+    const revealed = (first as Record<string, unknown>).value;
+    return typeof revealed === 'string' && revealed.trim() ? revealed.trim() : null;
   }
 
   private hash(value: string) { return createHash('sha256').update(value).digest('hex'); }

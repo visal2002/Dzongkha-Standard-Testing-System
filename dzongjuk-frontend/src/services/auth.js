@@ -31,6 +31,8 @@ const normalizeUser = (user, token) => {
   };
 };
 
+let mockNdiStartedAt = 0;
+
 // Mock user data (preserved as fallback)
 const MOCK_USERS = {
   '11101001001': { id: 'USR-001', name: 'Sonam Dorji', email: 'system.admin@demo.com', cid: '11101001001', role: 'admin', roleName: 'System Admin', avatar: null, department: 'GovTech', permissions: ['*'] },
@@ -75,26 +77,45 @@ export const authService = {
     }
   },
 
-  /**
-   * Initiate NDI OAuth login flow.
-   * @returns {Promise<{success: boolean, user?: import('../types').AuthUser, token?: string, error?: string}>}
-   */
+  /** Create a Bhutan NDI proof request for QR/deep-link login. */
   loginWithNDI: async () => {
     if (USE_MOCK) {
-      await mockDelay(1500);
-      const defaultUser = MOCK_USERS['11106006006'];
-      return { success: true, user: defaultUser, token: 'ndi-mock-token' };
+      await mockDelay(500);
+      mockNdiStartedAt = Date.now();
+      return {
+        success: true,
+        pollToken: 'mock-ndi-poll-token',
+        proofRequestUrl: 'https://example.test/bhutan-ndi/mock-proof-request',
+        deepLinkUrl: 'bhutanndi://data?url=https%3A%2F%2Fexample.test%2Fbhutan-ndi%2Fmock-proof-request',
+        expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+      };
     }
 
     try {
-      // In production: redirect to NDI authorization URL
-      // The real flow requires a backend-initiated PKCE exchange
       const { data: envelope } = await apiClient.post('/auth/ndi/initiate');
-      window.location.href = envelope.data.authorizationUrl;
-      return { success: true }; // Will not reach here due to redirect
+      return { success: true, ...envelope.data };
     } catch (err) {
       return { success: false, error: err.message || 'NDI service unavailable.' };
     }
+  },
+
+  checkNDILogin: async (pollToken) => {
+    if (USE_MOCK) {
+      await mockDelay(200);
+      if (Date.now() - mockNdiStartedAt < 3500) return { status: 'PENDING' };
+      return { status: 'VALIDATED', user: MOCK_USERS['11106006006'], token: 'ndi-mock-token' };
+    }
+    const { data: envelope } = await apiClient.post('/auth/ndi/status', { pollToken });
+    const result = envelope.data;
+    if (result.status === 'VALIDATED') {
+      return { ...result, token: result.accessToken, user: normalizeUser(result.user, result.accessToken) };
+    }
+    return result;
+  },
+
+  cancelNDILogin: async (pollToken) => {
+    if (USE_MOCK) return;
+    try { await apiClient.post('/auth/ndi/cancel', { pollToken }); } catch { /* best-effort cleanup */ }
   },
 
   /**
