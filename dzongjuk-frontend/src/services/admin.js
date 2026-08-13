@@ -138,6 +138,17 @@ export const adminService = {
     return Array.isArray(value) ? value.map(normalizeRole) : value;
   },
 
+  /** @returns {Promise<Array<{id:string,name:string,description:string}>>} */
+  getPermissions: async () => {
+    if (USE_MOCK) {
+      await mockDelay();
+      const names = [...new Set(mockRoles.flatMap(role => Array.isArray(role.permissions) ? role.permissions : []))];
+      return mockResponse(names.map((name, index) => ({ id: `PERM-${index}`, name, description: '' })));
+    }
+    const { data } = await apiClient.get('/admin/permissions');
+    return data?.data || data;
+  },
+
   /**
    * @param {string} id
    * @param {import('../types').SystemRole['permissions']} permissions

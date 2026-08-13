@@ -6,22 +6,13 @@
 
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Users, Shield, Settings, Activity, ArrowRight, TrendingUp, Server, Database, CheckCircle, AlertCircle } from 'lucide-react';
+import { Users, Shield, Activity, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { StatCard } from '../../components/ui/Card';
 import { StatusBadge } from '../../components/ui/Badge';
 import { adminService } from '../../services/admin';
 import { useApi } from '../../hooks/useApi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-const roleData = [
-  { name: 'Admin', users: 1 },
-  { name: 'DCDD', users: 3 },
-  { name: 'Exam Head', users: 1 },
-  { name: 'Committee', users: 6 },
-  { name: 'Chief Exec', users: 1 },
-  { name: 'Test Takers', users: 500 },
-];
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -38,6 +29,16 @@ export default function AdminDashboard() {
   const { data: systemRoles, loading: loadingRoles } = useApi(adminService.getRoles);
 
   const isLoading = loadingUsers || loadingRoles;
+  const roleData = Object.entries((systemUsers || []).reduce((counts, currentUser) => {
+    const role = currentUser.role || 'Unassigned';
+    counts[role] = (counts[role] || 0) + 1;
+    return counts;
+  }, {})).map(([name, users]) => ({ name, users }));
+  const formatLastLogin = value => {
+    if (!value) return 'Never';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? 'Never' : date.toLocaleDateString();
+  };
 
   return (
     <div className="space-y-6">
@@ -51,11 +52,11 @@ export default function AdminDashboard() {
         <div className="relative">
           <p className="text-xs text-purple-400 font-medium uppercase tracking-wider mb-1">System Administration</p>
           <h1 className="text-xl font-bold text-white mb-1">Welcome, {user?.name?.split(' ')[0]}!</h1>
-          <p className="text-sm text-[#94A3C8]">System health is optimal. All services running normally.</p>
+          <p className="text-sm text-[#94A3C8]">Live administration data is connected to the staging backend.</p>
           <div className="flex items-center gap-4 mt-3 text-xs text-[#94A3C8]">
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" />API: Online</span>
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" />DB: Connected</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" />NDI: Active</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400" />NDI: Awaiting credentials</span>
           </div>
         </div>
       </motion.div>
@@ -155,7 +156,7 @@ export default function AdminDashboard() {
                     <td className="py-2.5 pr-4 text-text-secondary">{u.role}</td>
                     <td className="py-2.5 pr-4 text-text-muted font-mono">{u.cid}</td>
                     <td className="py-2.5 pr-4"><StatusBadge status={u.status} /></td>
-                    <td className="py-2.5 text-text-muted">{new Date(u.lastLogin).toLocaleDateString()}</td>
+                    <td className="py-2.5 text-text-muted">{formatLastLogin(u.lastLogin)}</td>
                   </tr>
                 ))}
               </tbody>
