@@ -9,6 +9,7 @@
  * Handles login, logout, token refresh, and NDI authentication.
  */
 import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
+import { authenticateMockAccount, readMockAccounts, saveMockAccount } from './mockAccountStore';
 
 const decodeClaims = (token) => {
   try {
@@ -35,29 +36,21 @@ const normalizeUser = (user, token) => {
 };
 
 let mockNdiStartedAt = 0;
-const MOCK_REGISTRATION_KEY = 'dsts_mock_registrations';
 
-const loadMockRegistrations = () => {
-  try {
-    const raw = globalThis.localStorage?.getItem(MOCK_REGISTRATION_KEY) || sessionStorage.getItem(MOCK_REGISTRATION_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
+// Mock user data (preserved as fallback)
+const MOCK_USERS = {
+  '11101001001': { id: 'USR-001', name: 'Sonam Dorji', email: 'system.admin@demo.com', cid: '11101001001', role: 'admin', roleName: 'System Admin', avatar: null, department: 'GovTech', permissions: ['*'] },
+  '11102002002': { id: 'USR-002', name: 'Karma Wangchuk', email: 'dcdd.admin@demo.com', cid: '11102002002', role: 'dcdd', roleName: 'DCDD Admin', avatar: null, department: 'Department of Culture and Dzongkha Development', permissions: ['registration', 'verification', 'attendance', 'masters', 'reports', 'notifications'] },
+  '11103003003': { id: 'USR-003', name: 'Tshering Pem', email: 'exam.head@demo.com', cid: '11103003003', role: 'exam_head', roleName: 'Exam Head', avatar: null, department: 'DCDD - Examination Division', permissions: ['questions', 'scores', 'reports'] },
+  '11104004004': { id: 'USR-004', name: 'Ugyen Tenzin', email: 'committee.head@demo.com', cid: '11104004004', role: 'committee_head', roleName: 'Committee Head', avatar: null, department: 'Examination Committee', permissions: ['scores', 'appeals', 'reports'] },
+  '11105005005': { id: 'USR-005', name: 'Dorji Wangmo', email: 'chief.executive@demo.com', cid: '11105005005', role: 'chief_executive', roleName: 'Chief Executive', avatar: null, department: 'DCDD', permissions: ['appeals', 'reports'] },
+  '11106006006': { id: 'USR-006', name: 'Pema Choden', email: 'test.taker@demo.com', cid: '11106006006', role: 'test_taker', roleName: 'Test Taker', avatar: null, department: null, permissions: ['registration', 'certificates', 'appeals', 'questions'] },
+  '11107007007': { id: 'USR-007', name: 'Kinley Dorji', email: 'member@dsts.bt', cid: '11107007007', role: 'committee_member', roleName: 'Committee Member', avatar: null, department: 'Examination Committee', permissions: ['scores', 'appeals'] },
+  'LOCALCID2026': { id: 'USR-LOCAL-ACCEPTANCE', name: 'Local Acceptance Test Taker', email: 'local.acceptance@dzongjuk.test', cid: 'LOCALCID2026', role: 'test_taker', roleName: 'Test Taker', avatar: null, department: null, permissions: ['registration', 'certificates', 'appeals', 'questions'] },
 };
 
-const saveMockRegistrations = (records) => {
-  const payload = JSON.stringify(records);
-  try {
-    globalThis.localStorage?.setItem(MOCK_REGISTRATION_KEY, payload);
-  } catch {
-    // ignore storage failures
-  }
-  try {
-    sessionStorage.setItem(MOCK_REGISTRATION_KEY, payload);
-  } catch {
-    // ignore storage failures
-  }
+const MOCK_PASSWORDS = {
+  LOCALCID2026: 'LocalTestOnly!2026',
 };
 
 const createMockUser = (identifier, password) => {
@@ -66,7 +59,7 @@ const createMockUser = (identifier, password) => {
   }
   const role = identifier.toLowerCase().includes('admin') ? 'admin' : 'test_taker';
   const user = {
-    id: 'mock-user-id',
+    id: `USR-MOCK-${Date.now()}`,
     fullName: role === 'admin' ? 'System Administrator' : 'Test User',
     name: role === 'admin' ? 'System Administrator' : 'Test User',
     email: identifier,
@@ -91,28 +84,20 @@ export const authService = {
     if (USE_MOCK) {
       await mockDelay(200);
       const normalizedIdentifier = String(identifier || '').trim().toLowerCase();
-      const registrationRecords = loadMockRegistrations();
-      const registered = Object.values(registrationRecords).find(entry => {
-        const email = String(entry?.email || '').trim().toLowerCase();
-        const cid = String(entry?.cid || '').trim();
-        return (email && email === normalizedIdentifier) || (cid && cid === normalizedIdentifier);
-      });
+      
+      const found = Object.values(MOCK_USERS).find(
+        user => user.cid.toLowerCase() === normalizedIdentifier || user.email.toLowerCase() === normalizedIdentifier,
+      );
+      const expectedPassword = found ? MOCK_PASSWORDS[found.cid] || 'password' : null;
+      if (found && password === expectedPassword) {
+        const token = btoa(JSON.stringify({ userId: found.id, role: found.role, exp: Date.now() + 86400000 }));
+        return { success: true, user: found, token };
+      }
 
-      if (registered && registered.password === password) {
-        return {
-          success: true,
-          user: {
-            ...registered,
-            id: registered.id || `USR-MOCK-${Date.now()}`,
-            name: registered.fullName,
-            fullName: registered.fullName,
-            roles: ['test_taker'],
-            role: 'test_taker',
-            roleName: 'Test Taker',
-            permissions: ['registration', 'certificates', 'appeals', 'questions'],
-          },
-          token: 'mock-session-token',
-        };
+      const storedUser = await authenticateMockAccount(identifier, password);
+      if (storedUser) {
+        const token = btoa(JSON.stringify({ userId: storedUser.id, role: storedUser.role, exp: Date.now() + 86400000 }));
+        return { success: true, user: storedUser, token };
       }
 
       const user = createMockUser(identifier, password);
@@ -151,13 +136,10 @@ export const authService = {
         return { success: false, error: 'Password must contain at least 8 characters.' };
       }
 
-      const registrations = loadMockRegistrations();
-      const alreadyExists = Object.values(registrations).some(entry => (
-        entry.email === normalized.email || entry.cid === normalized.cid
-      ));
-
-      if (alreadyExists) {
-        return { success: false, error: 'A user with this email or CID already exists.' };
+      const registrations = readMockAccounts();
+      const existingUsers = [...Object.values(MOCK_USERS), ...registrations.map(record => record.user)];
+      if (existingUsers.some(user => user.cid === normalized.cid || user.email.toLowerCase() === normalized.email)) {
+        return { success: false, error: 'An account already exists for this email or CID.' };
       }
 
       const user = {
@@ -176,9 +158,7 @@ export const authService = {
         department: null,
         permissions: ['registration', 'certificates', 'appeals', 'questions'],
       };
-
-      registrations[user.email] = user;
-      saveMockRegistrations(registrations);
+      await saveMockAccount(user, normalized.password);
       return { success: true, user };
     }
 

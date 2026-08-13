@@ -10,9 +10,22 @@
  */
 import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
 import { systemUsers, systemRoles } from '../data/mockData';
+import { deleteMockAccount, readMockAccounts, saveMockAccount, updateMockAccount } from './mockAccountStore';
 
 let mockUsers = systemUsers.map(user => ({ ...user }));
 let mockRoles = systemRoles.map(role => ({ ...role }));
+
+const hydrateMockUsers = () => {
+  const storedUsers = readMockAccounts().map(({ user }) => ({
+    ...user,
+    roleCode: user.role,
+    role: user.roleName,
+    roles: [user.role],
+    lastLogin: user.lastLogin || null,
+  }));
+  const storedIds = new Set(storedUsers.map(user => user.id));
+  mockUsers = [...storedUsers, ...mockUsers.filter(user => !storedIds.has(user.id))];
+};
 
 const normalizeRole = role => ({
   ...role,
@@ -41,7 +54,7 @@ export const adminService = {
 
   /** @returns {Promise<{data: import('../types').SystemUser[]}>} */
   getUsers: async () => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(mockUsers.map(normalizeUser)); }
+    if (USE_MOCK) { await mockDelay(); hydrateMockUsers(); return mockResponse(mockUsers.map(normalizeUser)); }
     const { data } = await apiClient.get('/admin/users');
     const value = data?.data || data;
     return Array.isArray(value) ? value.map(normalizeUser) : value;
@@ -58,8 +71,22 @@ export const adminService = {
   createUser: async (payload) => {
     if (USE_MOCK) {
       await mockDelay();
+      if (mockUsers.some(user => user.email.toLowerCase() === payload.email.toLowerCase() || user.cid === payload.cid)) {
+        throw new Error('An account already exists for this email or CID.');
+      }
       const roles = payload.roleCodes.map(code => mockRoles.find(role => role.code === code)).filter(Boolean);
       const created = normalizeUser({ ...payload, id: `USR-MOCK-${Date.now()}`, roles, status: 'ACTIVE', createdAt: new Date().toISOString() });
+      await saveMockAccount({
+        id: created.id,
+        name: created.name,
+        fullName: created.fullName,
+        email: created.email,
+        cid: created.cid,
+        role: created.roleCode,
+        roleName: roles[0]?.name || created.roleCode,
+        permissions: [],
+        status: 'active',
+      }, payload.password);
       mockUsers = [created, ...mockUsers];
       return mockResponse(created);
     }
@@ -76,6 +103,7 @@ export const adminService = {
       await mockDelay();
       const roles = payload.roleCodes.map(code => mockRoles.find(role => role.code === code)).filter(Boolean);
       const updated = normalizeUser({ ...mockUsers.find(user => user.id === id), ...payload, roles });
+      updateMockAccount(id, { name: updated.name, fullName: updated.fullName, email: updated.email, cid: updated.cid, role: updated.roleCode, roleName: roles[0]?.name || updated.roleCode });
       mockUsers = mockUsers.map(user => user.id === id ? updated : user);
       return mockResponse(updated);
     }
@@ -88,14 +116,14 @@ export const adminService = {
    * @param {'active'|'inactive'|'suspended'} status
    */
   setUserStatus: async (id, status) => {
-    if (USE_MOCK) { await mockDelay(); mockUsers = mockUsers.map(user => user.id === id ? { ...user, status } : user); return mockResponse({ id, status }); }
+    if (USE_MOCK) { await mockDelay(); updateMockAccount(id, { status }); mockUsers = mockUsers.map(user => user.id === id ? { ...user, status } : user); return mockResponse({ id, status }); }
     const { data } = await apiClient.patch(`/admin/users/${id}/status`, { status: status === 'active' ? 'ACTIVE' : 'DISABLED' });
     return data;
   },
 
   /** @param {string} id */
   deleteUser: async (id) => {
-    if (USE_MOCK) { await mockDelay(); mockUsers = mockUsers.filter(user => user.id !== id); return mockResponse(null, 'User deleted.'); }
+    if (USE_MOCK) { await mockDelay(); deleteMockAccount(id); mockUsers = mockUsers.filter(user => user.id !== id); return mockResponse(null, 'User deleted.'); }
     const { data } = await apiClient.delete(`/admin/users/${id}`);
     return data;
   },
