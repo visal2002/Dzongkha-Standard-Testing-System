@@ -16,15 +16,15 @@ const roleRoutes = [
     role: 'DCDD Admin',
     email: 'dcdd.admin@demo.com',
     routes: [
-      '/dashboard', '/registration/windows', '/registration/applications', '/verification',
-      '/attendance', '/masters', '/scores/committee', '/scores/summary', '/questions/samples',
+      '/dashboard', '/admin/users', '/admin/roles', '/registration/windows', '/registration/applications', '/verification',
+      '/attendance', '/masters', '/scores/summary', '/questions', '/questions/samples',
       '/certificates', '/reports', '/notifications', '/dcdd/operational',
     ],
   },
   {
     role: 'Exam Head',
     email: 'exam.head@demo.com',
-    routes: ['/dashboard', '/questions/upload', '/questions', '/questions/samples', '/scores/summary', '/reports'],
+    routes: ['/dashboard', '/registration/windows', '/registration/applications', '/verification', '/attendance', '/questions/upload', '/questions', '/questions/samples', '/scores/summary', '/certificates', '/reports'],
   },
   {
     role: 'Committee Head',
@@ -39,7 +39,7 @@ const roleRoutes = [
   {
     role: 'Chief Executive',
     email: 'chief.executive@demo.com',
-    routes: ['/dashboard', '/appeals', '/reports'],
+    routes: ['/dashboard'],
   },
   {
     role: 'Test Taker',

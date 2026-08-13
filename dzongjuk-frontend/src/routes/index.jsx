@@ -7,8 +7,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { AuthGuard } from '../components/rbac/AuthGuard';
-import { AccessDeniedPage } from '../components/rbac/AccessDeniedPage';
+import { canAccess } from '../config/accessMatrix';
 
 // Layout
 import AppLayout from '../components/layout/AppLayout';
@@ -71,20 +70,20 @@ const NotFoundPage = () => (
 );
 
 // Route Guard
-function PrivateRoute({ children, requiredRoles, requiredPermissions }) {
-  const { isAuthenticated, user, isLoading, hasAnyRole, hasAnyPermission } = useAuth();
-
+function PrivateRoute({ children, requiredRoles, requiredAccess }) {
+  const { isAuthenticated, user, isLoading } = useAuth();
   if (isLoading) return <PageLoader />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   const roles = Array.isArray(user?.roles) ? user.roles : [user?.role];
   const hasRequiredRole = !requiredRoles || requiredRoles.some(role => roles.includes(role) || user?.role === role || user?.role === 'admin');
-  const hasRequiredPermission = !requiredPermissions || hasAnyPermission(requiredPermissions);
 
-  if (!hasRequiredRole || !hasRequiredPermission) {
-    return <AccessDeniedPage />;
+  if (!hasRequiredRole) {
+    return <Navigate to="/dashboard" replace />;
   }
-
+  if (requiredAccess && !canAccess(user?.role, requiredAccess.module, requiredAccess.action)) {
+    return <Navigate to="/dashboard" replace />;
+  }
   return children;
 }
 
@@ -103,41 +102,41 @@ export default function AppRoutes() {
           <Route path="/settings" element={<SettingsPage />} />
 
           {/* Registration */}
-          <Route path="/registration/windows" element={<RegistrationWindows />} />
-          <Route path="/my-applications" element={<MyApplications />} />
-          <Route path="/registration/apply" element={<PrivateRoute requiredRoles={['test_taker']}><ApplicationForm /></PrivateRoute>} />
-          <Route path="/registration/applications" element={<PrivateRoute requiredRoles={['dcdd']}><VerificationList /></PrivateRoute>} />
+          <Route path="/registration/windows" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'read' }}><RegistrationWindows /></PrivateRoute>} />
+          <Route path="/my-applications" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'read_own' }}><MyApplications /></PrivateRoute>} />
+          <Route path="/registration/apply" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'create_own' }}><ApplicationForm /></PrivateRoute>} />
+          <Route path="/registration/applications" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'read' }}><VerificationList /></PrivateRoute>} />
 
           {/* DCDD Workflows */}
-          <Route path="/verification" element={<PrivateRoute requiredRoles={['dcdd']}><VerificationList /></PrivateRoute>} />
-          <Route path="/attendance" element={<PrivateRoute requiredRoles={['dcdd']}><AttendanceList /></PrivateRoute>} />
+          <Route path="/verification" element={<PrivateRoute requiredAccess={{ module: 'verification', action: 'read' }}><VerificationList /></PrivateRoute>} />
+          <Route path="/attendance" element={<PrivateRoute requiredAccess={{ module: 'attendance', action: 'read' }}><AttendanceList /></PrivateRoute>} />
 
           {/* Questions */}
-          <Route path="/questions" element={<QuestionPapers />} />
-          <Route path="/questions/upload" element={<PrivateRoute requiredRoles={['exam_head']}><UploadQuestionPaper /></PrivateRoute>} />
-          <Route path="/questions/samples" element={<SamplePapers />} />
+          <Route path="/questions" element={<PrivateRoute requiredAccess={{ module: 'questions', action: 'read' }}><QuestionPapers /></PrivateRoute>} />
+          <Route path="/questions/upload" element={<PrivateRoute requiredAccess={{ module: 'questions', action: 'create' }}><UploadQuestionPaper /></PrivateRoute>} />
+          <Route path="/questions/samples" element={<PrivateRoute requiredAccess={{ module: 'questions', action: 'sample' }}><SamplePapers /></PrivateRoute>} />
 
           {/* Scores */}
-          <Route path="/scores" element={<PrivateRoute requiredRoles={['committee_head']}><ScoreEntry /></PrivateRoute>} />
-          <Route path="/scores/view" element={<ViewScores />} />
-          <Route path="/scores/committee" element={<PrivateRoute requiredRoles={['committee_head', 'dcdd']}><CommitteeSetup /></PrivateRoute>} />
-          <Route path="/scores/summary" element={<ScoreSummary />} />
+          <Route path="/scores" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'submit' }}><ScoreEntry /></PrivateRoute>} />
+          <Route path="/scores/view" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read' }}><ViewScores /></PrivateRoute>} />
+          <Route path="/scores/committee" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'submit' }}><CommitteeSetup /></PrivateRoute>} />
+          <Route path="/scores/summary" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read' }}><ScoreSummary /></PrivateRoute>} />
 
           {/* Appeals & Certificates */}
-          <Route path="/appeals" element={<AppealList />} />
-          <Route path="/appeals/new" element={<PrivateRoute requiredRoles={['test_taker']}><SubmitAppeal /></PrivateRoute>} />
-          <Route path="/certificates" element={<CertificateList />} />
+          <Route path="/appeals" element={<PrivateRoute requiredAccess={{ module: 'appeals', action: 'read' }}><AppealList /></PrivateRoute>} />
+          <Route path="/appeals/new" element={<PrivateRoute requiredAccess={{ module: 'appeals', action: 'submit_own' }}><SubmitAppeal /></PrivateRoute>} />
+          <Route path="/certificates" element={<PrivateRoute requiredAccess={{ module: 'certificates', action: 'read' }}><CertificateList /></PrivateRoute>} />
 
           {/* Reports & Notifications */}
-          <Route path="/reports" element={<Reports />} />
+          <Route path="/reports" element={<PrivateRoute requiredAccess={{ module: 'reports', action: 'read' }}><Reports /></PrivateRoute>} />
           <Route path="/notifications" element={<Notifications />} />
 
           {/* Administration */}
-          <Route path="/admin/users" element={<PrivateRoute requiredRoles={['admin']} requiredPermissions={['users:view']}><UserManagement /></PrivateRoute>} />
-          <Route path="/admin/roles" element={<PrivateRoute requiredRoles={['admin']} requiredPermissions={['roles:view']}><RoleManagement /></PrivateRoute>} />
-          <Route path="/admin/permissions" element={<PrivateRoute requiredRoles={['admin']} requiredPermissions={['permissions:view']}><PermissionManagement /></PrivateRoute>} />
-          <Route path="/admin/technical" element={<PrivateRoute requiredRoles={['admin']} requiredPermissions={['settings:view']}><TechnicalSettings /></PrivateRoute>} />
-          <Route path="/masters" element={<PrivateRoute requiredRoles={['dcdd', 'admin']} requiredPermissions={['masters:view']}><MasterConfiguration /></PrivateRoute>} />
+          <Route path="/admin/users" element={<PrivateRoute requiredAccess={{ module: 'users', action: 'read' }}><UserManagement /></PrivateRoute>} />
+          <Route path="/admin/roles" element={<PrivateRoute requiredAccess={{ module: 'roles', action: 'read' }}><RoleManagement /></PrivateRoute>} />
+          <Route path="/admin/permissions" element={<PrivateRoute requiredRoles={['admin']}><PermissionManagement /></PrivateRoute>} />
+          <Route path="/admin/technical" element={<PrivateRoute requiredRoles={['admin']}><TechnicalSettings /></PrivateRoute>} />
+          <Route path="/masters" element={<PrivateRoute requiredRoles={['dcdd', 'admin']}><MasterConfiguration /></PrivateRoute>} />
           <Route path="/dcdd/operational" element={<PrivateRoute requiredRoles={['dcdd']}><OperationalSettings /></PrivateRoute>} />
 
           <Route path="*" element={<NotFoundPage />} />
