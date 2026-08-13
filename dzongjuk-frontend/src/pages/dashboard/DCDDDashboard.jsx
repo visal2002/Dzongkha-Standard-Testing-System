@@ -38,6 +38,8 @@ const statusDist = [
   { name: 'Absent', value: 8, color: '#EF4444' },
 ];
 
+const getDCDDStats = () => scoreService.getDashboardStats('dcdd');
+
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -52,7 +54,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function DCDDDashboard() {
   const { user } = useAuth();
-  const { data: stats, loading: loadingStats } = useApi(() => scoreService.getDashboardStats('dcdd'));
+  const { data: stats, loading: loadingStats } = useApi(getDCDDStats);
   const { data: applications, loading: loadingApps } = useApi(applicationService.getAll);
   const { data: examWindows, loading: loadingExams } = useApi(examService.getAll);
 

@@ -118,6 +118,9 @@ for (const account of roleRoutes) {
         await expect(page).toHaveURL(new RegExp(`${route.replaceAll('/', '\\/')}$`));
         await expect(page.locator('main')).toBeVisible();
         await page.waitForTimeout(1300);
+        if (route === '/dashboard') {
+          await expect(page.getByText('Loading dashboard...')).toHaveCount(0);
+        }
         await expect(page.locator('body')).not.toContainText('Cannot read properties of undefined');
         await expect(page.locator('body')).not.toContainText('Something went wrong');
         const routeErrors = runtimeErrors.slice(errorCount);
