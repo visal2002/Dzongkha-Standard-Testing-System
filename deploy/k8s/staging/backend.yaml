@@ -11,6 +11,7 @@ data:
   CORS_ORIGINS: http://172.30.3.63:30430,https://dzongjuk.netlify.app
   SESSION_IDLE_MINUTES: "15"
   LOCKOUT_MINUTES: "30"
+  COOKIE_SECURE: "false"
   S3_ENDPOINT: http://minio:9000
   S3_REGION: ap-south-1
   S3_SERVER_SIDE_ENCRYPTION: ""
@@ -42,7 +43,7 @@ spec:
       imagePullSecrets: [{ name: harbor-registry }]
       containers:
         - name: identity-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:8a68757
+          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:session-fix-20260813
           ports: [{ name: identity, containerPort: 8001 }]
           envFrom: &commonEnv
             - { configMapRef: { name: dzongjuk-backend-config } }

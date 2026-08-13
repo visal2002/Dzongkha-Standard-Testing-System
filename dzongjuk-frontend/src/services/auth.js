@@ -109,8 +109,8 @@ export const authService = {
 
     try {
       const { data: envelope } = await apiClient.post('/auth/login', { identifier, password });
-      const { accessToken, user } = envelope.data;
-      return { success: true, user: normalizeUser(user, accessToken), token: accessToken };
+      const { accessToken, expiresIn, user } = envelope.data;
+      return { success: true, user: normalizeUser(user, accessToken), token: accessToken, expiresIn };
     } catch (err) {
       return { success: false, error: err.message || 'Login failed.' };
     }

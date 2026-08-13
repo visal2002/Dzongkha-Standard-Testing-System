@@ -47,7 +47,11 @@ const readSession = () => {
     if (import.meta.env.DEV && lsRaw && !sessionStorage.getItem(SESSION_KEY)) {
       sessionStorage.setItem(SESSION_KEY, raw);
     }
-    return { user: normalizeUserSession(parsed.user), expiresAt: parsed.expiresAt };
+    return {
+      user: normalizeUserSession(parsed.user),
+      accessToken: parsed.accessToken,
+      expiresAt: parsed.expiresAt,
+    };
   } catch {
     sessionStorage.removeItem(SESSION_KEY);
     if (import.meta.env.DEV) localStorage.removeItem(SESSION_KEY);
@@ -55,10 +59,10 @@ const readSession = () => {
   }
 };
 
-const saveSession = (user) => {
+const saveSession = (user, accessToken, expiresIn = 900) => {
   const normalized = normalizeUserSession(user);
-  const expiresAt = Date.now() + 60 * 60 * 1000;
-  const sessionPayload = JSON.stringify({ user: normalized, expiresAt });
+  const expiresAt = Date.now() + Number(expiresIn || 900) * 1000;
+  const sessionPayload = JSON.stringify({ user: normalized, accessToken, expiresAt });
   sessionStorage.setItem(SESSION_KEY, sessionPayload);
   // Always clean up any leftover dev localStorage entry on login
   try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
@@ -86,7 +90,7 @@ export function AuthProvider({ children }) {
     try {
       const result = await authService.login(identifier, password);
       if (result.success) {
-        const normalizedUser = saveSession(result.user);
+        const normalizedUser = saveSession(result.user, result.token, result.expiresIn);
         setUser(normalizedUser);
         return { success: true, user: normalizedUser };
       }
@@ -118,7 +122,7 @@ export function AuthProvider({ children }) {
   const checkNDILogin = useCallback(async (pollToken) => {
     const result = await authService.checkNDILogin(pollToken);
     if (result.status === 'VALIDATED' && result.user) {
-      const normalizedUser = saveSession(result.user);
+      const normalizedUser = saveSession(result.user, result.token, result.expiresIn);
       setUser(normalizedUser);
     }
     return result;
