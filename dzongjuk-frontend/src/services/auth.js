@@ -9,6 +9,7 @@
  * Handles login, logout, token refresh, and NDI authentication.
  */
 import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
+import { authenticateMockAccount, readMockAccounts, saveMockAccount } from './mockAccountStore';
 
 const decodeClaims = (token) => {
   try {
@@ -32,26 +33,6 @@ const normalizeUser = (user, token) => {
 };
 
 let mockNdiStartedAt = 0;
-const MOCK_REGISTRATIONS_KEY = 'dsts_mock_registrations';
-
-const readMockRegistrations = () => {
-  try {
-    return JSON.parse(globalThis.localStorage?.getItem(MOCK_REGISTRATIONS_KEY) || '[]');
-  } catch {
-    return [];
-  }
-};
-
-const writeMockRegistrations = (registrations) => {
-  globalThis.localStorage?.setItem(MOCK_REGISTRATIONS_KEY, JSON.stringify(registrations));
-};
-
-const hashMockPassword = async (password, salt) => {
-  const bytes = new TextEncoder().encode(`${salt}:${password}`);
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-};
-
 // Mock user data (preserved as fallback)
 const MOCK_USERS = {
   '11101001001': { id: 'USR-001', name: 'Sonam Dorji', email: 'system.admin@demo.com', cid: '11101001001', role: 'admin', roleName: 'System Admin', avatar: null, department: 'GovTech', permissions: ['*'] },
@@ -88,15 +69,10 @@ export const authService = {
         return { success: true, user: found, token };
       }
 
-      const registration = readMockRegistrations().find(
-        record => record.user.cid.toLowerCase() === normalizedIdentifier || record.user.email.toLowerCase() === normalizedIdentifier,
-      );
-      if (registration) {
-        const passwordHash = await hashMockPassword(password, registration.passwordSalt);
-        if (passwordHash === registration.passwordHash) {
-          const token = btoa(JSON.stringify({ userId: registration.user.id, role: registration.user.role, exp: Date.now() + 86400000 }));
-          return { success: true, user: registration.user, token };
-        }
+      const storedUser = await authenticateMockAccount(identifier, password);
+      if (storedUser) {
+        const token = btoa(JSON.stringify({ userId: storedUser.id, role: storedUser.role, exp: Date.now() + 86400000 }));
+        return { success: true, user: storedUser, token };
       }
       return { success: false, error: 'Invalid demonstration credentials.' };
     }
@@ -130,13 +106,12 @@ export const authService = {
         return { success: false, error: 'Password must contain at least 12 characters.' };
       }
 
-      const registrations = readMockRegistrations();
+      const registrations = readMockAccounts();
       const existingUsers = [...Object.values(MOCK_USERS), ...registrations.map(record => record.user)];
       if (existingUsers.some(user => user.cid === normalized.cid || user.email.toLowerCase() === normalized.email)) {
         return { success: false, error: 'An account already exists for this email or CID.' };
       }
 
-      const passwordSalt = globalThis.crypto.randomUUID();
       const user = {
         id: `USR-MOCK-${globalThis.crypto.randomUUID()}`,
         name: normalized.fullName,
@@ -151,12 +126,7 @@ export const authService = {
         department: null,
         permissions: ['registration', 'certificates', 'appeals', 'questions'],
       };
-      registrations.push({
-        user,
-        passwordSalt,
-        passwordHash: await hashMockPassword(normalized.password, passwordSalt),
-      });
-      writeMockRegistrations(registrations);
+      await saveMockAccount(user, normalized.password);
       return { success: true, user };
     }
 

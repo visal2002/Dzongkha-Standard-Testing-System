@@ -75,6 +75,23 @@ describe('authentication contract', () => {
       error: expect.stringContaining('already exists'),
     });
   });
+
+  it('accepts credentials created from User Management', async () => {
+    const created = await adminService.createUser({
+      fullName: 'Dechen Wangmo',
+      cid: '10999000001',
+      email: 'dechen.created@example.com',
+      password: 'CreatedUser!2026',
+      roleCodes: ['exam_head'],
+    });
+
+    expect(created.data).toMatchObject({ email: 'dechen.created@example.com', roleCode: 'exam_head' });
+    await expect(authService.login('dechen.created@example.com', 'CreatedUser!2026')).resolves.toMatchObject({
+      success: true,
+      user: { email: 'dechen.created@example.com', role: 'exam_head' },
+      token: expect.any(String),
+    });
+  });
 });
 
 describe('administration and attendance contracts', () => {

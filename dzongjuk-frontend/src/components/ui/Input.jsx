@@ -4,17 +4,19 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { forwardRef } from 'react';
+import { forwardRef, useId } from 'react';
 import { AlertCircle } from 'lucide-react';
 
 const Input = forwardRef(function Input(
-  { label, error, hint, icon, iconRight, className = '', required, ...props },
+  { label, error, hint, icon, iconRight, className = '', required, id, ...props },
   ref
 ) {
+  const generatedId = useId();
+  const inputId = id || generatedId;
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label className="text-sm font-medium text-text-secondary">
+        <label htmlFor={inputId} className="text-sm font-medium text-text-secondary">
           {label}{required && <span className="text-red-400 ml-0.5">*</span>}
         </label>
       )}
@@ -25,6 +27,7 @@ const Input = forwardRef(function Input(
           </span>
         )}
         <input
+          id={inputId}
           ref={ref}
           className={[
             'w-full h-9 px-3 rounded-lg text-sm',
@@ -58,15 +61,18 @@ const Input = forwardRef(function Input(
 
 export default Input;
 
-export function Textarea({ label, error, hint, className = '', required, rows = 4, ...props }) {
+export function Textarea({ label, error, hint, className = '', required, rows = 4, id, ...props }) {
+  const generatedId = useId();
+  const inputId = id || generatedId;
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label className="text-sm font-medium text-text-secondary">
+        <label htmlFor={inputId} className="text-sm font-medium text-text-secondary">
           {label}{required && <span className="text-red-400 ml-0.5">*</span>}
         </label>
       )}
       <textarea
+        id={inputId}
         rows={rows}
         className={[
           'w-full px-3 py-2 rounded-lg text-sm resize-none',
@@ -85,15 +91,18 @@ export function Textarea({ label, error, hint, className = '', required, rows = 
   );
 }
 
-export function Select({ label, error, hint, className = '', required, children, ...props }) {
+export function Select({ label, error, hint, className = '', required, children, id, ...props }) {
+  const generatedId = useId();
+  const inputId = id || generatedId;
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label className="text-sm font-medium text-text-secondary">
+        <label htmlFor={inputId} className="text-sm font-medium text-text-secondary">
           {label}{required && <span className="text-red-400 ml-0.5">*</span>}
         </label>
       )}
       <select
+        id={inputId}
         className={[
           'w-full h-9 px-3 rounded-lg text-sm appearance-none',
           'bg-surface-bg border text-text-primary',
