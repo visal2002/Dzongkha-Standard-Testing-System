@@ -21,12 +21,12 @@ import { useAuth } from '../../context/AuthContext';
 import { canAccess } from '../../config/accessMatrix';
 
 const columnHelper = createColumnHelper();
-const SKILLS = ['Writing', 'Reading', 'Listening', 'Speaking'];
+const SKILLS = ['WRITING', 'READING', 'LISTENING', 'SPEAKING'];
 
 export default function AttendanceList() {
   const { user } = useAuth();
   const canManage = canAccess(user?.role, 'attendance', 'manage');
-  const { data: appsData, loading, setData } = useApi(attendanceService.getEligible);
+  const { data: appsData, loading, error, execute } = useApi(attendanceService.getEligible);
   const eligibleApps = appsData || [];
   const [data, setLocalData] = useState([]);
   
@@ -43,6 +43,10 @@ export default function AttendanceList() {
     : effectiveData;
 
   const handleMarkAbsent = async () => {
+    if (!absentSkills.length) {
+      toast.error('Select at least one missed skill.');
+      return;
+    }
     try {
       await attendanceService.markAbsent(markingApp.id, absentSkills);
       const updated = effectiveData.map(a =>
@@ -132,6 +136,8 @@ export default function AttendanceList() {
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         {loading ? (
           <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+        ) : error ? (
+          <div className="py-12 text-center"><p className="text-sm text-red-400 mb-3">{error}</p><Button size="sm" onClick={() => execute()}>Try Again</Button></div>
         ) : (
         <DataTable
           data={filteredData}
@@ -157,7 +163,7 @@ export default function AttendanceList() {
         footer={
           <>
             <Button variant="ghost" onClick={() => { setMarkingApp(null); setAbsentSkills([]); }}>Cancel</Button>
-            <Button variant="danger" onClick={handleMarkAbsent} icon={<UserX size={13} />}>Confirm Absent</Button>
+            <Button variant="danger" disabled={!absentSkills.length} onClick={handleMarkAbsent} icon={<UserX size={13} />}>Confirm Absent</Button>
           </>
         }
       >

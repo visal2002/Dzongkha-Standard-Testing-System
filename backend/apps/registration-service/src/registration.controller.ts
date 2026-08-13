@@ -34,6 +34,7 @@ export class ApplicationsController {
   }
 
   @Permissions('registration.application.submit') @Get('my') my(@Req() req: Request) { return this.service.listMine(req.user!.sub); }
+  @Permissions('registration.application.verify') @Get() list(@Query('examId') examId?: string) { return this.service.listApplications(examId); }
   @Get(':id') get(@Param('id') id: string, @Req() req: Request) {
     const elevated = req.user!.permissions.includes('*') || req.user!.permissions.includes('registration.application.verify');
     return this.service.getApplication(id, req.user!.sub, elevated);
@@ -64,6 +65,7 @@ export class VerificationController {
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly service: RegistrationService) {}
+  @Permissions('attendance.mark') @Get() list(@Query('examId') examId?: string) { return this.service.listAttendance(examId); }
   @Permissions('attendance.mark') @Patch(':applicationId') mark(@Param('applicationId') id: string, @Body() dto: MarkAttendanceDto, @Req() req: Request) {
     return this.service.markAttendance(id, dto, req.user!.sub, req.id);
   }
