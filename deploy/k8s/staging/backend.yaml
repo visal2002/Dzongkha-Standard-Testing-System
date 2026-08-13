@@ -12,6 +12,7 @@ data:
   SESSION_IDLE_MINUTES: "15"
   LOCKOUT_MINUTES: "30"
   COOKIE_SECURE: "false"
+  ALLOW_ADMIN_LOCAL_LOGIN: "true"
   S3_ENDPOINT: http://minio:9000
   S3_REGION: ap-south-1
   S3_SERVER_SIDE_ENCRYPTION: ""
@@ -43,7 +44,7 @@ spec:
       imagePullSecrets: [{ name: harbor-registry }]
       containers:
         - name: identity-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:session-fix-20260813
+          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:admin-fix-20260813
           ports: [{ name: identity, containerPort: 8001 }]
           envFrom: &commonEnv
             - { configMapRef: { name: dzongjuk-backend-config } }

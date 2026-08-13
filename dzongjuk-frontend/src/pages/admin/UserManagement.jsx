@@ -50,7 +50,7 @@ export default function UserManagement() {
       setShowCreate(false);
       setForm(emptyForm);
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Failed to create user');
+      toast.error(error?.message || 'Failed to create user');
     }
   };
 
@@ -69,7 +69,7 @@ export default function UserManagement() {
       setEditingUser(null);
       setForm(emptyForm);
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Failed to update user');
+      toast.error(error?.message || 'Failed to update user');
     }
   };
 
