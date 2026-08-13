@@ -1,3 +1,4 @@
+\if :identity
 CREATE TABLE identity.ndi_login_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   "threadId" varchar(80) NOT NULL UNIQUE,
@@ -14,3 +15,4 @@ CREATE TABLE identity.ndi_login_requests (
 );
 
 CREATE INDEX idx_ndi_login_expiry ON identity.ndi_login_requests(status, "expiresAt");
+\endif
