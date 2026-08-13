@@ -59,6 +59,27 @@ const login = async (page, email) => {
   await expect(page).toHaveURL(/\/dashboard$/);
 };
 
+test('a test taker can register without NDI and sign in', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByRole('button', { name: 'Register', exact: true }).click();
+  await page.getByRole('button', { name: 'Register without NDI' }).click();
+
+  await page.getByPlaceholder('Enter your full name').fill('Chimi Dema');
+  await page.getByPlaceholder('Enter 11-digit CID No.').fill('10701000001');
+  await page.locator('input[type="date"]').fill('2000-01-01');
+  await page.getByPlaceholder('Enter mobile number').fill('17123456');
+  await page.getByPlaceholder('name@dsts.bt').fill('chimi.dema@example.com');
+  await page.getByPlaceholder('At least 12 characters').fill('SecurePass!2026');
+  await page.getByRole('button', { name: 'Create Account' }).click();
+
+  await expect(page.getByPlaceholder('Enter your CID, email, or User ID')).toHaveValue('chimi.dema@example.com');
+  await page.getByPlaceholder('Enter password').fill('SecurePass!2026');
+  await page.getByRole('button', { name: 'Sign in to DSTS' }).click();
+
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByText('Kuzuzangpo la, Chimi!')).toBeVisible();
+});
+
 for (const account of roleRoutes) {
   test(`${account.role} routes render without runtime errors`, async ({ page }) => {
     const runtimeErrors = [];
