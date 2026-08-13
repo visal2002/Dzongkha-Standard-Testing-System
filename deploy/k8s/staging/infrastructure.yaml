@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: postgres }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: postgres, app.kubernetes.io/part-of: dzongjuk }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17.6-alpine
+          ports: [{ name: postgres, containerPort: 5432 }]
+          env:
+            - { name: POSTGRES_USER, value: dzongjuk }
+            - { name: POSTGRES_DB, value: postgres }
+            - { name: POSTGRES_PASSWORD, valueFrom: { secretKeyRef: { name: dzongjuk-runtime, key: DATABASE_PASSWORD } } }
+          readinessProbe: { exec: { command: ["pg_isready", "-U", "dzongjuk"] }, periodSeconds: 5 }
+          livenessProbe: { exec: { command: ["pg_isready", "-U", "dzongjuk"] }, initialDelaySeconds: 20, periodSeconds: 10 }
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: 1000m, memory: 1Gi } }
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+      volumes: [{ name: data, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: postgres }
+spec: { selector: { app.kubernetes.io/name: postgres }, ports: [{ name: postgres, port: 5432 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: redis }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: redis } }
+  template:
+    metadata: { labels: { app.kubernetes.io/name: redis, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      containers:
+        - name: redis
+          image: redis:8.2-alpine
+          args: ["redis-server", "--appendonly", "yes"]
+          ports: [{ name: redis, containerPort: 6379 }]
+          readinessProbe: { exec: { command: ["redis-cli", "ping"] }, periodSeconds: 5 }
+          livenessProbe: { exec: { command: ["redis-cli", "ping"] }, initialDelaySeconds: 15, periodSeconds: 10 }
+          resources: { requests: { cpu: 25m, memory: 64Mi }, limits: { cpu: 500m, memory: 256Mi } }
+          volumeMounts: [{ name: data, mountPath: /data }]
+      volumes: [{ name: data, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: redis }
+spec: { selector: { app.kubernetes.io/name: redis }, ports: [{ name: redis, port: 6379 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: rabbitmq }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: rabbitmq } }
+  template:
+    metadata: { labels: { app.kubernetes.io/name: rabbitmq, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:4.1-management-alpine
+          ports:
+            - { name: amqp, containerPort: 5672 }
+            - { name: management, containerPort: 15672 }
+          env:
+            - { name: RABBITMQ_DEFAULT_USER, value: dzongjuk }
+            - { name: RABBITMQ_DEFAULT_PASS, valueFrom: { secretKeyRef: { name: dzongjuk-runtime, key: RABBITMQ_PASSWORD } } }
+          readinessProbe: { exec: { command: ["rabbitmq-diagnostics", "-q", "ping"] }, initialDelaySeconds: 20, periodSeconds: 10, timeoutSeconds: 10 }
+          livenessProbe: { exec: { command: ["rabbitmq-diagnostics", "-q", "ping"] }, initialDelaySeconds: 60, periodSeconds: 20, timeoutSeconds: 10, failureThreshold: 6 }
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: 1000m, memory: 1Gi } }
+          volumeMounts: [{ name: data, mountPath: /var/lib/rabbitmq }]
+      volumes: [{ name: data, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: rabbitmq }
+spec: { selector: { app.kubernetes.io/name: rabbitmq }, ports: [{ name: amqp, port: 5672 }, { name: management, port: 15672 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: minio }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: minio } }
+  template:
+    metadata: { labels: { app.kubernetes.io/name: minio, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:RELEASE.2025-07-23T15-54-02Z
+          command: ["sh", "-c"]
+          args:
+            - minio server /data --console-address :9001 & pid=$!; until mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do sleep 2; done; mc mb --ignore-existing local/dzongjuk-assessment local/dzongjuk-certificates; wait $pid
+          ports:
+            - { name: api, containerPort: 9000 }
+            - { name: console, containerPort: 9001 }
+          env:
+            - { name: MINIO_ROOT_USER, value: dzongjuk }
+            - { name: MINIO_ROOT_PASSWORD, valueFrom: { secretKeyRef: { name: dzongjuk-runtime, key: MINIO_ROOT_PASSWORD } } }
+          readinessProbe: { httpGet: { path: /minio/health/ready, port: api }, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /minio/health/live, port: api }, initialDelaySeconds: 15, periodSeconds: 15 }
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: 1000m, memory: 1Gi } }
+          volumeMounts: [{ name: data, mountPath: /data }]
+      volumes: [{ name: data, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: minio }
+spec: { selector: { app.kubernetes.io/name: minio }, ports: [{ name: api, port: 9000 }, { name: console, port: 9001 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: database-provisioner }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: database-provisioner } }
+  template:
+    metadata: { labels: { app.kubernetes.io/name: database-provisioner, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      containers:
+        - name: provisioner
+          image: postgres:17.6-alpine
+          command: ["sh", "-c"]
+          args: ["until pg_isready; do sleep 2; done; /migrations/provision-service-databases.sh; touch /tmp/ready; sleep 365d"]
+          env:
+            - { name: PGHOST, value: postgres }
+            - { name: PGPORT, value: "5432" }
+            - { name: PGUSER, value: dzongjuk }
+            - { name: PGPASSWORD, valueFrom: { secretKeyRef: { name: dzongjuk-runtime, key: DATABASE_PASSWORD } } }
+            - { name: MIGRATIONS_DIR, value: /migrations }
+          readinessProbe: { exec: { command: ["test", "-f", "/tmp/ready"] }, periodSeconds: 5 }
+          resources: { requests: { cpu: 25m, memory: 64Mi }, limits: { cpu: 250m, memory: 256Mi } }
+          volumeMounts: [{ name: migrations, mountPath: /migrations, readOnly: true }]
+      volumes:
+        - name: migrations
+          configMap:
+            name: database-migrations
+            defaultMode: 0555
