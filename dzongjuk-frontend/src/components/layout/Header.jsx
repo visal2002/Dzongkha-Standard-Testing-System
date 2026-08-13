@@ -81,10 +81,22 @@ function UserMenu({ onClose }) {
       transition={{ duration: 0.15 }}
       className="absolute right-0 top-full mt-2 w-[min(calc(100vw-1.5rem),16rem)] bg-surface-card border border-surface-border rounded-xl shadow-2xl shadow-black/30 z-50 overflow-hidden"
     >
-      <div className="px-4 py-3 border-b border-surface-border bg-surface-bg">
-        <p className="text-sm font-semibold text-text-primary truncate">{user?.name}</p>
-        <p className="text-xs text-text-muted truncate">{user?.email}</p>
-        <Badge variant="gold" size="sm" className="mt-1">{user?.roleName}</Badge>
+      <div className="px-4 py-3 border-b border-surface-border bg-surface-bg flex items-center gap-3">
+        {user?.avatar ? (
+          <img src={user.avatar} alt="Avatar" className="w-9 h-9 rounded-full object-cover shrink-0 border border-surface-border" />
+        ) : (
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+            style={{ backgroundColor: user?.avatarColor || '#F59E0B' }}
+          >
+            {user?.name?.[0] || 'U'}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-text-primary truncate">{user?.name}</p>
+          <p className="text-xs text-text-muted truncate">{user?.email}</p>
+          <Badge variant="gold" size="sm" className="mt-1">{user?.roleName}</Badge>
+        </div>
       </div>
       <div className="py-1.5">
         <button
@@ -202,12 +214,16 @@ export default function Header({ collapsed, setCollapsed, isDesktop, onOpenMobil
             aria-label="Open account menu"
             className="flex items-center gap-2 pl-2 pr-1 h-8 rounded-lg hover:bg-surface-border transition-colors"
           >
-            <div
-              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold transition-all duration-300"
-              style={{ backgroundColor: user?.avatarColor || '#F59E0B' }}
-            >
-              {user?.name?.[0] || 'U'}
-            </div>
+            {user?.avatar ? (
+              <img src={user.avatar} alt="Avatar" className="w-6 h-6 rounded-full object-cover shrink-0" />
+            ) : (
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold transition-all duration-300"
+                style={{ backgroundColor: user?.avatarColor || '#F59E0B' }}
+              >
+                {user?.name?.[0] || 'U'}
+              </div>
+            )}
             <span className="text-xs font-medium text-text-secondary max-w-24 truncate hidden sm:block">
               {user?.name?.split(' ')[0]}
             </span>

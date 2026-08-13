@@ -173,7 +173,7 @@ export default function ProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           className="lg:col-span-1 bg-surface-card border border-surface-border rounded-xl p-6 flex flex-col items-center justify-center gap-4 text-center"
         >
-// Updated Avatar display to show uploaded image if available
+          {/* Updated Avatar display to show uploaded image if available */}
           {user?.avatar ? (
             <img src={user.avatar} alt="Profile" className="w-20 h-20 rounded-full object-cover" />
           ) : (
@@ -197,12 +197,8 @@ export default function ProfilePage() {
                   const dataUrl = ev.target?.result;
                   try {
                     await authService.uploadProfilePicture(dataUrl);
-                    // Refresh user data after upload
-                    const updatedUser = { ...user, avatar: dataUrl };
-                    // Persist locally
-                    localStorage.setItem('dsts_user', JSON.stringify(updatedUser));
-                    // Trigger re-render by updating context (simplified)
-                    window.location.reload();
+                    await updateProfile({ avatar: dataUrl });
+                    toast.success('Profile picture updated successfully!');
                   } catch (err) {
                     toast.error('Failed to upload profile picture');
                   }

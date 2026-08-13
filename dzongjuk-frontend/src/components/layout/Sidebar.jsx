@@ -180,9 +180,13 @@ export default function Sidebar({ collapsed, isDesktop, mobileOpen }) {
       {!collapsed && user && (
         <div className="px-3 py-3 border-t border-surface-border shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#F59E0B]/20 flex items-center justify-center text-brand-gold font-semibold text-sm shrink-0">
-              {user.name[0]}
-            </div>
+            {user.avatar ? (
+              <img src={user.avatar} alt="Avatar" className="w-8 h-8 rounded-full object-cover shrink-0" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-[#F59E0B]/20 flex items-center justify-center text-brand-gold font-semibold text-sm shrink-0">
+                {user.name?.[0] || 'U'}
+              </div>
+            )}
             <div className="min-w-0">
               <p className="text-xs font-semibold text-text-primary truncate">{user.name}</p>
               <p className="text-[10px] text-text-muted truncate">{user.roleName}</p>
