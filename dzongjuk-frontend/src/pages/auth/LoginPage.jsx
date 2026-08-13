@@ -197,7 +197,7 @@ export default function LoginPage() {
   const [regPassword, setRegPassword] = useState('');
   const [showRegPass, setShowRegPass] = useState(false);
 
-  const { login, loginWithNDI, checkNDILogin, cancelNDILogin, isLoading } = useAuth();
+  const { login, register, loginWithNDI, checkNDILogin, cancelNDILogin, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -213,7 +213,29 @@ export default function LoginPage() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    toast('Registration completed successfully!', { icon: '🎉' });
+    const result = await register({
+      fullName: regName,
+      cid: regCid,
+      dateOfBirth: regDob,
+      phone: regPhone,
+      email: regEmail,
+      password: regPassword,
+    });
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    setUserId(regEmail.trim().toLowerCase());
+    setPassword('');
+    setRegName('');
+    setRegCid('');
+    setRegDob('');
+    setRegPhone('');
+    setRegEmail('');
+    setRegPassword('');
+    setActiveTab('signin');
+    toast.success('Account created. You can now sign in.');
   };
 
   const handleNDI = async () => {
@@ -619,6 +641,10 @@ export default function LoginPage() {
                                 value={regCid}
                                 onChange={e => setRegCid(e.target.value)}
                                 placeholder="Enter 11-digit CID No."
+                                inputMode="numeric"
+                                pattern="[0-9]{11}"
+                                minLength={11}
+                                maxLength={11}
                                 required
                                 className="w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
                               />
@@ -646,6 +672,8 @@ export default function LoginPage() {
                                 value={regPhone}
                                 onChange={e => setRegPhone(e.target.value)}
                                 placeholder="Enter mobile number"
+                                inputMode="tel"
+                                pattern="[0-9+ -]{7,16}"
                                 required
                                 className="w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
                               />
@@ -673,7 +701,8 @@ export default function LoginPage() {
                                 type={showRegPass ? 'text' : 'password'}
                                 value={regPassword}
                                 onChange={e => setRegPassword(e.target.value)}
-                                placeholder="Create a password"
+                                placeholder="At least 12 characters"
+                                minLength={12}
                                 required
                                 className="w-full h-12 pl-10 pr-12 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
                               />

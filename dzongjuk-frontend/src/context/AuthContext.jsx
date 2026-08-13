@@ -50,6 +50,15 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const register = useCallback(async (registration) => {
+    setIsLoading(true);
+    try {
+      return await authService.register(registration);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   /**
    * Login via Bhutan National Digital Identity (NDI).
    */
@@ -143,6 +152,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     isLoading,
     login,
+    register,
     loginWithNDI,
     checkNDILogin,
     cancelNDILogin,

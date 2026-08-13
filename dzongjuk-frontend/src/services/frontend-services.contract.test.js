@@ -4,7 +4,7 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { authService } from './auth';
 import { adminService } from './admin';
 import { attendanceService } from './attendance';
@@ -19,6 +19,15 @@ const expectPdf = async (blob) => {
 };
 
 describe('authentication contract', () => {
+  beforeEach(() => {
+    const values = new Map();
+    globalThis.localStorage = {
+      getItem: key => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, String(value)),
+      removeItem: key => values.delete(key),
+    };
+  });
+
   it('accepts the local acceptance credentials in mock mode', async () => {
     const result = await authService.login('local.acceptance@dzongjuk.test', 'LocalTestOnly!2026');
 
@@ -30,6 +39,41 @@ describe('authentication contract', () => {
       },
     });
     expect(result.token).toEqual(expect.any(String));
+  });
+
+  it('registers a non-NDI account and accepts its credentials', async () => {
+    const registration = await authService.register({
+      fullName: 'Chimi Dema',
+      cid: '10701000001',
+      dateOfBirth: '2000-01-01',
+      phone: '17123456',
+      email: 'chimi.dema@example.com',
+      password: 'SecurePass!2026',
+    });
+
+    expect(registration).toMatchObject({ success: true, user: { role: 'test_taker' } });
+    const login = await authService.login('chimi.dema@example.com', 'SecurePass!2026');
+    expect(login).toMatchObject({
+      success: true,
+      user: { cid: '10701000001', email: 'chimi.dema@example.com' },
+      token: expect.any(String),
+    });
+  });
+
+  it('rejects duplicate non-NDI registrations', async () => {
+    const account = {
+      fullName: 'Chimi Dema',
+      cid: '10701000001',
+      dateOfBirth: '2000-01-01',
+      phone: '17123456',
+      email: 'chimi.dema@example.com',
+      password: 'SecurePass!2026',
+    };
+    expect((await authService.register(account)).success).toBe(true);
+    await expect(authService.register(account)).resolves.toMatchObject({
+      success: false,
+      error: expect.stringContaining('already exists'),
+    });
   });
 });
 

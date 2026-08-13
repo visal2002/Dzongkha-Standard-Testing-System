@@ -32,6 +32,25 @@ const normalizeUser = (user, token) => {
 };
 
 let mockNdiStartedAt = 0;
+const MOCK_REGISTRATIONS_KEY = 'dsts_mock_registrations';
+
+const readMockRegistrations = () => {
+  try {
+    return JSON.parse(globalThis.localStorage?.getItem(MOCK_REGISTRATIONS_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+
+const writeMockRegistrations = (registrations) => {
+  globalThis.localStorage?.setItem(MOCK_REGISTRATIONS_KEY, JSON.stringify(registrations));
+};
+
+const hashMockPassword = async (password, salt) => {
+  const bytes = new TextEncoder().encode(`${salt}:${password}`);
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+};
 
 // Mock user data (preserved as fallback)
 const MOCK_USERS = {
@@ -59,11 +78,25 @@ export const authService = {
   login: async (identifier, password) => {
     if (USE_MOCK) {
       await mockDelay(800);
-      const found = Object.values(MOCK_USERS).find(u => u.cid === identifier || u.email === identifier);
+      const normalizedIdentifier = identifier.trim().toLowerCase();
+      const found = Object.values(MOCK_USERS).find(
+        user => user.cid.toLowerCase() === normalizedIdentifier || user.email.toLowerCase() === normalizedIdentifier,
+      );
       const expectedPassword = found ? MOCK_PASSWORDS[found.cid] || 'password' : null;
       if (found && password === expectedPassword) {
         const token = btoa(JSON.stringify({ userId: found.id, role: found.role, exp: Date.now() + 86400000 }));
         return { success: true, user: found, token };
+      }
+
+      const registration = readMockRegistrations().find(
+        record => record.user.cid.toLowerCase() === normalizedIdentifier || record.user.email.toLowerCase() === normalizedIdentifier,
+      );
+      if (registration) {
+        const passwordHash = await hashMockPassword(password, registration.passwordSalt);
+        if (passwordHash === registration.passwordHash) {
+          const token = btoa(JSON.stringify({ userId: registration.user.id, role: registration.user.role, exp: Date.now() + 86400000 }));
+          return { success: true, user: registration.user, token };
+        }
       }
       return { success: false, error: 'Invalid demonstration credentials.' };
     }
@@ -74,6 +107,69 @@ export const authService = {
       return { success: true, user: normalizeUser(user, accessToken), token: accessToken };
     } catch (err) {
       return { success: false, error: err.message || 'Login failed.' };
+    }
+  },
+
+  /** Register a test taker without Bhutan NDI. */
+  register: async ({ fullName, cid, dateOfBirth, phone, email, password }) => {
+    const normalized = {
+      fullName: fullName.trim(),
+      cid: cid.trim(),
+      dateOfBirth,
+      phone: phone.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+    };
+
+    if (USE_MOCK) {
+      await mockDelay(600);
+      if (!/^\d{11}$/.test(normalized.cid)) {
+        return { success: false, error: 'CID must contain exactly 11 digits.' };
+      }
+      if (normalized.password.length < 12) {
+        return { success: false, error: 'Password must contain at least 12 characters.' };
+      }
+
+      const registrations = readMockRegistrations();
+      const existingUsers = [...Object.values(MOCK_USERS), ...registrations.map(record => record.user)];
+      if (existingUsers.some(user => user.cid === normalized.cid || user.email.toLowerCase() === normalized.email)) {
+        return { success: false, error: 'An account already exists for this email or CID.' };
+      }
+
+      const passwordSalt = globalThis.crypto.randomUUID();
+      const user = {
+        id: `USR-MOCK-${globalThis.crypto.randomUUID()}`,
+        name: normalized.fullName,
+        fullName: normalized.fullName,
+        email: normalized.email,
+        cid: normalized.cid,
+        dateOfBirth: normalized.dateOfBirth,
+        phone: normalized.phone,
+        role: 'test_taker',
+        roleName: 'Test Taker',
+        avatar: null,
+        department: null,
+        permissions: ['registration', 'certificates', 'appeals', 'questions'],
+      };
+      registrations.push({
+        user,
+        passwordSalt,
+        passwordHash: await hashMockPassword(normalized.password, passwordSalt),
+      });
+      writeMockRegistrations(registrations);
+      return { success: true, user };
+    }
+
+    try {
+      const { data: envelope } = await apiClient.post('/auth/register', {
+        fullName: normalized.fullName,
+        cid: normalized.cid,
+        email: normalized.email,
+        password: normalized.password,
+      });
+      return { success: true, user: envelope.data };
+    } catch (err) {
+      return { success: false, error: err.message || 'Registration failed.' };
     }
   },
 
