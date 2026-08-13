@@ -99,7 +99,7 @@ apiClient.interceptors.response.use(
       console.error(`[API] ✕ ${status ?? 'ERR'} ${error?.config?.url}`, message);
     }
 
-    return Promise.reject({ status, message, raw: error });
+    return Promise.reject({ status, code: apiError?.code, message, raw: error });
   },
 );
 export default apiClient;

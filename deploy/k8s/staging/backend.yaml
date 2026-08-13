@@ -27,7 +27,7 @@ data:
   PUBLIC_API_BASE_URL: http://172.30.3.63:30431/api/v1
   CERTIFICATE_BUCKET: dzongjuk-certificates
   CERTIFICATE_KEY_VERSION: "1"
-  NDI_ALLOW_TEST_TAKER_PROVISIONING: "false"
+  NDI_ALLOW_TEST_TAKER_PROVISIONING: "true"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -49,7 +49,10 @@ spec:
           envFrom: &commonEnv
             - { configMapRef: { name: dzongjuk-backend-config } }
             - { secretRef: { name: dzongjuk-runtime } }
-          env: [{ name: DATABASE_NAME, value: dzongjuk_identity }, { name: IDENTITY_PORT, value: "8001" }]
+          env:
+            - { name: DATABASE_NAME, value: dzongjuk_identity }
+            - { name: IDENTITY_PORT, value: "8001" }
+            - { name: NDI_ALLOW_TEST_TAKER_PROVISIONING, value: "true" }
           readinessProbe: &ready8001 { httpGet: { path: /health/ready, port: 8001 }, initialDelaySeconds: 5, periodSeconds: 10 }
           livenessProbe: &live8001 { httpGet: { path: /health/live, port: 8001 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: &resources { requests: { cpu: 50m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }

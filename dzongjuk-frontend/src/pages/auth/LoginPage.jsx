@@ -4,7 +4,7 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, ChevronLeft, User, Mail, Lock, CreditCard, Calendar, Phone, PlayCircle, Scan, ArrowLeft, AlertTriangle, X, Smartphone, RefreshCw } from 'lucide-react';
@@ -15,7 +15,7 @@ import toast from 'react-hot-toast';
 
 const IS_NDI_PREVIEW = import.meta.env.VITE_USE_MOCK_DATA !== 'false';
 
-function NdiQrCode({ qrUrl, isLoading, error, onErrorClose, onError }) {
+function NdiQrCode({ qrUrl, deepLinkUrl, isLoading, error, status, onRetry }) {
   return (
     <div className="relative border-2 border-[#3ec49c] rounded-3xl p-3 bg-white shadow-sm flex flex-col items-center justify-center min-w-50 min-h-50">
       {error ? (
@@ -28,10 +28,10 @@ function NdiQrCode({ qrUrl, isLoading, error, onErrorClose, onError }) {
           </div>
           <button
             type="button"
-            onClick={onErrorClose}
+            onClick={onRetry}
             className="px-5 py-1.5 rounded-full border border-[#3ec49c] text-[#299d7b] hover:bg-emerald-50 text-xs font-semibold transition-colors focus:outline-none"
           >
-            Close
+            Try again
           </button>
         </div>
       ) : isLoading ? (
@@ -40,13 +40,12 @@ function NdiQrCode({ qrUrl, isLoading, error, onErrorClose, onError }) {
           <span className="text-xs font-medium">Loading Scanner...</span>
         </div>
       ) : qrUrl ? (
-        <div className="relative w-44 h-44 bg-white flex items-center justify-center">
-          <img
-            src={qrUrl}
-            alt="NDI QR Code Scanner"
-            className="w-full h-full object-contain rounded-xl"
-            onError={() => onError && onError("Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON")}
-          />
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative w-44 h-44 bg-white flex items-center justify-center" aria-label="Bhutan NDI registration QR code">
+            <QRCodeSVG value={qrUrl} size={176} level="H" marginSize={1} imageSettings={{ src: '/images/NDI Bhutan Logo.ico', width: 34, height: 34, excavate: true }} />
+          </div>
+          {status === 'PENDING' && <p className="text-xs font-semibold text-[#299d7b]" aria-live="polite">Waiting for approval in your wallet...</p>}
+          {deepLinkUrl && <a href={deepLinkUrl} className="inline-flex items-center gap-1.5 rounded-full bg-[#3ec49c] px-4 py-2 text-xs font-semibold text-white sm:hidden"><Smartphone size={14} /> Open Bhutan NDI Wallet</a>}
         </div>
       ) : (
         <div className="relative w-44 h-44 bg-white flex items-center justify-center">
@@ -175,12 +174,14 @@ export default function LoginPage() {
   const [registerMode, setRegisterMode] = useState('ndi'); // 'ndi' | 'form'
 
   // NDI API State
-  const [ndiQrUrl, setNdiQrUrl] = useState(null);
   const [isNdiLoading, setIsNdiLoading] = useState(false);
   const [ndiErrorMessage, setNdiErrorMessage] = useState(null);
   const [ndiLogin, setNdiLogin] = useState(null);
   const [ndiLoginStatus, setNdiLoginStatus] = useState('IDLE');
   const pollInFlight = useRef(false);
+  const [ndiRegistration, setNdiRegistration] = useState(null);
+  const [ndiRegistrationStatus, setNdiRegistrationStatus] = useState('IDLE');
+  const registrationPollInFlight = useRef(false);
 
   // Sign-in state
   const [userId, setUserId] = useState('');
@@ -258,6 +259,86 @@ export default function LoginPage() {
     } finally {
       setIsNdiLoading(false);
     }
+  };
+
+  const startNdiRegistration = useCallback(async () => {
+    setIsNdiLoading(true);
+    setNdiErrorMessage(null);
+    setNdiRegistration(null);
+    setNdiRegistrationStatus('IDLE');
+    try {
+      const result = await loginWithNDI();
+      if (!result.success) {
+        setNdiErrorMessage(result.error || 'NDI registration is currently unavailable.');
+        setNdiRegistrationStatus('FAILED');
+        return;
+      }
+      setNdiRegistration(result);
+      setNdiRegistrationStatus('PENDING');
+    } catch (err) {
+      setNdiErrorMessage(err.message || 'Bhutan NDI is currently unavailable. Please try again.');
+      setNdiRegistrationStatus('FAILED');
+    } finally {
+      setIsNdiLoading(false);
+    }
+  }, [loginWithNDI]);
+
+  useEffect(() => {
+    if (activeTab === 'register' && registerMode === 'ndi' && !ndiRegistration && ndiRegistrationStatus === 'IDLE') {
+      void startNdiRegistration();
+    }
+  }, [activeTab, registerMode, ndiRegistration, ndiRegistrationStatus, startNdiRegistration]);
+
+  useEffect(() => {
+    if (!ndiRegistration?.pollToken || ndiRegistrationStatus !== 'PENDING') return undefined;
+    let stopped = false;
+    const poll = async () => {
+      if (registrationPollInFlight.current || stopped) return;
+      registrationPollInFlight.current = true;
+      try {
+        const result = await checkNDILogin(ndiRegistration.pollToken);
+        if (stopped) return;
+        if (result.status === 'VALIDATED') {
+          setNdiRegistrationStatus('VALIDATED');
+          toast.success(`Account created. Welcome, ${result.user.name}!`);
+          navigate('/dashboard');
+        } else if (result.status !== 'PENDING') {
+          setNdiRegistrationStatus(result.status);
+          const messages = {
+            REJECTED: 'The registration request was declined in Bhutan NDI Wallet.',
+            EXPIRED: 'This registration QR code has expired. Please create a new one.',
+            CANCELLED: 'This Bhutan NDI registration was cancelled.',
+            FAILED: 'Bhutan NDI could not verify or create this account.',
+          };
+          setNdiErrorMessage(messages[result.status] || 'Bhutan NDI registration could not be completed.');
+        }
+      } catch (err) {
+        if (!stopped) {
+          setNdiRegistrationStatus('FAILED');
+          setNdiErrorMessage(err.message || 'Unable to check Bhutan NDI registration status.');
+        }
+      } finally {
+        registrationPollInFlight.current = false;
+      }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 2000);
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [ndiRegistration, ndiRegistrationStatus, checkNDILogin, navigate]);
+
+  const useRegistrationForm = () => {
+    if (ndiRegistration?.pollToken && ndiRegistrationStatus === 'PENDING') void cancelNDILogin(ndiRegistration.pollToken);
+    setNdiRegistration(null);
+    setNdiRegistrationStatus('IDLE');
+    setNdiErrorMessage(null);
+    setRegisterMode('form');
+  };
+
+  const returnToNdiRegistration = () => {
+    setRegisterMode('ndi');
+    setNdiRegistration(null);
+    setNdiRegistrationStatus('IDLE');
+    setNdiErrorMessage(null);
   };
 
   useEffect(() => {
@@ -486,11 +567,12 @@ export default function LoginPage() {
                         {/* QR Code Container */}
                         <div className="mb-4">
                           <NdiQrCode
-                            qrUrl={ndiQrUrl}
+                            qrUrl={ndiRegistration?.proofRequestUrl}
+                            deepLinkUrl={ndiRegistration?.deepLinkUrl}
                             isLoading={isNdiLoading}
                             error={ndiErrorMessage}
-                            onErrorClose={() => setNdiErrorMessage(null)}
-                            onError={(err) => setNdiErrorMessage(err)}
+                            status={ndiRegistrationStatus}
+                            onRetry={startNdiRegistration}
                           />
                         </div>
 
@@ -589,7 +671,7 @@ export default function LoginPage() {
                         {/* Register without NDI button */}
                         <button
                           type="button"
-                          onClick={() => setRegisterMode('form')}
+                          onClick={useRegistrationForm}
                           className="w-full py-3 px-4 rounded-full border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50 font-medium text-sm transition-all shadow-sm flex items-center justify-center gap-2"
                         >
                           Register without NDI
@@ -601,7 +683,7 @@ export default function LoginPage() {
                         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                           <button
                             type="button"
-                            onClick={() => setRegisterMode('ndi')}
+                            onClick={returnToNdiRegistration}
                             className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
                           >
                             <ArrowLeft size={14} />
@@ -609,7 +691,7 @@ export default function LoginPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setRegisterMode('ndi')}
+                            onClick={returnToNdiRegistration}
                             className="inline-flex items-center gap-1.5 text-xs text-[#299d7b] hover:text-[#218366] font-semibold transition-colors bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200"
                           >
                             <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="w-4 h-4 object-contain" />
