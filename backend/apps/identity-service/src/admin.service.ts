@@ -10,7 +10,7 @@ import bcrypt from 'bcryptjs';
 import { In, Repository } from 'typeorm';
 import { DomainException } from '@dzongjuk/common';
 import { AuditService } from './audit.service';
-import { CreateRoleDto, CreateUserDto, UpdateUserRolesDto } from './dtos';
+import { CreateRoleDto, CreateUserDto, UpdateRolePermissionsDto, UpdateUserDto, UpdateUserRolesDto } from './dtos';
 import { PermissionEntity, RoleEntity, UserEntity } from './entities';
 
 @Injectable()
@@ -54,6 +54,37 @@ export class AdminService {
     return user;
   }
 
+  async updateUser(id: string, dto: UpdateUserDto, actorId: string, requestId: string) {
+    const user = await this.getUser(id);
+    if (dto.email) {
+      const existing = await this.users.findOneBy({ email: dto.email.toLowerCase() });
+      if (existing && existing.id !== id) throw new DomainException('USER_DUPLICATE', 'This email is already assigned to another account.', 409);
+      user.email = dto.email.toLowerCase();
+    }
+    if (dto.cid) {
+      const existing = await this.users.findOneBy({ cid: dto.cid });
+      if (existing && existing.id !== id) throw new DomainException('USER_DUPLICATE', 'This CID is already assigned to another account.', 409);
+      user.cid = dto.cid;
+    }
+    if (dto.fullName) user.fullName = dto.fullName;
+    if (dto.roleCodes) {
+      const roles = await this.roles.findBy({ code: In(dto.roleCodes), active: true });
+      if (roles.length !== new Set(dto.roleCodes).size) throw new DomainException('ROLE_INVALID', 'One or more roles are invalid.');
+      user.roles = roles;
+    }
+    const saved = await this.users.save(user);
+    await this.audit.record({ action: 'USER_UPDATED', resourceType: 'User', resourceId: id, actorUserId: actorId, requestId, safeData: { roles: dto.roleCodes } });
+    return saved;
+  }
+
+  async deleteUser(id: string, actorId: string, requestId: string) {
+    if (id === actorId) throw new DomainException('SELF_DELETE_FORBIDDEN', 'You cannot delete your own account.', 400);
+    const user = await this.getUser(id);
+    await this.users.remove(user);
+    await this.audit.record({ action: 'USER_DELETED', resourceType: 'User', resourceId: id, actorUserId: actorId, requestId, safeData: {} });
+    return { deleted: true };
+  }
+
   async setRoles(id: string, dto: UpdateUserRolesDto, actorId: string, requestId: string) {
     const user = await this.getUser(id);
     const roles = await this.roles.findBy({ code: In(dto.roleCodes), active: true });
@@ -74,5 +105,16 @@ export class AdminService {
     const role = await this.roles.save(this.roles.create({ code: dto.code, name: dto.name, permissions, active: true, administrative: true }));
     await this.audit.record({ action: 'ROLE_CREATED', resourceType: 'Role', resourceId: role.id, actorUserId: actorId, requestId, safeData: { code: dto.code, permissions: dto.permissions } });
     return role;
+  }
+
+  async updateRolePermissions(id: string, dto: UpdateRolePermissionsDto, actorId: string, requestId: string) {
+    const role = await this.roles.findOneBy({ id });
+    if (!role) throw new DomainException('ROLE_NOT_FOUND', 'Role not found.', 404);
+    const permissions = await this.permissions.findBy({ name: In(dto.permissions) });
+    if (permissions.length !== new Set(dto.permissions).size) throw new DomainException('PERMISSION_INVALID', 'One or more permissions are invalid.');
+    role.permissions = permissions;
+    const saved = await this.roles.save(role);
+    await this.audit.record({ action: 'ROLE_PERMISSIONS_UPDATED', resourceType: 'Role', resourceId: id, actorUserId: actorId, requestId, safeData: { permissions: dto.permissions } });
+    return saved;
   }
 }

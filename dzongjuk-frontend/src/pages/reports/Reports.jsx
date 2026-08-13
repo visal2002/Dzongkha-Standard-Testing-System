@@ -18,6 +18,8 @@ import { reportService } from '../../services/reports';
 import { examService } from '../../services/exams';
 import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+import { canAccess } from '../../config/accessMatrix';
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -75,6 +77,8 @@ const PREDEFINED_REPORTS = [
 ];
 
 export default function Reports() {
+  const { user } = useAuth();
+  const canGenerate = canAccess(user?.role, 'reports', 'manage');
   const { data: summary, loading } = useApi(reportService.getSummary);
   const { data: examWindowsData } = useApi(examService.getAll);
   const examWindows = examWindowsData || [];
@@ -86,11 +90,11 @@ export default function Reports() {
         subtitle="Comprehensive reporting across all DSTS modules"
         breadcrumbs={[{ label: 'Reports' }]}
         icon={<BarChart3 size={18} />}
-        action={
+        action={canGenerate ?
           <Button variant="secondary" icon={<Download size={14} />} onClick={() => toast.success('Generating report...')}>
             Export PDF
           </Button>
-        }
+          : null}
       />
 
       {/* KPIs */}
@@ -171,7 +175,7 @@ export default function Reports() {
                 <h3 className="text-sm font-semibold text-text-primary">Application Status Breakdown</h3>
                 <div className="flex gap-2">
                   <Select style={{ width: 140, height: 32 }}><option>All Windows</option>{examWindows.map(e => <option key={e.id}>{e.title}</option>)}</Select>
-                  <Button variant="secondary" size="sm" icon={<Download size={13} />} onClick={() => toast.success('Exporting...')}>CSV</Button>
+                  {canGenerate && <Button variant="secondary" size="sm" icon={<Download size={13} />} onClick={() => toast.success('Exporting...')}>CSV</Button>}
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={260}>
@@ -235,6 +239,7 @@ export default function Reports() {
                 <button
                   key={r.id}
                   onClick={() => toast.success(`Generating "${r.label}"...`)}
+                  disabled={!canGenerate}
                   className="text-left p-4 bg-surface-card border border-surface-border rounded-xl hover:border-brand-gold/30 hover:bg-[var(--color-surface-card-hover)] transition-all group"
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">

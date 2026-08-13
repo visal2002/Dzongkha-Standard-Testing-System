@@ -34,6 +34,17 @@ export class UpdateUserRolesDto {
   @IsArray() @IsString({ each: true }) roleCodes: string[];
 }
 
+export class UpdateUserDto {
+  @IsOptional() @IsEmail() email?: string;
+  @IsOptional() @IsString() @Length(5, 32) cid?: string;
+  @IsOptional() @IsString() @Length(2, 160) fullName?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) roleCodes?: string[];
+}
+
+export class UpdateRolePermissionsDto {
+  @IsArray() @IsString({ each: true }) permissions: string[];
+}
+
 export class CreateRoleDto {
   @IsString() @Length(2, 64) code: string;
   @IsString() @Length(2, 120) name: string;

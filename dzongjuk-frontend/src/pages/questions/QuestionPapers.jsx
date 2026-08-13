@@ -16,6 +16,7 @@ import Alert from '../../components/ui/Alert';
 import { questionService } from '../../services/questions';
 import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
+import { canAccess } from '../../config/accessMatrix';
 
 const SKILL_COLORS = {
   Writing: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -30,7 +31,8 @@ export default function QuestionPapers() {
   const papers = papersData || [];
   
   const [deleting, setDeleting] = useState(null);
-  const isExamHead = user?.role === 'exam_head' || user?.role === 'admin';
+  const canRead = canAccess(user?.role, 'questions', 'read');
+  const canManage = canAccess(user?.role, 'questions', 'manage');
 
   const handleDelete = async () => {
     try {
@@ -51,7 +53,7 @@ export default function QuestionPapers() {
         subtitle="Encrypted examination papers and answer sheets"
         breadcrumbs={[{ label: 'Question Papers' }]}
         icon={<BookOpen size={18} />}
-        action={isExamHead && (
+        action={canManage && (
           <Link to="/questions/upload">
             <Button icon={<Upload size={14} />}>Upload Paper</Button>
           </Link>
@@ -110,10 +112,10 @@ export default function QuestionPapers() {
             {/* Status & Actions */}
             <div className="flex items-center gap-2 shrink-0">
               <StatusBadge status={paper.status} />
-              {isExamHead && (
+              {canRead && <Button variant="ghost" size="xs" icon={<Eye size={12} />} onClick={() => toast.success('Opening document...')}>View</Button>}
+              {canRead && <Button variant="ghost" size="xs" icon={<Download size={12} />} onClick={() => toast.success('Downloading...')}>Download</Button>}
+              {canManage && (
                 <>
-                  <Button variant="ghost" size="xs" icon={<Eye size={12} />} onClick={() => toast.success('Opening document...')}>View</Button>
-                  <Button variant="ghost" size="xs" icon={<Download size={12} />} onClick={() => toast.success('Downloading...')}>Download</Button>
                   <Button variant="ghost" size="xs" icon={<Trash2 size={12} />} onClick={() => setDeleting(paper)} className="text-red-400 hover:text-red-300" />
                 </>
               )}

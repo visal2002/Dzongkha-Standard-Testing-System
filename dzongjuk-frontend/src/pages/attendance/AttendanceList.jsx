@@ -17,11 +17,15 @@ import Alert from '../../components/ui/Alert';
 import { attendanceService } from '../../services/attendance';
 import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+import { canAccess } from '../../config/accessMatrix';
 
 const columnHelper = createColumnHelper();
 const SKILLS = ['Writing', 'Reading', 'Listening', 'Speaking'];
 
 export default function AttendanceList() {
+  const { user } = useAuth();
+  const canManage = canAccess(user?.role, 'attendance', 'manage');
   const { data: appsData, loading, setData } = useApi(attendanceService.getEligible);
   const eligibleApps = appsData || [];
   const [data, setLocalData] = useState([]);
@@ -97,6 +101,7 @@ export default function AttendanceList() {
       header: 'Action',
       cell: ({ row }) => {
         const app = row.original;
+        if (!canManage) return <span className="text-xs text-text-muted">Read only</span>;
         if (app.status === 'absent') return <span className="text-xs text-text-muted">Already absent</span>;
         return (
           <Button variant="danger" size="xs" icon={<UserX size={12} />} onClick={() => setMarkingApp(app)}>
@@ -105,7 +110,7 @@ export default function AttendanceList() {
         );
       }
     }),
-  ], []);
+  ], [canManage]);
 
   const absentCount = effectiveData.filter(a => a.status === 'absent').length;
 
