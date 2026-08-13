@@ -16,10 +16,14 @@ import { Textarea, Select } from '../../components/ui/Input';
 import { applicationService } from '../../services/applications';
 import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+import { canAccess } from '../../config/accessMatrix';
 
 const columnHelper = createColumnHelper();
 
 export default function VerificationList() {
+  const { user } = useAuth();
+  const canManage = canAccess(user?.role, 'verification', 'manage');
   const { data: dataArray, loading, setData } = useApi(applicationService.getAll);
   const data = dataArray || [];
   
@@ -80,20 +84,20 @@ export default function VerificationList() {
         return (
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="xs" icon={<Eye size={12} />} onClick={() => setSelected(app)}>View</Button>
-            {app.status === 'submitted' && (
+            {canManage && app.status === 'submitted' && (
               <>
                 <Button variant="success" size="xs" icon={<CheckCircle size={12} />} onClick={() => { setSelected(app); setConfirmAction('verify'); }}>Verify</Button>
                 <Button variant="warning" size="xs" icon={<RotateCcw size={12} />} onClick={() => { setSelected(app); setConfirmAction('return'); }}>Return</Button>
               </>
             )}
-            {app.status === 'verified' && (
+            {canManage && app.status === 'verified' && (
               <Button variant="success" size="xs" icon={<CheckCircle size={12} />} onClick={() => { setSelected(app); setConfirmAction('approve'); }}>Approve</Button>
             )}
           </div>
         );
       }
     }),
-  ], []);
+  ], [canManage]);
 
   return (
     <div className="space-y-6">
@@ -165,14 +169,14 @@ export default function VerificationList() {
                 ))}
               </div>
             </div>
-            {selected.status === 'submitted' && (
+            {canManage && selected.status === 'submitted' && (
               <div className="flex gap-2 pt-2 border-t border-surface-border">
                 <Button variant="success" size="sm" onClick={() => setConfirmAction('verify')} icon={<CheckCircle size={13} />}>Verify Application</Button>
                 <Button variant="warning" size="sm" onClick={() => setConfirmAction('return')} icon={<RotateCcw size={13} />}>Return for Correction</Button>
                 <Button variant="danger" size="sm" onClick={() => setConfirmAction('reject')} icon={<XCircle size={13} />}>Reject</Button>
               </div>
             )}
-            {selected.status === 'verified' && (
+            {canManage && selected.status === 'verified' && (
               <Button variant="success" size="sm" onClick={() => setConfirmAction('approve')} icon={<CheckCircle size={13} />}>Approve Application</Button>
             )}
           </div>

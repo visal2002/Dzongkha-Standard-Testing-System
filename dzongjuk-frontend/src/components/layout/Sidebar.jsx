@@ -16,97 +16,55 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Badge from '../ui/Badge';
+import { canAccess } from '../../config/accessMatrix';
 
-// Navigation config keyed by role
-const NAV_CONFIG = {
-  admin: [
-    { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
-    { label: 'User Management', icon: Users, to: '/admin/users' },
-    { label: 'Role Management', icon: UserCog, to: '/admin/roles' },
-    { label: 'Technical Settings', icon: Wrench, to: '/admin/technical' },
-  ],
-  dcdd: [
-    { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
-    {
-      label: 'Registration',
-      icon: FileText,
-      children: [
-        { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows' },
-        { label: 'Applications', icon: ClipboardList, to: '/registration/applications', badge: 'pending' },
-      ]
-    },
-    { label: 'App. Verification', icon: CheckSquare, to: '/verification' },
-    { label: 'Attendance', icon: Users, to: '/attendance' },
-    {
-      label: 'Examination',
-      icon: ClipboardCheck,
-      children: [
-        { label: 'Exam Configuration', icon: Settings, to: '/masters' },
-        { label: 'Score Summary', icon: BarChart3, to: '/scores/summary' },
-      ]
-    },
-    {
-      label: 'Question Bank',
-      icon: BookOpen,
-      children: [
-        { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples' },
-      ]
-    },
-    { label: 'Certificate Management', icon: Award, to: '/certificates' },
-    { label: 'Reports', icon: BarChart3, to: '/reports' },
-    { label: 'Notifications', icon: Zap, to: '/notifications' },
-    { label: 'Operational Settings', icon: SlidersHorizontal, to: '/dcdd/operational' },
-  ],
-  exam_head: [
-    { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
-    {
-      label: 'Question Papers',
-      icon: BookOpen,
-      children: [
-        { label: 'Upload Papers', icon: Upload, to: '/questions/upload' },
-        { label: 'My Uploads', icon: FileText, to: '/questions' },
-        { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples' },
-      ]
-    },
-    { label: 'Score Summary', icon: ClipboardList, to: '/scores/summary' },
-    { label: 'Reports', icon: BarChart3, to: '/reports' },
-  ],
-  committee_head: [
-    { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
-    { label: 'Committee Setup', icon: Users, to: '/scores/committee' },
-    { label: 'Band Score Entry', icon: ClipboardList, to: '/scores' },
-    { label: 'Score Summary', icon: FileText, to: '/scores/summary' },
-    { label: 'Appeals Review', icon: Scale, to: '/appeals', badge: 'pending' },
-    { label: 'Reports', icon: BarChart3, to: '/reports' },
-  ],
-  committee_member: [
-    { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
-    { label: 'View Scores', icon: FileText, to: '/scores/view' },
-    { label: 'Score Summary', icon: ClipboardList, to: '/scores/summary' },
-    { label: 'Appeals Review', icon: Scale, to: '/appeals' },
-  ],
-  chief_executive: [
-    { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
-    { label: 'Appeal Approvals', icon: Scale, to: '/appeals', badge: 'pending' },
-    { label: 'Reports', icon: BarChart3, to: '/reports' },
-  ],
-  test_taker: [
-    { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
-    {
-      label: 'My Registration',
-      icon: FileText,
-      children: [
-        { label: 'Register for Exam', icon: GraduationCap, to: '/registration/windows' },
-        { label: 'My Applications', icon: ClipboardList, to: '/my-applications' },
-      ]
-    },
-    { label: 'My Results', icon: BarChart3, to: '/scores/view' },
-    { label: 'Certificates', icon: Award, to: '/certificates' },
-    { label: 'Submit Appeal', icon: AlertCircle, to: '/appeals/new' },
-    { label: 'My Appeals', icon: Scale, to: '/appeals' },
-    { label: 'Sample Papers', icon: BookOpen, to: '/questions/samples' },
-  ],
-};
+const NAV_CONFIG = [
+  { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+  { label: 'User Management', icon: Users, to: '/admin/users', access: ['users', 'read'] },
+  { label: 'Role Management', icon: UserCog, to: '/admin/roles', access: ['roles', 'read'] },
+  {
+    label: 'Registration', icon: FileText, access: ['registration', 'read'], children: [
+      { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'] },
+      { label: 'Applications', icon: ClipboardList, to: '/registration/applications', access: ['registration', 'read'], excludeRoles: ['test_taker'] },
+      { label: 'My Applications', icon: ClipboardList, to: '/my-applications', access: ['registration', 'read_own'] },
+    ],
+  },
+  { label: 'Verification', icon: CheckSquare, to: '/verification', access: ['verification', 'read'] },
+  { label: 'Absentee', icon: Users, to: '/attendance', access: ['attendance', 'read'] },
+  {
+    label: 'Question Papers', icon: BookOpen, access: ['questions', 'read'], children: [
+      { label: 'Upload Papers', icon: Upload, to: '/questions/upload', access: ['questions', 'create'] },
+      { label: 'Question Papers', icon: FileText, to: '/questions', access: ['questions', 'read'] },
+    ],
+  },
+  { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'] },
+  { label: 'Band Score Entry', icon: ClipboardList, to: '/scores', access: ['scores', 'submit'] },
+  { label: 'View Scores', icon: FileText, to: '/scores/view', access: ['scores', 'read'], excludeRoles: ['admin', 'dcdd', 'exam_head', 'committee_head'] },
+  { label: 'Score Summary', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read'], excludeRoles: ['test_taker'] },
+  { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'] },
+  { label: 'Submit Re-evaluation', icon: AlertCircle, to: '/appeals/new', access: ['appeals', 'submit_own'] },
+  { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'] },
+  { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read'] },
+  { label: 'Technical Settings', icon: Wrench, to: '/admin/technical', roles: ['admin'] },
+  { label: 'Exam Configuration', icon: Settings, to: '/masters', roles: ['admin', 'dcdd'] },
+  { label: 'Operational Settings', icon: SlidersHorizontal, to: '/dcdd/operational', roles: ['dcdd'] },
+  { label: 'Notifications', icon: Zap, to: '/notifications' },
+];
+
+function permitted(item, role) {
+  if (item.roles && !item.roles.includes(role)) return false;
+  if (item.excludeRoles?.includes(role)) return false;
+  if (item.access && !canAccess(role, item.access[0], item.access[1])) return false;
+  return true;
+}
+
+function navigationFor(role) {
+  return NAV_CONFIG.filter(item => permitted(item, role)).map(item => {
+    if (!item.children) return item;
+    const children = item.children.filter(child => permitted(child, role));
+    return { ...item, children };
+  }).filter(item => !item.children || item.children.length > 0);
+}
 
 function NavItem({ item, collapsed }) {
   const location = useLocation();
@@ -185,7 +143,7 @@ function NavItem({ item, collapsed }) {
 
 export default function Sidebar({ collapsed, isDesktop, mobileOpen }) {
   const { user } = useAuth();
-  const navItems = NAV_CONFIG[user?.role] || NAV_CONFIG.admin;
+  const navItems = navigationFor(user?.role);
 
   return (
     <motion.aside
