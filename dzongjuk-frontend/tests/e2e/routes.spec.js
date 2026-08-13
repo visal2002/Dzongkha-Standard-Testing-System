@@ -80,6 +80,27 @@ test('a test taker can register without NDI and sign in', async ({ page }) => {
   await expect(page.getByText('Kuzuzangpo la, Chimi!')).toBeVisible();
 });
 
+test('a user created by the administrator can sign in', async ({ page }) => {
+  await login(page, 'system.admin@demo.com');
+  await page.goto('/admin/users');
+  await page.getByRole('button', { name: 'Add User' }).click();
+  await page.getByLabel('Full Name').fill('Dechen Wangmo');
+  await page.getByLabel('Email Address').fill('dechen.created@example.com');
+  await page.getByLabel('CID Number').fill('10999000001');
+  await page.getByLabel('Temporary Password').fill('CreatedUser!2026');
+  await page.getByLabel('Chief of Examination').check();
+  await page.getByRole('button', { name: 'Create User' }).click();
+  await expect(page.getByText('User "Dechen Wangmo" created successfully')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Open account menu' }).click();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByPlaceholder('Enter your CID, email, or User ID').fill('dechen.created@example.com');
+  await page.getByPlaceholder('Enter password').fill('CreatedUser!2026');
+  await page.getByRole('button', { name: 'Sign in to DSTS' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByText('Welcome, Dechen!')).toBeVisible();
+});
+
 for (const account of roleRoutes) {
   test(`${account.role} routes render without runtime errors`, async ({ page }) => {
     const runtimeErrors = [];
