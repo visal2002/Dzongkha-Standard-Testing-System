@@ -102,6 +102,14 @@ export class RegistrationService {
 
   listMine(userId: string) { return this.applications.find({ where: { testTakerUserId: userId }, order: { submittedAt: 'DESC' } }); }
 
+  listApplications(examId?: string) {
+    return this.applications.find({
+      where: examId ? { examId } : {},
+      order: { submittedAt: 'DESC' },
+      take: 500,
+    });
+  }
+
   listPendingVerification(examId?: string) {
     return this.applications.find({
       where: examId
@@ -110,6 +118,24 @@ export class RegistrationService {
       order: { submittedAt: 'ASC' },
       take: 100,
     });
+  }
+
+  async listAttendance(examId?: string) {
+    const applications = await this.applications.find({
+      where: examId
+        ? { examId, status: In([ApplicationStatus.Verified, ApplicationStatus.Absent]) }
+        : { status: In([ApplicationStatus.Verified, ApplicationStatus.Absent]) },
+      order: { verifiedAt: 'ASC' },
+      take: 500,
+    });
+    const attendance = applications.length
+      ? await this.dataSource.getRepository(AttendanceEntity).findBy({ applicationId: In(applications.map(item => item.id)) })
+      : [];
+    const attendanceByApplication = new Map(attendance.map(item => [item.applicationId, item]));
+    return applications.map(application => ({
+      ...application,
+      attendance: attendanceByApplication.get(application.id) ?? null,
+    }));
   }
 
   async getApplication(id: string, userId: string, elevated: boolean) {

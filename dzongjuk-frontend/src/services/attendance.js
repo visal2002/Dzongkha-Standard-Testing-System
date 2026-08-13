@@ -10,6 +10,7 @@
  */
 import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
 import { applications } from '../data/mockData';
+import { normalizeApplication } from './applications';
 
 export const attendanceService = {
   /**
@@ -20,8 +21,9 @@ export const attendanceService = {
       await mockDelay();
       return mockResponse(applications.filter(a => ['approved', 'verified'].includes(a.status)));
     }
-    const { data } = await apiClient.get('/attendance/eligible');
-    return data;
+    const { data } = await apiClient.get('/attendance');
+    const records = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+    return { ...data, data: records.map(normalizeApplication) };
   },
 
   /**
@@ -36,7 +38,8 @@ export const attendanceService = {
       );
     }
     const { data } = await apiClient.get(`/attendance?examId=${examId}`);
-    return data;
+    const records = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+    return { ...data, data: records.map(normalizeApplication) };
   },
 
   /**
@@ -46,7 +49,7 @@ export const attendanceService = {
    */
   markAttendance: async (applicationId, payload) => {
     if (USE_MOCK) { await mockDelay(); return mockResponse({ applicationId, ...payload }); }
-    const { data } = await apiClient.patch(`/attendance/${applicationId}`, payload);
+    const { data } = await apiClient.patch(`/attendance/${applicationId}`, { absentSkills: payload.absentSkills || [] });
     return data;
   },
 

@@ -5,14 +5,16 @@
  */
 
 import { useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { createColumnHelper } from '@tanstack/react-table';
-import { CheckCircle, XCircle, Eye, RotateCcw, Filter } from 'lucide-react';
+import { CheckCircle, Eye, RotateCcw } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import DataTable from '../../components/ui/Table';
 import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal, { ConfirmModal } from '../../components/ui/Modal';
 import { Textarea, Select } from '../../components/ui/Input';
+import { verificationService } from '../../services/verification';
 import { applicationService } from '../../services/applications';
 import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
@@ -22,9 +24,12 @@ import { canAccess } from '../../config/accessMatrix';
 const columnHelper = createColumnHelper();
 
 export default function VerificationList() {
+  const location = useLocation();
   const { user } = useAuth();
   const canManage = canAccess(user?.role, 'verification', 'manage');
-  const { data: dataArray, loading, setData } = useApi(applicationService.getAll);
+  const showAllApplications = location.pathname === '/registration/applications';
+  const loadApplications = showAllApplications ? applicationService.getAll : verificationService.getPendingApplications;
+  const { data: dataArray, loading, error, setData, execute } = useApi(loadApplications);
   const data = dataArray || [];
   
   const [selected, setSelected] = useState(null);
@@ -33,11 +38,13 @@ export default function VerificationList() {
   const [statusFilter, setStatusFilter] = useState('');
 
   const handleAction = async (action, app) => {
-    const statusMap = { verify: 'verified', approve: 'approved', return: 'returned', reject: 'rejected' };
-    const labelMap = { verify: 'verified', approve: 'approved', return: 'returned', reject: 'rejected' };
+    const statusMap = { review: 'under_review', verify: 'verified', return: 'returned' };
+    const labelMap = { review: 'placed under review', verify: 'verified', return: 'returned' };
     
     try {
-       await applicationService.updateStatus(app.id, statusMap[action], action === 'return' ? returnRemarks : '');
+       if (action === 'review') await verificationService.startReview(app.id);
+       if (action === 'verify') await verificationService.verify(app.id, {});
+       if (action === 'return') await verificationService.returnApplication(app.id, returnRemarks);
        
        setData(prev => prev.map(a =>
          a.id === app.id ? { ...a, status: statusMap[action] } : a
@@ -86,12 +93,14 @@ export default function VerificationList() {
             <Button variant="ghost" size="xs" icon={<Eye size={12} />} onClick={() => setSelected(app)}>View</Button>
             {canManage && app.status === 'submitted' && (
               <>
+                <Button variant="secondary" size="xs" onClick={() => handleAction('review', app)}>Start Review</Button>
+              </>
+            )}
+            {canManage && app.status === 'under_review' && (
+              <>
                 <Button variant="success" size="xs" icon={<CheckCircle size={12} />} onClick={() => { setSelected(app); setConfirmAction('verify'); }}>Verify</Button>
                 <Button variant="warning" size="xs" icon={<RotateCcw size={12} />} onClick={() => { setSelected(app); setConfirmAction('return'); }}>Return</Button>
               </>
-            )}
-            {canManage && app.status === 'verified' && (
-              <Button variant="success" size="xs" icon={<CheckCircle size={12} />} onClick={() => { setSelected(app); setConfirmAction('approve'); }}>Approve</Button>
             )}
           </div>
         );
@@ -102,8 +111,8 @@ export default function VerificationList() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Application Verification"
-        subtitle="Review and verify test taker applications"
+        title={showAllApplications ? 'Registration Applications' : 'Application Verification'}
+        subtitle={showAllApplications ? 'View all submitted examination applications' : 'Review and verify test taker applications'}
         breadcrumbs={[{ label: 'Registration' }, { label: 'Verification' }]}
         icon={<CheckCircle size={18} />}
       />
@@ -111,6 +120,8 @@ export default function VerificationList() {
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         {loading ? (
           <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+        ) : error ? (
+          <div className="py-12 text-center"><p className="text-sm text-red-400 mb-3">{error}</p><Button size="sm" onClick={() => execute()}>Try Again</Button></div>
         ) : (
           <DataTable
             data={filteredData}
@@ -169,38 +180,24 @@ export default function VerificationList() {
                 ))}
               </div>
             </div>
-            {canManage && selected.status === 'submitted' && (
+            {canManage && selected.status === 'under_review' && (
               <div className="flex gap-2 pt-2 border-t border-surface-border">
                 <Button variant="success" size="sm" onClick={() => setConfirmAction('verify')} icon={<CheckCircle size={13} />}>Verify Application</Button>
                 <Button variant="warning" size="sm" onClick={() => setConfirmAction('return')} icon={<RotateCcw size={13} />}>Return for Correction</Button>
-                <Button variant="danger" size="sm" onClick={() => setConfirmAction('reject')} icon={<XCircle size={13} />}>Reject</Button>
               </div>
-            )}
-            {canManage && selected.status === 'verified' && (
-              <Button variant="success" size="sm" onClick={() => setConfirmAction('approve')} icon={<CheckCircle size={13} />}>Approve Application</Button>
             )}
           </div>
         )}
       </Modal>
 
       <ConfirmModal
-        isOpen={confirmAction === 'verify' || confirmAction === 'approve'}
+        isOpen={confirmAction === 'verify'}
         onClose={() => setConfirmAction(null)}
         onConfirm={() => handleAction(confirmAction, selected)}
-        title={confirmAction === 'verify' ? 'Verify Application' : 'Approve Application'}
-        message={`Are you sure you want to ${confirmAction === 'verify' ? 'verify' : 'approve'} this application for ${selected?.testTakerName}?`}
-        confirmLabel={confirmAction === 'verify' ? 'Verify' : 'Approve'}
+        title="Verify Application"
+        message={`Are you sure you want to verify this application for ${selected?.testTakerName}?`}
+        confirmLabel="Verify"
         variant="success"
-      />
-
-      <ConfirmModal
-        isOpen={confirmAction === 'reject'}
-        onClose={() => setConfirmAction(null)}
-        onConfirm={() => handleAction('reject', selected)}
-        title="Reject Application"
-        message={`Are you sure you want to reject this application for ${selected?.testTakerName}? This action cannot be undone.`}
-        confirmLabel="Reject Application"
-        variant="danger"
       />
 
       <Modal
