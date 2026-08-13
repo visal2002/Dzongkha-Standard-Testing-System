@@ -7,6 +7,8 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { AuthGuard } from '../components/rbac/AuthGuard';
+import { AccessDeniedPage } from '../components/rbac/AccessDeniedPage';
 
 // Layout
 import AppLayout from '../components/layout/AppLayout';
@@ -36,6 +38,7 @@ const Reports = lazy(() => import('../pages/reports/Reports'));
 const Notifications = lazy(() => import('../pages/notifications/Notifications'));
 const UserManagement = lazy(() => import('../pages/admin/UserManagement'));
 const RoleManagement = lazy(() => import('../pages/admin/RoleManagement'));
+const PermissionManagement = lazy(() => import('../pages/admin/permissions/PermissionManagement'));
 const MasterConfiguration = lazy(() => import('../pages/admin/MasterConfiguration'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
@@ -68,13 +71,20 @@ const NotFoundPage = () => (
 );
 
 // Route Guard
-function PrivateRoute({ children, requiredRoles }) {
-  const { isAuthenticated, user, isLoading } = useAuth();
+function PrivateRoute({ children, requiredRoles, requiredPermissions }) {
+  const { isAuthenticated, user, isLoading, hasAnyRole, hasAnyPermission } = useAuth();
+
   if (isLoading) return <PageLoader />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (requiredRoles && !requiredRoles.includes(user?.role) && user?.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
+
+  const roles = Array.isArray(user?.roles) ? user.roles : [user?.role];
+  const hasRequiredRole = !requiredRoles || requiredRoles.some(role => roles.includes(role) || user?.role === role || user?.role === 'admin');
+  const hasRequiredPermission = !requiredPermissions || hasAnyPermission(requiredPermissions);
+
+  if (!hasRequiredRole || !hasRequiredPermission) {
+    return <AccessDeniedPage />;
   }
+
   return children;
 }
 
@@ -123,10 +133,11 @@ export default function AppRoutes() {
           <Route path="/notifications" element={<Notifications />} />
 
           {/* Administration */}
-          <Route path="/admin/users" element={<PrivateRoute requiredRoles={['admin']}><UserManagement /></PrivateRoute>} />
-          <Route path="/admin/roles" element={<PrivateRoute requiredRoles={['admin']}><RoleManagement /></PrivateRoute>} />
-          <Route path="/admin/technical" element={<PrivateRoute requiredRoles={['admin']}><TechnicalSettings /></PrivateRoute>} />
-          <Route path="/masters" element={<PrivateRoute requiredRoles={['dcdd', 'admin']}><MasterConfiguration /></PrivateRoute>} />
+          <Route path="/admin/users" element={<PrivateRoute requiredRoles={['admin']} requiredPermissions={['users:view']}><UserManagement /></PrivateRoute>} />
+          <Route path="/admin/roles" element={<PrivateRoute requiredRoles={['admin']} requiredPermissions={['roles:view']}><RoleManagement /></PrivateRoute>} />
+          <Route path="/admin/permissions" element={<PrivateRoute requiredRoles={['admin']} requiredPermissions={['permissions:view']}><PermissionManagement /></PrivateRoute>} />
+          <Route path="/admin/technical" element={<PrivateRoute requiredRoles={['admin']} requiredPermissions={['settings:view']}><TechnicalSettings /></PrivateRoute>} />
+          <Route path="/masters" element={<PrivateRoute requiredRoles={['dcdd', 'admin']} requiredPermissions={['masters:view']}><MasterConfiguration /></PrivateRoute>} />
           <Route path="/dcdd/operational" element={<PrivateRoute requiredRoles={['dcdd']}><OperationalSettings /></PrivateRoute>} />
 
           <Route path="*" element={<NotFoundPage />} />

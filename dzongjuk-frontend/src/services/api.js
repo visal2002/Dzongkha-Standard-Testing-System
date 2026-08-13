@@ -28,6 +28,15 @@ export const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA !== 'false';
 
 const DEBUG = import.meta.env.VITE_API_DEBUG === 'true';
+const SESSION_KEY = 'dsts_session';
+
+const clearClientSession = () => {
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // ignore storage failures
+  }
+};
 
 // ─── Axios Instance ────────────────────────────────────────────────────────────
 const apiClient = axios.create({
@@ -40,13 +49,8 @@ const apiClient = axios.create({
   },
 });
 
-// ─── Request Interceptor — attach JWT ─────────────────────────────────────────
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('dsts_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
     if (DEBUG) {
       console.info(`[API] → ${config.method?.toUpperCase()} ${config.url}`, config.data || '');
     }
@@ -55,7 +59,6 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// ─── Response Interceptor — normalize errors ───────────────────────────────────
 apiClient.interceptors.response.use(
   (response) => {
     if (DEBUG) {
@@ -73,11 +76,11 @@ apiClient.interceptors.response.use(
       error?.message ||
       'Network error. Please check your connection.';
 
-    if (status === 401) {
-      // Clear stored credentials and redirect to login
-      localStorage.removeItem('dsts_token');
-      localStorage.removeItem('dsts_user');
-      window.location.href = '/login';
+    if (status === 401 || status === 403) {
+      clearClientSession();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
 
     if (DEBUG) {
@@ -87,7 +90,6 @@ apiClient.interceptors.response.use(
     return Promise.reject({ status, message, raw: error });
   },
 );
-
 export default apiClient;
 
 // ─── Shared Utilities ─────────────────────────────────────────────────────────

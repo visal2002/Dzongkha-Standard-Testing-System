@@ -80,4 +80,35 @@ export const adminService = {
     const { data } = await apiClient.put(`/admin/roles/${id}/permissions`, { permissions });
     return data;
   },
+
+  /**
+   * Create a new system role.
+   * @param {Partial<import('../types').SystemRole>} payload
+   */
+  createRole: async (payload) => {
+    if (USE_MOCK) { await mockDelay(); return mockResponse({ ...payload, id: `ROLE-${Date.now()}`, userCount: 0 }); }
+    const { data } = await apiClient.post('/admin/roles', payload);
+    return data;
+  },
+
+  /**
+   * Update a role's metadata (name, description, code).
+   * @param {string} id
+   * @param {Partial<import('../types').SystemRole>} payload
+   */
+  updateRole: async (id, payload) => {
+    if (USE_MOCK) { await mockDelay(); return mockResponse({ ...systemRoles.find(r => r.id === id), ...payload }); }
+    const { data } = await apiClient.put(`/admin/roles/${id}`, payload);
+    return data;
+  },
+
+  /**
+   * Delete a system role by ID.
+   * @param {string} id
+   */
+  deleteRole: async (id) => {
+    if (USE_MOCK) { await mockDelay(); return mockResponse(null, 'Role deleted.'); }
+    const { data } = await apiClient.delete(`/admin/roles/${id}`);
+    return data;
+  },
 };

@@ -4,47 +4,94 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { authService } from '../services/auth';
 
 const AuthContext = createContext(null);
+const SESSION_KEY = 'dsts_session';
 
-// ─── localStorage helpers ──────────────────────────────────────────────────────
-const readStorage = (key) => {
-  try { return window.localStorage.getItem(key); } catch { return null; }
+const normalizeUserSession = (user) => {
+  if (!user) return null;
+
+  const roles = Array.isArray(user.roles) && user.roles.length > 0
+    ? user.roles.filter(Boolean)
+    : (user.role ? [user.role] : []);
+
+  const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+  const primaryRole = roles[0] || user.role || 'test_taker';
+
+  return {
+    ...user,
+    roles,
+    role: primaryRole,
+    roleName: user.roleName || primaryRole.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase()),
+    permissions,
+  };
 };
-const writeStorage = (key, value) => {
-  try { window.localStorage.setItem(key, value); } catch { /* ignore */ }
+
+const readSession = () => {
+  try {
+    // In production, sessionStorage is the sole session store.
+    // In dev, also check localStorage so developers can inject test sessions easily.
+    const lsRaw = import.meta.env.DEV ? localStorage.getItem(SESSION_KEY) : null;
+    const raw = sessionStorage.getItem(SESSION_KEY) ?? lsRaw;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.user) return null;
+    if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+      sessionStorage.removeItem(SESSION_KEY);
+      if (import.meta.env.DEV) localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    // Migrate legacy dev localStorage session into sessionStorage
+    if (import.meta.env.DEV && lsRaw && !sessionStorage.getItem(SESSION_KEY)) {
+      sessionStorage.setItem(SESSION_KEY, raw);
+    }
+    return { user: normalizeUserSession(parsed.user), expiresAt: parsed.expiresAt };
+  } catch {
+    sessionStorage.removeItem(SESSION_KEY);
+    if (import.meta.env.DEV) localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
 };
-const removeStorage = (key) => {
-  try { window.localStorage.removeItem(key); } catch { /* ignore */ }
+
+const saveSession = (user) => {
+  const normalized = normalizeUserSession(user);
+  const expiresAt = Date.now() + 60 * 60 * 1000;
+  const sessionPayload = JSON.stringify({ user: normalized, expiresAt });
+  sessionStorage.setItem(SESSION_KEY, sessionPayload);
+  // Always clean up any leftover dev localStorage entry on login
+  try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+  return normalized;
 };
-const readStoredUser = () => {
-  const saved = readStorage('dsts_user');
-  if (!saved) return null;
-  try { return JSON.parse(saved); } catch { removeStorage('dsts_user'); return null; }
+
+const clearSession = () => {
+  sessionStorage.removeItem(SESSION_KEY);
+  // Clear legacy dev localStorage entry if present
+  try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
 };
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => readStoredUser());
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState(() => readSession()?.user ?? null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  /**
-   * Login with CID/email and password.
-   * @param {string} identifier
-   * @param {string} password
-   */
+  useEffect(() => {
+    const session = readSession();
+    setUser(session?.user ?? null);
+    setIsLoading(false);
+  }, []);
+
   const login = useCallback(async (identifier, password) => {
     setIsLoading(true);
     try {
       const result = await authService.login(identifier, password);
       if (result.success) {
-        writeStorage('dsts_token', result.token);
-        writeStorage('dsts_user', JSON.stringify(result.user));
-        setUser(result.user);
-        return { success: true, user: result.user };
+        const normalizedUser = saveSession(result.user);
+        setUser(normalizedUser);
+        return { success: true, user: normalizedUser };
       }
-      return { success: false, error: result.error };
+      setUser(null);
+      return { success: false, error: result.error || 'Login failed.' };
     } finally {
       setIsLoading(false);
     }
@@ -59,9 +106,6 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  /**
-   * Login via Bhutan National Digital Identity (NDI).
-   */
   const loginWithNDI = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -74,77 +118,62 @@ export function AuthProvider({ children }) {
   const checkNDILogin = useCallback(async (pollToken) => {
     const result = await authService.checkNDILogin(pollToken);
     if (result.status === 'VALIDATED' && result.user) {
-      writeStorage('dsts_token', result.token);
-      writeStorage('dsts_user', JSON.stringify(result.user));
-      setUser(result.user);
+      const normalizedUser = saveSession(result.user);
+      setUser(normalizedUser);
     }
     return result;
   }, []);
 
   const cancelNDILogin = useCallback((pollToken) => authService.cancelNDILogin(pollToken), []);
 
-  /**
-   * Log out the current user.
-   */
   const logout = useCallback(async () => {
-    await authService.logout();
-    removeStorage('dsts_token');
-    removeStorage('dsts_user');
+    try {
+      await authService.logout();
+    } catch {
+      // ignore server logout problems and clear the UI session
+    }
+    clearSession();
     setUser(null);
   }, []);
 
-  /**
-   * Switch to a different demo role (authenticated users only, development aid).
-   * @param {string} email - Email of the target demo user
-   */
-  const switchRole = useCallback((email) => {
-    if (!user) return false;
-    // Import mock users only in this scope (dev only)
-    const DEMO_ROLES = {
-      'system.admin@demo.com': { id: 'USR-001', name: 'Sonam Dorji', email: 'system.admin@demo.com', cid: '11101001001', role: 'admin', roleName: 'System Admin', avatar: null, department: 'GovTech', permissions: ['*'] },
-      'dcdd.admin@demo.com': { id: 'USR-002', name: 'Karma Wangchuk', email: 'dcdd.admin@demo.com', cid: '11102002002', role: 'dcdd', roleName: 'DCDD Admin', avatar: null, department: 'Department of Culture and Dzongkha Development', permissions: ['registration', 'verification', 'attendance', 'masters', 'reports', 'notifications', 'customization'] },
-      'exam.head@demo.com': { id: 'USR-003', name: 'Tshering Pem', email: 'exam.head@demo.com', cid: '11103003003', role: 'exam_head', roleName: 'Exam Head', avatar: null, department: 'DCDD - Examination Division', permissions: ['questions', 'scores', 'reports'] },
-      'committee.head@demo.com': { id: 'USR-004', name: 'Ugyen Tenzin', email: 'committee.head@demo.com', cid: '11104004004', role: 'committee_head', roleName: 'Committee Head', avatar: null, department: 'Examination Committee', permissions: ['scores', 'appeals', 'reports'] },
-      'chief.executive@demo.com': { id: 'USR-005', name: 'Dorji Wangmo', email: 'chief.executive@demo.com', cid: '11105005005', role: 'chief_executive', roleName: 'Chief Executive', avatar: null, department: 'DCDD', permissions: ['appeals', 'reports'] },
-      'test.taker@demo.com': { id: 'USR-006', name: 'Pema Choden', email: 'test.taker@demo.com', cid: '11106006006', role: 'test_taker', roleName: 'Test Taker', avatar: null, department: null, permissions: ['registration', 'certificates', 'appeals', 'questions'] },
-      'member@dsts.bt': { id: 'USR-007', name: 'Kinley Dorji', email: 'member@dsts.bt', cid: '11107007007', role: 'committee_member', roleName: 'Committee Member', avatar: null, department: 'Examination Committee', permissions: ['scores', 'appeals'] },
-    };
-    const found = DEMO_ROLES[email];
-    if (found) {
-      writeStorage('dsts_user', JSON.stringify(found));
-      setUser(found);
-      return true;
-    }
-    return false;
-  }, [user]);
-
-  /**
-   * Update the authenticated user's local profile.
-   * @param {Partial<import('../types').AuthUser>} updatedFields
-   */
   const updateProfile = useCallback(async (updatedFields) => {
     setUser(prevUser => {
       if (!prevUser) return null;
-      const updated = { ...prevUser, ...updatedFields };
-      writeStorage('dsts_user', JSON.stringify(updated));
+      const updated = normalizeUserSession({ ...prevUser, ...updatedFields });
+      const session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...session, user: updated, expiresAt: Date.now() + 60 * 60 * 1000 }));
       return updated;
     });
-    // Persist to backend if not in mock mode
+
     try {
       await authService.updateProfile(updatedFields);
     } catch {
-      // Profile update failure is non-fatal; local state is already updated
+      // profile update is best-effort for UI state
     }
   }, []);
 
-  /**
-   * Check if the current user has a specific permission.
-   * @param {string} permission
-   */
+  const hasRole = useCallback((role) => {
+    if (!user) return false;
+    const roles = Array.isArray(user.roles) ? user.roles : [user.role];
+    return roles.includes(role);
+  }, [user]);
+
+  const hasAnyRole = useCallback((roles = []) => {
+    if (!user) return false;
+    const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+    return roles.some(role => userRoles.includes(role));
+  }, [user]);
+
   const hasPermission = useCallback((permission) => {
     if (!user) return false;
-    if (user.permissions.includes('*')) return true;
-    return user.permissions.includes(permission);
+    if (!Array.isArray(user.permissions)) return false;
+    return user.permissions.includes('*') || user.permissions.includes(permission);
+  }, [user]);
+
+  const hasAnyPermission = useCallback((permissions = []) => {
+    if (!user) return false;
+    if (!Array.isArray(user.permissions)) return false;
+    return user.permissions.includes('*') || permissions.some(permission => user.permissions.includes(permission));
   }, [user]);
 
   const value = {
@@ -157,9 +186,11 @@ export function AuthProvider({ children }) {
     checkNDILogin,
     cancelNDILogin,
     logout,
-    switchRole,
     updateProfile,
+    hasRole,
+    hasAnyRole,
     hasPermission,
+    hasAnyPermission,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

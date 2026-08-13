@@ -64,9 +64,8 @@ function NotificationPanel({ notifications: items = [], onClose }) {
 }
 
 function UserMenu({ onClose }) {
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [showSwitcher, setShowSwitcher] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -82,13 +81,11 @@ function UserMenu({ onClose }) {
       transition={{ duration: 0.15 }}
       className="absolute right-0 top-full mt-2 w-[min(calc(100vw-1.5rem),16rem)] bg-surface-card border border-surface-border rounded-xl shadow-2xl shadow-black/30 z-50 overflow-hidden"
     >
-      {/* User info */}
       <div className="px-4 py-3 border-b border-surface-border bg-surface-bg">
         <p className="text-sm font-semibold text-text-primary truncate">{user?.name}</p>
         <p className="text-xs text-text-muted truncate">{user?.email}</p>
         <Badge variant="gold" size="sm" className="mt-1">{user?.roleName}</Badge>
       </div>
-      {/* Menu items */}
       <div className="py-1.5">
         <button
           onClick={() => { navigate('/profile'); onClose(); }}
@@ -102,34 +99,6 @@ function UserMenu({ onClose }) {
         >
           <Settings size={14} /> Settings
         </button>
-        <button
-          className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:bg-surface-border/60 transition-colors"
-          onClick={() => setShowSwitcher(s => !s)}
-        >
-          <RefreshCw size={14} />
-          <span className="flex-1 text-left">Switch Role (Demo)</span>
-          <ChevronDown size={12} className={`transition-transform ${showSwitcher ? 'rotate-180' : ''}`} />
-        </button>
-        {showSwitcher && (
-          <div className="bg-surface-bg border-t border-surface-border py-1">
-            {ROLE_SWITCHER.map(r => (
-              <button
-                key={r.email}
-                onClick={() => { switchRole(r.email); onClose(); }}
-                className={[
-                  'w-full flex items-center gap-2.5 px-6 py-1.5 text-xs transition-colors',
-                  user?.email === r.email
-                    ? 'text-brand-gold'
-                    : 'text-text-muted hover:text-text-secondary hover:bg-surface-border/40',
-                ].join(' ')}
-              >
-                {user?.email === r.email && <Check size={10} className="shrink-0" />}
-                {user?.email !== r.email && <span className="w-2.5 shrink-0" />}
-                {r.label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
       <div className="border-t border-surface-border py-1.5">
         <button
