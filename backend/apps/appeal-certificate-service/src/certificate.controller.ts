@@ -28,6 +28,7 @@ export class CertificateTemplatesController {
 export class CertificatesController {
   constructor(private readonly certificates: CertificateService) {}
   @Permissions('certificate.issue') @Post('generate') generate(@Body() dto: GenerateCertificatesDto, @Headers('idempotency-key') key: string, @Req() request: Request) { return this.certificates.generate(dto.examId, request.user!, request.id, key); }
+  @Permissions('certificate.manage') @Get() list() { return this.certificates.listAll(); }
   @Permissions('certificate.view_own') @Get('my') my(@Req() request: Request) { return this.certificates.listMine(request.user!.sub); }
   @Get(':id') get(@Param('id') id: string, @Req() request: Request) { return this.certificates.getOne(id, request.user!, request.id); }
   @Get(':id/history') history(@Param('id') id: string, @Req() request: Request) { return this.certificates.history(id, request.user!); }

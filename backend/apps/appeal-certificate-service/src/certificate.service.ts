@@ -26,6 +26,7 @@ export class CertificateService {
   private readonly verificationSecret: string;
   private readonly publicApiBaseUrl: string;
   private readonly production: boolean;
+  private readonly privilegedAssurance: Set<string>;
 
   constructor(
     private readonly dataSource: DataSource,
@@ -41,6 +42,7 @@ export class CertificateService {
     this.verificationSecret = config.get<string>('CERTIFICATE_VERIFICATION_SECRET', '');
     this.publicApiBaseUrl = config.get<string>('PUBLIC_API_BASE_URL', 'http://localhost:8000/api/v1').replace(/\/$/, '');
     this.production = config.get<string>('NODE_ENV') === 'production';
+    this.privilegedAssurance = new Set(config.get<string>('PRIVILEGED_ASSURANCE_LEVELS', 'MFA,NDI').split(',').map(value => value.trim()));
   }
 
   listTemplates() { return this.templates.find({ order: { code: 'ASC', versionNumber: 'DESC' } }); }
@@ -96,6 +98,11 @@ export class CertificateService {
   async listMine(userId: string) {
     const rows = await this.certificates.find({ where: { testTakerUserId: userId }, order: { issuedAt: 'DESC' } });
     return rows.map((row) => this.ownerView(this.refreshExpiry(row)));
+  }
+
+  async listAll() {
+    const rows = await this.certificates.find({ order: { issuedAt: 'DESC' }, take: 500 });
+    return rows.map(row => this.ownerView(this.refreshExpiry(row)));
   }
 
   async getOne(id: string, actor: AccessClaims, requestId: string) {
@@ -268,7 +275,7 @@ export class CertificateService {
   private tokenFor(id: string) { this.assertVerificationSecret(); return `${id}.${this.signatureFor(id)}`; }
   private signatureFor(id: string) { return createHmac('sha256', this.verificationSecret).update(id).digest('base64url'); }
   private assertVerificationSecret() { if (this.verificationSecret.length < 32) throw new DomainException('CERTIFICATE_VERIFICATION_UNAVAILABLE', 'Certificate verification is not configured.', 503); }
-  private assertPrivileged(actor: AccessClaims) { if (!['MFA', 'NDI'].includes(actor.assurance)) throw new DomainException('PRIVILEGED_ASSURANCE_REQUIRED', 'Certificate administration requires approved MFA or NDI assurance.', 403); }
+  private assertPrivileged(actor: AccessClaims) { if (!this.privilegedAssurance.has(actor.assurance)) throw new DomainException('PRIVILEGED_ASSURANCE_REQUIRED', 'Certificate administration requires an approved privileged assurance level.', 403); }
   private periodsOverlap(a: CertificateTemplateEntity, b: CertificateTemplateEntity) { return a.effectiveFrom < (b.effectiveTo ?? new Date(8640000000000000)) && b.effectiveFrom < (a.effectiveTo ?? new Date(8640000000000000)); }
   private access(certificateId: string, accessType: CertificateAccessType, actorUserId: string | null, requestId: string) { return this.dataSource.getRepository(CertificateAccessEventEntity).save({ certificateId, accessType, actorUserId, requestId, safeData: {} }); }
   private audit(manager: EntityManager, action: string, resourceId: string, actorUserId: string | null, requestId: string, safeData: Record<string, unknown>, resourceType = 'Certificate') { return manager.save(AppealAuditEntity, manager.create(AppealAuditEntity, { action, resourceType, resourceId, actorUserId, requestId, safeData })); }

@@ -17,6 +17,8 @@ configMapGenerator:
       - 0006_reporting.sql=../../../backend/database/migrations/0006_reporting.sql
       - 0007_ndi_login.sql=../../../backend/database/migrations/0007_ndi_login.sql
       - 0008_access_matrix.sql=../../../backend/database/migrations/0008_access_matrix.sql
+      - 0009_registration_payments.sql=../../../backend/database/migrations/0009_registration_payments.sql
+      - 0010_staging_workflow_baseline.sql=../../../backend/database/migrations/0010_staging_workflow_baseline.sql
   - name: api-gateway-config
     files:
       - nginx.conf=api-gateway.conf

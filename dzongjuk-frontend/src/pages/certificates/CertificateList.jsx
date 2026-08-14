@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Award, Download, QrCode, Search, Shield } from 'lucide-react';
+import { Award, Download, Plus, QrCode, Search, Shield } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import PageHeader from '../../components/ui/PageHeader';
 import { StatusBadge } from '../../components/ui/Badge';
@@ -13,7 +13,10 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
 import { certificateService } from '../../services/certificates';
+import { examService } from '../../services/exams';
 import { API_BASE_URL } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { Select } from '../../components/ui/Input';
 import toast from 'react-hot-toast';
 
 const skillOrder = ['WRITING', 'READING', 'LISTENING', 'SPEAKING'];
@@ -111,17 +114,38 @@ function CertificateCard({ cert }) {
 }
 
 export default function CertificateList() {
+  const { user } = useAuth();
+  const administrative = ['admin', 'dcdd'].includes(user?.role);
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [verifyInput, setVerifyInput] = useState('');
   const [verifyResult, setVerifyResult] = useState(undefined);
   const [verifying, setVerifying] = useState(false);
+  const [showGenerate, setShowGenerate] = useState(false);
+  const [examId, setExamId] = useState('');
+  const [exams, setExams] = useState([]);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    certificateService.getByUser().then(result => setCertificates(result?.data ?? []))
+    (administrative ? certificateService.getAll() : certificateService.getByUser()).then(result => setCertificates(result?.data ?? []))
       .catch(error => toast.error(error.message || 'Could not load certificates.')).finally(() => setLoading(false));
-  }, []);
+    if (administrative) examService.getAll().then(result => setExams(result?.data ?? [])).catch(() => undefined);
+  }, [administrative]);
+
+  const generate = async () => {
+    if (!examId) return toast.error('Select an examination');
+    setGenerating(true);
+    try {
+      const response = await certificateService.generateBatch(examId);
+      const result = response?.data ?? response;
+      toast.success(`${result.issuedCount || 0} certificate(s) generated`);
+      const refreshed = await certificateService.getAll();
+      setCertificates(refreshed?.data ?? []);
+      setShowGenerate(false);
+    } catch (error) { toast.error(error?.message || 'Certificate generation failed'); }
+    finally { setGenerating(false); }
+  };
 
   const searchTerm = search.trim().toLowerCase();
   const filtered = certificates.filter(cert => [cert.holderName, cert.registrationNumber, cert.certificateNumber]
@@ -139,7 +163,7 @@ export default function CertificateList() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My Certificates" subtitle="Secure certificate downloads and privacy-safe QR verification" breadcrumbs={[{ label: 'Certificates' }]} icon={<Award size={18} />} />
+      <PageHeader title={administrative ? 'Certificates' : 'My Certificates'} subtitle="Secure certificate issuance, downloads, and privacy-safe QR verification" breadcrumbs={[{ label: 'Certificates' }]} icon={<Award size={18} />} action={administrative && <Button icon={<Plus size={14} />} onClick={() => setShowGenerate(true)}>Generate Certificates</Button>} />
 
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         <p className="text-sm font-semibold text-text-primary mb-1 flex items-center gap-2"><Shield size={15} className="text-brand-gold" /> Verify certificate</p>
@@ -158,13 +182,14 @@ export default function CertificateList() {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="w-72"><Input placeholder="Search your certificates" value={search} onChange={event => setSearch(event.target.value)} icon={<Search size={14} />} /></div>
+        <div className="w-72"><Input placeholder="Search certificates" value={search} onChange={event => setSearch(event.target.value)} icon={<Search size={14} />} /></div>
         <p className="text-xs text-text-muted ml-auto">{filtered.length} certificate{filtered.length !== 1 ? 's' : ''}</p>
       </div>
 
       {loading ? <div className="text-center py-16 text-text-muted">Loading certificates...</div> : filtered.length === 0 ? (
         <div className="text-center py-16 text-text-muted"><Award size={40} className="mx-auto mb-3 opacity-20" /><p className="text-sm font-medium text-text-primary">No certificates available</p><p className="text-xs mt-1">Certificates appear after authorized issuance from declared results.</p></div>
       ) : <div className="grid grid-cols-1 gap-8 w-full">{filtered.map(cert => <CertificateCard key={cert.id} cert={cert} />)}</div>}
+      <Modal isOpen={showGenerate} onClose={() => setShowGenerate(false)} title="Generate Certificates" size="sm" footer={<><Button variant="ghost" onClick={() => setShowGenerate(false)}>Cancel</Button><Button loading={generating} onClick={generate}>Generate</Button></>}><div className="space-y-3"><Select label="Declared Examination" value={examId} onChange={event => setExamId(event.target.value)}><option value="">Select examination</option>{exams.map(exam => <option key={exam.id} value={exam.id}>{exam.title} · {exam.code}</option>)}</Select><p className="text-xs text-text-muted">Certificates are generated only for published results and use the approved staging template.</p></div></Modal>
     </div>
   );
 }

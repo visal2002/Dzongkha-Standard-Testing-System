@@ -7,13 +7,13 @@
 import { useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { createColumnHelper } from '@tanstack/react-table';
-import { CheckCircle, Eye, RotateCcw } from 'lucide-react';
+import { CheckCircle, CreditCard, Eye, RotateCcw } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import DataTable from '../../components/ui/Table';
 import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal, { ConfirmModal } from '../../components/ui/Modal';
-import { Textarea, Select } from '../../components/ui/Input';
+import Input, { Textarea, Select } from '../../components/ui/Input';
 import { verificationService } from '../../services/verification';
 import { applicationService } from '../../services/applications';
 import { useApi } from '../../hooks/useApi';
@@ -36,6 +36,9 @@ export default function VerificationList() {
   const [confirmAction, setConfirmAction] = useState(null);
   const [returnRemarks, setReturnRemarks] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [paymentApplication, setPaymentApplication] = useState(null);
+  const [paymentForm, setPaymentForm] = useState({ status: 'paid', method: 'Bank Transfer', reference: '' });
+  const [savingPayment, setSavingPayment] = useState(false);
 
   const handleAction = async (action, app) => {
     const statusMap = { review: 'under_review', verify: 'verified', return: 'returned' };
@@ -56,6 +59,26 @@ export default function VerificationList() {
        setConfirmAction(null);
        setSelected(null);
        if (action === 'return') setReturnRemarks('');
+    }
+  };
+
+  const handlePayment = async () => {
+    if (paymentForm.status === 'paid' && !paymentForm.reference.trim()) {
+      toast.error('Enter the payment transaction reference');
+      return;
+    }
+    setSavingPayment(true);
+    try {
+      const response = await applicationService.recordPayment(paymentApplication.id, paymentForm);
+      const updated = response?.data ?? response;
+      setData(current => current.map(application => application.id === updated.id ? updated : application));
+      toast.success(paymentForm.status === 'waived' ? 'Registration fee waived' : 'Payment recorded successfully');
+      setPaymentApplication(null);
+      setPaymentForm({ status: 'paid', method: 'Bank Transfer', reference: '' });
+    } catch (error) {
+      toast.error(error?.message || 'Unable to record payment');
+    } finally {
+      setSavingPayment(false);
     }
   };
 
@@ -91,6 +114,9 @@ export default function VerificationList() {
         return (
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="xs" icon={<Eye size={12} />} onClick={() => setSelected(app)}>View</Button>
+            {canManage && ['initiated', 'failed'].includes(app.paymentStatus) && (
+              <Button variant="outline" size="xs" icon={<CreditCard size={12} />} onClick={() => setPaymentApplication(app)}>Record Payment</Button>
+            )}
             {canManage && app.status === 'submitted' && (
               <>
                 <Button variant="secondary" size="xs" onClick={() => handleAction('review', app)}>Start Review</Button>
@@ -199,6 +225,45 @@ export default function VerificationList() {
         confirmLabel="Verify"
         variant="success"
       />
+
+      <Modal
+        isOpen={!!paymentApplication}
+        onClose={() => setPaymentApplication(null)}
+        title="Record Registration Payment"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setPaymentApplication(null)}>Cancel</Button>
+            <Button loading={savingPayment} icon={<CreditCard size={13} />} onClick={handlePayment}>Save Payment</Button>
+          </>
+        }
+      >
+        {paymentApplication && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-surface-border bg-surface-bg p-3 text-sm">
+              <p className="text-text-muted">Applicant</p>
+              <p className="font-semibold text-text-primary">{paymentApplication.testTakerName}</p>
+              <p className="mt-2 text-text-muted">Amount</p>
+              <p className="text-lg font-bold text-brand-gold">{paymentApplication.paymentCurrency} {Number(paymentApplication.paymentAmount).toFixed(2)}</p>
+            </div>
+            <Select label="Payment Outcome" value={paymentForm.status} onChange={event => setPaymentForm(current => ({ ...current, status: event.target.value }))}>
+              <option value="paid">Paid</option>
+              <option value="waived">Fee Waived</option>
+            </Select>
+            <Select label="Payment Method" value={paymentForm.method} onChange={event => setPaymentForm(current => ({ ...current, method: event.target.value }))}>
+              <option>Bank Transfer</option>
+              <option>mBoB</option>
+              <option>ePay</option>
+              <option>Cash Counter</option>
+              <option>Administrative Waiver</option>
+            </Select>
+            {paymentForm.status === 'paid' && (
+              <Input label="Transaction Reference" required value={paymentForm.reference} onChange={event => setPaymentForm(current => ({ ...current, reference: event.target.value }))} placeholder="Enter bank or gateway reference" />
+            )}
+            <p className="text-xs text-text-muted">Only record a payment after checking the bank or payment-provider confirmation.</p>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={confirmAction === 'return'}

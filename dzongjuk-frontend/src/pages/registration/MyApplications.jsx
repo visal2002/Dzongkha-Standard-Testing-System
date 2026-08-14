@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Plus, Calendar, MapPin } from 'lucide-react';
+import { FileText, Plus, Calendar, MapPin, CreditCard } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
@@ -71,10 +71,20 @@ export default function MyApplications() {
                   <StatusBadge status={app.status} />
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs mb-4">
                   <div>
                     <p className="text-text-muted mb-0.5">Registration No.</p>
                     <p className="font-medium text-brand-gold">{app.registrationNumber || '—'}</p>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <CreditCard size={12} className="text-brand-gold mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-text-muted mb-1">Payment ({app.paymentCurrency})</p>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-text-primary">{Number(app.paymentAmount).toFixed(2)}</span>
+                        <StatusBadge status={app.paymentStatus} />
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <p className="text-text-muted mb-0.5">Submitted</p>

@@ -34,6 +34,9 @@ export const normalizeApplication = application => {
     status: String(application.status || '').toLowerCase(),
     absentSkills: application.absentSkills ?? attendance.absentSkills ?? [],
     attendanceStatus: attendance.overallStatus?.toLowerCase() ?? null,
+    paymentStatus: String(application.paymentStatus || (Number(application.paymentAmount || 0) === 0 ? 'WAIVED' : 'INITIATED')).toLowerCase(),
+    paymentAmount: Number(application.paymentAmount || 0),
+    paymentCurrency: application.paymentCurrency || 'BTN',
   };
 };
 
@@ -112,4 +115,12 @@ export const applicationService = {
   startReview: async id => (await apiClient.post(`/applications/${id}/start-review`)).data,
   verify: async id => (await apiClient.post(`/applications/${id}/verify`)).data,
   returnForCorrection: async (id, remarks) => (await apiClient.post(`/applications/${id}/return`, { remarks })).data,
+  recordPayment: async (id, payload) => {
+    const { data } = await apiClient.post(`/applications/${id}/payment`, {
+      status: String(payload.status).toUpperCase(),
+      method: payload.method,
+      ...(payload.reference ? { reference: payload.reference } : {}),
+    });
+    return { data: normalizeApplication(data?.data ?? data) };
+  },
 };

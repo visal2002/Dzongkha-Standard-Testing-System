@@ -1,198 +1,148 @@
-/*
- * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
- * Website: ambhutan.com | aakash-pradhan.com
- * Phone: +975 - 1750 - 5267
- */
-
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import { ClipboardList, Save, CheckCircle, Info } from 'lucide-react';
+import { CheckCircle, ClipboardList, Save } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import DataTable from '../../components/ui/Table';
-import { StatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Alert from '../../components/ui/Alert';
-import { applicationService } from '../../services/applications';
+import { Select } from '../../components/ui/Input';
+import { examService } from '../../services/exams';
 import { scoreService } from '../../services/scores';
 import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 const SKILLS = ['writing', 'reading', 'listening', 'speaking'];
 const SKILL_LABELS = { writing: 'Writing', reading: 'Reading', listening: 'Listening', speaking: 'Speaking' };
-const SCORES = Array.from({ length: 19 }, (_, i) => (i * 0.5 + 1).toFixed(1));
-
+const SCORES = Array.from({ length: 19 }, (_, index) => (index * 0.5 + 1).toFixed(1));
 const columnHelper = createColumnHelper();
 
 export default function ScoreEntry() {
-  const { data: applications, loading: loadingApps } = useApi(applicationService.getAll);
-  const { data: committeeMembers, loading: loadingCommittee } = useApi(scoreService.getCommittee, true, ['EXM-001']);
-  
-  const eligibles = (applications || []).filter(a => a.status === 'approved' || a.status === 'verified');
-  const [data, setData] = useState([]);
-  
-  // Update data when applications load
-  useEffect(() => {
-    if (applications) {
-      setData(applications.filter(a => a.status === 'approved' || a.status === 'verified'));
-    }
-  }, [applications]);
-
+  const { data: exams, loading: loadingExams } = useApi(examService.getAll);
+  const [selectedExamId, setSelectedExamId] = useState('');
+  const [candidates, setCandidates] = useState([]);
+  const [committee, setCommittee] = useState(null);
+  const [loadingWorkflow, setLoadingWorkflow] = useState(false);
   const [scoring, setScoring] = useState(null);
   const [scores, setScores] = useState({ writing: '', reading: '', listening: '', speaking: '' });
-  const [submitted, setSubmitted] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
-  const isLoading = loadingApps || loadingCommittee;
+  useEffect(() => {
+    if (!selectedExamId && exams?.length) setSelectedExamId(exams[0].id);
+  }, [exams, selectedExamId]);
 
-  const handleSubmit = () => {
-    if (Object.values(scores).some(v => !v)) {
+  useEffect(() => {
+    if (!selectedExamId) return;
+    let active = true;
+    setLoadingWorkflow(true);
+    Promise.all([scoreService.getCandidates(selectedExamId), scoreService.getCommittee(selectedExamId)])
+      .then(([candidateResponse, committeeResponse]) => {
+        if (!active) return;
+        setCandidates(candidateResponse.data || []);
+        setCommittee(committeeResponse.data || null);
+      })
+      .catch(error => {
+        if (!active) return;
+        setCandidates([]);
+        setCommittee(null);
+        toast.error(error?.message || 'Unable to load the scoring workflow');
+      })
+      .finally(() => { if (active) setLoadingWorkflow(false); });
+    return () => { active = false; };
+  }, [selectedExamId]);
+
+  const selectedExam = (exams || []).find(exam => exam.id === selectedExamId);
+  const committeeMembers = committee?.members || [];
+
+  const handleSubmit = async () => {
+    if (Object.values(scores).some(value => !value)) {
       toast.error('Please enter scores for all four skills');
       return;
     }
-    const avg = (Object.values(scores).reduce((s, v) => s + parseFloat(v), 0) / 4).toFixed(2);
-    setSubmitted(prev => [...prev, scoring.id]);
-    toast.success(`Band scores submitted for ${scoring.testTakerName}. Average: ${avg}`);
-    setScoring(null);
-    setScores({ writing: '', reading: '', listening: '', speaking: '' });
+    setSubmitting(true);
+    try {
+      const values = Object.fromEntries(Object.entries(scores).map(([key, value]) => [key, Number(value)]));
+      const response = await scoreService.submit(selectedExamId, [{ applicationId: scoring.applicationId, ...values }]);
+      const submittedScore = response.data?.[0];
+      setCandidates(current => current.map(candidate => candidate.applicationId === scoring.applicationId
+        ? { ...candidate, scoreStatus: String(submittedScore?.status || 'SUBMITTED').toLowerCase(), scoreSheet: submittedScore }
+        : candidate));
+      toast.success(`Scores submitted for ${scoring.testTakerName}`);
+      setScoring(null);
+      setScores({ writing: '', reading: '', listening: '', speaking: '' });
+    } catch (error) {
+      toast.error(error?.message || 'Unable to submit scores');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const columns = [
-    columnHelper.accessor('registrationNumber', {
-      header: 'Reg. Number',
-      cell: i => <span className="font-mono text-xs font-medium text-brand-gold">{i.getValue() || '—'}</span>
-    }),
-    columnHelper.accessor('testTakerName', {
-      header: 'Test Taker',
-      cell: i => (
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xs font-bold shrink-0">{i.getValue()[0]}</div>
-          <div>
-            <p className="text-xs font-medium text-text-primary">{i.getValue()}</p>
-            <p className="text-[10px] text-text-muted">{i.row.original.cid}</p>
-          </div>
-        </div>
-      )
-    }),
-    columnHelper.accessor('dzongkhag', { header: 'Dzongkhag' }),
-    columnHelper.accessor('status', { header: 'Status', cell: i => <StatusBadge status={i.getValue()} /> }),
-    columnHelper.display({
-      id: 'score_status',
+    columnHelper.accessor('applicationId', { header: 'Application ID', cell: info => <span className="font-mono text-xs text-brand-gold">{info.getValue().slice(0, 12)}</span> }),
+    columnHelper.accessor('testTakerName', { header: 'Test Taker' }),
+    columnHelper.accessor('cid', { header: 'Identity', cell: info => <span className="font-mono text-xs text-text-muted">{String(info.getValue()).slice(0, 16)}</span> }),
+    columnHelper.accessor('status', { header: 'Eligibility', cell: info => <span className="text-xs text-emerald-400 capitalize">{info.getValue()}</span> }),
+    columnHelper.accessor('scoreStatus', {
       header: 'Score Entry',
-      cell: ({ row }) => {
-        const isSubmitted = submitted.includes(row.original.id);
-        return isSubmitted
-          ? <span className="flex items-center gap-1 text-xs text-emerald-400"><CheckCircle size={12} /> Submitted</span>
-          : <span className="text-xs text-amber-400">Pending</span>;
-      }
+      cell: info => ['submitted', 'published', 'revised'].includes(info.getValue())
+        ? <span className="flex items-center gap-1 text-xs text-emerald-400"><CheckCircle size={12} /> {info.getValue()}</span>
+        : <span className="text-xs text-amber-400">Pending</span>,
     }),
     columnHelper.display({
       id: 'actions',
       header: 'Action',
       cell: ({ row }) => {
-        const isSubmitted = submitted.includes(row.original.id);
-        return (
-          <Button
-            variant={isSubmitted ? 'ghost' : 'primary'}
-            size="xs"
-            disabled={isSubmitted}
-            icon={<ClipboardList size={12} />}
-            onClick={() => { setScoring(row.original); setScores({ writing: '', reading: '', listening: '', speaking: '' }); }}
-          >
-            {isSubmitted ? 'Submitted' : 'Enter Scores'}
-          </Button>
-        );
-      }
+        const submitted = ['submitted', 'published', 'revised'].includes(row.original.scoreStatus);
+        return <Button size="xs" disabled={submitted || row.original.status !== 'eligible'} icon={<ClipboardList size={12} />} onClick={() => setScoring(row.original)}>{submitted ? 'Submitted' : 'Enter Scores'}</Button>;
+      },
     }),
   ];
 
-  const avg = Object.values(scores).every(v => v)
-    ? (Object.values(scores).reduce((s, v) => s + parseFloat(v), 0) / 4).toFixed(2)
+  const average = Object.values(scores).every(Boolean)
+    ? (Object.values(scores).reduce((sum, value) => sum + Number(value), 0) / 4).toFixed(2)
     : null;
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Band Score Entry"
-        subtitle="Enter examination band scores for eligible test takers"
-        breadcrumbs={[{ label: 'Scores' }, { label: 'Score Entry' }]}
-        icon={<ClipboardList size={18} />}
-      />
+      <PageHeader title="Band Score Entry" subtitle="Enter examination band scores for eligible test takers" breadcrumbs={[{ label: 'Scores' }, { label: 'Score Entry' }]} icon={<ClipboardList size={18} />} />
+      <Alert variant="info" title="Committee Head Access Only">Only the designated Committee Head can enter and submit band scores. Committee members have view-only access.</Alert>
 
-      <Alert variant="info" title="Committee Head Access Only">
-        Only the designated Committee Head can enter and submit band scores. Committee members have view-only access.
-      </Alert>
+      <div className="max-w-md">
+        <Select label="Examination Window" value={selectedExamId} onChange={event => setSelectedExamId(event.target.value)} disabled={loadingExams}>
+          <option value="">Select examination</option>
+          {(exams || []).map(exam => <option key={exam.id} value={exam.id}>{exam.title} · {exam.code}</option>)}
+        </Select>
+      </div>
 
-      {isLoading ? (
+      {loadingExams || loadingWorkflow ? (
         <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
       ) : (
         <>
-          {/* Committee info */}
-      <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <p className="text-sm font-semibold text-text-primary mb-3">Exam Committee — January 2026</p>
-        <div className="flex flex-wrap gap-2">
-          {(committeeMembers || []).map(m => (
-            <div key={m.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs ${m.isHead ? 'bg-brand-gold/10 border-brand-gold/20 text-brand-gold' : 'bg-surface-bg border-surface-border text-text-secondary'}`}>
-              <div className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center font-bold text-[10px]">{m.name[0]}</div>
-              {m.name} {m.isHead && '(Head)'}
+          <div className="bg-surface-card border border-surface-border rounded-xl p-5">
+            <p className="text-sm font-semibold text-text-primary mb-3">{selectedExam?.title || 'Exam Committee'}</p>
+            <div className="flex flex-wrap gap-2">
+              {committeeMembers.map(member => (
+                <div key={member.id} className={`px-3 py-1.5 rounded-full border text-xs ${member.isHead ? 'bg-brand-gold/10 border-brand-gold/20 text-brand-gold' : 'bg-surface-bg border-surface-border text-text-secondary'}`}>
+                  {member.name || `User ${member.userId.slice(0, 8)}`} {member.isHead && '(Head)'}
+                </div>
+              ))}
+              {!committeeMembers.length && <p className="text-xs text-amber-400">No committee has been configured for this examination.</p>}
             </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <DataTable data={data} columns={columns} searchPlaceholder="Search test takers..." />
-      </div>
-      </>
+          </div>
+          <div className="bg-surface-card border border-surface-border rounded-xl p-5">
+            <DataTable data={candidates} columns={columns} searchPlaceholder="Search eligible candidates..." />
+          </div>
+        </>
       )}
 
-      {/* Score Entry Modal */}
-      <Modal
-        isOpen={!!scoring}
-        onClose={() => setScoring(null)}
-        title={`Enter Band Scores — ${scoring?.testTakerName}`}
-        size="md"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setScoring(null)}>Cancel</Button>
-            <Button onClick={handleSubmit} icon={<Save size={13} />}>Submit Scores</Button>
-          </>
-        }
-      >
+      <Modal isOpen={!!scoring} onClose={() => setScoring(null)} title={`Enter Band Scores — ${scoring?.testTakerName}`} size="md" footer={<><Button variant="ghost" onClick={() => setScoring(null)}>Cancel</Button><Button onClick={handleSubmit} loading={submitting} icon={<Save size={13} />}>Submit Scores</Button></>}>
         <div className="space-y-4">
-          <div className="p-3 bg-surface-bg rounded-xl border border-surface-border grid grid-cols-2 gap-2 text-xs">
-            <div><p className="text-text-muted">Registration No.</p><p className="font-medium text-brand-gold">{scoring?.registrationNumber}</p></div>
-            <div><p className="text-text-muted">CID</p><p className="font-medium text-text-primary">{scoring?.cid}</p></div>
-          </div>
+          <div className="p-3 bg-surface-bg rounded-xl border border-surface-border text-xs"><p className="text-text-muted">Application ID</p><p className="font-mono text-brand-gold">{scoring?.applicationId}</p></div>
           <p className="text-xs text-text-muted">Enter scores from 1.0 to 9.0 in increments of 0.5 for each skill:</p>
           <div className="grid grid-cols-2 gap-4">
-            {SKILLS.map(skill => (
-              <div key={skill}>
-                <label className="text-sm font-medium text-text-secondary block mb-1.5">{SKILL_LABELS[skill]}</label>
-                <select
-                  value={scores[skill]}
-                  onChange={e => setScores(prev => ({ ...prev, [skill]: e.target.value }))}
-                  className="w-full h-9 px-3 rounded-lg bg-surface-bg border border-surface-border text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-[#F59E0B]/40 focus:border-brand-gold"
-                >
-                  <option value="">Select score</option>
-                  {SCORES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            ))}
+            {SKILLS.map(skill => <div key={skill}><label className="text-sm font-medium text-text-secondary block mb-1.5">{SKILL_LABELS[skill]}</label><select value={scores[skill]} onChange={event => setScores(current => ({ ...current, [skill]: event.target.value }))} className="w-full h-9 px-3 rounded-lg bg-surface-bg border border-surface-border text-text-primary text-sm"><option value="">Select score</option>{SCORES.map(score => <option key={score} value={score}>{score}</option>)}</select></div>)}
           </div>
-          {avg && (
-            <div className="p-3 bg-[#F59E0B]/5 border border-brand-gold/20 rounded-xl flex items-center justify-between">
-              <span className="text-sm text-text-secondary">Overall Average Band Score</span>
-              <span className="text-xl font-bold text-brand-gold">{avg}</span>
-            </div>
-          )}
-          <div className="p-3 bg-surface-bg rounded-xl border border-surface-border">
-            <p className="text-[10px] font-semibold text-text-muted uppercase mb-1">Committee Signatories</p>
-            <div className="flex flex-wrap gap-1">
-              {(committeeMembers || []).map(m => (
-                <span key={m.id} className="text-xs text-text-muted px-2 py-0.5 bg-[var(--color-surface-border)] rounded-full">{m.name}</span>
-              ))}
-            </div>
-          </div>
+          {average && <div className="p-3 bg-[#F59E0B]/5 border border-brand-gold/20 rounded-xl flex justify-between"><span className="text-sm text-text-secondary">Overall Average</span><span className="text-xl font-bold text-brand-gold">{average}</span></div>}
         </div>
       </Modal>
     </div>

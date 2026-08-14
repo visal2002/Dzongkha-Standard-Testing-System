@@ -42,6 +42,9 @@ export class ScoresController {
   @Permissions('score.view') @Get('exams/:examId/scores')
   examScores(@Param('examId') examId: string, @Req() request: Request) { return this.results.getExamScores(examId, request.user!); }
 
+  @Permissions('score.view') @Get('exams/:examId/candidates')
+  candidates(@Param('examId') examId: string, @Req() request: Request) { return this.results.getCandidates(examId, request.user!); }
+
   @Permissions('result.declare') @Post('exams/:examId/declare-results')
   declare(@Param('examId') examId: string, @Req() request: Request) { return this.results.declareResults(examId, request.user!, request.id); }
 

@@ -1,134 +1,60 @@
-/*
- * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
- * Website: ambhutan.com | aakash-pradhan.com
- * Phone: +975 - 1750 - 5267
- */
-
-import { BarChart3, TrendingUp, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { BarChart3, Megaphone, TrendingUp, Users } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Alert from '../../components/ui/Alert';
+import { Select } from '../../components/ui/Input';
+import { StatusBadge } from '../../components/ui/Badge';
+import { examService } from '../../services/exams';
 import { scoreService } from '../../services/scores';
 import { useApi } from '../../hooks/useApi';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PieChart, Pie, Cell } from 'recharts';
-
-const CustomTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-surface-card border border-surface-border rounded-xl p-3 shadow-xl text-xs">
-      <p className="font-medium text-text-primary mb-1">{label}</p>
-      {payload.map(p => <p key={p.name} style={{ color: p.color }}>{p.name}: {typeof p.value === 'number' ? p.value.toFixed(2) : p.value}</p>)}
-    </div>
-  );
-};
+import { useAuth } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function ScoreSummary() {
-  const { data: bandScoresData, loading } = useApi(scoreService.getAll);
-  const bandScores = bandScoresData || [];
+  const { user } = useAuth();
+  const { data: exams, loading: loadingExams } = useApi(examService.getAll);
+  const [examId, setExamId] = useState('');
+  const [scores, setScores] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [declaring, setDeclaring] = useState(false);
+  const canDeclare = ['admin', 'dcdd'].includes(user?.role);
 
-  const totalScored = bandScores.length;
-  const overallAvg = totalScored ? (bandScores.reduce((s, b) => s + b.average, 0) / totalScored).toFixed(2) : 0;
-  const highestScore = totalScored ? Math.max(...bandScores.map(b => b.average)) : 0;
-  const lowestScore = totalScored ? Math.min(...bandScores.map(b => b.average)) : 0;
+  useEffect(() => { if (!examId && exams?.length) setExamId(exams[0].id); }, [examId, exams]);
+  useEffect(() => {
+    if (!examId) return;
+    let active = true;
+    setLoading(true);
+    scoreService.getByExam(examId).then(response => { if (active) setScores(response.data || []); })
+      .catch(error => { if (active) { setScores([]); toast.error(error?.message || 'Unable to load scores'); } })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [examId]);
 
-  const skillAvg = (skill) => totalScored ? (bandScores.reduce((s, b) => s + b[skill], 0) / totalScored) : 0;
+  const submitted = scores.filter(score => ['submitted', 'published', 'revised'].includes(score.status));
+  const calculated = submitted.filter(score => score.average > 0);
+  const average = calculated.length ? calculated.reduce((sum, score) => sum + score.average, 0) / calculated.length : 0;
+  const highest = calculated.length ? Math.max(...calculated.map(score => score.average)) : 0;
 
-  const skillData = [
-    { skill: 'Writing', avg: skillAvg('writing') },
-    { skill: 'Reading', avg: skillAvg('reading') },
-    { skill: 'Listening', avg: skillAvg('listening') },
-    { skill: 'Speaking', avg: skillAvg('speaking') },
-  ];
+  const declare = async () => {
+    setDeclaring(true);
+    try {
+      await scoreService.publish(examId);
+      setScores(current => current.map(score => ({ ...score, status: 'published' })));
+      toast.success('Results declared and published to Test Takers');
+    } catch (error) {
+      toast.error(error?.message || 'Unable to declare results');
+    } finally { setDeclaring(false); }
+  };
 
-  const radarData = skillData.map(d => ({ skill: d.skill, score: d.avg * 10 }));
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-text-muted">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Score Summary"
-        subtitle="Statistical overview of band scores for January 2026"
-        breadcrumbs={[{ label: 'Scores' }, { label: 'Summary' }]}
-        icon={<BarChart3 size={18} />}
-      />
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Scored" value={totalScored} icon={<Users size={18} />} color="gold" />
-        <StatCard title="Overall Average" value={overallAvg} icon={<BarChart3 size={18} />} color="teal" subtitle="All skills combined" />
-        <StatCard title="Highest Score" value={highestScore.toFixed(1)} icon={<TrendingUp size={18} />} color="success" />
-        <StatCard title="Lowest Score" value={lowestScore.toFixed(1)} icon={<TrendingUp size={18} />} color="warning" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4">
-        {/* Skill Averages */}
-        <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">Average Score by Skill</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={skillData} barSize={40}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-border)" />
-              <XAxis dataKey="skill" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 9]} tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="avg" fill="#F59E0B" radius={[4, 4, 0, 0]} name="Avg Score" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Radar */}
-        <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">Skills Profile (Group)</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <RadarChart data={radarData}>
-              <PolarGrid stroke="var(--color-surface-border)" />
-              <PolarAngleAxis dataKey="skill" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
-              <Radar name="Avg Score" dataKey="score" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.15} strokeWidth={2} />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Individual scores table */}
-      <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-text-primary mb-4">Individual Scores</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-surface-border">
-                {['Test Taker', 'Writing', 'Reading', 'Listening', 'Speaking', 'Average', 'Level'].map(h => (
-                  <th key={h} className="pb-2 text-left text-xs font-medium text-text-muted pr-4">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {bandScores.map(bs => {
-                const level = bs.average >= 7 ? 'C1' : bs.average >= 5.5 ? 'B2' : 'B1';
-                const levelColor = bs.average >= 7 ? 'text-blue-400' : bs.average >= 5.5 ? 'text-teal-400' : 'text-emerald-400';
-                return (
-                  <tr key={bs.id} className="border-b border-surface-border/40 hover:bg-surface-bg transition-colors">
-                    <td className="py-2.5 pr-4 font-medium text-text-primary">{bs.testTakerName}</td>
-                    {['writing', 'reading', 'listening', 'speaking'].map(skill => (
-                      <td key={skill} className="py-2.5 pr-4">
-                        <span className={bs[skill] >= 7 ? 'text-emerald-400 font-semibold' : bs[skill] >= 5 ? 'text-amber-400 font-semibold' : 'text-red-400 font-semibold'}>{bs[skill]}</span>
-                      </td>
-                    ))}
-                    <td className="py-2.5 pr-4 font-bold text-brand-gold">{bs.average.toFixed(2)}</td>
-                    <td className={`py-2.5 font-bold ${levelColor}`}>{level}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+  return <div className="space-y-6">
+    <PageHeader title="Score Summary" subtitle="Review submitted scores and formally declare results" breadcrumbs={[{ label: 'Scores' }, { label: 'Summary' }]} icon={<BarChart3 size={18} />} action={canDeclare && <Button icon={<Megaphone size={14} />} loading={declaring} disabled={!scores.length || scores.some(score => score.status === 'draft')} onClick={declare}>Declare Results</Button>} />
+    <Alert variant="info" title="Declaration unlocks downstream workflows">After all eligible candidates have submitted scores, declaring results makes Test Taker scores visible and enables sample papers, re-evaluation, and certificate generation.</Alert>
+    <div className="max-w-md"><Select label="Examination Window" value={examId} onChange={event => setExamId(event.target.value)} disabled={loadingExams}><option value="">Select examination</option>{(exams || []).map(exam => <option key={exam.id} value={exam.id}>{exam.title} · {exam.code}</option>)}</Select></div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4"><StatCard title="Score Sheets" value={scores.length} icon={<Users size={18} />} color="gold" /><StatCard title="Submitted" value={submitted.length} icon={<BarChart3 size={18} />} color="teal" /><StatCard title="Overall Average" value={average.toFixed(2)} icon={<TrendingUp size={18} />} color="success" /><StatCard title="Highest Score" value={highest.toFixed(2)} icon={<TrendingUp size={18} />} color="warning" /></div>
+    <div className="bg-surface-card border border-surface-border rounded-xl p-5 overflow-x-auto">
+      {loading ? <div className="py-12 text-center text-text-muted">Loading score sheets...</div> : <table className="w-full text-sm"><thead><tr className="border-b border-surface-border">{['Application', 'Writing', 'Reading', 'Listening', 'Speaking', 'Overall', 'Band', 'Status'].map(label => <th key={label} className="pb-3 text-left text-xs text-text-muted pr-4">{label}</th>)}</tr></thead><tbody>{scores.map(score => <tr key={score.id} className="border-b border-surface-border/40"><td className="py-3 pr-4 font-mono text-xs text-brand-gold">{score.applicationId.slice(0, 12)}</td>{['writing', 'reading', 'listening', 'speaking'].map(skill => <td key={skill} className="py-3 pr-4 text-text-primary">{score[skill].toFixed(1)}</td>)}<td className="py-3 pr-4 font-bold text-brand-gold">{score.average ? score.average.toFixed(2) : 'Pending'}</td><td className="py-3 pr-4 text-text-primary">{score.cefrLevel} / {score.bandLabel}</td><td className="py-3"><StatusBadge status={score.status} /></td></tr>)}{!scores.length && <tr><td colSpan="8" className="py-12 text-center text-text-muted">No score sheets are available for this examination.</td></tr>}</tbody></table>}
     </div>
-  );
+  </div>;
 }

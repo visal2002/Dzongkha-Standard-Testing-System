@@ -18,6 +18,42 @@ const fileSizeToBytes = (value) => {
   return Math.round(Number(match[1]) * (match[2].toUpperCase() === 'MB' ? 1024 * 1024 : 1024));
 };
 
+const unwrap = payload => payload?.data ?? payload;
+const unwrapList = payload => {
+  const value = unwrap(payload);
+  return Array.isArray(value) ? value : [];
+};
+
+const formatBytes = value => {
+  const bytes = Number(value || 0);
+  if (!bytes) return '0 KB';
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+};
+
+export const normalizeQuestionPaper = paper => {
+  const documents = Array.isArray(paper?.documents) ? paper.documents : [];
+  const questionDocument = documents.find(document => document.type === 'QUESTION_PAPER');
+  const answerDocument = documents.find(document => document.type === 'ANSWER_SHEET');
+  const skill = String(paper?.skill || '').toUpperCase();
+
+  return {
+    ...paper,
+    skill,
+    skillLabel: skill ? `${skill.charAt(0)}${skill.slice(1).toLowerCase()}` : 'Unspecified',
+    status: String(paper?.status || 'READY').toUpperCase(),
+    documents,
+    questionDocument,
+    answerDocument,
+    fileName: questionDocument?.originalName || 'Question paper.pdf',
+    fileSize: formatBytes(questionDocument?.sizeBytes),
+    hasAnswerSheet: Boolean(answerDocument),
+    isEncrypted: documents.some(document => document.encrypted) || documents.length > 0,
+    uploadedAt: paper?.createdAt || paper?.uploadedAt,
+    uploadedByName: paper?.uploadedByName || 'Authorised examiner',
+  };
+};
+
 const toSamplePaper = paper => ({
   ...paper,
   status: 'SAMPLE_PUBLISHED',
@@ -47,7 +83,7 @@ export const questionService = {
   getAll: async () => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(questionPapers); }
     const { data } = await apiClient.get('/questions');
-    return data;
+    return { data: unwrapList(data).map(normalizeQuestionPaper) };
   },
 
   /**
@@ -56,14 +92,14 @@ export const questionService = {
   getByExam: async (examId) => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(questionPapers.filter(q => q.examId === examId)); }
     const { data } = await apiClient.get(`/questions?examId=${examId}`);
-    return data;
+    return { data: unwrapList(data).map(normalizeQuestionPaper) };
   },
 
   /** @param {string} id */
   getById: async (id) => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(questionPapers.find(q => q.id === id) || null); }
     const { data } = await apiClient.get(`/questions/${id}`);
-    return data;
+    return { data: normalizeQuestionPaper(unwrap(data)) };
   },
 
   /**
@@ -75,7 +111,7 @@ export const questionService = {
       return mockResponse(questionPapers.filter(q => q.status === 'published').map(toSamplePaper));
     }
     const { data } = await apiClient.get('/sample-papers');
-    return data;
+    return { data: unwrapList(data).map(normalizeQuestionPaper) };
   },
 
   downloadSample: async (id, type = 'question') => {
@@ -99,17 +135,26 @@ export const questionService = {
 
   /**
    * Upload a new question paper.
-   * @param {FormData} formData - Must include: file, examId, skill, title, isEncrypted
+   * @param {FormData|object} payload
    */
-  upload: async (formData) => {
+  upload: async (payload) => {
     if (USE_MOCK) {
       await mockDelay(1200);
       return mockResponse({ id: `QP-MOCK-${Date.now()}`, status: 'draft' }, 'Paper uploaded successfully.');
     }
-    const { data } = await apiClient.post('/questions', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return data;
+    const formData = payload instanceof FormData ? payload : new FormData();
+    if (!(payload instanceof FormData)) {
+      formData.set('examId', payload.examId);
+      formData.set('skill', payload.skill);
+      formData.set('title', payload.title);
+      formData.set('accessAllowedFrom', new Date(payload.accessAllowedFrom).toISOString());
+      formData.set('accessAllowedUntil', new Date(payload.accessAllowedUntil).toISOString());
+      formData.set('questionPaper', payload.paperFile);
+      if (payload.answerSheetFile) formData.set('answerSheet', payload.answerSheetFile);
+    }
+    // Axios detects FormData and supplies the browser-generated multipart boundary.
+    const { data } = await apiClient.post('/questions', formData);
+    return { data: normalizeQuestionPaper(unwrap(data)) };
   },
 
   /**
@@ -120,6 +165,21 @@ export const questionService = {
     if (USE_MOCK) { await mockDelay(); return mockResponse({ id, status: 'published' }); }
     const { data } = await apiClient.patch(`/questions/${id}/publish`);
     return data;
+  },
+
+  publishSample: async (id) => {
+    if (USE_MOCK) { await mockDelay(); return mockResponse({ id, status: 'SAMPLE_PUBLISHED' }); }
+    const { data } = await apiClient.post(`/questions/${id}/publish-sample`);
+    return { data: normalizeQuestionPaper(unwrap(data)) };
+  },
+
+  downloadDocument: async (id, type = 'question') => {
+    if (USE_MOCK) {
+      await mockDelay(200);
+      return { data: createMockPdf(['Dzongkha Standard Testing System', type === 'answer' ? 'Answer Sheet' : 'Question Paper']) };
+    }
+    const endpoint = type === 'answer' ? 'answer-document' : 'question-document';
+    return apiClient.get(`/questions/${id}/${endpoint}`, { responseType: 'blob' });
   },
 
   /** @param {string} id */

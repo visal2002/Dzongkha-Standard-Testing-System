@@ -21,7 +21,8 @@ data:
   MAX_ASSESSMENT_FILE_BYTES: "52428800"
   MALWARE_SCAN_REQUIRED: "false"
   SCORING_CONFIG_APPROVAL_REQUIRED: "true"
-  PRIVILEGED_ASSURANCE_LEVELS: MFA
+  # VPN-isolated staging also permits locally authenticated administrators.
+  PRIVILEGED_ASSURANCE_LEVELS: MFA,LOCAL
   RESULT_SERVICE_URL: http://result-service:8004/api/v1
   REGISTRATION_SERVICE_URL: http://registration-service:8002/api/v1
   PUBLIC_API_BASE_URL: http://172.30.3.63:30431/api/v1

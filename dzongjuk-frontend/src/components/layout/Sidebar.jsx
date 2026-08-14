@@ -39,6 +39,7 @@ const NAV_CONFIG = [
   },
   { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'] },
   { label: 'Band Score Entry', icon: ClipboardList, to: '/scores', access: ['scores', 'submit'] },
+  { label: 'Committee Setup', icon: Users, to: '/scores/committee', roles: ['admin', 'dcdd'] },
   { label: 'View Scores', icon: FileText, to: '/scores/view', access: ['scores', 'read'], excludeRoles: ['admin', 'dcdd', 'exam_head', 'committee_head'] },
   { label: 'Score Summary', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read'], excludeRoles: ['test_taker'] },
   { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'] },
