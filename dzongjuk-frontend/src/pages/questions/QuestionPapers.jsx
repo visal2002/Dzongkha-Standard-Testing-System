@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Lock, FileText, Download, Eye, Upload, Trash2 } from 'lucide-react';
+import { BookOpen, Lock, FileText, Download, Eye, Upload, Trash2, LibraryBig } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PageHeader from '../../components/ui/PageHeader';
 import { StatusBadge } from '../../components/ui/Badge';
@@ -19,10 +19,25 @@ import toast from 'react-hot-toast';
 import { canAccess } from '../../config/accessMatrix';
 
 const SKILL_COLORS = {
-  Writing: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  Reading: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  Listening: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  Speaking: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  WRITING: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  READING: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  LISTENING: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  SPEAKING: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+};
+
+const saveBlob = (blob, filename, preview = false) => {
+  const url = URL.createObjectURL(blob);
+  if (preview) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } else {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 };
 
 export default function QuestionPapers() {
@@ -31,6 +46,7 @@ export default function QuestionPapers() {
   const papers = papersData || [];
   
   const [deleting, setDeleting] = useState(null);
+  const [working, setWorking] = useState(null);
   const canRead = canAccess(user?.role, 'questions', 'read');
   const canManage = canAccess(user?.role, 'questions', 'manage');
 
@@ -43,6 +59,32 @@ export default function QuestionPapers() {
       toast.error('Failed to remove question paper');
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handleDocument = async (paper, preview = false) => {
+    setWorking(`${preview ? 'preview' : 'download'}-${paper.id}`);
+    try {
+      const response = await questionService.downloadDocument(paper.id);
+      saveBlob(response.data, paper.fileName, preview);
+    } catch (error) {
+      toast.error(error?.message || 'The document could not be opened');
+    } finally {
+      setWorking(null);
+    }
+  };
+
+  const handlePublishSample = async paper => {
+    setWorking(`publish-${paper.id}`);
+    try {
+      const updated = await questionService.publishSample(paper.id);
+      const published = updated?.data ?? updated;
+      setPapers(current => current.map(item => item.id === paper.id ? published : item));
+      toast.success('Question paper published to Sample Papers');
+    } catch (error) {
+      toast.error(error?.message || 'Sample paper could not be published');
+    } finally {
+      setWorking(null);
     }
   };
 
@@ -66,12 +108,12 @@ export default function QuestionPapers() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {['Writing', 'Reading', 'Listening', 'Speaking'].map(skill => {
+        {['WRITING', 'READING', 'LISTENING', 'SPEAKING'].map(skill => {
           const count = papers.filter(p => p.skill === skill).length;
           return (
             <div key={skill} className={`p-3 rounded-xl border ${SKILL_COLORS[skill]}`}>
               <p className="text-lg font-bold">{count}</p>
-              <p className="text-xs opacity-80">{skill}</p>
+              <p className="text-xs opacity-80">{`${skill.charAt(0)}${skill.slice(1).toLowerCase()}`}</p>
             </div>
           );
         })}
@@ -83,6 +125,13 @@ export default function QuestionPapers() {
       <>
       {/* Papers list */}
       <div className="grid gap-3">
+        {!papers.length && (
+          <div className="py-16 text-center bg-surface-card border border-surface-border rounded-xl">
+            <BookOpen size={34} className="mx-auto mb-3 text-text-muted opacity-60" />
+            <p className="text-sm font-semibold text-text-primary">No question papers uploaded</p>
+            <p className="text-xs text-text-muted mt-1">Upload the secured PDF documents for an examination window to begin.</p>
+          </div>
+        )}
         {papers.map(paper => (
           <div key={paper.id} className="bg-surface-card border border-surface-border rounded-xl p-5 flex items-center gap-4">
             {/* Icon */}
@@ -101,7 +150,7 @@ export default function QuestionPapers() {
                 )}
               </div>
               <div className="flex items-center gap-3 text-xs text-text-muted">
-                <span className={`px-2 py-0.5 rounded-full border text-[10px] ${SKILL_COLORS[paper.skill]}`}>{paper.skill}</span>
+                <span className={`px-2 py-0.5 rounded-full border text-[10px] ${SKILL_COLORS[paper.skill] || SKILL_COLORS.WRITING}`}>{paper.skillLabel}</span>
                 <span>{paper.fileSize}</span>
                 <span>By {paper.uploadedByName}</span>
                 <span>{new Date(paper.uploadedAt).toLocaleDateString()}</span>
@@ -112,10 +161,21 @@ export default function QuestionPapers() {
             {/* Status & Actions */}
             <div className="flex items-center gap-2 shrink-0">
               <StatusBadge status={paper.status} />
-              {canRead && <Button variant="ghost" size="xs" icon={<Eye size={12} />} onClick={() => toast.success('Opening document...')}>View</Button>}
-              {canRead && <Button variant="ghost" size="xs" icon={<Download size={12} />} onClick={() => toast.success('Downloading...')}>Download</Button>}
+              {canRead && <Button variant="ghost" size="xs" loading={working === `preview-${paper.id}`} icon={<Eye size={12} />} onClick={() => handleDocument(paper, true)}>View</Button>}
+              {canRead && <Button variant="ghost" size="xs" loading={working === `download-${paper.id}`} icon={<Download size={12} />} onClick={() => handleDocument(paper)}>Download</Button>}
               {canManage && (
                 <>
+                  {paper.status === 'READY' && (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      loading={working === `publish-${paper.id}`}
+                      icon={<LibraryBig size={12} />}
+                      onClick={() => handlePublishSample(paper)}
+                    >
+                      Publish Sample
+                    </Button>
+                  )}
                   <Button variant="ghost" size="xs" icon={<Trash2 size={12} />} onClick={() => setDeleting(paper)} className="text-red-400 hover:text-red-300" />
                 </>
               )}

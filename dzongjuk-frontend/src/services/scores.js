@@ -12,6 +12,23 @@ import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
 import { bandScores, applications, committeeMembers, examWindows, dashboardStats } from '../data/mockData';
 import { createUuid } from '../utils/uuid';
 
+const normalizeExamScore = sheet => {
+  const latest = sheet.versions?.[0] || {};
+  const values = latest.scores || sheet.draftScores || {};
+  return {
+    ...sheet,
+    writing: Number(values.WRITING ?? values.writing ?? 0),
+    reading: Number(values.READING ?? values.reading ?? 0),
+    listening: Number(values.LISTENING ?? values.listening ?? 0),
+    speaking: Number(values.SPEAKING ?? values.speaking ?? 0),
+    average: Number(latest.overallScore ?? 0),
+    bandLabel: latest.bandLabel || 'Pending',
+    cefrLevel: latest.cefrLevel || 'Pending',
+    status: String(sheet.status || '').toLowerCase(),
+    testTakerName: sheet.testTakerName || `Application ${sheet.applicationId.slice(0, 8)}`,
+  };
+};
+
 export const scoreService = {
   /** @returns {Promise<{data: import('../types').BandScore[]}>} */
   getAll: async () => {
@@ -27,7 +44,25 @@ export const scoreService = {
   getByExam: async (examId) => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(bandScores.filter(s => s.examId === examId)); }
     const { data } = await apiClient.get(`/exams/${examId}/scores`);
-    return data;
+    const scores = data?.data ?? data;
+    return { data: Array.isArray(scores) ? scores.map(normalizeExamScore) : [] };
+  },
+
+  getCandidates: async examId => {
+    if (USE_MOCK) {
+      await mockDelay();
+      return mockResponse(applications.filter(application => application.examId === examId && ['approved', 'verified'].includes(application.status)));
+    }
+    const { data } = await apiClient.get(`/exams/${examId}/candidates`);
+    const candidates = data?.data ?? data;
+    return { data: Array.isArray(candidates) ? candidates.map(candidate => ({
+      ...candidate,
+      id: candidate.applicationId,
+      testTakerName: candidate.testTakerName || `Candidate ${candidate.applicationId.slice(0, 8)}`,
+      cid: candidate.identityKey || candidate.testTakerUserId,
+      status: String(candidate.status || '').toLowerCase(),
+      scoreStatus: String(candidate.scoreSheet?.status || 'PENDING').toLowerCase(),
+    })) : [] };
   },
 
   /**
@@ -56,11 +91,12 @@ export const scoreService = {
     if (USE_MOCK) { await mockDelay(800); return mockResponse(scores, 'Scores submitted.'); }
     const responses = await Promise.all(scores.map(async ({ applicationId, ...values }) => {
       const { data: draftEnvelope } = await apiClient.put(`/score-sheets/${applicationId}/draft`, values);
+      const draft = draftEnvelope?.data ?? draftEnvelope;
       const { data: submitEnvelope } = await apiClient.post(
-        `/score-sheets/${draftEnvelope.data.id}/submit`, null,
+        `/score-sheets/${draft.id}/submit`, null,
         { headers: { 'Idempotency-Key': createUuid() } },
       );
-      return submitEnvelope.data;
+      return submitEnvelope?.data ?? submitEnvelope;
     }));
     return { data: responses };
   },
@@ -93,7 +129,11 @@ export const scoreService = {
   getCommittee: async (examId) => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(committeeMembers.filter(m => m.examId === examId)); }
     const { data } = await apiClient.get(`/exams/${examId}/committee`);
-    return data;
+    const committee = data?.data ?? data;
+    return { data: committee ? {
+      ...committee,
+      members: (committee.members || []).map(member => ({ ...member, isHead: member.role === 'HEAD' })),
+    } : null };
   },
 
   /**

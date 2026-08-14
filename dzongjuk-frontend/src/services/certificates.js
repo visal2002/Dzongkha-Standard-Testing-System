@@ -30,7 +30,7 @@ export const certificateService = {
   /** @returns {Promise<{data: import('../types').Certificate[]}>} */
   getAll: async () => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(certificates); }
-    const { data } = await apiClient.get('/certificates/my');
+    const { data } = await apiClient.get('/certificates');
     return data;
   },
 

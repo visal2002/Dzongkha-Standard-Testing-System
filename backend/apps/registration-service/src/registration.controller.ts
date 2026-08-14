@@ -8,7 +8,7 @@ import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Req } from '
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions, Public } from '@dzongjuk/security';
-import { CreateExamDto, MarkAttendanceDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto, UpdateExamStatusDto } from './dtos';
+import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto, UpdateExamStatusDto } from './dtos';
 import { RegistrationService } from './registration.service';
 
 @ApiTags('Examinations')
@@ -45,6 +45,9 @@ export class ApplicationsController {
   @Permissions('registration.application.verify') @Post(':id/start-review') startReview(@Param('id') id: string, @Req() req: Request) { return this.service.startReview(id, req.user!.sub, req.id); }
   @Permissions('registration.application.verify') @Post(':id/return') returnForCorrection(@Param('id') id: string, @Body() dto: ReturnApplicationDto, @Req() req: Request) { return this.service.returnForCorrection(id, dto, req.user!.sub, req.id); }
   @Permissions('registration.application.verify') @Post(':id/verify') verify(@Param('id') id: string, @Req() req: Request) { return this.service.verify(id, req.user!.sub, req.id); }
+  @Permissions('registration.application.verify') @Post(':id/payment') payment(@Param('id') id: string, @Body() dto: RecordRegistrationPaymentDto, @Req() req: Request) {
+    return this.service.recordPayment(id, dto, req.user!.sub, req.id);
+  }
   @Get(':id/history') history(@Param('id') id: string) { return this.service.applicationHistory(id); }
 
   @Public() @Get('internal/:id/certificate-profile')

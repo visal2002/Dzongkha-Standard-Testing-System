@@ -6,7 +6,8 @@
 
 import { ExamStatus, Skill } from '@dzongjuk/contracts';
 import { PartialType } from '@nestjs/swagger';
-import { IsArray, IsDateString, IsEnum, IsInt, IsNumberString, IsObject, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsIn, IsInt, IsNumberString, IsObject, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import { RegistrationPaymentStatus } from './entities';
 
 export class CreateExamDto {
   @IsString() @Length(2, 40) code: string;
@@ -29,6 +30,11 @@ export class SubmitApplicationDto {
 }
 
 export class ReturnApplicationDto { @IsString() @Length(3, 2000) remarks: string; }
+export class RecordRegistrationPaymentDto {
+  @IsIn([RegistrationPaymentStatus.Paid, RegistrationPaymentStatus.Waived]) status: RegistrationPaymentStatus.Paid | RegistrationPaymentStatus.Waived;
+  @IsString() @Length(2, 40) method: string;
+  @IsOptional() @IsString() @Length(3, 100) reference?: string;
+}
 export class MarkAttendanceDto { @IsArray() @IsEnum(Skill, { each: true }) absentSkills: Skill[]; }
 
 export class PaginationDto {

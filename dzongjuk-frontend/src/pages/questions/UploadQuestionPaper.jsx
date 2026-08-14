@@ -6,7 +6,7 @@
 
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, File, X, CheckCircle, Lock, AlertTriangle } from 'lucide-react';
+import { Upload, X, CheckCircle, Lock } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import Input, { Select } from '../../components/ui/Input';
@@ -23,7 +23,7 @@ export default function UploadQuestionPaper() {
   const examWindows = examWindowsData || [];
 
   const [files, setFiles] = useState({ paper: null, answerSheet: null });
-  const [form, setForm] = useState({ examId: '', skill: '', title: '' });
+  const [form, setForm] = useState({ examId: '', skill: '', title: '', accessAllowedFrom: '', accessAllowedUntil: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragging, setDragging] = useState(null);
   const paperRef = useRef(null);
@@ -48,7 +48,8 @@ export default function UploadQuestionPaper() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!files.paper) { toast.error('Please upload a question paper'); return; }
-    if (!form.examId || !form.skill || !form.title) { toast.error('Please fill all required fields'); return; }
+    if (!form.examId || !form.skill || !form.title || !form.accessAllowedFrom || !form.accessAllowedUntil) { toast.error('Please fill all required fields'); return; }
+    if (new Date(form.accessAllowedUntil) <= new Date(form.accessAllowedFrom)) { toast.error('Access end must be after access start'); return; }
     
     setIsSubmitting(true);
     try {
@@ -60,7 +61,7 @@ export default function UploadQuestionPaper() {
       toast.success('Question paper uploaded and encrypted successfully!');
       navigate('/questions');
     } catch (error) {
-      toast.error('Failed to upload question paper');
+      toast.error(error?.message || 'Failed to upload question paper');
     } finally {
       setIsSubmitting(false);
     }
@@ -130,7 +131,18 @@ export default function UploadQuestionPaper() {
             label="Examination Window"
             required
             value={form.examId}
-            onChange={e => setForm(p => ({ ...p, examId: e.target.value }))}
+            onChange={e => {
+              const examId = e.target.value;
+              const exam = examWindows.find(item => item.id === examId);
+              const examDate = exam?.examDate ? new Date(exam.examDate) : null;
+              const toLocal = date => date && !Number.isNaN(date.getTime())
+                ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+                : '';
+              const start = examDate ? new Date(examDate) : null;
+              if (start) start.setHours(8, 0, 0, 0);
+              const end = start ? new Date(start.getTime() + 10 * 60 * 60 * 1000) : null;
+              setForm(p => ({ ...p, examId, accessAllowedFrom: toLocal(start), accessAllowedUntil: toLocal(end) }));
+            }}
             disabled={loadingExams}
           >
             <option value="">{loadingExams ? 'Loading exams...' : 'Select exam window'}</option>
@@ -145,6 +157,26 @@ export default function UploadQuestionPaper() {
             <option value="">Select skill</option>
             {SKILLS.map(s => <option key={s} value={s}>{s}</option>)}
           </Select>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            type="datetime-local"
+            label="Secure Access Opens"
+            required
+            value={form.accessAllowedFrom}
+            onChange={e => setForm(p => ({ ...p, accessAllowedFrom: e.target.value }))}
+            hint="Authorised examiners can download from this time."
+          />
+          <Input
+            type="datetime-local"
+            label="Secure Access Closes"
+            required
+            value={form.accessAllowedUntil}
+            min={form.accessAllowedFrom || undefined}
+            onChange={e => setForm(p => ({ ...p, accessAllowedUntil: e.target.value }))}
+            hint="Downloads are blocked after this time."
+          />
         </div>
 
         <div className="space-y-3">

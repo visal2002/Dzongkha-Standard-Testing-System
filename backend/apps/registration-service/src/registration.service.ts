@@ -10,8 +10,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { ApplicationStatus, DomainEventTypes, ExamStatus } from '@dzongjuk/contracts';
 import { assertInternalService, DomainException } from '@dzongjuk/common';
-import { CreateExamDto, MarkAttendanceDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto } from './dtos';
-import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEntity, IdempotencyRecordEntity, OutboxEventEntity, WaitlistEntryEntity } from './entities';
+import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto } from './dtos';
+import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEntity, IdempotencyRecordEntity, OutboxEventEntity, RegistrationPaymentStatus, WaitlistEntryEntity } from './entities';
 
 @Injectable()
 export class RegistrationService {
@@ -97,6 +97,9 @@ export class RegistrationService {
       const application = await manager.save(ApplicationEntity, manager.create(ApplicationEntity, {
         examId, exam, testTakerUserId: userId, identityKey: dto.identityKey,
         profileSnapshot: dto.profileSnapshot, status, submittedAt: now,
+        paymentAmount: exam.registrationFee,
+        paymentCurrency: 'BTN',
+        paymentStatus: Number(exam.registrationFee) === 0 ? RegistrationPaymentStatus.Waived : RegistrationPaymentStatus.Initiated,
       }));
       if (status === ApplicationStatus.Waitlisted) {
         await manager.save(WaitlistEntryEntity, manager.create(WaitlistEntryEntity, { examId, applicationId: application.id, positionKey: Date.now().toString(), status: 'WAITING' }));
@@ -219,6 +222,30 @@ export class RegistrationService {
       application.verifiedAt = new Date();
       application.registrationNumber = `DSTS-${new Date().getUTCFullYear()}-${application.id.slice(0, 8).toUpperCase()}`;
     }, DomainEventTypes.ApplicationVerified);
+  }
+
+  async recordPayment(id: string, dto: RecordRegistrationPaymentDto, actorId: string, requestId: string) {
+    return this.dataSource.transaction(async manager => {
+      const application = await manager.findOne(ApplicationEntity, { where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!application) throw new DomainException('APPLICATION_NOT_FOUND', 'Application not found.', 404);
+      if (application.paymentStatus === RegistrationPaymentStatus.Paid || application.paymentStatus === RegistrationPaymentStatus.Waived) {
+        throw new DomainException('REGISTRATION_PAYMENT_FINAL', 'This registration payment is already finalized.', 409);
+      }
+      if (dto.status === RegistrationPaymentStatus.Paid && !dto.reference) {
+        throw new DomainException('PAYMENT_REFERENCE_REQUIRED', 'A transaction reference is required for a paid registration.', 400);
+      }
+      application.paymentStatus = dto.status;
+      application.paymentMethod = dto.method.trim();
+      application.paymentReference = dto.reference?.trim() || null;
+      application.paidAt = new Date();
+      await manager.save(application);
+      await this.outbox(manager, 'REGISTRATION_PAYMENT_RECORDED', application.id, requestId, {
+        applicationId: application.id, examId: application.examId, testTakerUserId: application.testTakerUserId,
+        status: application.paymentStatus, amount: application.paymentAmount, currency: application.paymentCurrency,
+        method: application.paymentMethod, actorId,
+      });
+      return application;
+    });
   }
 
   async markAttendance(id: string, dto: MarkAttendanceDto, actorId: string, requestId: string) {

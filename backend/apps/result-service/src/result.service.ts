@@ -139,12 +139,25 @@ export class ResultService {
   }
 
   async getExamScores(examId: string, actor: AccessClaims) {
-    if (!actor.permissions.includes('*')) {
+    if (!actor.permissions.includes('*') && !actor.permissions.includes('committee.manage')) {
       const committee = await this.committees.findOneBy({ examId });
       if (!committee || !await this.members.existsBy({ committeeId: committee.id, userId: actor.sub, removedAt: IsNull() })) throw new DomainException('COMMITTEE_ACCESS_REQUIRED', 'Only the assigned committee may view these scores.', 403);
     }
     const sheets = await this.sheets.find({ where: { examId }, order: { updatedAt: 'DESC' } });
     return Promise.all(sheets.map(async (sheet) => ({ ...sheet, versions: await this.versions.find({ where: { scoreSheetId: sheet.id }, order: { versionNumber: 'DESC' } }) })));
+  }
+
+  async getCandidates(examId: string, actor: AccessClaims) {
+    if (!actor.permissions.includes('*') && !actor.permissions.includes('committee.manage')) {
+      const committee = await this.committees.findOneBy({ examId });
+      if (!committee || !await this.members.existsBy({ committeeId: committee.id, userId: actor.sub, removedAt: IsNull() })) {
+        throw new DomainException('COMMITTEE_ACCESS_REQUIRED', 'Only the assigned committee may view eligible candidates.', 403);
+      }
+    }
+    const candidates = await this.eligibility.find({ where: { examId }, order: { updatedAt: 'ASC' } });
+    const sheets = candidates.length ? await this.sheets.findBy({ applicationId: In(candidates.map(candidate => candidate.applicationId)) }) : [];
+    const sheetByApplication = new Map(sheets.map(sheet => [sheet.applicationId, sheet]));
+    return candidates.map(candidate => ({ ...candidate, scoreSheet: sheetByApplication.get(candidate.applicationId) ?? null }));
   }
 
   async myResults(userId: string) {

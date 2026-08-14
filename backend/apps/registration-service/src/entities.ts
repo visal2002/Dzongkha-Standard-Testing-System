@@ -7,6 +7,13 @@
 import { ApplicationStatus, ExamStatus, Skill } from '@dzongjuk/contracts';
 import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn, VersionColumn } from 'typeorm';
 
+export enum RegistrationPaymentStatus {
+  Initiated = 'INITIATED',
+  Paid = 'PAID',
+  Failed = 'FAILED',
+  Waived = 'WAIVED',
+}
+
 @Entity('exams')
 export class ExamEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
@@ -40,6 +47,12 @@ export class ApplicationEntity {
   @Column({ type: 'timestamptz', nullable: true }) verifiedAt: Date | null;
   @Column({ type: 'timestamptz', nullable: true }) cancelledAt: Date | null;
   @Column({ type: 'text', nullable: true }) reviewRemarks: string | null;
+  @Column({ type: 'enum', enum: RegistrationPaymentStatus, enumName: 'registration_payment_status', default: RegistrationPaymentStatus.Initiated }) paymentStatus: RegistrationPaymentStatus;
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 }) paymentAmount: string;
+  @Column({ length: 3, default: 'BTN' }) paymentCurrency: string;
+  @Column({ length: 40, nullable: true }) paymentMethod: string | null;
+  @Index({ unique: true, where: '"paymentReference" IS NOT NULL' }) @Column({ length: 100, nullable: true }) paymentReference: string | null;
+  @Column({ type: 'timestamptz', nullable: true }) paidAt: Date | null;
   @VersionColumn() version: number;
   @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
   @UpdateDateColumn({ type: 'timestamptz' }) updatedAt: Date;
