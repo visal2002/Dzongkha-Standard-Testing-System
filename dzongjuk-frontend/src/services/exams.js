@@ -21,6 +21,16 @@ const normalizeExam = exam => ({
 });
 
 const unwrapList = payload => (Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : []);
+const toRequest = payload => ({
+  ...(payload.code !== undefined ? { code: payload.code } : {}),
+  ...(payload.title !== undefined ? { title: payload.title } : {}),
+  ...(payload.examDate !== undefined ? { examDate: new Date(payload.examDate).toISOString() } : {}),
+  ...(payload.registrationStart !== undefined ? { registrationStart: new Date(payload.registrationStart).toISOString() } : {}),
+  ...(payload.registrationEnd !== undefined ? { registrationEnd: new Date(payload.registrationEnd).toISOString() } : {}),
+  ...(payload.capacity !== undefined || payload.maxCapacity !== undefined ? { capacity: Number(payload.capacity ?? payload.maxCapacity) } : {}),
+  ...(payload.venue !== undefined ? { venue: payload.venue } : {}),
+  ...(payload.registrationFee !== undefined || payload.paymentAmount !== undefined ? { registrationFee: String(payload.registrationFee ?? payload.paymentAmount) } : {}),
+});
 
 export const examService = {
   /** @returns {Promise<{data: import('../types').ExamWindow[]}>} */
@@ -41,17 +51,15 @@ export const examService = {
   /** @param {Partial<import('../types').ExamWindow>} payload */
   create: async (payload) => {
     if (USE_MOCK) { await mockDelay(); return mockResponse({ ...payload, id: `EXM-MOCK-${Date.now()}` }); }
-    const request = {
-      code: payload.code,
-      title: payload.title,
-      examDate: payload.examDate,
-      registrationStart: payload.registrationStart,
-      registrationEnd: payload.registrationEnd,
-      capacity: Number(payload.capacity ?? payload.maxCapacity),
-      venue: payload.venue,
-      registrationFee: String(payload.registrationFee ?? payload.paymentAmount ?? 0),
-    };
+    const request = toRequest(payload);
     const { data } = await apiClient.post('/exams', request);
+    const exam = data?.data ?? data;
+    return { data: normalizeExam(exam) };
+  },
+
+  update: async (id, payload) => {
+    if (USE_MOCK) { await mockDelay(); return mockResponse(normalizeExam({ ...examWindows.find(e => e.id === id), ...payload })); }
+    const { data } = await apiClient.patch(`/exams/${id}`, toRequest(payload));
     const exam = data?.data ?? data;
     return { data: normalizeExam(exam) };
   },

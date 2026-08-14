@@ -10,7 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { ApplicationStatus, DomainEventTypes, ExamStatus } from '@dzongjuk/contracts';
 import { assertInternalService, DomainException } from '@dzongjuk/common';
-import { CreateExamDto, MarkAttendanceDto, ReturnApplicationDto, SubmitApplicationDto } from './dtos';
+import { CreateExamDto, MarkAttendanceDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto } from './dtos';
 import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEntity, IdempotencyRecordEntity, OutboxEventEntity, WaitlistEntryEntity } from './entities';
 
 @Injectable()
@@ -116,6 +116,33 @@ export class RegistrationService {
       where: examId ? { examId } : {},
       order: { submittedAt: 'DESC' },
       take: 500,
+    });
+  }
+
+  async updateExam(id: string, dto: UpdateExamDto, actorId: string, requestId: string) {
+    return this.dataSource.transaction(async manager => {
+      const exam = await manager.findOne(ExamEntity, { where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!exam) throw new DomainException('EXAM_NOT_FOUND', 'Examination not found.', 404);
+      if (![ExamStatus.Draft, ExamStatus.Published, ExamStatus.RegistrationOpen, ExamStatus.RegistrationClosed].includes(exam.status)) {
+        throw new DomainException('EXAM_EDIT_BLOCKED', 'The examination schedule cannot be edited after the exam has started.', 409);
+      }
+
+      const registrationStart = new Date(dto.registrationStart ?? exam.registrationStart);
+      const registrationEnd = new Date(dto.registrationEnd ?? exam.registrationEnd);
+      const examDate = new Date(dto.examDate ?? exam.examDate);
+      if (registrationEnd <= registrationStart) throw new DomainException('EXAM_WINDOW_INVALID', 'Registration end must be after registration start.');
+      if (examDate <= registrationEnd) throw new DomainException('EXAM_DATE_INVALID', 'Examination date must be after registration closes.');
+
+      const capacity = dto.capacity ?? exam.capacity;
+      const reserved = await manager.count(ApplicationEntity, {
+        where: { examId: id, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned, ApplicationStatus.Verified, ApplicationStatus.Absent]) },
+      });
+      if (capacity < reserved) throw new DomainException('EXAM_CAPACITY_INVALID', `Capacity cannot be lower than the ${reserved} confirmed registrations.`, 409);
+
+      Object.assign(exam, dto, { registrationStart, registrationEnd, examDate, capacity });
+      const updated = await manager.save(exam);
+      await this.outbox(manager, 'EXAM_UPDATED', exam.id, requestId, { examId: exam.id, actorId, changedFields: Object.keys(dto) });
+      return updated;
     });
   }
 

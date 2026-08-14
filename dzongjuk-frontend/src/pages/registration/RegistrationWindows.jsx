@@ -17,6 +17,8 @@ export default function RegistrationWindows() {
   const { user } = useAuth();
   const { data: windows, loading, error, setData: setWindows, execute } = useApi(examService.getAll);
   const [showCreate, setShowCreate] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editForm, setEditForm] = useState(emptyForm);
   const [statusTarget, setStatusTarget] = useState(null);
   const [nextStatus, setNextStatus] = useState('draft');
   const [form, setForm] = useState(emptyForm);
@@ -25,6 +27,7 @@ export default function RegistrationWindows() {
   const isTestTaker = user?.role === 'test_taker';
 
   const setField = (name, value) => setForm(current => ({ ...current, [name]: value }));
+  const setEditField = (name, value) => setEditForm(current => ({ ...current, [name]: value }));
 
   const createWindow = async () => {
     if (Object.values(form).some(value => value === '')) return toast.error('Complete every required field.');
@@ -63,6 +66,28 @@ export default function RegistrationWindows() {
     } finally { setSaving(false); }
   };
 
+  const editSchedule = window => {
+    setEditTarget(window);
+    setEditForm({
+      title: window.title, venue: window.venue,
+      registrationStart: toLocalInput(window.registrationStart), registrationEnd: toLocalInput(window.registrationEnd), examDate: toLocalInput(window.examDate),
+      maxCapacity: String(window.maxCapacity), paymentAmount: String(window.paymentAmount),
+    });
+  };
+
+  const saveSchedule = async () => {
+    if (Object.values(editForm).some(value => value === '')) return toast.error('Complete every required field.');
+    setSaving(true);
+    try {
+      const response = await examService.update(editTarget.id, editForm);
+      setWindows(current => current.map(item => item.id === editTarget.id ? { ...item, ...response.data } : item));
+      setEditTarget(null);
+      toast.success('Examination schedule updated.');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || 'Unable to update the examination schedule.');
+    } finally { setSaving(false); }
+  };
+
   const manageStatus = window => { setStatusTarget(window); setNextStatus(window.status); };
 
   return (
@@ -95,6 +120,7 @@ export default function RegistrationWindows() {
               </div>
               <div className="flex flex-col items-end gap-2">
                 {isAdmin && window.status === 'published' && <Button size="sm" loading={saving} onClick={() => openRegistration(window)}>Open Registration</Button>}
+                {isAdmin && ['draft', 'published', 'registration_open', 'registration_closed'].includes(window.status) && <Button variant="secondary" size="sm" onClick={() => editSchedule(window)}>Edit Schedule</Button>}
                 {isAdmin && <Button variant="secondary" size="sm" onClick={() => manageStatus(window)}>Manage Status</Button>}
                 {isTestTaker && registrationOpen && <Link to={`/registration/apply/${window.id}`}><Button size="sm">Apply for Exam</Button></Link>}
                 {isTestTaker && !registrationOpen && <span className="max-w-48 text-right text-xs text-text-muted">{window.status === 'registration_open' ? `Opens ${formatDateTime(window.registrationStart)}` : 'Registration is not open'}</span>}
@@ -116,6 +142,19 @@ export default function RegistrationWindows() {
         </div>
       </Modal>
 
+      <Modal isOpen={!!editTarget} onClose={() => setEditTarget(null)} title="Edit Examination Schedule" size="lg" footer={<><Button variant="ghost" onClick={() => setEditTarget(null)}>Cancel</Button><Button loading={saving} onClick={saveSchedule}>Save Schedule</Button></>}>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2"><Input label="Examination Title" value={editForm.title} onChange={event => setEditField('title', event.target.value)} required /></div>
+          <Input label="Venue" value={editForm.venue} onChange={event => setEditField('venue', event.target.value)} required />
+          <Input label="Maximum Capacity" type="number" min="1" value={editForm.maxCapacity} onChange={event => setEditField('maxCapacity', event.target.value)} required />
+          <Input label="Registration Opens" type="datetime-local" value={editForm.registrationStart} onChange={event => setEditField('registrationStart', event.target.value)} required />
+          <Input label="Registration Closes" type="datetime-local" value={editForm.registrationEnd} onChange={event => setEditField('registrationEnd', event.target.value)} required />
+          <Input label="Exam Date" type="datetime-local" value={editForm.examDate} onChange={event => setEditField('examDate', event.target.value)} required />
+          <Input label="Registration Fee (Nu.)" type="number" min="0" step="0.01" value={editForm.paymentAmount} onChange={event => setEditField('paymentAmount', event.target.value)} required />
+        </div>
+        <p className="mt-4 text-xs text-text-muted">Registration closing time must be after opening time, and the examination must be scheduled after registration closes.</p>
+      </Modal>
+
       <Modal isOpen={!!statusTarget} onClose={() => setStatusTarget(null)} title="Manage Exam Status" size="sm" footer={<><Button variant="ghost" onClick={() => setStatusTarget(null)}>Cancel</Button><Button loading={saving} onClick={updateStatus}>Update Status</Button></>}>
         <div className="space-y-4"><p className="text-sm text-text-secondary">{statusTarget?.title}</p><Select label="Status" value={nextStatus} onChange={event => setNextStatus(event.target.value)}><option value="draft">Draft</option><option value="published">Published</option><option value="registration_open">Registration Open</option><option value="registration_closed">Registration Closed</option><option value="in_progress">In Progress</option><option value="results_declared">Results Declared</option><option value="archived">Archived</option><option value="cancelled">Cancelled</option></Select><p className="text-xs text-text-muted">Status changes must follow the official sequence. Invalid transitions are rejected by the server.</p></div>
       </Modal>
@@ -135,4 +174,9 @@ function formatDate(value, year = true) {
 function formatDateTime(value) {
   if (!value) return '—';
   return new Date(value).toLocaleString('en-BT', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Thimphu' });
+}
+
+function toLocalInput(value) {
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
