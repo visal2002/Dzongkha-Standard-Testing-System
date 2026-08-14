@@ -10,13 +10,44 @@
  */
 import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
 import { applications } from '../data/mockData';
+import { createUuid } from '../utils/uuid';
+
+export const normalizeApplication = application => {
+  const profile = application.profileSnapshot || {};
+  const attendance = application.attendance || {};
+  return {
+    ...application,
+    testTakerId: application.testTakerId ?? application.testTakerUserId,
+    testTakerName: application.testTakerName ?? profile.fullName ?? 'Unknown applicant',
+    cid: application.cid ?? profile.cid ?? application.identityKey ?? '',
+    email: application.email ?? profile.email ?? '',
+    phone: application.phone ?? profile.phone ?? profile.contactNo ?? '',
+    dob: application.dob ?? profile.dateOfBirth ?? null,
+    gender: application.gender ?? profile.gender ?? '—',
+    dzongkhag: application.dzongkhag ?? profile.dzongkhag ?? '—',
+    gewog: application.gewog ?? profile.gewog ?? '—',
+    education: application.education ?? profile.education ?? '—',
+    institution: application.institution ?? profile.institution ?? '—',
+    employmentStatus: application.employmentStatus ?? profile.employmentStatus ?? '—',
+    organization: application.organization ?? profile.organization ?? '',
+    documents: Array.isArray(application.documents) ? application.documents : [],
+    status: String(application.status || '').toLowerCase(),
+    absentSkills: application.absentSkills ?? attendance.absentSkills ?? [],
+    attendanceStatus: attendance.overallStatus?.toLowerCase() ?? null,
+  };
+};
+
+const normalizeEnvelope = payload => ({
+  ...payload,
+  data: (Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : []).map(normalizeApplication),
+});
 
 export const applicationService = {
   /** @returns {Promise<{data: import('../types').Application[]}>} */
   getAll: async () => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(applications); }
     const { data } = await apiClient.get('/applications');
-    return data;
+    return normalizeEnvelope(data);
   },
 
   /**
@@ -26,7 +57,7 @@ export const applicationService = {
   getByUser: async (userId) => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(applications.filter(a => a.testTakerId === userId)); }
     const { data } = await apiClient.get('/applications/my');
-    return data;
+    return normalizeEnvelope(data);
   },
 
   /**
@@ -36,7 +67,7 @@ export const applicationService = {
   getByExam: async (examId) => {
     if (USE_MOCK) { await mockDelay(); return mockResponse(applications.filter(a => a.examId === examId)); }
     const { data } = await apiClient.get(`/applications?examId=${examId}`);
-    return data;
+    return normalizeEnvelope(data);
   },
 
   /** @param {string} id */
@@ -50,13 +81,13 @@ export const applicationService = {
    * Submit a new application (with document uploads).
    * @param {FormData} formData
    */
-  create: async (formData) => {
+  create: async (examId, payload) => {
     if (USE_MOCK) {
       await mockDelay(1000);
       return mockResponse({ id: `APP-MOCK-${Date.now()}`, status: 'submitted' }, 'Application submitted successfully.');
     }
-    const { data } = await apiClient.post('/applications', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    const { data } = await apiClient.post(`/applications/exam/${examId}`, payload, {
+      headers: { 'Idempotency-Key': createUuid() },
     });
     return data;
   },
@@ -78,9 +109,7 @@ export const applicationService = {
    * @param {string} status - ApplicationStatus value
    * @param {string} [remarks]
    */
-  updateStatus: async (id, status, remarks = '') => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse({ id, status, remarks }); }
-    const { data } = await apiClient.patch(`/applications/${id}/status`, { status, remarks });
-    return data;
-  },
+  startReview: async id => (await apiClient.post(`/applications/${id}/start-review`)).data,
+  verify: async id => (await apiClient.post(`/applications/${id}/verify`)).data,
+  returnForCorrection: async (id, remarks) => (await apiClient.post(`/applications/${id}/return`, { remarks })).data,
 };

@@ -51,7 +51,7 @@ export function useApi(apiFunc, immediate = true, args = []) {
 
   useEffect(() => {
     if (immediate) {
-      execute();
+      execute().catch(() => undefined);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [execute, immediate]); // args are already in execute's dependency array

@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dzongjuk-frontend
+  labels:
+    app.kubernetes.io/name: dzongjuk-frontend
+    app.kubernetes.io/part-of: dzongjuk
+    app.kubernetes.io/environment: staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dzongjuk-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dzongjuk-frontend
+        app.kubernetes.io/part-of: dzongjuk
+        app.kubernetes.io/environment: staging
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: harbor-registry
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frontend
+          image: dev-harbor.systems.gov.bt/dzongjuk/frontend:ndi-registration-20260813
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dzongjuk-frontend
+  labels:
+    app.kubernetes.io/name: dzongjuk-frontend
+    app.kubernetes.io/part-of: dzongjuk
+    app.kubernetes.io/environment: staging
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: dzongjuk-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

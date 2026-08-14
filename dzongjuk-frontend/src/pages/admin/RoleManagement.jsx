@@ -1,4 +1,5 @@
-import { Shield, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Shield, Users } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import Badge from '../../components/ui/Badge';
 import { ACCESS_MATRIX, ACCESS_MODULES, ROLE_LABELS } from '../../config/accessMatrix';
@@ -27,7 +28,10 @@ export default function RoleManagement() {
     <div className="bg-surface-card border border-surface-border rounded-xl p-5">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div><h3 className="text-sm font-semibold text-text-primary">Approved access matrix</h3><p className="text-xs text-text-muted mt-1">Permissions are enforced by routes and navigation, not only hidden from the menu.</p></div>
-        <Badge variant={readOnly ? 'default' : 'gold'}>{readOnly ? 'Read-only access' : 'System Administrator'}</Badge>
+        <div className="flex items-center gap-3">
+          <Badge variant={readOnly ? 'default' : 'gold'}>{readOnly ? 'Read-only access' : 'System Administrator'}</Badge>
+          {!readOnly && <Link to="/admin/permissions" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-gold hover:underline">Manage permissions <ArrowRight size={12} /></Link>}
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] text-xs">

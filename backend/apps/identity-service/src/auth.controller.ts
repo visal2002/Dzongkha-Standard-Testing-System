@@ -72,6 +72,9 @@ export class AuthController {
     return (request.cookies as Record<string, string> | undefined)?.dzongjuk_refresh;
   }
   private setRefreshCookie(response: Response, token: string) {
-    response.cookie('dzongjuk_refresh', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/api/v1/auth', maxAge: 8 * 60 * 60_000 });
+    const secure = process.env.COOKIE_SECURE
+      ? process.env.COOKIE_SECURE === 'true'
+      : process.env.NODE_ENV === 'production';
+    response.cookie('dzongjuk_refresh', token, { httpOnly: true, secure, sameSite: 'strict', path: '/api/v1/auth', maxAge: 8 * 60 * 60_000 });
   }
 }

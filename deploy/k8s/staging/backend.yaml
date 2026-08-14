@@ -1,0 +1,182 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dzongjuk-backend-config
+data:
+  NODE_ENV: production
+  DATABASE_HOST: postgres
+  DATABASE_PORT: "5432"
+  DATABASE_USER: dzongjuk
+  REDIS_URL: redis://redis:6379
+  CORS_ORIGINS: http://172.30.3.63:30430,https://dzongjuk.netlify.app
+  SESSION_IDLE_MINUTES: "15"
+  LOCKOUT_MINUTES: "30"
+  COOKIE_SECURE: "false"
+  ALLOW_ADMIN_LOCAL_LOGIN: "true"
+  S3_ENDPOINT: http://minio:9000
+  S3_REGION: ap-south-1
+  S3_SERVER_SIDE_ENCRYPTION: ""
+  ASSESSMENT_BUCKET: dzongjuk-assessment
+  ASSESSMENT_KEY_VERSION: "1"
+  MAX_ASSESSMENT_FILE_BYTES: "52428800"
+  MALWARE_SCAN_REQUIRED: "false"
+  SCORING_CONFIG_APPROVAL_REQUIRED: "true"
+  PRIVILEGED_ASSURANCE_LEVELS: MFA
+  RESULT_SERVICE_URL: http://result-service:8004/api/v1
+  REGISTRATION_SERVICE_URL: http://registration-service:8002/api/v1
+  PUBLIC_API_BASE_URL: http://172.30.3.63:30431/api/v1
+  CERTIFICATE_BUCKET: dzongjuk-certificates
+  CERTIFICATE_KEY_VERSION: "1"
+  NDI_ALLOW_TEST_TAKER_PROVISIONING: "true"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dzongjuk-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: dzongjuk-backend }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: dzongjuk-backend, app.kubernetes.io/part-of: dzongjuk }
+    spec:
+      imagePullSecrets: [{ name: harbor-registry }]
+      containers:
+        - name: identity-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:admin-fix-20260813
+          ports: [{ name: identity, containerPort: 8001 }]
+          envFrom: &commonEnv
+            - { configMapRef: { name: dzongjuk-backend-config } }
+            - { secretRef: { name: dzongjuk-runtime } }
+          env:
+            - { name: DATABASE_NAME, value: dzongjuk_identity }
+            - { name: IDENTITY_PORT, value: "8001" }
+            - { name: NDI_ALLOW_TEST_TAKER_PROVISIONING, value: "true" }
+          readinessProbe: &ready8001 { httpGet: { path: /health/ready, port: 8001 }, initialDelaySeconds: 5, periodSeconds: 10 }
+          livenessProbe: &live8001 { httpGet: { path: /health/live, port: 8001 }, initialDelaySeconds: 20, periodSeconds: 20 }
+          resources: &resources { requests: { cpu: 50m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+        - name: registration-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/registration-service:8a68757
+          ports: [{ name: registration, containerPort: 8002 }]
+          envFrom: *commonEnv
+          env: [{ name: DATABASE_NAME, value: dzongjuk_registration }, { name: REGISTRATION_PORT, value: "8002" }]
+          readinessProbe: { httpGet: { path: /health/ready, port: 8002 }, initialDelaySeconds: 5, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8002 }, initialDelaySeconds: 20, periodSeconds: 20 }
+          resources: *resources
+        - name: assessment-content-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/assessment-content-service:8a68757
+          ports: [{ name: assessment, containerPort: 8003 }]
+          envFrom: *commonEnv
+          env: [{ name: DATABASE_NAME, value: dzongjuk_assessment }, { name: ASSESSMENT_PORT, value: "8003" }]
+          readinessProbe: { httpGet: { path: /health/ready, port: 8003 }, initialDelaySeconds: 5, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8003 }, initialDelaySeconds: 20, periodSeconds: 20 }
+          resources: *resources
+        - name: result-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/result-service:8a68757
+          ports: [{ name: result, containerPort: 8004 }]
+          envFrom: *commonEnv
+          env: [{ name: DATABASE_NAME, value: dzongjuk_result }, { name: RESULT_PORT, value: "8004" }]
+          readinessProbe: { httpGet: { path: /health/ready, port: 8004 }, initialDelaySeconds: 5, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8004 }, initialDelaySeconds: 20, periodSeconds: 20 }
+          resources: *resources
+        - name: appeal-certificate-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/appeal-certificate-service:8a68757
+          ports: [{ name: appeal, containerPort: 8005 }]
+          envFrom: *commonEnv
+          env: [{ name: DATABASE_NAME, value: dzongjuk_appeal_certificate }, { name: APPEAL_PORT, value: "8005" }]
+          readinessProbe: { httpGet: { path: /health/ready, port: 8005 }, initialDelaySeconds: 5, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8005 }, initialDelaySeconds: 20, periodSeconds: 20 }
+          resources: *resources
+        - name: notification-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/notification-service:8a68757
+          ports: [{ name: notification, containerPort: 8006 }]
+          envFrom: *commonEnv
+          env: [{ name: DATABASE_NAME, value: dzongjuk_notification }, { name: NOTIFICATION_PORT, value: "8006" }]
+          readinessProbe: { httpGet: { path: /health/ready, port: 8006 }, initialDelaySeconds: 5, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8006 }, initialDelaySeconds: 20, periodSeconds: 20 }
+          resources: *resources
+        - name: reporting-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/reporting-service:8a68757
+          ports: [{ name: reporting, containerPort: 8007 }]
+          envFrom: *commonEnv
+          env: [{ name: DATABASE_NAME, value: dzongjuk_reporting }, { name: REPORTING_PORT, value: "8007" }]
+          readinessProbe: { httpGet: { path: /health/ready, port: 8007 }, initialDelaySeconds: 5, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8007 }, initialDelaySeconds: 20, periodSeconds: 20 }
+          resources: *resources
+        - name: integration-service
+          image: dev-harbor.systems.gov.bt/dzongjuk/integration-service:8a68757
+          ports: [{ name: integration, containerPort: 8008 }]
+          envFrom: *commonEnv
+          env: [{ name: DATABASE_NAME, value: dzongjuk_integration }, { name: INTEGRATION_PORT, value: "8008" }]
+          readinessProbe: { httpGet: { path: /health/ready, port: 8008 }, initialDelaySeconds: 5, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8008 }, initialDelaySeconds: 20, periodSeconds: 20 }
+          resources: *resources
+---
+apiVersion: v1
+kind: Service
+metadata: { name: identity-service }
+spec: { selector: { app.kubernetes.io/name: dzongjuk-backend }, ports: [{ port: 8001, targetPort: identity }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: registration-service }
+spec: { selector: { app.kubernetes.io/name: dzongjuk-backend }, ports: [{ port: 8002, targetPort: registration }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: assessment-content-service }
+spec: { selector: { app.kubernetes.io/name: dzongjuk-backend }, ports: [{ port: 8003, targetPort: assessment }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: result-service }
+spec: { selector: { app.kubernetes.io/name: dzongjuk-backend }, ports: [{ port: 8004, targetPort: result }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: appeal-certificate-service }
+spec: { selector: { app.kubernetes.io/name: dzongjuk-backend }, ports: [{ port: 8005, targetPort: appeal }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: notification-service }
+spec: { selector: { app.kubernetes.io/name: dzongjuk-backend }, ports: [{ port: 8006, targetPort: notification }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: reporting-service }
+spec: { selector: { app.kubernetes.io/name: dzongjuk-backend }, ports: [{ port: 8007, targetPort: reporting }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: integration-service }
+spec: { selector: { app.kubernetes.io/name: dzongjuk-backend }, ports: [{ port: 8008, targetPort: integration }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: api-gateway }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: api-gateway } }
+  template:
+    metadata: { labels: { app.kubernetes.io/name: api-gateway, app.kubernetes.io/part-of: dzongjuk } }
+    spec:
+      containers:
+        - name: gateway
+          image: nginx:1.29-alpine
+          ports: [{ name: http, containerPort: 8000 }]
+          securityContext: { allowPrivilegeEscalation: false, runAsNonRoot: true, runAsUser: 101, capabilities: { drop: [ALL] } }
+          readinessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 5, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /, port: http }, initialDelaySeconds: 10, periodSeconds: 20 }
+          resources: { requests: { cpu: 25m, memory: 32Mi }, limits: { cpu: 250m, memory: 128Mi } }
+          volumeMounts: [{ name: config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true }]
+      volumes: [{ name: config, configMap: { name: api-gateway-config } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: api-gateway }
+spec:
+  type: NodePort
+  selector: { app.kubernetes.io/name: api-gateway }
+  ports: [{ name: http, port: 8000, targetPort: http, nodePort: 30431 }]

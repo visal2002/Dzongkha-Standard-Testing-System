@@ -109,8 +109,8 @@ export const authService = {
 
     try {
       const { data: envelope } = await apiClient.post('/auth/login', { identifier, password });
-      const { accessToken, user } = envelope.data;
-      return { success: true, user: normalizeUser(user, accessToken), token: accessToken };
+      const { accessToken, expiresIn, user } = envelope.data;
+      return { success: true, user: normalizeUser(user, accessToken), token: accessToken, expiresIn };
     } catch (err) {
       return { success: false, error: err.message || 'Login failed.' };
     }
@@ -193,6 +193,9 @@ export const authService = {
       const { data: envelope } = await apiClient.post('/auth/ndi/initiate');
       return { success: true, ...envelope.data };
     } catch (err) {
+      if (err.code === 'NDI_NOT_CONFIGURED') {
+        return { success: false, error: 'Bhutan NDI is awaiting system credentials. Please register without NDI or contact the system administrator.' };
+      }
       return { success: false, error: err.message || 'NDI service unavailable.' };
     }
   },

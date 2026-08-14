@@ -10,6 +10,7 @@
  */
 import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
 import { appeals } from '../data/mockData';
+import { createUuid } from '../utils/uuid';
 
 export const appealService = {
   /** @returns {Promise<{data: import('../types').Appeal[]}>} */
@@ -45,7 +46,7 @@ export const appealService = {
       return mockResponse({ id: `APL-MOCK-${Date.now()}`, status: 'submitted', ...payload }, 'Appeal submitted.');
     }
     const { data } = await apiClient.post('/appeals', payload, {
-      headers: { 'Idempotency-Key': globalThis.crypto.randomUUID() },
+      headers: { 'Idempotency-Key': createUuid() },
     });
     return data;
   },

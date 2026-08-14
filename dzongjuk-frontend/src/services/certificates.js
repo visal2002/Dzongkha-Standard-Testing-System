@@ -11,6 +11,7 @@
 import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
 import { certificates, masterConfig } from '../data/mockData';
 import { createMockPdf } from '../utils/mockPdf';
+import { createUuid } from '../utils/uuid';
 
 function createMockCertificatePdf(certificate) {
   return createMockPdf([
@@ -55,7 +56,7 @@ export const certificateService = {
    */
   generateBatch: async (examId) => {
     if (USE_MOCK) { await mockDelay(1200); return mockResponse({ examId, generated: 3 }, 'Certificates generated.'); }
-    const { data } = await apiClient.post('/certificates/generate', { examId }, { headers: { 'Idempotency-Key': globalThis.crypto.randomUUID() } });
+    const { data } = await apiClient.post('/certificates/generate', { examId }, { headers: { 'Idempotency-Key': createUuid() } });
     return data;
   },
 

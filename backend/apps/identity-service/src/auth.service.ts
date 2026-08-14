@@ -62,7 +62,8 @@ export class AuthService {
     if (user.status === 'DISABLED') throw new DomainException('ACCOUNT_DISABLED', 'This account is disabled.', 403);
     if (user.lockedUntil && user.lockedUntil > new Date()) throw new DomainException('ACCOUNT_LOCKED', 'This account is temporarily locked.', 423);
     if (user.status === 'LOCKED') user.status = 'ACTIVE';
-    if (user.roles.some((role) => role.administrative)) {
+    const allowAdministrativePasswordLogin = this.config.get<string>('ALLOW_ADMIN_LOCAL_LOGIN', 'false') === 'true';
+    if (user.roles.some((role) => role.administrative) && !allowAdministrativePasswordLogin) {
       await this.logAttempt(identifier, false, context, 'ADMIN_NDI_REQUIRED');
       throw new DomainException('ADMIN_NDI_REQUIRED', 'Administrative users must authenticate using NDI.', 403);
     }

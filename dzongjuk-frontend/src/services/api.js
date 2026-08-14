@@ -38,6 +38,14 @@ const clearClientSession = () => {
   }
 };
 
+const readAccessToken = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}').accessToken || null;
+  } catch {
+    return null;
+  }
+};
+
 // ─── Axios Instance ────────────────────────────────────────────────────────────
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -51,6 +59,10 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
+    const accessToken = readAccessToken();
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
     if (DEBUG) {
       console.info(`[API] → ${config.method?.toUpperCase()} ${config.url}`, config.data || '');
     }
@@ -76,7 +88,7 @@ apiClient.interceptors.response.use(
       error?.message ||
       'Network error. Please check your connection.';
 
-    if (status === 401 || status === 403) {
+    if (status === 401) {
       clearClientSession();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
@@ -87,7 +99,7 @@ apiClient.interceptors.response.use(
       console.error(`[API] ✕ ${status ?? 'ERR'} ${error?.config?.url}`, message);
     }
 
-    return Promise.reject({ status, message, raw: error });
+    return Promise.reject({ status, code: apiError?.code, message, raw: error });
   },
 );
 export default apiClient;

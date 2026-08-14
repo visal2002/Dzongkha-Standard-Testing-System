@@ -10,7 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { ApplicationStatus, DomainEventTypes, ExamStatus } from '@dzongjuk/contracts';
 import { assertInternalService, DomainException } from '@dzongjuk/common';
-import { CreateExamDto, MarkAttendanceDto, ReturnApplicationDto, SubmitApplicationDto } from './dtos';
+import { CreateExamDto, MarkAttendanceDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto } from './dtos';
 import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEntity, IdempotencyRecordEntity, OutboxEventEntity, WaitlistEntryEntity } from './entities';
 
 @Injectable()
@@ -23,7 +23,16 @@ export class RegistrationService {
     @InjectRepository(ApplicationHistoryEntity) private readonly history: Repository<ApplicationHistoryEntity>,
   ) {}
 
-  listExams() { return this.exams.find({ order: { examDate: 'ASC' } }); }
+  async listExams() {
+    const exams = await this.exams.find({ order: { examDate: 'ASC' } });
+    return Promise.all(exams.map(async exam => ({
+      ...exam,
+      currentRegistrations: await this.applications.count({
+        where: { examId: exam.id, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned, ApplicationStatus.Verified, ApplicationStatus.Absent]) },
+      }),
+      waitlistCount: await this.applications.count({ where: { examId: exam.id, status: ApplicationStatus.Waitlisted } }),
+    })));
+  }
 
   async getExam(id: string) {
     const exam = await this.exams.findOneBy({ id });
@@ -102,6 +111,41 @@ export class RegistrationService {
 
   listMine(userId: string) { return this.applications.find({ where: { testTakerUserId: userId }, order: { submittedAt: 'DESC' } }); }
 
+  listApplications(examId?: string) {
+    return this.applications.find({
+      where: examId ? { examId } : {},
+      order: { submittedAt: 'DESC' },
+      take: 500,
+    });
+  }
+
+  async updateExam(id: string, dto: UpdateExamDto, actorId: string, requestId: string) {
+    return this.dataSource.transaction(async manager => {
+      const exam = await manager.findOne(ExamEntity, { where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!exam) throw new DomainException('EXAM_NOT_FOUND', 'Examination not found.', 404);
+      if (![ExamStatus.Draft, ExamStatus.Published, ExamStatus.RegistrationOpen, ExamStatus.RegistrationClosed].includes(exam.status)) {
+        throw new DomainException('EXAM_EDIT_BLOCKED', 'The examination schedule cannot be edited after the exam has started.', 409);
+      }
+
+      const registrationStart = new Date(dto.registrationStart ?? exam.registrationStart);
+      const registrationEnd = new Date(dto.registrationEnd ?? exam.registrationEnd);
+      const examDate = new Date(dto.examDate ?? exam.examDate);
+      if (registrationEnd <= registrationStart) throw new DomainException('EXAM_WINDOW_INVALID', 'Registration end must be after registration start.');
+      if (examDate <= registrationEnd) throw new DomainException('EXAM_DATE_INVALID', 'Examination date must be after registration closes.');
+
+      const capacity = dto.capacity ?? exam.capacity;
+      const reserved = await manager.count(ApplicationEntity, {
+        where: { examId: id, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned, ApplicationStatus.Verified, ApplicationStatus.Absent]) },
+      });
+      if (capacity < reserved) throw new DomainException('EXAM_CAPACITY_INVALID', `Capacity cannot be lower than the ${reserved} confirmed registrations.`, 409);
+
+      Object.assign(exam, dto, { registrationStart, registrationEnd, examDate, capacity });
+      const updated = await manager.save(exam);
+      await this.outbox(manager, 'EXAM_UPDATED', exam.id, requestId, { examId: exam.id, actorId, changedFields: Object.keys(dto) });
+      return updated;
+    });
+  }
+
   listPendingVerification(examId?: string) {
     return this.applications.find({
       where: examId
@@ -110,6 +154,24 @@ export class RegistrationService {
       order: { submittedAt: 'ASC' },
       take: 100,
     });
+  }
+
+  async listAttendance(examId?: string) {
+    const applications = await this.applications.find({
+      where: examId
+        ? { examId, status: In([ApplicationStatus.Verified, ApplicationStatus.Absent]) }
+        : { status: In([ApplicationStatus.Verified, ApplicationStatus.Absent]) },
+      order: { verifiedAt: 'ASC' },
+      take: 500,
+    });
+    const attendance = applications.length
+      ? await this.dataSource.getRepository(AttendanceEntity).findBy({ applicationId: In(applications.map(item => item.id)) })
+      : [];
+    const attendanceByApplication = new Map(attendance.map(item => [item.applicationId, item]));
+    return applications.map(application => ({
+      ...application,
+      attendance: attendanceByApplication.get(application.id) ?? null,
+    }));
   }
 
   async getApplication(id: string, userId: string, elevated: boolean) {

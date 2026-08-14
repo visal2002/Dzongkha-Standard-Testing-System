@@ -5,6 +5,7 @@
  */
 
 import { ExamStatus, Skill } from '@dzongjuk/contracts';
+import { PartialType } from '@nestjs/swagger';
 import { IsArray, IsDateString, IsEnum, IsInt, IsNumberString, IsObject, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 
 export class CreateExamDto {
@@ -17,6 +18,8 @@ export class CreateExamDto {
   @IsString() @Length(2, 240) venue: string;
   @IsNumberString() registrationFee: string;
 }
+
+export class UpdateExamDto extends PartialType(CreateExamDto) {}
 
 export class UpdateExamStatusDto { @IsEnum(ExamStatus) status: ExamStatus; }
 

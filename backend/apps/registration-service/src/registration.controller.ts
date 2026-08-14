@@ -8,7 +8,7 @@ import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Req } from '
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions, Public } from '@dzongjuk/security';
-import { CreateExamDto, MarkAttendanceDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamStatusDto } from './dtos';
+import { CreateExamDto, MarkAttendanceDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto, UpdateExamStatusDto } from './dtos';
 import { RegistrationService } from './registration.service';
 
 @ApiTags('Examinations')
@@ -19,6 +19,7 @@ export class ExamsController {
   @Public() @Get() list() { return this.service.listExams(); }
   @Public() @Get(':id') get(@Param('id') id: string) { return this.service.getExam(id); }
   @ApiBearerAuth() @Permissions('exam.window.manage') @Post() create(@Body() dto: CreateExamDto, @Req() req: Request) { return this.service.createExam(dto, req.user!.sub, req.id); }
+  @ApiBearerAuth() @Permissions('exam.window.manage') @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateExamDto, @Req() req: Request) { return this.service.updateExam(id, dto, req.user!.sub, req.id); }
   @ApiBearerAuth() @Permissions('exam.window.manage') @Patch(':id/status') status(@Param('id') id: string, @Body() dto: UpdateExamStatusDto, @Req() req: Request) { return this.service.setExamStatus(id, dto.status, req.user!.sub, req.id); }
 }
 
@@ -34,6 +35,7 @@ export class ApplicationsController {
   }
 
   @Permissions('registration.application.submit') @Get('my') my(@Req() req: Request) { return this.service.listMine(req.user!.sub); }
+  @Permissions('registration.application.verify') @Get() list(@Query('examId') examId?: string) { return this.service.listApplications(examId); }
   @Get(':id') get(@Param('id') id: string, @Req() req: Request) {
     const elevated = req.user!.permissions.includes('*') || req.user!.permissions.includes('registration.application.verify');
     return this.service.getApplication(id, req.user!.sub, elevated);
@@ -64,6 +66,7 @@ export class VerificationController {
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly service: RegistrationService) {}
+  @Permissions('attendance.mark') @Get() list(@Query('examId') examId?: string) { return this.service.listAttendance(examId); }
   @Permissions('attendance.mark') @Patch(':applicationId') mark(@Param('applicationId') id: string, @Body() dto: MarkAttendanceDto, @Req() req: Request) {
     return this.service.markAttendance(id, dto, req.user!.sub, req.id);
   }
