@@ -104,7 +104,7 @@ export default function AppRoutes() {
           {/* Registration */}
           <Route path="/registration/windows" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'read' }}><RegistrationWindows /></PrivateRoute>} />
           <Route path="/my-applications" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'read_own' }}><MyApplications /></PrivateRoute>} />
-          <Route path="/registration/apply" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'create_own' }}><ApplicationForm /></PrivateRoute>} />
+          <Route path="/registration/apply/:examId" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'create_own' }}><ApplicationForm /></PrivateRoute>} />
           <Route path="/registration/applications" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'read' }}><VerificationList /></PrivateRoute>} />
 
           {/* DCDD Workflows */}

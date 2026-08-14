@@ -23,7 +23,16 @@ export class RegistrationService {
     @InjectRepository(ApplicationHistoryEntity) private readonly history: Repository<ApplicationHistoryEntity>,
   ) {}
 
-  listExams() { return this.exams.find({ order: { examDate: 'ASC' } }); }
+  async listExams() {
+    const exams = await this.exams.find({ order: { examDate: 'ASC' } });
+    return Promise.all(exams.map(async exam => ({
+      ...exam,
+      currentRegistrations: await this.applications.count({
+        where: { examId: exam.id, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned, ApplicationStatus.Verified, ApplicationStatus.Absent]) },
+      }),
+      waitlistCount: await this.applications.count({ where: { examId: exam.id, status: ApplicationStatus.Waitlisted } }),
+    })));
+  }
 
   async getExam(id: string) {
     const exam = await this.exams.findOneBy({ id });
