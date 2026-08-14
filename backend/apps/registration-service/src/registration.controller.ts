@@ -8,7 +8,7 @@ import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Req } from '
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions, Public } from '@dzongjuk/security';
-import { CreateExamDto, MarkAttendanceDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamStatusDto } from './dtos';
+import { CreateExamDto, MarkAttendanceDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto, UpdateExamStatusDto } from './dtos';
 import { RegistrationService } from './registration.service';
 
 @ApiTags('Examinations')
@@ -19,6 +19,7 @@ export class ExamsController {
   @Public() @Get() list() { return this.service.listExams(); }
   @Public() @Get(':id') get(@Param('id') id: string) { return this.service.getExam(id); }
   @ApiBearerAuth() @Permissions('exam.window.manage') @Post() create(@Body() dto: CreateExamDto, @Req() req: Request) { return this.service.createExam(dto, req.user!.sub, req.id); }
+  @ApiBearerAuth() @Permissions('exam.window.manage') @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateExamDto, @Req() req: Request) { return this.service.updateExam(id, dto, req.user!.sub, req.id); }
   @ApiBearerAuth() @Permissions('exam.window.manage') @Patch(':id/status') status(@Param('id') id: string, @Body() dto: UpdateExamStatusDto, @Req() req: Request) { return this.service.setExamStatus(id, dto.status, req.user!.sub, req.id); }
 }
 
