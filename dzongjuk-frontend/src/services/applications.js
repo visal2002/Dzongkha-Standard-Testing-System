@@ -10,6 +10,7 @@
  */
 import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
 import { applications } from '../data/mockData';
+import { createUuid } from '../utils/uuid';
 
 export const normalizeApplication = application => {
   const profile = application.profileSnapshot || {};
@@ -86,7 +87,7 @@ export const applicationService = {
       return mockResponse({ id: `APP-MOCK-${Date.now()}`, status: 'submitted' }, 'Application submitted successfully.');
     }
     const { data } = await apiClient.post(`/applications/exam/${examId}`, payload, {
-      headers: { 'Idempotency-Key': globalThis.crypto.randomUUID() },
+      headers: { 'Idempotency-Key': createUuid() },
     });
     return data;
   },
