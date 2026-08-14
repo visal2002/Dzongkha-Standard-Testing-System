@@ -47,6 +47,7 @@ export default function Badge({ children, variant = 'default', size = 'md', dot 
 }
 
 export function StatusBadge({ status }) {
+  const normalizedStatus = String(status ?? '').trim().toLowerCase();
   const map = {
     active: { label: 'Active', variant: 'success' },
     inactive: { label: 'Inactive', variant: 'error' },
@@ -69,9 +70,23 @@ export function StatusBadge({ status }) {
     paid: { label: 'Paid', variant: 'success' },
     unpaid: { label: 'Unpaid', variant: 'error' },
     draft: { label: 'Draft', variant: 'default' },
+    registration_open: { label: 'Registration Open', variant: 'success' },
+    registration_closed: { label: 'Registration Closed', variant: 'error' },
+    in_progress: { label: 'In Progress', variant: 'info' },
+    results_declared: { label: 'Results Declared', variant: 'teal' },
+    archived: { label: 'Archived', variant: 'default' },
     cancelled: { label: 'Cancelled', variant: 'error' },
     waitlisted: { label: 'Waitlisted', variant: 'warning' },
   };
-  const config = map[status] || { label: status, variant: 'default' };
+  const config = map[normalizedStatus] || { label: humanizeStatus(status), variant: 'default' };
   return <Badge variant={config.variant} dot>{config.label}</Badge>;
+}
+
+export function humanizeStatus(status) {
+  const value = String(status ?? '').trim().toLowerCase();
+  if (!value) return 'Unknown';
+  return value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w/g, character => character.toUpperCase());
 }
