@@ -7,5 +7,19 @@
     "**/node_modules": true,
     "**/dist": true
   },
-  "typescript.tsdk": "backend/node_modules/typescript/lib"
+  "typescript.tsdk": "backend/node_modules/typescript/lib",
+  "cSpell.words": [
+    "aakash",
+    "ambhutan",
+    "amqp",
+    "appendonly",
+    "dzongjuk",
+    "healthcheck",
+    "isready",
+    "PGHOST",
+    "PGPASSWORD",
+    "PGPORT",
+    "PGUSER",
+    "pradhan"
+  ]
 }

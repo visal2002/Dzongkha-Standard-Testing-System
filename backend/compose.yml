@@ -48,56 +48,56 @@ services:
     env_file:
       - path: .env
         required: false
-    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${IDENTITY_DATABASE_NAME:-dzongjuk_identity}", IDENTITY_PORT: 8001 }
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${IDENTITY_DATABASE_NAME:-dzongjuk_identity}", IDENTITY_PORT: 8001, REDIS_URL: "redis://redis:6379" }
     depends_on: { database-provisioner: { condition: service_completed_successfully }, redis: { condition: service_healthy } }
   registration-service:
     build: { context: ., args: { SERVICE: registration-service } }
     env_file:
       - path: .env
         required: false
-    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${REGISTRATION_DATABASE_NAME:-dzongjuk_registration}", REGISTRATION_PORT: 8002 }
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${REGISTRATION_DATABASE_NAME:-dzongjuk_registration}", REGISTRATION_PORT: 8002, RABBITMQ_URL: "amqp://dzongjuk:${RABBITMQ_PASSWORD:-development-only}@rabbitmq:5672" }
     depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
   assessment-content-service:
     build: { context: ., args: { SERVICE: assessment-content-service } }
     env_file:
       - path: .env
         required: false
-    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${ASSESSMENT_DATABASE_NAME:-dzongjuk_assessment}", ASSESSMENT_PORT: 8003, S3_ENDPOINT: "http://minio:9000" }
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${ASSESSMENT_DATABASE_NAME:-dzongjuk_assessment}", ASSESSMENT_PORT: 8003, S3_ENDPOINT: "http://minio:9000", RABBITMQ_URL: "amqp://dzongjuk:${RABBITMQ_PASSWORD:-development-only}@rabbitmq:5672" }
     depends_on: { database-provisioner: { condition: service_completed_successfully }, minio: { condition: service_started } }
   result-service:
     build: { context: ., args: { SERVICE: result-service } }
     env_file:
       - path: .env
         required: false
-    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${RESULT_DATABASE_NAME:-dzongjuk_result}", RESULT_PORT: 8004 }
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${RESULT_DATABASE_NAME:-dzongjuk_result}", RESULT_PORT: 8004, RABBITMQ_URL: "amqp://dzongjuk:${RABBITMQ_PASSWORD:-development-only}@rabbitmq:5672" }
     depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
   appeal-certificate-service:
     build: { context: ., args: { SERVICE: appeal-certificate-service } }
     env_file:
       - path: .env
         required: false
-    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${APPEAL_CERTIFICATE_DATABASE_NAME:-dzongjuk_appeal_certificate}", APPEAL_PORT: 8005, RESULT_SERVICE_URL: "http://result-service:8004/api/v1", REGISTRATION_SERVICE_URL: "http://registration-service:8002/api/v1", S3_ENDPOINT: "http://minio:9000" }
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${APPEAL_CERTIFICATE_DATABASE_NAME:-dzongjuk_appeal_certificate}", APPEAL_PORT: 8005, RESULT_SERVICE_URL: "http://result-service:8004/api/v1", REGISTRATION_SERVICE_URL: "http://registration-service:8002/api/v1", S3_ENDPOINT: "http://minio:9000", RABBITMQ_URL: "amqp://dzongjuk:${RABBITMQ_PASSWORD:-development-only}@rabbitmq:5672" }
     depends_on: { database-provisioner: { condition: service_completed_successfully }, minio: { condition: service_started }, result-service: { condition: service_started }, registration-service: { condition: service_started } }
   notification-service:
     build: { context: ., args: { SERVICE: notification-service } }
     env_file:
       - path: .env
         required: false
-    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${NOTIFICATION_DATABASE_NAME:-dzongjuk_notification}", NOTIFICATION_PORT: 8006 }
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${NOTIFICATION_DATABASE_NAME:-dzongjuk_notification}", NOTIFICATION_PORT: 8006, RABBITMQ_URL: "amqp://dzongjuk:${RABBITMQ_PASSWORD:-development-only}@rabbitmq:5672" }
     depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
   reporting-service:
     build: { context: ., args: { SERVICE: reporting-service } }
     env_file:
       - path: .env
         required: false
-    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${REPORTING_DATABASE_NAME:-dzongjuk_reporting}", REPORTING_PORT: 8007 }
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${REPORTING_DATABASE_NAME:-dzongjuk_reporting}", REPORTING_PORT: 8007, RABBITMQ_URL: "amqp://dzongjuk:${RABBITMQ_PASSWORD:-development-only}@rabbitmq:5672" }
     depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
   integration-service:
     build: { context: ., args: { SERVICE: integration-service } }
     env_file:
       - path: .env
         required: false
-    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${INTEGRATION_DATABASE_NAME:-dzongjuk_integration}", INTEGRATION_PORT: 8008 }
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${INTEGRATION_DATABASE_NAME:-dzongjuk_integration}", INTEGRATION_PORT: 8008, RABBITMQ_URL: "amqp://dzongjuk:${RABBITMQ_PASSWORD:-development-only}@rabbitmq:5672" }
     depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
   gateway:
     image: nginx:1.29-alpine
