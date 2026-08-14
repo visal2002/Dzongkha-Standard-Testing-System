@@ -119,7 +119,7 @@ export default function AppRoutes() {
           {/* Scores */}
           <Route path="/scores" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'submit' }}><ScoreEntry /></PrivateRoute>} />
           <Route path="/scores/view" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read' }}><ViewScores /></PrivateRoute>} />
-          <Route path="/scores/committee" element={<PrivateRoute requiredRoles={['admin', 'dcdd']}><CommitteeSetup /></PrivateRoute>} />
+          <Route path="/scores/committee" element={<PrivateRoute requiredRoles={['admin', 'dcdd', 'committee_head']}><CommitteeSetup /></PrivateRoute>} />
           <Route path="/scores/summary" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read' }}><ScoreSummary /></PrivateRoute>} />
 
           {/* Appeals & Certificates */}

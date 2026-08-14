@@ -48,17 +48,28 @@ export const scoreService = {
     return { data: Array.isArray(scores) ? scores.map(normalizeExamScore) : [] };
   },
 
-  getCandidates: async examId => {
+    getCandidates: async examId => {
     if (USE_MOCK) {
       await mockDelay();
-      return mockResponse(applications.filter(application => application.examId === examId && ['approved', 'verified'].includes(application.status)));
+      const candidates = applications
+        .filter(application => application.examId === examId && ['approved', 'verified'].includes(application.status))
+        .map(application => ({
+          ...application,
+          applicationId: application.applicationId || application.id,
+          id: application.applicationId || application.id,
+          cid: application.cid || application.testTakerUserId,
+          status: String(application.status || 'pending').toLowerCase(),
+          scoreStatus: 'pending',
+        }));
+      return mockResponse(candidates);
     }
     const { data } = await apiClient.get(`/exams/${examId}/candidates`);
     const candidates = data?.data ?? data;
     return { data: Array.isArray(candidates) ? candidates.map(candidate => ({
       ...candidate,
-      id: candidate.applicationId,
-      testTakerName: candidate.testTakerName || `Candidate ${candidate.applicationId.slice(0, 8)}`,
+      applicationId: String(candidate.applicationId || candidate.id || ''),
+      id: candidate.applicationId || candidate.id,
+      testTakerName: candidate.testTakerName || (candidate.applicationId ? `Candidate ${candidate.applicationId.slice(0, 8)}` : `Candidate ${candidate.id}`),
       cid: candidate.identityKey || candidate.testTakerUserId,
       status: String(candidate.status || '').toLowerCase(),
       scoreStatus: String(candidate.scoreSheet?.status || 'PENDING').toLowerCase(),
