@@ -10,6 +10,7 @@
  */
 import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
 import { bandScores, applications, committeeMembers, examWindows, dashboardStats } from '../data/mockData';
+import { createUuid } from '../utils/uuid';
 
 export const scoreService = {
   /** @returns {Promise<{data: import('../types').BandScore[]}>} */
@@ -57,7 +58,7 @@ export const scoreService = {
       const { data: draftEnvelope } = await apiClient.put(`/score-sheets/${applicationId}/draft`, values);
       const { data: submitEnvelope } = await apiClient.post(
         `/score-sheets/${draftEnvelope.data.id}/submit`, null,
-        { headers: { 'Idempotency-Key': globalThis.crypto.randomUUID() } },
+        { headers: { 'Idempotency-Key': createUuid() } },
       );
       return submitEnvelope.data;
     }));

@@ -1,3 +1,5 @@
+import { createUuid } from '../utils/uuid';
+
 const MOCK_ACCOUNTS_KEY = 'dsts_mock_accounts';
 const LEGACY_REGISTRATIONS_KEY = 'dsts_mock_registrations';
 
@@ -28,7 +30,7 @@ export async function saveMockAccount(user, password) {
     account.user.email.toLowerCase() === user.email.toLowerCase() || account.user.cid.toLowerCase() === user.cid.toLowerCase()
   ));
   if (duplicate) throw new Error('An account already exists for this email or CID.');
-  const passwordSalt = globalThis.crypto.randomUUID();
+  const passwordSalt = createUuid();
   const passwordHash = await hashMockPassword(password, passwordSalt);
   const record = { user, passwordSalt, passwordHash };
   writeMockAccounts([...accounts.filter(account => account.user.id !== user.id), record]);
