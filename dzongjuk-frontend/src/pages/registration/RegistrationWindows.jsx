@@ -85,7 +85,7 @@ export default function RegistrationWindows() {
                 <div className="flex items-center gap-2 mb-3"><h3 className="text-base font-semibold text-text-primary">{window.title}</h3><StatusBadge status={window.status} /></div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   <Info icon={Calendar} label="Exam Date" value={formatDate(window.examDate)} />
-                  <Info icon={Clock} label="Registration" value={`${formatDate(window.registrationStart, false)} – ${formatDate(window.registrationEnd, false)}`} />
+                  <Info icon={Clock} label="Registration" value={`${formatDateTime(window.registrationStart)} – ${formatDateTime(window.registrationEnd)}`} />
                   <Info icon={MapPin} label="Venue" value={window.venue} />
                   <Info icon={Users} label="Capacity" value={`${registered}/${capacity}`} />
                 </div>
@@ -97,7 +97,7 @@ export default function RegistrationWindows() {
                 {isAdmin && window.status === 'published' && <Button size="sm" loading={saving} onClick={() => openRegistration(window)}>Open Registration</Button>}
                 {isAdmin && <Button variant="secondary" size="sm" onClick={() => manageStatus(window)}>Manage Status</Button>}
                 {isTestTaker && registrationOpen && <Link to={`/registration/apply/${window.id}`}><Button size="sm">Apply for Exam</Button></Link>}
-                {isTestTaker && !registrationOpen && <span className="text-xs text-text-muted">Registration is not open</span>}
+                {isTestTaker && !registrationOpen && <span className="max-w-48 text-right text-xs text-text-muted">{window.status === 'registration_open' ? `Opens ${formatDateTime(window.registrationStart)}` : 'Registration is not open'}</span>}
               </div>
             </div>
           </div>;
@@ -130,4 +130,9 @@ function Info({ icon: Icon, label, value }) {
 function formatDate(value, year = true) {
   if (!value) return '—';
   return new Date(value).toLocaleDateString('en-US', { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}) });
+}
+
+function formatDateTime(value) {
+  if (!value) return '—';
+  return new Date(value).toLocaleString('en-BT', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Thimphu' });
 }

@@ -90,7 +90,7 @@ export default function ApplicationForm() {
 
   if (loadingExam) return <div className="py-16 text-center text-sm text-text-muted">Loading examination...</div>;
   if (loadError || !exam) return <EmptyState title="Unable to open application" message={loadError} />;
-  if (!registrationIsOpen) return <EmptyState title="Registration is not open" message={`The ${exam.title} window must be set to Registration Open and be within its registration dates before applications can be submitted.`} />;
+  if (!registrationIsOpen) return <EmptyState title="Registration is not open" message={exam.status === 'registration_open' ? `Applications open on ${new Date(exam.registrationStart).toLocaleString('en-BT', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Thimphu' })}.` : `The ${exam.title} window must be set to Registration Open before applications can be submitted.`} />;
 
   if (submission) return (
     <div className="min-h-[60vh] flex items-center justify-center"><Card className="max-w-lg w-full"><CardBody className="text-center py-10">
