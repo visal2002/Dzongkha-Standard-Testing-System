@@ -50,8 +50,8 @@ export class ApplicationEntity {
   @Column({ type: 'enum', enum: RegistrationPaymentStatus, enumName: 'registration_payment_status', default: RegistrationPaymentStatus.Initiated }) paymentStatus: RegistrationPaymentStatus;
   @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 }) paymentAmount: string;
   @Column({ length: 3, default: 'BTN' }) paymentCurrency: string;
-  @Column({ length: 40, nullable: true }) paymentMethod: string | null;
-  @Index({ unique: true, where: '"paymentReference" IS NOT NULL' }) @Column({ length: 100, nullable: true }) paymentReference: string | null;
+  @Column({ type: 'varchar', length: 40, nullable: true }) paymentMethod: string | null;
+  @Index({ unique: true, where: '"paymentReference" IS NOT NULL' }) @Column({ type: 'varchar', length: 100, nullable: true }) paymentReference: string | null;
   @Column({ type: 'timestamptz', nullable: true }) paidAt: Date | null;
   @VersionColumn() version: number;
   @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
