@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Calendar, Users, Plus, MapPin, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PageHeader from '../../components/ui/PageHeader';
@@ -21,6 +22,7 @@ export default function RegistrationWindows() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const isAdmin = user?.role === 'dcdd' || user?.role === 'admin';
+  const isTestTaker = user?.role === 'test_taker';
 
   const setField = (name, value) => setForm(current => ({ ...current, [name]: value }));
 
@@ -50,6 +52,17 @@ export default function RegistrationWindows() {
     } finally { setSaving(false); }
   };
 
+  const openRegistration = async window => {
+    setSaving(true);
+    try {
+      const response = await examService.updateStatus(window.id, 'registration_open');
+      setWindows(current => current.map(item => item.id === window.id ? response.data : item));
+      toast.success('Registration is now open to Test Takers.');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || 'Unable to open registration.');
+    } finally { setSaving(false); }
+  };
+
   const manageStatus = window => { setStatusTarget(window); setNextStatus(window.status); };
 
   return (
@@ -63,6 +76,9 @@ export default function RegistrationWindows() {
           const capacity = Number(window.maxCapacity || 0);
           const registered = Number(window.currentRegistrations || 0);
           const capacityPct = capacity ? registered / capacity * 100 : 0;
+          const registrationOpen = window.status === 'registration_open'
+            && Date.now() >= new Date(window.registrationStart).getTime()
+            && Date.now() <= new Date(window.registrationEnd).getTime();
           return <div key={window.id} className="bg-surface-card border border-surface-border rounded-2xl p-6">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
@@ -75,8 +91,14 @@ export default function RegistrationWindows() {
                 </div>
                 <div className="mt-4 h-1.5 bg-[var(--color-surface-border)] rounded-full overflow-hidden"><div className="h-full bg-[#F59E0B] rounded-full" style={{ width: `${Math.min(capacityPct, 100)}%` }} /></div>
                 <p className="mt-2 text-xs text-text-muted">Code: {window.code} · Registration fee: Nu. {window.paymentAmount}</p>
+                {isAdmin && window.status === 'published' && <p className="mt-2 text-xs text-amber-400">Test Takers cannot apply while this exam is only Published. Open registration to enable applications.</p>}
               </div>
-              {isAdmin && <Button variant="secondary" size="sm" onClick={() => manageStatus(window)}>Manage Status</Button>}
+              <div className="flex flex-col items-end gap-2">
+                {isAdmin && window.status === 'published' && <Button size="sm" loading={saving} onClick={() => openRegistration(window)}>Open Registration</Button>}
+                {isAdmin && <Button variant="secondary" size="sm" onClick={() => manageStatus(window)}>Manage Status</Button>}
+                {isTestTaker && registrationOpen && <Link to={`/registration/apply/${window.id}`}><Button size="sm">Apply for Exam</Button></Link>}
+                {isTestTaker && !registrationOpen && <span className="text-xs text-text-muted">Registration is not open</span>}
+              </div>
             </div>
           </div>;
         })}</div>}
