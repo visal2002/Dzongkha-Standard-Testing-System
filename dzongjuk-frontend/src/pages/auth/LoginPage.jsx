@@ -623,7 +623,7 @@ export default function LoginPage() {
                           className="h-14 px-6 py-3 rounded-full text-white font-semibold transition-all hover:opacity-90"
                           style={{ backgroundColor: '#124143' }}
                         >
-                          Register without Bhutan NDI
+                          Register without NDI
                         </button>
                       </div>
                     ) : (
