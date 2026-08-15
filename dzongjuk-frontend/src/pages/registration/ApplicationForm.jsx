@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 
 const steps = ['Personal Information', 'Education & Employment', 'Review'];
 const dzongkhags = ['Bumthang', 'Chhukha', 'Dagana', 'Gasa', 'Haa', 'Lhuentse', 'Mongar', 'Paro', 'Pemagatshel', 'Punakha', 'Samdrup Jongkhar', 'Samtse', 'Sarpang', 'Thimphu', 'Trashigang', 'Trashiyangtse', 'Trongsa', 'Tsirang', 'Wangdue Phodrang', 'Zhemgang'];
+const educationLevels = ['Below Class X', 'Class X', 'Class XII', 'Certificate', 'Diploma', 'Bachelor\'s Degree', 'Master\'s Degree', 'Doctorate', 'Other'];
 
 const schema = z.object({
   fullName: z.string().trim().min(2, 'Full name is required.'),
@@ -116,7 +117,10 @@ export default function ApplicationForm() {
         <Input label="Gewog" required {...register('gewog')} error={errors.gewog?.message} />
       </div>}
       {step === 1 && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input label="Highest Education Level" required {...register('education')} error={errors.education?.message} />
+        <Select label="Highest Education Level" required {...register('education')} error={errors.education?.message}>
+          <option value="">Select education level</option>
+          {educationLevels.map(level => <option key={level} value={level}>{level}</option>)}
+        </Select>
         <Input label="Institution" required {...register('institution')} error={errors.institution?.message} />
         <Select label="Employment Status" required {...register('employmentStatus')} error={errors.employmentStatus?.message}><option value="">Select status</option><option>Employed</option><option>Unemployed</option><option>Student</option><option>Self-employed</option></Select>
         <Input label="Organization" {...register('organization')} error={errors.organization?.message} />

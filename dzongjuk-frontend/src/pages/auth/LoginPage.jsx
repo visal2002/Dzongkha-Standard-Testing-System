@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, ChevronLeft, User, Mail, Lock, CreditCard, Calendar, Phone, ArrowLeft, AlertTriangle, X, Smartphone } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -52,7 +52,7 @@ function NdiQrFrame({ qrUrl, isLoading, error, onRetry, label = 'Bhutan NDI QR c
           title={label}
         />
       ) : (
-        <img src={NDI_ASSETS.qrLogo} alt={label} className="h-[178px] w-[178px] object-contain" />
+        <img src={NDI_ASSETS.qrLogo} alt={label} className="h-44.5 w-44.5 object-contain" />
       )}
     </div>
   );
@@ -143,7 +143,6 @@ function NdiScannerPanel({
   error,
   status,
   onRetry,
-  onRegisterWithoutNdi,
   className = '',
 }) {
   return (
@@ -151,13 +150,6 @@ function NdiScannerPanel({
       <h1 className="ndi-scanner-title">
         Scan with <span>Bhutan NDI</span> Wallet
       </h1>
-
-      {deepLinkUrl && (
-        <a href={deepLinkUrl} className="ndi-open-wallet sm:hidden">
-          <Smartphone size={16} />
-          Open Bhutan NDI Wallet
-        </a>
-      )}
 
       <NdiQrFrame
         qrUrl={qrUrl}
@@ -188,19 +180,6 @@ function NdiScannerPanel({
 
       <StoreBadges />
       <NdiSupport />
-
-      {onRegisterWithoutNdi && (
-        <>
-          <div className="ndi-scanner-divider">
-            <span />
-            <em>or</em>
-            <span />
-          </div>
-          <button type="button" onClick={onRegisterWithoutNdi} className="ndi-secondary-action">
-            Register without NDI
-          </button>
-        </>
-      )}
     </section>
   );
 }
@@ -232,7 +211,7 @@ function NdiProofModal({ login, status, error, onClose, onRetry }) {
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState('signin');
-  const [registerMode, setRegisterMode] = useState('ndi'); // 'ndi' | 'form'
+  const [registerMode, setRegisterMode] = useState('choice'); // 'choice' | 'form'
 
   // NDI API State
   const [isNdiLoading, setIsNdiLoading] = useState(false);
@@ -261,6 +240,16 @@ export default function LoginPage() {
 
   const { login, register, loginWithNDI, checkNDILogin, cancelNDILogin, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Handle tab query parameter
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tab = searchParams.get('tab');
+    if (tab === 'register') {
+      setActiveTab('register');
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -345,12 +334,6 @@ export default function LoginPage() {
   }, [loginWithNDI]);
 
   useEffect(() => {
-    if (activeTab === 'register' && registerMode === 'ndi' && !ndiRegistration && ndiRegistrationStatus === 'IDLE') {
-      void startNdiRegistration();
-    }
-  }, [activeTab, registerMode, ndiRegistration, ndiRegistrationStatus, startNdiRegistration]);
-
-  useEffect(() => {
     if (!ndiRegistration?.pollToken || ndiRegistrationStatus !== 'PENDING') return undefined;
     let stopped = false;
     const poll = async () => {
@@ -393,13 +376,6 @@ export default function LoginPage() {
     setNdiRegistrationStatus('IDLE');
     setNdiErrorMessage(null);
     setRegisterMode('form');
-  };
-
-  const returnToNdiRegistration = () => {
-    setRegisterMode('ndi');
-    setNdiRegistration(null);
-    setNdiRegistrationStatus('IDLE');
-    setNdiErrorMessage(null);
   };
 
   useEffect(() => {
@@ -604,7 +580,7 @@ export default function LoginPage() {
                         </button>
                       </div>
 
-                      <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full! h-12! tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#214042' }}>
+                      <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#124143' }}>
                         Sign in to DSTS
                       </Button>
                     </form>
@@ -619,34 +595,52 @@ export default function LoginPage() {
                     exit={{ opacity: 0, x: 16 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {registerMode === 'ndi' ? (
-                      <div className="flex flex-col items-center text-center">
-                        <NdiScannerPanel
-                          qrUrl={ndiRegistration?.proofRequestUrl}
-                          deepLinkUrl={ndiRegistration?.deepLinkUrl}
-                          isLoading={isNdiLoading}
-                          error={ndiErrorMessage}
-                          status={ndiRegistrationStatus}
-                          onRetry={startNdiRegistration}
-                          onRegisterWithoutNdi={useRegistrationForm}
-                          className="ndi-scanner-panel-embedded"
-                        />
+                    {registerMode === 'choice' ? (
+                      <div className="flex flex-col gap-4">
+                        <div className="text-center mb-2">
+                          <h2 className="text-lg font-semibold text-slate-800">Choose Registration Method</h2>
+                        </div>
+                        
+                        <button
+                          type="button"
+                          onClick={() => navigate('/ndi-register')}
+                          className="h-14 px-6 py-3 rounded-full text-white font-semibold transition-all flex items-center justify-center gap-2.5 shadow-md hover:opacity-90"
+                          style={{ backgroundColor: '#124143' }}
+                        >
+                          <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="h-6 w-6 object-contain" />
+                          <span>Register with Bhutan NDI</span>
+                        </button>
+
+                        <div className="flex items-center gap-3 my-1">
+                          <hr className="flex-1 border-slate-200" />
+                          <span className="text-xs text-slate-400 uppercase tracking-[0.35em] font-medium">or</span>
+                          <hr className="flex-1 border-slate-200" />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setRegisterMode('form')}
+                          className="h-14 px-6 py-3 rounded-full text-white font-semibold transition-all hover:opacity-90"
+                          style={{ backgroundColor: '#124143' }}
+                        >
+                          Register without Bhutan NDI
+                        </button>
                       </div>
                     ) : (
                       <div>
-                        {/* Header banner to switch back to NDI */}
+                        {/* Header banner to switch back to choice */}
                         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                           <button
                             type="button"
-                            onClick={returnToNdiRegistration}
+                            onClick={() => setRegisterMode('choice')}
                             className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
                           >
                             <ArrowLeft size={14} />
-                            <span>Back to NDI</span>
+                            <span>Back to Method Selection</span>
                           </button>
                           <button
                             type="button"
-                            onClick={returnToNdiRegistration}
+                            onClick={() => navigate('/ndi-register')}
                             className="inline-flex items-center gap-1.5 text-xs text-[#299d7b] hover:text-[#218366] font-semibold transition-colors bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200"
                           >
                             <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="w-4 h-4 object-contain" />
@@ -753,7 +747,7 @@ export default function LoginPage() {
                             </div>
                           </div>
 
-                          <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full! h-12! tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#214042' }}>
+                          <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#124143' }}>
                             Create Account
                           </Button>
 
@@ -884,6 +878,101 @@ export function NdiLoginPage() {
         error={ndiErrorMessage}
         status={ndiLoginStatus}
         onRetry={startNdiLogin}
+      />
+    </main>
+  );
+}
+
+export function NdiRegistrationPage() {
+  const [isNdiLoading, setIsNdiLoading] = useState(false);
+  const [ndiErrorMessage, setNdiErrorMessage] = useState(null);
+  const [ndiRegistration, setNdiRegistration] = useState(null);
+  const [ndiRegistrationStatus, setNdiRegistrationStatus] = useState('IDLE');
+  const registrationPollInFlight = useRef(false);
+  const { loginWithNDI, checkNDILogin, cancelNDILogin } = useAuth();
+  const navigate = useNavigate();
+
+  const startNdiRegistration = useCallback(async () => {
+    setIsNdiLoading(true);
+    setNdiErrorMessage(null);
+    setNdiRegistration(null);
+    setNdiRegistrationStatus('IDLE');
+    try {
+      const result = await loginWithNDI();
+      if (!result.success) {
+        setNdiErrorMessage(result.error || 'NDI registration is currently unavailable.');
+        setNdiRegistrationStatus('FAILED');
+        return;
+      }
+      setNdiRegistration(result);
+      setNdiRegistrationStatus('PENDING');
+    } catch (err) {
+      setNdiErrorMessage(err.message || 'Bhutan NDI is currently unavailable. Please try again.');
+      setNdiRegistrationStatus('FAILED');
+    } finally {
+      setIsNdiLoading(false);
+    }
+  }, [loginWithNDI]);
+
+  useEffect(() => {
+    void startNdiRegistration();
+  }, [startNdiRegistration]);
+
+  useEffect(() => {
+    if (!ndiRegistration?.pollToken || ndiRegistrationStatus !== 'PENDING') return undefined;
+    let stopped = false;
+    const poll = async () => {
+      if (registrationPollInFlight.current || stopped) return;
+      registrationPollInFlight.current = true;
+      try {
+        const result = await checkNDILogin(ndiRegistration.pollToken);
+        if (stopped) return;
+        if (result.status === 'VALIDATED') {
+          setNdiRegistrationStatus('VALIDATED');
+          toast.success(`Account created. Welcome, ${result.user.name}!`);
+          navigate('/dashboard');
+        } else if (result.status !== 'PENDING') {
+          setNdiRegistrationStatus(result.status);
+          const messages = {
+            REJECTED: 'The registration request was declined in Bhutan NDI Wallet.',
+            EXPIRED: 'This registration QR code has expired. Please create a new one.',
+            CANCELLED: 'This Bhutan NDI registration was cancelled.',
+            FAILED: 'Bhutan NDI could not verify or create this account.',
+          };
+          setNdiErrorMessage(messages[result.status] || 'Bhutan NDI registration could not be completed.');
+        }
+      } catch (err) {
+        if (!stopped) {
+          setNdiRegistrationStatus('FAILED');
+          setNdiErrorMessage(err.message || 'Unable to check Bhutan NDI registration status.');
+        }
+      } finally {
+        registrationPollInFlight.current = false;
+      }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 2000);
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [ndiRegistration, ndiRegistrationStatus, checkNDILogin, navigate]);
+
+  const returnToLogin = () => {
+    if (ndiRegistration?.pollToken && ndiRegistrationStatus === 'PENDING') void cancelNDILogin(ndiRegistration.pollToken);
+    navigate('/login');
+  };
+
+  return (
+    <main className="ndi-scanner-page">
+      <button type="button" onClick={returnToLogin} className="ndi-scanner-back">
+        <ChevronLeft size={18} />
+        Back
+      </button>
+      <NdiScannerPanel
+        qrUrl={ndiRegistration?.proofRequestUrl}
+        deepLinkUrl={ndiRegistration?.deepLinkUrl}
+        isLoading={isNdiLoading}
+        error={ndiErrorMessage}
+        status={ndiRegistrationStatus}
+        onRetry={startNdiRegistration}
       />
     </main>
   );

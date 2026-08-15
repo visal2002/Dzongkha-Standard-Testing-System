@@ -13,7 +13,7 @@ import { canAccess } from '../config/accessMatrix';
 import AppLayout from '../components/layout/AppLayout';
 
 // Eagerly loaded critical pages
-import LoginPage, { NdiLoginPage } from '../pages/auth/LoginPage';
+import LoginPage, { NdiLoginPage, NdiRegistrationPage } from '../pages/auth/LoginPage';
 import HomePage from '../pages/HomePage';
 import Dashboard from '../pages/dashboard/Dashboard';
 
@@ -95,6 +95,7 @@ export default function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
         <Route path="/ndi-login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <NdiLoginPage />} />
+        <Route path="/ndi-register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <NdiRegistrationPage />} />
 
         <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
