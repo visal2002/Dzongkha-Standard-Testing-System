@@ -7,108 +7,201 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, ChevronLeft, User, Mail, Lock, CreditCard, Calendar, Phone, PlayCircle, Scan, ArrowLeft, AlertTriangle, X, Smartphone, RefreshCw } from 'lucide-react';
+import { Eye, EyeOff, ChevronLeft, User, Mail, Lock, CreditCard, Calendar, Phone, ArrowLeft, AlertTriangle, X, Smartphone } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
 import toast from 'react-hot-toast';
 
-const IS_NDI_PREVIEW = import.meta.env.VITE_USE_MOCK_DATA !== 'false';
+const NDI_ASSETS = {
+  qrLogo: '/images/NDI/QRlogo.svg',
+  scanIcon: '/images/NDI/scaniconimg.svg',
+  playButton: '/images/NDI/PlayButton.svg',
+  mailIcon: '/images/NDI/Mail.svg',
+  callIcon: '/images/NDI/Call.svg',
+  centerLogo: '/images/NDI Bhutan Logo.ico',
+};
 
-function NdiQrCode({ qrUrl, deepLinkUrl, isLoading, error, status, onRetry }) {
+function NdiQrFrame({ qrUrl, isLoading, error, onRetry, label = 'Bhutan NDI QR code' }) {
   return (
-    <div className="relative border-2 border-[#3ec49c] rounded-3xl p-3 bg-white shadow-sm flex flex-col items-center justify-center min-w-50 min-h-50">
+    <div className="ndi-scanner-qr-frame" aria-label={label}>
       {error ? (
-        <div className="flex flex-col items-center text-center p-2 w-44">
-          <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mb-3 text-amber-500 shadow-inner">
-            <AlertTriangle size={28} className="text-amber-500 fill-amber-100" />
-          </div>
-          <div className="text-slate-600 text-xs font-medium mb-4 wrap-break-word leading-relaxed w-full">
-            {error}
-          </div>
+        <div className="flex h-full w-full flex-col items-center justify-center px-3 text-center">
+          <AlertTriangle size={32} className="mb-3 text-amber-500" />
+          <p className="mb-4 text-xs font-medium leading-5 text-slate-600">{error}</p>
           <button
             type="button"
             onClick={onRetry}
-            className="px-5 py-1.5 rounded-full border border-[#3ec49c] text-[#299d7b] hover:bg-emerald-50 text-xs font-semibold transition-colors focus:outline-none"
+            className="rounded-full border border-[#5AC994] px-5 py-1.5 text-xs font-semibold text-[#38ad78] transition hover:bg-white"
           >
             Try again
           </button>
         </div>
       ) : isLoading ? (
-        <div className="flex flex-col items-center justify-center text-[#3ec49c] space-y-3 p-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current"></div>
-          <span className="text-xs font-medium">Loading Scanner...</span>
+        <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-[#5AC994]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <span className="text-xs font-semibold">Loading Scanner...</span>
         </div>
       ) : qrUrl ? (
-        <div className="flex flex-col items-center gap-3">
-          <div className="relative w-44 h-44 bg-white flex items-center justify-center" aria-label="Bhutan NDI registration QR code">
-            <QRCodeSVG value={qrUrl} size={176} level="H" marginSize={1} imageSettings={{ src: '/images/NDI Bhutan Logo.ico', width: 34, height: 34, excavate: true }} />
-          </div>
-          {status === 'PENDING' && <p className="text-xs font-semibold text-[#299d7b]" aria-live="polite">Waiting for approval in your wallet...</p>}
-          {deepLinkUrl && <a href={deepLinkUrl} className="inline-flex items-center gap-1.5 rounded-full bg-[#3ec49c] px-4 py-2 text-xs font-semibold text-white sm:hidden"><Smartphone size={14} /> Open Bhutan NDI Wallet</a>}
-        </div>
+        <QRCodeSVG
+          value={qrUrl}
+          size={178}
+          level="H"
+          marginSize={1}
+          imageSettings={{ src: NDI_ASSETS.centerLogo, width: 36, height: 36, excavate: true }}
+          title={label}
+        />
       ) : (
-        <div className="relative w-44 h-44 bg-white flex items-center justify-center">
-          <svg viewBox="0 0 100 100" className="w-full h-full text-slate-900 fill-current">
-            {/* Top Left Corner */}
-            <rect x="5" y="5" width="26" height="26" rx="4" fill="none" stroke="currentColor" strokeWidth="4" />
-            <rect x="11" y="11" width="14" height="14" rx="2" fill="currentColor" />
-            {/* Top Right Corner */}
-            <rect x="69" y="5" width="26" height="26" rx="4" fill="none" stroke="currentColor" strokeWidth="4" />
-            <rect x="75" y="11" width="14" height="14" rx="2" fill="currentColor" />
-            {/* Bottom Left Corner */}
-            <rect x="5" y="69" width="26" height="26" rx="4" fill="none" stroke="currentColor" strokeWidth="4" />
-            <rect x="11" y="75" width="14" height="14" rx="2" fill="currentColor" />
-
-            {/* QR Data Dots Pattern */}
-            <rect x="36" y="7" width="5" height="5" rx="1" />
-            <rect x="46" y="7" width="5" height="5" rx="1" />
-            <rect x="56" y="7" width="5" height="5" rx="1" />
-            <rect x="36" y="17" width="5" height="5" rx="1" />
-            <rect x="46" y="17" width="5" height="5" rx="1" />
-
-            <rect x="7" y="36" width="5" height="5" rx="1" />
-            <rect x="17" y="36" width="5" height="5" rx="1" />
-            <rect x="27" y="36" width="5" height="5" rx="1" />
-            <rect x="36" y="36" width="5" height="5" rx="1" />
-            <rect x="56" y="36" width="5" height="5" rx="1" />
-            <rect x="66" y="36" width="5" height="5" rx="1" />
-            <rect x="76" y="36" width="5" height="5" rx="1" />
-            <rect x="86" y="36" width="5" height="5" rx="1" />
-
-            <rect x="7" y="46" width="5" height="5" rx="1" />
-            <rect x="27" y="46" width="5" height="5" rx="1" />
-            <rect x="66" y="46" width="5" height="5" rx="1" />
-            <rect x="86" y="46" width="5" height="5" rx="1" />
-
-            <rect x="7" y="56" width="5" height="5" rx="1" />
-            <rect x="17" y="56" width="5" height="5" rx="1" />
-            <rect x="27" y="56" width="5" height="5" rx="1" />
-            <rect x="66" y="56" width="5" height="5" rx="1" />
-            <rect x="76" y="56" width="5" height="5" rx="1" />
-            <rect x="86" y="56" width="5" height="5" rx="1" />
-
-            <rect x="36" y="76" width="5" height="5" rx="1" />
-            <rect x="46" y="76" width="5" height="5" rx="1" />
-            <rect x="56" y="76" width="5" height="5" rx="1" />
-            <rect x="76" y="76" width="5" height="5" rx="1" />
-            <rect x="86" y="76" width="5" height="5" rx="1" />
-
-            <rect x="36" y="86" width="5" height="5" rx="1" />
-            <rect x="56" y="86" width="5" height="5" rx="1" />
-            <rect x="66" y="86" width="5" height="5" rx="1" />
-            <rect x="86" y="86" width="5" height="5" rx="1" />
-          </svg>
-
-          {/* Center NDI Badge Logo */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-[#1b3d39] border-2 border-[#3ec49c] p-1 shadow-md flex items-center justify-center">
-              <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="w-8 h-8 object-contain" />
-            </div>
-          </div>
-        </div>
+        <img src={NDI_ASSETS.qrLogo} alt={label} className="h-[178px] w-[178px] object-contain" />
       )}
     </div>
+  );
+}
+
+function NdiInstructions({ status }) {
+  return (
+    <div className="ndi-scanner-instructions">
+      <p>1. Open Bhutan NDI Wallet on your phone</p>
+      <p className="flex flex-wrap items-center justify-center gap-x-1.5">
+        <span>2. Tap the scan button</span>
+        <img src={NDI_ASSETS.scanIcon} alt="Scan" className="h-6 w-6" />
+        <span>located on the</span>
+        <span className="basis-full sm:basis-auto">menu bar and scan the QR code</span>
+      </p>
+      {status === 'PENDING' && (
+        <p className="pt-1 text-xs font-semibold text-[#38ad78]" aria-live="polite">
+          Waiting for approval in your wallet...
+        </p>
+      )}
+    </div>
+  );
+}
+
+function StoreBadges() {
+  return (
+    <div className="ndi-store-badges">
+      <a
+        href="https://play.google.com/store/search?q=NDI%20Bhutan&c=apps&hl=en"
+        target="_blank"
+        rel="noreferrer"
+        className="ndi-store-badge"
+        aria-label="Get Bhutan NDI Wallet on Google Play"
+      >
+        <svg className="h-7 w-7 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#34A853" d="M3.6 2.6c-.4.3-.6.8-.6 1.4v16c0 .6.2 1.1.6 1.4L13 12 3.6 2.6Z" />
+          <path fill="#FBBC04" d="m16 9-3 3 3 3 3.6-2c1.2-.7 1.2-1.3 0-2L16 9Z" />
+          <path fill="#4285F4" d="m3.6 2.6 12.5 6.5L13 12 3.6 2.6Z" />
+          <path fill="#EA4335" d="M3.6 21.4 13 12l3.1 2.9-12.5 6.5Z" />
+        </svg>
+        <span>
+          <span className="block text-[8px] font-semibold uppercase leading-none text-white/90">GET IT ON</span>
+          <span className="block text-[17px] font-semibold leading-5">Google Play</span>
+        </span>
+      </a>
+
+      <a
+        href="https://apps.apple.com/bt/app/bhutan-ndi/id1645493166"
+        target="_blank"
+        rel="noreferrer"
+        className="ndi-store-badge"
+        aria-label="Download Bhutan NDI Wallet on the App Store"
+      >
+        <svg className="h-7 w-7 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.12-1.96.99-3.1-.97.04-2.14.65-2.84 1.46-.62.72-1.16 1.88-1.01 3 .01 0 .04.01.07.01 1.08 0 2.18-.55 2.79-1.37z" />
+        </svg>
+        <span>
+          <span className="block text-[8px] font-semibold leading-none text-white/90">Download on the</span>
+          <span className="block text-[17px] font-semibold leading-5">App Store</span>
+        </span>
+      </a>
+    </div>
+  );
+}
+
+function NdiSupport() {
+  return (
+    <div className="ndi-support">
+      <p>Get Support</p>
+      <div>
+        <a href="mailto:ndifeedback@dhi.bt">
+          <img src={NDI_ASSETS.mailIcon} alt="" aria-hidden="true" />
+          <span>ndifeedback@dhi.bt</span>
+        </a>
+        <a href="tel:1199">
+          <img src={NDI_ASSETS.callIcon} alt="" aria-hidden="true" />
+          <span>1199</span>
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function NdiScannerPanel({
+  qrUrl,
+  deepLinkUrl,
+  isLoading,
+  error,
+  status,
+  onRetry,
+  onRegisterWithoutNdi,
+  className = '',
+}) {
+  return (
+    <section className={['ndi-scanner-panel', className].join(' ')}>
+      <h1 className="ndi-scanner-title">
+        Scan with <span>Bhutan NDI</span> Wallet
+      </h1>
+
+      {deepLinkUrl && (
+        <a href={deepLinkUrl} className="ndi-open-wallet sm:hidden">
+          <Smartphone size={16} />
+          Open Bhutan NDI Wallet
+        </a>
+      )}
+
+      <NdiQrFrame
+        qrUrl={qrUrl}
+        isLoading={isLoading}
+        error={error}
+        onRetry={onRetry}
+        label="Bhutan NDI scanner QR code"
+      />
+
+      {!error && <NdiInstructions status={status} />}
+
+      <a
+        href="https://www.youtube.com/@bhutanndi"
+        target="_blank"
+        rel="noreferrer"
+        className="ndi-video-guide"
+      >
+        <span>Watch video guide</span>
+        <img src={NDI_ASSETS.playButton} alt="" aria-hidden="true" />
+      </a>
+
+      <p className="ndi-download-copy">
+        Don't have the Bhutan NDI Wallet?{' '}
+        <a href="https://www.bhutanndi.com" target="_blank" rel="noreferrer">
+          Download Now!
+        </a>
+      </p>
+
+      <StoreBadges />
+      <NdiSupport />
+
+      {onRegisterWithoutNdi && (
+        <>
+          <div className="ndi-scanner-divider">
+            <span />
+            <em>or</em>
+            <span />
+          </div>
+          <button type="button" onClick={onRegisterWithoutNdi} className="ndi-secondary-action">
+            Register without NDI
+          </button>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -123,47 +216,15 @@ function NdiProofModal({ login, status, error, onClose, onRetry }) {
         <button type="button" onClick={onClose} aria-label="Close Bhutan NDI login" className="absolute right-5 top-5 rounded-full p-2 text-slate-400 transition hover:bg-white hover:text-slate-700">
           <X size={20} />
         </button>
-        <h2 id="ndi-login-title" className="mb-7 text-lg font-semibold text-black">
-          <span className="hidden sm:inline">Scan with </span><span className="sm:hidden">Login with </span><span className="text-[#5AC994]">Bhutan NDI</span> Wallet
-        </h2>
-        {IS_NDI_PREVIEW && (
-          <div className="mx-auto mb-5 max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-medium leading-5 text-amber-800">
-            Preview mode: wallet approval is simulated for interface testing. No identity data is verified.
-          </div>
-        )}
-        {login.deepLinkUrl && (
-          <>
-            <a href={login.deepLinkUrl} className="mx-auto mb-5 inline-flex h-12.5 w-full max-w-75 items-center justify-center gap-2 rounded-lg bg-[#5AC994] px-5 text-base font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg sm:hidden">
-              <Smartphone size={18} /> Open Bhutan NDI Wallet
-            </a>
-            <div className="mb-5 flex items-center gap-3 text-sm font-semibold text-[#8d8d8d] sm:hidden"><span className="h-px flex-1 bg-[#A1A0A0]" />OR<span className="h-px flex-1 bg-[#A1A0A0]" /></div>
-          </>
-        )}
-        {error ? (
-          <div className="mx-auto mb-7 flex min-h-55 max-w-sm flex-col items-center justify-center rounded-3xl border border-amber-200 bg-white p-6">
-            <AlertTriangle size={38} className="mb-3 text-amber-500" />
-            <p className="mb-5 text-sm leading-6 text-slate-600">{error}</p>
-            <button type="button" onClick={onRetry} className="inline-flex items-center gap-2 rounded-full border-2 border-[#5AC994] px-5 py-2 text-sm font-medium text-[#38ad78] hover:bg-[#5AC994] hover:text-white"><RefreshCw size={16} /> Try again</button>
-          </div>
-        ) : (
-          <div className="mx-auto mb-7 w-fit rounded-3xl border-4 border-[#5AC994] bg-white p-3 shadow-sm">
-            <QRCodeSVG value={login.proofRequestUrl} size={190} level="H" marginSize={1} imageSettings={{ src: '/images/NDI Bhutan Logo.ico', width: 38, height: 38, excavate: true }} title="Bhutan NDI login QR code" />
-          </div>
-        )}
-        {!error && (
-          <div className="mb-7 space-y-2 text-sm font-medium leading-5 text-[#A1A0A0]">
-            <p>1. Open Bhutan NDI Wallet on your phone</p>
-            <p className="flex flex-wrap items-center justify-center gap-1.5">2. Tap the Scan button <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#5AC994] text-white"><Scan size={14} /></span> and scan the QR code</p>
-            {status === 'PENDING' && <p className="pt-2 text-xs text-[#38ad78]" aria-live="polite">Waiting for approval in your wallet...</p>}
-          </div>
-        )}
-        <a href="https://www.youtube.com/@bhutanndi" target="_blank" rel="noreferrer" className="mx-auto mb-7 inline-flex min-h-10 items-center gap-2 rounded-full border-2 border-[#5AC994] px-5 text-sm font-medium text-[#38ad78] transition hover:bg-[#5AC994] hover:text-white">Watch video guide <PlayCircle size={17} /></a>
-        <p className="mb-3 text-sm text-[#A1A0A0]">Don't have the Bhutan NDI Wallet? <a href="https://www.bhutanndi.com" target="_blank" rel="noreferrer" className="font-semibold text-[#5AC994] hover:underline">Download Now!</a></p>
-        <p className="mb-2 mt-7 text-sm font-semibold text-[#5AC994]">Get Support</p>
-        <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-700">
-          <a href="mailto:ndifeedback@dhi.bt" className="inline-flex items-center gap-1.5 hover:text-[#38ad78]"><Mail size={16} className="text-[#5AC994]" />ndifeedback@dhi.bt</a>
-          <a href="tel:1199" className="inline-flex items-center gap-1.5 hover:text-[#38ad78]"><Phone size={16} className="text-[#5AC994]" />1199</a>
-        </div>
+        <NdiScannerPanel
+          qrUrl={login.proofRequestUrl}
+          deepLinkUrl={login.deepLinkUrl}
+          isLoading={false}
+          error={error}
+          status={status}
+          onRetry={onRetry}
+          className="shadow-none"
+        />
       </motion.div>
     </div>
   );
@@ -560,122 +621,16 @@ export default function LoginPage() {
                   >
                     {registerMode === 'ndi' ? (
                       <div className="flex flex-col items-center text-center">
-                        <h2 className="text-slate-700 font-bold text-base mb-4">
-                          Scan with <span className="text-[#3ec49c]">Bhutan NDI</span> Wallet.
-                        </h2>
-
-                        {/* QR Code Container */}
-                        <div className="mb-4">
-                          <NdiQrCode
-                            qrUrl={ndiRegistration?.proofRequestUrl}
-                            deepLinkUrl={ndiRegistration?.deepLinkUrl}
-                            isLoading={isNdiLoading}
-                            error={ndiErrorMessage}
-                            status={ndiRegistrationStatus}
-                            onRetry={startNdiRegistration}
-                          />
-                        </div>
-
-                        {/* Instructions */}
-                        <div className="space-y-2 text-xs text-slate-500 font-medium max-w-xs mb-4">
-                          <p>1. &nbsp; Open Bhutan NDI Wallet on your phone</p>
-                          <p className="flex items-center justify-center gap-1.5 flex-wrap">
-                            <span>2. Tap the Scan button</span>
-                            <span className="inline-flex items-center justify-center bg-[#3ec49c] text-white rounded-full p-1 w-5 h-5 shadow-sm">
-                              <Scan size={12} />
-                            </span>
-                            <span>located on the menu bar and scan the QR code</span>
-                          </p>
-                        </div>
-
-                        {/* Watch video guide button */}
-                        <button
-                          type="button"
-                          onClick={() => window.open('https://www.youtube.com/@bhutanndi', '_blank')}
-                          className="px-6 py-2.5 rounded-full border border-[#3ec49c] text-[#299d7b] hover:bg-emerald-50 text-sm font-semibold inline-flex items-center gap-2 transition-colors mb-5"
-                        >
-                          Watch video guide
-                          <PlayCircle size={18} className="text-[#3ec49c]" />
-                        </button>
-
-                        {/* Download Prompt */}
-                        <p className="text-xs text-slate-500 mb-3">
-                          Don't have the Bhutan NDI Wallet?{' '}
-                          <a
-                            href="https://www.bhutanndi.com"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[#3ec49c] font-bold hover:underline"
-                          >
-                            Download Now!
-                          </a>
-                        </p>
-
-                        {/* App Badges */}
-                        <div className="flex items-center gap-3 mb-4">
-                          {/* Google Play */}
-                          <a
-                            href="https://play.google.com/store/search?q=NDI%20Bhutan&c=apps&hl=en"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="bg-black hover:bg-slate-900 text-white rounded-xl px-3 py-1.5 inline-flex items-center gap-2 text-left transition-colors shadow-sm"
-                          >
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L18.81,13.96C20.39,13.04 20.39,10.96 18.81,10.04L16.81,8.88L14.8,10.89L16.81,15.12M4.6,1.4L14.07,10.88L15.93,9.02L5.84,0.31C5.23,0 4.6,0.2 4.6,1.4M4.6,22.6C4.6,23.8 5.23,24 5.84,23.69L15.93,14.98L14.07,13.12L4.6,22.6Z" />
-                            </svg>
-                            <div>
-                              <div className="text-[9px] uppercase tracking-wider text-slate-300 leading-none">GET IT ON</div>
-                              <div className="text-xs font-semibold leading-tight">Google Play</div>
-                            </div>
-                          </a>
-
-                          {/* App Store */}
-                          <a
-                            href="https://apps.apple.com/bt/app/bhutan-ndi/id1645493166"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="bg-black hover:bg-slate-900 text-white rounded-xl px-3 py-1.5 inline-flex items-center gap-2 text-left transition-colors shadow-sm"
-                          >
-                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.67-.82 1.12-1.96.99-3.1-.97.04-2.14.65-2.84 1.46-.62.72-1.16 1.88-1.01 3 .01 0 .04.01.07.01 1.08 0 2.18-.55 2.79-1.37z" />
-                            </svg>
-                            <div>
-                              <div className="text-[9px] uppercase tracking-wider text-slate-300 leading-none">Download on the</div>
-                              <div className="text-xs font-semibold leading-tight">App Store</div>
-                            </div>
-                          </a>
-                        </div>
-
-                        {/* Get Support */}
-                        <div className="text-center mb-5">
-                          <p className="text-xs font-bold text-[#3ec49c]">Get Support</p>
-                          <div className="flex items-center justify-center gap-4 text-xs text-slate-600 mt-1.5">
-                            <a href="mailto:ndifeedback@dhi.bt" className="inline-flex items-center gap-1 hover:text-[#3ec49c] transition-colors">
-                              <Mail size={14} className="text-[#3ec49c]" />
-                              <span>ndifeedback@dhi.bt</span>
-                            </a>
-                            <a href="tel:1199" className="inline-flex items-center gap-1 hover:text-[#3ec49c] transition-colors">
-                              <Phone size={14} className="text-[#3ec49c]" />
-                              <span>1199</span>
-                            </a>
-                          </div>
-                        </div>
-
-                        {/* Divider */}
-                        <div className="w-full flex items-center gap-3 mb-4">
-                          <hr className="flex-1 border-slate-200" />
-                          <span className="text-xs text-slate-400 font-medium">or</span>
-                          <hr className="flex-1 border-slate-200" />
-                        </div>
-
-                        {/* Register without NDI button */}
-                        <button
-                          type="button"
-                          onClick={useRegistrationForm}
-                          className="w-full py-3 px-4 rounded-full border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50 font-medium text-sm transition-all shadow-sm flex items-center justify-center gap-2"
-                        >
-                          Register without NDI
-                        </button>
+                        <NdiScannerPanel
+                          qrUrl={ndiRegistration?.proofRequestUrl}
+                          deepLinkUrl={ndiRegistration?.deepLinkUrl}
+                          isLoading={isNdiLoading}
+                          error={ndiErrorMessage}
+                          status={ndiRegistrationStatus}
+                          onRetry={startNdiRegistration}
+                          onRegisterWithoutNdi={useRegistrationForm}
+                          className="ndi-scanner-panel-embedded"
+                        />
                       </div>
                     ) : (
                       <div>
@@ -840,5 +795,96 @@ export default function LoginPage() {
 }
 
 export function NdiLoginPage() {
-  return <LoginPage />;
+  const [isNdiLoading, setIsNdiLoading] = useState(false);
+  const [ndiErrorMessage, setNdiErrorMessage] = useState(null);
+  const [ndiLogin, setNdiLogin] = useState(null);
+  const [ndiLoginStatus, setNdiLoginStatus] = useState('IDLE');
+  const pollInFlight = useRef(false);
+  const { loginWithNDI, checkNDILogin, cancelNDILogin } = useAuth();
+  const navigate = useNavigate();
+
+  const startNdiLogin = useCallback(async () => {
+    setIsNdiLoading(true);
+    setNdiErrorMessage(null);
+    setNdiLogin(null);
+    setNdiLoginStatus('IDLE');
+    try {
+      const result = await loginWithNDI();
+      if (!result.success) {
+        setNdiErrorMessage(result.error || 'NDI service is currently unreachable.');
+        setNdiLoginStatus('FAILED');
+        return;
+      }
+      setNdiLogin(result);
+      setNdiLoginStatus('PENDING');
+    } catch (err) {
+      setNdiErrorMessage(err.message || 'Bhutan NDI is currently unavailable. Please try again.');
+      setNdiLoginStatus('FAILED');
+    } finally {
+      setIsNdiLoading(false);
+    }
+  }, [loginWithNDI]);
+
+  useEffect(() => {
+    void startNdiLogin();
+  }, [startNdiLogin]);
+
+  useEffect(() => {
+    if (!ndiLogin?.pollToken || ndiLoginStatus !== 'PENDING') return undefined;
+    let stopped = false;
+    const poll = async () => {
+      if (pollInFlight.current || stopped) return;
+      pollInFlight.current = true;
+      try {
+        const result = await checkNDILogin(ndiLogin.pollToken);
+        if (stopped) return;
+        if (result.status === 'VALIDATED') {
+          setNdiLoginStatus('VALIDATED');
+          toast.success(`Welcome, ${result.user.name}!`);
+          navigate('/dashboard');
+        } else if (result.status !== 'PENDING') {
+          setNdiLoginStatus(result.status);
+          const messages = {
+            REJECTED: 'The proof request was declined in Bhutan NDI Wallet.',
+            EXPIRED: 'This QR code has expired. Please create a new one.',
+            CANCELLED: 'This Bhutan NDI login was cancelled.',
+            FAILED: 'Bhutan NDI could not validate this identity or no account is linked to it.',
+          };
+          setNdiErrorMessage(messages[result.status] || 'Bhutan NDI login could not be completed.');
+        }
+      } catch (err) {
+        if (!stopped) {
+          setNdiLoginStatus('FAILED');
+          setNdiErrorMessage(err.message || 'Unable to check Bhutan NDI login status.');
+        }
+      } finally {
+        pollInFlight.current = false;
+      }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 2000);
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [ndiLogin, ndiLoginStatus, checkNDILogin, navigate]);
+
+  const returnToLogin = () => {
+    if (ndiLogin?.pollToken && ndiLoginStatus === 'PENDING') void cancelNDILogin(ndiLogin.pollToken);
+    navigate('/login');
+  };
+
+  return (
+    <main className="ndi-scanner-page">
+      <button type="button" onClick={returnToLogin} className="ndi-scanner-back">
+        <ChevronLeft size={18} />
+        Back to Login
+      </button>
+      <NdiScannerPanel
+        qrUrl={ndiLogin?.proofRequestUrl}
+        deepLinkUrl={ndiLogin?.deepLinkUrl}
+        isLoading={isNdiLoading}
+        error={ndiErrorMessage}
+        status={ndiLoginStatus}
+        onRetry={startNdiLogin}
+      />
+    </main>
+  );
 }
