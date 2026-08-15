@@ -13,8 +13,10 @@
     "ambhutan",
     "amqp",
     "appendonly",
+    "bitnami",
     "cefr",
     "dcdd",
+    "dind",
     "DSTS",
     "dzongjuk",
     "healthcheck",
@@ -23,6 +25,8 @@
     "PGPASSWORD",
     "PGPORT",
     "PGUSER",
-    "pradhan"
+    "pradhan",
+    "zaproxy",
+    "zricethezav"
   ]
 }
