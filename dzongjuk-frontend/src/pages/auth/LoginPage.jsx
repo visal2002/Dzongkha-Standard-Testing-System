@@ -496,7 +496,9 @@ export default function LoginPage() {
             </div>
 
             {/* ── Tab content ── */}
-                        <div className="p-6">
+
+
+                                    <div className="p-6">
               <div>
                 {activeTab === 'signin' && (
                   <motion.div
