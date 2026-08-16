@@ -744,8 +744,11 @@ export default function LoginPage() {
                           </div>
 
                           <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#124143' }}>
-                            Create Account
-                                                    </Button>
+
+
+
+                                                        Create Account
+                          </Button>
 
                           <p className="text-center text-xs text-slate-500 mt-2">
                             Already have an account?{' '}
