@@ -495,10 +495,8 @@ export default function LoginPage() {
               ))}
             </div>
 
-            {/* ── Tab content ── */}
-
-
-                                    <div className="p-6">
+                                                                                    {/* ── Tab content ── */}
+            <div className="p-6">
               <div>
                 {activeTab === 'signin' && (
                   <motion.div
@@ -585,9 +583,8 @@ export default function LoginPage() {
                       </Button>
                     </form>
                   </motion.div>
-                )}
-
-                                                {activeTab === 'register' && (
+                                )}
+                {activeTab === 'register' && (
                   <motion.div
                     key="register"
                     initial={{ opacity: 0, x: 16 }}
@@ -748,7 +745,7 @@ export default function LoginPage() {
 
                           <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#124143' }}>
                             Create Account
-                          </Button>
+                                                    </Button>
 
                           <p className="text-center text-xs text-slate-500 mt-2">
                             Already have an account?{' '}
@@ -758,7 +755,7 @@ export default function LoginPage() {
                           </p>
                         </form>
                       </div>
-                                        )}
+                    )}
                   </motion.div>
                 )}
               </div>
