@@ -495,7 +495,7 @@ export default function LoginPage() {
               ))}
             </div>
 
-                                                                                    {/* ── Tab content ── */}
+                                                                                                {/* ── Tab content ── */}
             <div className="p-6">
               <div>
                 {activeTab === 'signin' && (
@@ -581,9 +581,9 @@ export default function LoginPage() {
                       <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#124143' }}>
                         Sign in to DSTS
                       </Button>
-                    </form>
+                                        </form>
                   </motion.div>
-                                )}
+                )}
                 {activeTab === 'register' && (
                   <motion.div
                     key="register"
@@ -744,9 +744,6 @@ export default function LoginPage() {
                           </div>
 
                           <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#124143' }}>
-
-
-
                                                         Create Account
                           </Button>
 
