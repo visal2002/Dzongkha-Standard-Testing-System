@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, ChevronLeft, User, Mail, Lock, CreditCard, Calendar, Phone, ArrowLeft, AlertTriangle, X, Smartphone } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -261,6 +261,15 @@ export default function LoginPage() {
 
   const { login, register, loginWithNDI, checkNDILogin, cancelNDILogin, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // If the login page is opened with #register, open register form directly
+  useEffect(() => {
+    if (location.hash === '#register') {
+      setActiveTab('register');
+      setRegisterMode('form');
+    }
+  }, [location.hash]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -884,6 +893,102 @@ export function NdiLoginPage() {
         error={ndiErrorMessage}
         status={ndiLoginStatus}
         onRetry={startNdiLogin}
+      />
+    </main>
+  );
+}
+
+export function NdiRegisterPage() {
+  const [isNdiLoading, setIsNdiLoading] = useState(false);
+  const [ndiErrorMessage, setNdiErrorMessage] = useState(null);
+  const [ndiRegistration, setNdiRegistration] = useState(null);
+  const [ndiRegistrationStatus, setNdiRegistrationStatus] = useState('IDLE');
+  const registrationPollInFlight = useRef(false);
+  const { loginWithNDI, checkNDILogin, cancelNDILogin } = useAuth();
+  const navigate = useNavigate();
+
+  const startNdiRegistration = useCallback(async () => {
+    setIsNdiLoading(true);
+    setNdiErrorMessage(null);
+    setNdiRegistration(null);
+    setNdiRegistrationStatus('IDLE');
+    try {
+      const result = await loginWithNDI();
+      if (!result.success) {
+        setNdiErrorMessage(result.error || 'NDI registration is currently unavailable.');
+        setNdiRegistrationStatus('FAILED');
+        return;
+      }
+      setNdiRegistration(result);
+      setNdiRegistrationStatus('PENDING');
+    } catch (err) {
+      setNdiErrorMessage(err.message || 'Bhutan NDI is currently unavailable. Please try again.');
+      setNdiRegistrationStatus('FAILED');
+    } finally {
+      setIsNdiLoading(false);
+    }
+  }, [loginWithNDI]);
+
+  useEffect(() => {
+    void startNdiRegistration();
+  }, [startNdiRegistration]);
+
+  useEffect(() => {
+    if (!ndiRegistration?.pollToken || ndiRegistrationStatus !== 'PENDING') return undefined;
+    let stopped = false;
+    const poll = async () => {
+      if (registrationPollInFlight.current || stopped) return;
+      registrationPollInFlight.current = true;
+      try {
+        const result = await checkNDILogin(ndiRegistration.pollToken);
+        if (stopped) return;
+        if (result.status === 'VALIDATED') {
+          setNdiRegistrationStatus('VALIDATED');
+          toast.success(`Account created. Welcome, ${result.user.name}!`);
+          navigate('/dashboard');
+        } else if (result.status !== 'PENDING') {
+          setNdiRegistrationStatus(result.status);
+          const messages = {
+            REJECTED: 'The registration request was declined in Bhutan NDI Wallet.',
+            EXPIRED: 'This registration QR code has expired. Please create a new one.',
+            CANCELLED: 'This Bhutan NDI registration was cancelled.',
+            FAILED: 'Bhutan NDI could not verify or create this account.',
+          };
+          setNdiErrorMessage(messages[result.status] || 'Bhutan NDI registration could not be completed.');
+        }
+      } catch (err) {
+        if (!stopped) {
+          setNdiRegistrationStatus('FAILED');
+          setNdiErrorMessage(err.message || 'Unable to check Bhutan NDI registration status.');
+        }
+      } finally {
+        registrationPollInFlight.current = false;
+      }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 2000);
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [ndiRegistration, ndiRegistrationStatus, checkNDILogin, navigate]);
+
+  const returnToLogin = () => {
+    if (ndiRegistration?.pollToken && ndiRegistrationStatus === 'PENDING') void cancelNDILogin(ndiRegistration.pollToken);
+    navigate('/login');
+  };
+
+  return (
+    <main className="ndi-scanner-page">
+      <button type="button" onClick={returnToLogin} className="ndi-scanner-back">
+        <ChevronLeft size={18} />
+        Back to Login
+      </button>
+      <NdiScannerPanel
+        qrUrl={ndiRegistration?.proofRequestUrl}
+        deepLinkUrl={ndiRegistration?.deepLinkUrl}
+        isLoading={isNdiLoading}
+        error={ndiErrorMessage}
+        status={ndiRegistrationStatus}
+        onRetry={startNdiRegistration}
+        onRegisterWithoutNdi={() => navigate('/login#register')}
       />
     </main>
   );
