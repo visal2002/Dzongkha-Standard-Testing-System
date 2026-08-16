@@ -496,15 +496,13 @@ export default function LoginPage() {
             </div>
 
             {/* ── Tab content ── */}
-            <div className="p-6">
-
-              <AnimatePresence mode="wait">
+                        <div className="p-6">
+              <div>
                 {activeTab === 'signin' && (
                   <motion.div
                     key="signin"
                     initial={{ opacity: 0, x: -16 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -16 }}
                     transition={{ duration: 0.2 }}
                   >
                     {/* NDI Login */}
@@ -587,12 +585,11 @@ export default function LoginPage() {
                   </motion.div>
                 )}
 
-                {activeTab === 'register' && (
+                                                {activeTab === 'register' && (
                   <motion.div
                     key="register"
                     initial={{ opacity: 0, x: 16 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 16 }}
                     transition={{ duration: 0.2 }}
                   >
                     {registerMode === 'choice' ? (
@@ -759,10 +756,10 @@ export default function LoginPage() {
                           </p>
                         </form>
                       </div>
-                    )}
+                                        )}
                   </motion.div>
                 )}
-              </AnimatePresence>
+              </div>
             </div>
           </div>
 
