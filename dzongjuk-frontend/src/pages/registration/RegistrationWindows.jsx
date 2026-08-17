@@ -130,8 +130,8 @@ export default function RegistrationWindows() {
         })}</div>}
 
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create Exam Window" size="lg" footer={<><Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button><Button loading={saving} onClick={createWindow}>Create Window</Button></>}>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2"><Input label="Examination Title" value={form.title} onChange={event => setField('title', event.target.value)} placeholder="e.g. DSTS Examination — July 2026" required /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="col-span-1 sm:col-span-2"><Input label="Examination Title" value={form.title} onChange={event => setField('title', event.target.value)} placeholder="e.g. DSTS Examination — July 2026" required /></div>
           <Input label="Exam Code" value={form.code} onChange={event => setField('code', event.target.value)} placeholder="e.g. DSTS-2026-01" required />
           <Input label="Venue" value={form.venue} onChange={event => setField('venue', event.target.value)} placeholder="e.g. Royal Institute of Management" required />
           <Input label="Registration Opens" type="datetime-local" value={form.registrationStart} onChange={event => setField('registrationStart', event.target.value)} required />
@@ -143,8 +143,8 @@ export default function RegistrationWindows() {
       </Modal>
 
       <Modal isOpen={!!editTarget} onClose={() => setEditTarget(null)} title="Edit Examination Schedule" size="lg" footer={<><Button variant="ghost" onClick={() => setEditTarget(null)}>Cancel</Button><Button loading={saving} onClick={saveSchedule}>Save Schedule</Button></>}>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2"><Input label="Examination Title" value={editForm.title} onChange={event => setEditField('title', event.target.value)} required /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="col-span-1 sm:col-span-2"><Input label="Examination Title" value={editForm.title} onChange={event => setEditField('title', event.target.value)} required /></div>
           <Input label="Venue" value={editForm.venue} onChange={event => setEditField('venue', event.target.value)} required />
           <Input label="Maximum Capacity" type="number" min="1" value={editForm.maxCapacity} onChange={event => setEditField('maxCapacity', event.target.value)} required />
           <Input label="Registration Opens" type="datetime-local" value={editForm.registrationStart} onChange={event => setEditField('registrationStart', event.target.value)} required />

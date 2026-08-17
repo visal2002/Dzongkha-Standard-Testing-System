@@ -139,7 +139,7 @@ export default function ScoreEntry() {
         <div className="space-y-4">
           <div className="p-3 bg-surface-bg rounded-xl border border-surface-border text-xs"><p className="text-text-muted">Application ID</p><p className="font-mono text-brand-gold">{scoring?.applicationId}</p></div>
           <p className="text-xs text-text-muted">Enter scores from 1.0 to 9.0 in increments of 0.5 for each skill:</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {SKILLS.map(skill => <div key={skill}><label className="text-sm font-medium text-text-secondary block mb-1.5">{SKILL_LABELS[skill]}</label><select value={scores[skill]} onChange={event => setScores(current => ({ ...current, [skill]: event.target.value }))} className="w-full h-9 px-3 rounded-lg bg-surface-bg border border-surface-border text-text-primary text-sm"><option value="">Select score</option>{SCORES.map(score => <option key={score} value={score}>{score}</option>)}</select></div>)}
           </div>
           {average && <div className="p-3 bg-[#F59E0B]/5 border border-brand-gold/20 rounded-xl flex justify-between"><span className="text-sm text-text-secondary">Overall Average</span><span className="text-xl font-bold text-brand-gold">{average}</span></div>}

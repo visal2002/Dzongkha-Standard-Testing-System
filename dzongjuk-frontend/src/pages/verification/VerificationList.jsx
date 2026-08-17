@@ -172,7 +172,7 @@ export default function VerificationList() {
       <Modal isOpen={!!selected && !confirmAction} onClose={() => setSelected(null)} title="Application Details" size="lg">
         {selected && (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               {[
                 ['Full Name', selected.testTakerName],
                 ['CID', selected.cid],
