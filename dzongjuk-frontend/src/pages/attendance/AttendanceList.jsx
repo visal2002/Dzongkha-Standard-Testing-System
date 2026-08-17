@@ -174,7 +174,7 @@ export default function AttendanceList() {
           <p className="text-sm text-text-primary">
             Marking <strong>{markingApp?.testTakerName}</strong> as absent. Select the skills they failed to complete:
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {SKILLS.map(skill => (
               <button
                 key={skill}

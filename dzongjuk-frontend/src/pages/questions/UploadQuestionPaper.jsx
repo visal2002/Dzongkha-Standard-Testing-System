@@ -117,8 +117,8 @@ export default function UploadQuestionPaper() {
       </Alert>
 
       <form onSubmit={handleSubmit} className="space-y-5 bg-surface-card border border-surface-border rounded-2xl p-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="col-span-1 sm:col-span-2">
             <Input
               label="Document Title"
               placeholder="e.g. DSTS Writing Test — July 2026"

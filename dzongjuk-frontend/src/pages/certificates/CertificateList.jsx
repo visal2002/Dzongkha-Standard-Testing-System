@@ -181,8 +181,8 @@ export default function CertificateList() {
         )}
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="w-72"><Input placeholder="Search certificates" value={search} onChange={event => setSearch(event.target.value)} icon={<Search size={14} />} /></div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-full sm:w-72"><Input placeholder="Search certificates" value={search} onChange={event => setSearch(event.target.value)} icon={<Search size={14} />} /></div>
         <p className="text-xs text-text-muted ml-auto">{filtered.length} certificate{filtered.length !== 1 ? 's' : ''}</p>
       </div>
 

@@ -130,7 +130,7 @@ export default function AppealList() {
       >
         {selected && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               {[
                 ['Application', selected.applicationId],
                 ['Examination', selected.examId],
@@ -143,7 +143,7 @@ export default function AppealList() {
             <div className="p-3 bg-surface-bg rounded-xl border border-surface-border"><p className="text-xs text-text-muted mb-1">Reason for Appeal</p><p className="text-sm text-text-primary">{selected.reason}</p></div>
             <div>
               <p className="text-xs font-semibold text-text-muted uppercase mb-2">Selected-skill score snapshot</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 bg-surface-bg border border-surface-border rounded-xl">
                   <p className="text-[10px] text-text-muted mb-1 font-medium">Published scores</p>
                   {Object.entries(selected.originalScores).map(([skill, value]) => <div key={skill} className="flex justify-between text-xs"><span>{skill}</span><strong>{value.toFixed(3)}</strong></div>)}

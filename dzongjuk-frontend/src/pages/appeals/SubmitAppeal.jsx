@@ -143,7 +143,7 @@ export default function SubmitAppeal() {
               <h3 className="text-base font-semibold text-text-primary mb-1">Select Skills for Re-evaluation</h3>
               <p className="text-sm text-text-muted">Approved fee: {feeRule.currency} {Number(feeRule.amountPerSkill).toFixed(2)} per selected skill.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {SKILLS.map(skill => {
                 const score = Number(selectedResult.score.scores[skill]);
                 const selected = selectedSkills.includes(skill);
