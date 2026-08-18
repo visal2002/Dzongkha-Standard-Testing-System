@@ -11,6 +11,11 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    environmentOptions: {
+      jsdom: {
+        url: 'http://localhost:5000'
+      }
+    },
     globals: true,
     setupFiles: ['./src/test/setup.js'],
     include: ['src/**/*.{spec,test}.{js,jsx,ts,tsx}', 'src/**/*.contract.test.js'],

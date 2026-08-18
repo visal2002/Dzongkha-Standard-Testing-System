@@ -25,8 +25,9 @@ describe('approved access matrix', () => {
     expect(canAccess('test_taker', 'reports', 'read')).toBe(false);
   });
 
-  it('does not invent permissions for an undefined role', () => {
+  it('does not invent permissions for an undefined module', () => {
     expect(getAccessLevel('chief_executive', 'reports')).toBe('none');
-    expect(canAccess('chief_executive', 'appeals', 'read')).toBe(false);
+    expect(canAccess('chief_executive', 'reports', 'read')).toBe(false);
+    expect(canAccess('unknown_role', 'appeals', 'read')).toBe(false);
   });
 });
