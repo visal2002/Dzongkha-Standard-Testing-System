@@ -229,14 +229,14 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Register state
+    // Register state
   const [regName, setRegName] = useState('');
   const [regCid, setRegCid] = useState('');
   const [regDob, setRegDob] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [showRegPass, setShowRegPass] = useState(false);
+  const [regGender, setRegGender] = useState('');
+  const [regFatherName, setRegFatherName] = useState('');
+  const [regMotherName, setRegMotherName] = useState('');
+  const [regPermanentAddress, setRegPermanentAddress] = useState('');
 
   const { login, register, loginWithNDI, checkNDILogin, cancelNDILogin, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -262,9 +262,9 @@ export default function LoginPage() {
     }
   };
 
-  const handleRegister = async (e) => {
+    const handleRegister = async (e) => {
     e.preventDefault();
-        const result = await register({
+    const result = await register({
       fullName: regName,
       cid: regCid,
       dateOfBirth: regDob,
