@@ -51,7 +51,6 @@ describe('authentication contract', () => {
       email: `chimi.dema.${uniqueSuffix}@example.com`,
       password: 'SecurePass!2026',
     });
-    console.log('Registration response 1:', registration);
 
     expect(registration).toMatchObject({ success: true, user: { role: 'test_taker' } });
     const login = await authService.login(`chimi.dema.${uniqueSuffix}@example.com`, 'SecurePass!2026');
@@ -72,9 +71,7 @@ describe('authentication contract', () => {
       email: `duplicate.${uniqueSuffix}@example.com`,
       password: 'SecurePass!2026',
     };
-    const regRes = await authService.register(account);
-    console.log('Registration response 2:', regRes);
-    expect(regRes.success).toBe(true);
+    expect((await authService.register(account)).success).toBe(true);
     await expect(authService.register(account)).resolves.toMatchObject({
       success: false,
       error: expect.stringContaining('already exists'),
