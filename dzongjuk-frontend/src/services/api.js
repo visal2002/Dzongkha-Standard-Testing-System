@@ -24,8 +24,6 @@ import axios from 'axios';
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 export const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
 
-/** When true, service functions return mock data instead of making HTTP calls. */
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA !== 'false';
 
 const DEBUG = import.meta.env.VITE_API_DEBUG === 'true';
 const SESSION_KEY = 'dsts_session';
@@ -104,19 +102,3 @@ apiClient.interceptors.response.use(
 );
 export default apiClient;
 
-// ─── Shared Utilities ─────────────────────────────────────────────────────────
-
-/**
- * Simulate a network delay (used when USE_MOCK is true).
- * @param {number} [ms=400]
- */
-export const mockDelay = (ms = 400) => new Promise(resolve => setTimeout(resolve, ms));
-
-/**
- * Wrap mock data in a standard API envelope.
- * @template T
- * @param {T} data
- * @param {string} [message]
- * @returns {{ data: T, success: true, message: string }}
- */
-export const mockResponse = (data, message = 'OK') => ({ data, success: true, message });

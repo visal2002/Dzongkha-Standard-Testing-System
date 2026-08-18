@@ -8,8 +8,8 @@
  * @fileoverview Applications Service
  * Manages exam registration applications.
  */
-import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
-import { applications } from '../data/mockData';
+import apiClient from './api';
+
 import { createUuid } from '../utils/uuid';
 
 export const normalizeApplication = application => {
@@ -48,7 +48,7 @@ const normalizeEnvelope = payload => ({
 export const applicationService = {
   /** @returns {Promise<{data: import('../types').Application[]}>} */
   getAll: async () => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(applications); }
+
     const { data } = await apiClient.get('/applications');
     return normalizeEnvelope(data);
   },
@@ -58,7 +58,7 @@ export const applicationService = {
    * @param {string} userId
    */
   getByUser: async (userId) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(applications.filter(a => a.testTakerId === userId)); }
+
     const { data } = await apiClient.get('/applications/my');
     return normalizeEnvelope(data);
   },
@@ -68,14 +68,14 @@ export const applicationService = {
    * @param {string} examId
    */
   getByExam: async (examId) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(applications.filter(a => a.examId === examId)); }
+
     const { data } = await apiClient.get(`/applications?examId=${examId}`);
     return normalizeEnvelope(data);
   },
 
   /** @param {string} id */
   getById: async (id) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(applications.find(a => a.id === id) || null); }
+
     const { data } = await apiClient.get(`/applications/${id}`);
     return data;
   },
@@ -85,10 +85,7 @@ export const applicationService = {
    * @param {FormData} formData
    */
   create: async (examId, payload) => {
-    if (USE_MOCK) {
-      await mockDelay(1000);
-      return mockResponse({ id: `APP-MOCK-${Date.now()}`, status: 'submitted' }, 'Application submitted successfully.');
-    }
+
     const { data } = await apiClient.post(`/applications/exam/${examId}`, payload, {
       headers: { 'Idempotency-Key': createUuid() },
     });
@@ -101,7 +98,7 @@ export const applicationService = {
    * @param {Partial<import('../types').Application>} payload
    */
   update: async (id, payload) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse({ ...applications.find(a => a.id === id), ...payload }); }
+
     const { data } = await apiClient.put(`/applications/${id}`, payload);
     return data;
   },

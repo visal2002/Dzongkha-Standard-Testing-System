@@ -8,8 +8,7 @@
  * @fileoverview Scores Service
  * Band score entry and retrieval for examination committees.
  */
-import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
-import { bandScores, applications, committeeMembers, examWindows, dashboardStats } from '../data/mockData';
+import apiClient from './api';
 import { createUuid } from '../utils/uuid';
 
 const normalizeExamScore = sheet => {
@@ -32,7 +31,7 @@ const normalizeExamScore = sheet => {
 export const scoreService = {
   /** @returns {Promise<{data: import('../types').BandScore[]}>} */
   getAll: async () => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(bandScores); }
+
     const { data } = await apiClient.get('/scores');
     return data;
   },
@@ -42,27 +41,14 @@ export const scoreService = {
    * @returns {Promise<{data: import('../types').BandScore[]}>}
    */
   getByExam: async (examId) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(bandScores.filter(s => s.examId === examId)); }
+
     const { data } = await apiClient.get(`/exams/${examId}/scores`);
     const scores = data?.data ?? data;
     return { data: Array.isArray(scores) ? scores.map(normalizeExamScore) : [] };
   },
 
     getCandidates: async examId => {
-    if (USE_MOCK) {
-      await mockDelay();
-      const candidates = applications
-        .filter(application => application.examId === examId && ['approved', 'verified'].includes(application.status))
-        .map(application => ({
-          ...application,
-          applicationId: application.applicationId || application.id,
-          id: application.applicationId || application.id,
-          cid: application.cid || application.testTakerUserId,
-          status: String(application.status || 'pending').toLowerCase(),
-          scoreStatus: 'pending',
-        }));
-      return mockResponse(candidates);
-    }
+
     const { data } = await apiClient.get(`/exams/${examId}/candidates`);
     const candidates = data?.data ?? data;
     return { data: Array.isArray(candidates) ? candidates.map(candidate => ({
@@ -81,12 +67,7 @@ export const scoreService = {
    * @param {string} userId
    */
   getMyScores: async (userId) => {
-    if (USE_MOCK) {
-      await mockDelay();
-      const userApps = applications.filter(a => a.testTakerId === userId);
-      const userScores = bandScores.filter(s => userApps.some(a => a.id === s.applicationId));
-      return mockResponse(userScores);
-    }
+
     const { data } = await apiClient.get('/results/my');
     return data;
   },
@@ -99,7 +80,7 @@ export const scoreService = {
    * @param {Array<{applicationId: string, writing: number, reading: number, listening: number, speaking: number}>} scores
    */
   submit: async (examId, scores) => {
-    if (USE_MOCK) { await mockDelay(800); return mockResponse(scores, 'Scores submitted.'); }
+
     const responses = await Promise.all(scores.map(async ({ applicationId, ...values }) => {
       const { data: draftEnvelope } = await apiClient.put(`/score-sheets/${applicationId}/draft`, values);
       const draft = draftEnvelope?.data ?? draftEnvelope;
@@ -118,7 +99,7 @@ export const scoreService = {
    * @param {Partial<import('../types').BandScore>} payload
    */
   update: async (id, payload) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse({ ...bandScores.find(s => s.id === id), ...payload }); }
+
     const { data } = await apiClient.put(`/scores/${id}`, payload);
     return data;
   },
@@ -128,7 +109,7 @@ export const scoreService = {
    * @param {string} examId
    */
   publish: async (examId) => {
-    if (USE_MOCK) { await mockDelay(600); return mockResponse({ examId }, 'Scores published.'); }
+
     const { data } = await apiClient.post(`/exams/${examId}/declare-results`);
     return data;
   },
@@ -138,7 +119,7 @@ export const scoreService = {
    * @param {string} examId
    */
   getCommittee: async (examId) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(committeeMembers.filter(m => m.examId === examId)); }
+
     const { data } = await apiClient.get(`/exams/${examId}/committee`);
     const committee = data?.data ?? data;
     return { data: committee ? {
@@ -153,7 +134,7 @@ export const scoreService = {
    * @param {string[]} userIds
    */
   saveCommittee: async (examId, userIds) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse({ examId, userIds }); }
+
     const members = userIds.map((userId, index) => ({ userId, role: index === 0 ? 'HEAD' : 'MEMBER' }));
     const { data } = await apiClient.put(`/exams/${examId}/committee`, { members });
     return data;
@@ -164,7 +145,7 @@ export const scoreService = {
    * @param {string} role
    */
   getDashboardStats: async (role) => {
-    if (USE_MOCK) { await mockDelay(300); return mockResponse(dashboardStats[role] || dashboardStats.dcdd); }
+
     const { data } = await apiClient.get(`/dashboard/stats?role=${role}`);
     return data;
   },

@@ -8,8 +8,8 @@
  * @fileoverview Notifications Service
  * In-app notification management.
  */
-import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
-import { notifications } from '../data/mockData';
+import apiClient from './api';
+
 
 export const notificationService = {
   getAll: async (limit = 50) => notificationService.getUserNotifications(undefined, limit),
@@ -20,10 +20,7 @@ export const notificationService = {
    * @param {number} [limit=20]
    */
   getUserNotifications: async (userId, limit = 20) => {
-    if (USE_MOCK) {
-      await mockDelay(300);
-      return mockResponse(notifications.filter(n => n.userId === userId).slice(0, limit));
-    }
+
     const { data } = await apiClient.get(`/notifications?limit=${limit}`);
     return data;
   },
@@ -33,7 +30,7 @@ export const notificationService = {
    * @param {string} id
    */
   markAsRead: async (id) => {
-    if (USE_MOCK) { await mockDelay(150); return mockResponse({ id, read: true }); }
+
     const { data } = await apiClient.patch(`/notifications/${id}/read`);
     return data;
   },
@@ -43,7 +40,7 @@ export const notificationService = {
    * @param {string} userId
    */
   markAllAsRead: async (userId) => {
-    if (USE_MOCK) { await mockDelay(300); return mockResponse(null, 'All marked as read.'); }
+
     const { data } = await apiClient.post('/notifications/read-all');
     return data;
   },
@@ -55,7 +52,7 @@ export const notificationService = {
    * @param {string} id
    */
   delete: async (id) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(null, 'Deleted.'); }
+
     const { data } = await apiClient.delete(`/notifications/${id}`);
     return data;
   },

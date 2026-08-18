@@ -8,8 +8,8 @@
  * @fileoverview Exam Windows Service
  * CRUD operations for DSTS examination registration windows.
  */
-import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
-import { examWindows } from '../data/mockData';
+import apiClient from './api';
+
 
 const normalizeExam = exam => ({
   ...exam,
@@ -35,14 +35,14 @@ const toRequest = payload => ({
 export const examService = {
   /** @returns {Promise<{data: import('../types').ExamWindow[]}>} */
   getAll: async () => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(examWindows); }
+
     const { data } = await apiClient.get('/exams');
     return { ...data, data: unwrapList(data).map(normalizeExam) };
   },
 
   /** @param {string} id @returns {Promise<{data: import('../types').ExamWindow}>} */
   getById: async (id) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(examWindows.find(e => e.id === id) || null); }
+
     const { data } = await apiClient.get(`/exams/${id}`);
     const exam = data?.data ?? data;
     return { data: exam ? normalizeExam(exam) : null };
@@ -50,7 +50,7 @@ export const examService = {
 
   /** @param {Partial<import('../types').ExamWindow>} payload */
   create: async (payload) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse({ ...payload, id: `EXM-MOCK-${Date.now()}` }); }
+
     const request = toRequest(payload);
     const { data } = await apiClient.post('/exams', request);
     const exam = data?.data ?? data;
@@ -58,7 +58,7 @@ export const examService = {
   },
 
   update: async (id, payload) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(normalizeExam({ ...examWindows.find(e => e.id === id), ...payload })); }
+
     const { data } = await apiClient.patch(`/exams/${id}`, toRequest(payload));
     const exam = data?.data ?? data;
     return { data: normalizeExam(exam) };
@@ -66,7 +66,7 @@ export const examService = {
 
   /** @param {string} id @param {Partial<import('../types').ExamWindow>} payload */
   updateStatus: async (id, status) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse({ ...examWindows.find(e => e.id === id), status }); }
+
     const { data } = await apiClient.patch(`/exams/${id}/status`, { status: String(status).toUpperCase() });
     const exam = data?.data ?? data;
     return { data: normalizeExam(exam) };

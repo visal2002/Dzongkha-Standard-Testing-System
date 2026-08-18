@@ -107,7 +107,6 @@ export default function SettingsPage() {
 
   const handleLanguageChange = (code) => {
     setLanguage(code);
-    // TODO: call i18n.changeLanguage(code) when full translations are available
     toast(`Language set to ${LANGUAGES.find(l => l.code === code)?.label}`, { icon: '🌐' });
   };
 

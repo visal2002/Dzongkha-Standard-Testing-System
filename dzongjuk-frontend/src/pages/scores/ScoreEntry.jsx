@@ -11,6 +11,8 @@ import { examService } from '../../services/exams';
 import { scoreService } from '../../services/scores';
 import { useApi } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+import { canAccess } from '../../config/accessMatrix';
 
 const SKILLS = ['writing', 'reading', 'listening', 'speaking'];
 const SKILL_LABELS = { writing: 'Writing', reading: 'Reading', listening: 'Listening', speaking: 'Speaking' };
@@ -18,6 +20,8 @@ const SCORES = Array.from({ length: 19 }, (_, index) => (index * 0.5 + 1).toFixe
 const columnHelper = createColumnHelper();
 
 export default function ScoreEntry() {
+  const { user } = useAuth();
+  const canSubmit = canAccess(user?.role, 'scores', 'submit');
   const { data: exams, loading: loadingExams } = useApi(examService.getAll);
   const [selectedExamId, setSelectedExamId] = useState('');
   const [candidates, setCandidates] = useState([]);
@@ -93,7 +97,7 @@ export default function ScoreEntry() {
       header: 'Action',
       cell: ({ row }) => {
         const submitted = ['submitted', 'published', 'revised'].includes(row.original.scoreStatus);
-        return <Button size="xs" disabled={submitted || row.original.status !== 'eligible'} icon={<ClipboardList size={12} />} onClick={() => setScoring(row.original)}>{submitted ? 'Submitted' : 'Enter Scores'}</Button>;
+        return <Button size="xs" disabled={submitted || row.original.status !== 'eligible' || !canSubmit} icon={<ClipboardList size={12} />} onClick={() => setScoring(row.original)}>{submitted ? 'Submitted' : 'Enter Scores'}</Button>;
       },
     }),
   ];
@@ -135,7 +139,7 @@ export default function ScoreEntry() {
         </>
       )}
 
-      <Modal isOpen={!!scoring} onClose={() => setScoring(null)} title={`Enter Band Scores — ${scoring?.testTakerName}`} size="md" footer={<><Button variant="ghost" onClick={() => setScoring(null)}>Cancel</Button><Button onClick={handleSubmit} loading={submitting} icon={<Save size={13} />}>Submit Scores</Button></>}>
+      <Modal isOpen={!!scoring} onClose={() => setScoring(null)} title={`Enter Band Scores — ${scoring?.testTakerName}`} size="md" footer={<><Button variant="ghost" onClick={() => setScoring(null)}>Cancel</Button>{canSubmit && <Button onClick={handleSubmit} loading={submitting} icon={<Save size={13} />}>Submit Scores</Button>}</>}>
         <div className="space-y-4">
           <div className="p-3 bg-surface-bg rounded-xl border border-surface-border text-xs"><p className="text-text-muted">Application ID</p><p className="font-mono text-brand-gold">{scoring?.applicationId}</p></div>
           <p className="text-xs text-text-muted">Enter scores from 1.0 to 9.0 in increments of 0.5 for each skill:</p>

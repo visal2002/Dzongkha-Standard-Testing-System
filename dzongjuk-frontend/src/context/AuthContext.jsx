@@ -5,6 +5,7 @@
  */
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { authService } from '../services/auth';
 
 const AuthContext = createContext(null);
@@ -139,6 +140,48 @@ export function AuthProvider({ children }) {
     clearSession();
     setUser(null);
   }, []);
+
+  // Session auto-expiry & inactivity tracker (15 minutes)
+  useEffect(() => {
+    if (!user) return;
+    
+    const ACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+    let lastActivity = Date.now();
+    let activityInterval;
+    
+    const bumpActivity = () => { lastActivity = Date.now(); };
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(e => document.addEventListener(e, bumpActivity, { passive: true }));
+    
+    const checkInactivity = () => {
+      const now = Date.now();
+      if (now - lastActivity >= ACTIVITY_TIMEOUT_MS) {
+        logout();
+        toast.error('Session expired due to inactivity.', { id: 'session-timeout' });
+      } else {
+        // Extend session storage expiration quietly
+        const raw = sessionStorage.getItem(SESSION_KEY);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (now > parsed.expiresAt) {
+              logout();
+            } else {
+              parsed.expiresAt = now + ACTIVITY_TIMEOUT_MS;
+              sessionStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
+            }
+          } catch {}
+        }
+      }
+    };
+    
+    activityInterval = setInterval(checkInactivity, 60 * 1000); // Check every minute
+    
+    return () => {
+      events.forEach(e => document.removeEventListener(e, bumpActivity));
+      clearInterval(activityInterval);
+    };
+  }, [user, logout]);
 
   const updateProfile = useCallback(async (updatedFields) => {
     setUser(prevUser => {

@@ -6,6 +6,10 @@
 
 import { ScoreSheetStatus } from '@dzongjuk/contracts';
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Unique, UpdateDateColumn, VersionColumn } from 'typeorm';
+import { AesGcmEncryptionTransformer } from '@dzongjuk/security';
+
+const encryptionKey = process.env.DATA_ENCRYPTION_KEY || 'uGvF2eOq8P0hRjD7V9wX4mN3yC1zA5tB6sYkM+LpI/c=';
+const scoreTransformer = new AesGcmEncryptionTransformer(encryptionKey);
 
 export enum CommitteeRole { Head = 'HEAD', Member = 'MEMBER' }
 export enum EligibilityStatus { Eligible = 'ELIGIBLE', Absent = 'ABSENT', Ineligible = 'INELIGIBLE' }
@@ -86,7 +90,7 @@ export class ScoreSheetEntity {
   @Index() @Column({ type: 'uuid' }) applicationId: string;
   @Column({ type: 'uuid' }) committeeId: string;
   @Column({ type: 'uuid' }) enteredByUserId: string;
-  @Column({ type: 'jsonb' }) draftScores: ScoreValues;
+  @Column({ type: 'text', transformer: scoreTransformer }) draftScores: ScoreValues;
   @Column({ type: 'enum', enum: ScoreSheetStatus, default: ScoreSheetStatus.Draft }) status: ScoreSheetStatus;
   @Column({ default: 0 }) currentVersion: number;
   @Column({ type: 'timestamptz', nullable: true }) submittedAt: Date | null;
@@ -102,7 +106,7 @@ export class ScoreVersionEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Index() @Column({ type: 'uuid' }) scoreSheetId: string;
   @Column() versionNumber: number;
-  @Column({ type: 'jsonb' }) scores: ScoreValues;
+  @Column({ type: 'text', transformer: scoreTransformer }) scores: ScoreValues;
   @Column({ type: 'numeric', precision: 8, scale: 3 }) overallScore: string;
   @Column({ length: 80 }) bandLabel: string;
   @Column({ type: 'varchar', length: 40, nullable: true }) cefrLevel: string | null;

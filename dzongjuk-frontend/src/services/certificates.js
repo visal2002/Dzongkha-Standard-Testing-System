@@ -8,8 +8,8 @@
  * @fileoverview Certificates Service
  * Certificate generation, listing, and QR verification.
  */
-import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
-import { certificates, masterConfig } from '../data/mockData';
+import apiClient from './api';
+
 import { createMockPdf } from '../utils/mockPdf';
 import { createUuid } from '../utils/uuid';
 
@@ -29,7 +29,7 @@ function createMockCertificatePdf(certificate) {
 export const certificateService = {
   /** @returns {Promise<{data: import('../types').Certificate[]}>} */
   getAll: async () => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(certificates); }
+
     const { data } = await apiClient.get('/certificates');
     return data;
   },
@@ -38,14 +38,14 @@ export const certificateService = {
    * @param {string} userId
    */
   getByUser: async (userId) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(certificates); }
+
     const { data } = await apiClient.get('/certificates/my');
     return data;
   },
 
   /** @param {string} id */
   getById: async (id) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(certificates.find(c => c.id === id) || null); }
+
     const { data } = await apiClient.get(`/certificates/${id}`);
     return data;
   },
@@ -55,7 +55,7 @@ export const certificateService = {
    * @param {string} examId
    */
   generateBatch: async (examId) => {
-    if (USE_MOCK) { await mockDelay(1200); return mockResponse({ examId, generated: 3 }, 'Certificates generated.'); }
+
     const { data } = await apiClient.post('/certificates/generate', { examId }, { headers: { 'Idempotency-Key': createUuid() } });
     return data;
   },
@@ -65,17 +65,7 @@ export const certificateService = {
    * @param {string} token
    */
   verifyQr: async (token) => {
-    if (USE_MOCK) {
-      await mockDelay();
-      const cert = certificates.find(c => c.verificationToken === token);
-      return mockResponse(cert ? {
-        valid: cert.status === 'ACTIVE' && new Date(cert.validUntil) > new Date(),
-        certificateNumber: cert.certificateNumber,
-        status: cert.status,
-        issuedAt: cert.issuedAt,
-        validUntil: cert.validUntil,
-      } : { valid: false });
-    }
+
     const { data } = await apiClient.get(`/public/certificates/verify/${encodeURIComponent(token)}`);
     return data;
   },
@@ -87,12 +77,7 @@ export const certificateService = {
    * @param {string} id
    */
   download: async (id) => {
-    if (USE_MOCK) {
-      await mockDelay(200);
-      const certificate = certificates.find(item => item.id === id);
-      if (!certificate) throw new Error('Certificate not found.');
-      return { data: createMockCertificatePdf(certificate) };
-    }
+
     return apiClient.get(`/certificates/${id}/file`, { responseType: 'blob' });
   },
 
@@ -102,7 +87,7 @@ export const certificateService = {
    * Get the master certificate template configuration.
    */
   getTemplateConfig: async () => {
-    if (USE_MOCK) { await mockDelay(200); return mockResponse(masterConfig.certificateTemplate); }
+
     const { data } = await apiClient.get('/certificates/template');
     return data;
   },

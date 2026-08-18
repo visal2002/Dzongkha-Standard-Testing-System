@@ -23,6 +23,7 @@ export default tseslint.config(
       '@typescript-eslint/no-base-to-string': 'off',
       '@typescript-eslint/no-namespace': 'off',
       '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
+      'complexity': ['warn', 10],
     },
   },
 );

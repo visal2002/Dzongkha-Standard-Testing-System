@@ -8,8 +8,8 @@
  * @fileoverview Questions Service
  * Question paper upload and retrieval.
  */
-import apiClient, { USE_MOCK, mockDelay, mockResponse } from './api';
-import { questionPapers } from '../data/mockData';
+import apiClient from './api';
+
 import { createMockPdf } from '../utils/mockPdf';
 
 const fileSizeToBytes = (value) => {
@@ -81,7 +81,7 @@ const toSamplePaper = paper => ({
 export const questionService = {
   /** @returns {Promise<{data: import('../types').QuestionPaper[]}>} */
   getAll: async () => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(questionPapers); }
+
     const { data } = await apiClient.get('/questions');
     return { data: unwrapList(data).map(normalizeQuestionPaper) };
   },
@@ -90,14 +90,14 @@ export const questionService = {
    * @param {string} examId
    */
   getByExam: async (examId) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(questionPapers.filter(q => q.examId === examId)); }
+
     const { data } = await apiClient.get(`/questions?examId=${examId}`);
     return { data: unwrapList(data).map(normalizeQuestionPaper) };
   },
 
   /** @param {string} id */
   getById: async (id) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(questionPapers.find(q => q.id === id) || null); }
+
     const { data } = await apiClient.get(`/questions/${id}`);
     return { data: normalizeQuestionPaper(unwrap(data)) };
   },
@@ -106,28 +106,13 @@ export const questionService = {
    * Get sample papers (publicly available).
    */
   getSamples: async () => {
-    if (USE_MOCK) {
-      await mockDelay();
-      return mockResponse(questionPapers.filter(q => q.status === 'published').map(toSamplePaper));
-    }
+
     const { data } = await apiClient.get('/sample-papers');
     return { data: unwrapList(data).map(normalizeQuestionPaper) };
   },
 
   downloadSample: async (id, type = 'question') => {
-    if (USE_MOCK) {
-      await mockDelay(200);
-      const paper = questionPapers.find(item => item.id === id && item.status === 'published');
-      if (!paper) throw new Error('Sample paper not found.');
-      return { data: createMockPdf([
-        'Dzongkha Standard Testing System',
-        type === 'answer' ? 'Sample Answer Sheet' : 'Sample Question Paper',
-        paper.title,
-        `Skill: ${paper.skill}`,
-        `Published: ${String(paper.uploadedAt).slice(0, 10)}`,
-        'LOCAL ACCEPTANCE DOCUMENT - NOT AN OFFICIAL EXAMINATION PAPER',
-      ]) };
-    }
+
     return apiClient.get(`/sample-papers/${id}/${type}`, { responseType: 'blob' });
   },
 
@@ -138,10 +123,7 @@ export const questionService = {
    * @param {FormData|object} payload
    */
   upload: async (payload) => {
-    if (USE_MOCK) {
-      await mockDelay(1200);
-      return mockResponse({ id: `QP-MOCK-${Date.now()}`, status: 'draft' }, 'Paper uploaded successfully.');
-    }
+
     const formData = payload instanceof FormData ? payload : new FormData();
     if (!(payload instanceof FormData)) {
       formData.set('examId', payload.examId);
@@ -162,29 +144,26 @@ export const questionService = {
    * @param {string} id
    */
   publish: async (id) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse({ id, status: 'published' }); }
+
     const { data } = await apiClient.patch(`/questions/${id}/publish`);
     return data;
   },
 
   publishSample: async (id) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse({ id, status: 'SAMPLE_PUBLISHED' }); }
+
     const { data } = await apiClient.post(`/questions/${id}/publish-sample`);
     return { data: normalizeQuestionPaper(unwrap(data)) };
   },
 
   downloadDocument: async (id, type = 'question') => {
-    if (USE_MOCK) {
-      await mockDelay(200);
-      return { data: createMockPdf(['Dzongkha Standard Testing System', type === 'answer' ? 'Answer Sheet' : 'Question Paper']) };
-    }
+
     const endpoint = type === 'answer' ? 'answer-document' : 'question-document';
     return apiClient.get(`/questions/${id}/${endpoint}`, { responseType: 'blob' });
   },
 
   /** @param {string} id */
   delete: async (id) => {
-    if (USE_MOCK) { await mockDelay(); return mockResponse(null, 'Deleted.'); }
+
     const { data } = await apiClient.delete(`/questions/${id}`);
     return data;
   },
