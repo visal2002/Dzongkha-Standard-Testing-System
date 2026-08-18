@@ -87,16 +87,9 @@ apiClient.interceptors.response.use(
       'Network error. Please check your connection.';
 
     if (status === 401) {
-      // When running with mock auth, the mock token won't be valid on the
-      // real backend so data-endpoint 401s are expected.  Don't nuke the
-      // session or redirect in that case — only do it for real tokens.
-      const currentToken = readAccessToken();
-      const isMockToken = !currentToken || currentToken.startsWith('mock-');
-      if (!isMockToken) {
-        clearClientSession();
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
+      clearClientSession();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login';
       }
     }
 
