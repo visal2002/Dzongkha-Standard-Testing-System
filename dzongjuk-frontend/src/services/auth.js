@@ -10,6 +10,47 @@
  */
 import apiClient from './api';
 
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
+const MOCK_NDI_DELAY_MS = 5000;
+const MOCK_NDI_USER = {
+  id: 'USR-LOCAL-ACCEPTANCE',
+  email: 'local.acceptance@dzongjuk.test',
+  cid: '11111111111',
+  fullName: 'Local Acceptance User',
+  roles: ['test_taker'],
+  permissions: ['registration'],
+};
+const MOCK_NDI_TOKEN = 'mock-local-acceptance-token';
+const MOCK_PASSWORD = 'LocalTestOnly!2026';
+const mockAccounts = new Map([
+  [MOCK_NDI_USER.email, { user: MOCK_NDI_USER, password: MOCK_PASSWORD }],
+]);
+
+const createMockNdiLogin = () => {
+  const pollToken = `mock_ndi_${Date.now()}`;
+  return {
+    success: true,
+    pollToken,
+    proofRequestUrl: `mock:bhutan-ndi-login:${pollToken}`,
+    deepLinkUrl: null,
+    expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+  };
+};
+
+const createMockSession = (user) => ({
+  success: true,
+  user: normalizeUser(user, MOCK_NDI_TOKEN),
+  token: MOCK_NDI_TOKEN,
+  expiresIn: 900,
+});
+
+const findMockAccount = (identifier) => {
+  const normalized = String(identifier || '').trim().toLowerCase();
+  return [...mockAccounts.values()].find(({ user }) => (
+    user.email.toLowerCase() === normalized || user.cid === normalized
+  ));
+};
+
 const decodeClaims = (token) => {
   try {
     const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -47,6 +88,12 @@ export const authService = {
   login: async (identifier, password) => {
 
 
+    if (USE_MOCK_DATA) {
+      const account = findMockAccount(identifier);
+      if (account?.password === password) return createMockSession(account.user);
+      return { success: false, error: 'The supplied credentials are invalid.' };
+    }
+
     try {
       const { data: envelope } = await apiClient.post('/auth/login', { identifier, password });
       const { accessToken, expiresIn, user } = envelope.data;
@@ -73,6 +120,26 @@ export const authService = {
 
 
 
+    if (USE_MOCK_DATA) {
+      const duplicate = [...mockAccounts.values()].find(({ user }) => (
+        user.email.toLowerCase() === normalized.email || user.cid === normalized.cid
+      ));
+      if (duplicate) {
+        return { success: false, error: 'An account already exists for this email or CID.' };
+      }
+
+      const user = {
+        id: `USR-MOCK-${mockAccounts.size + 1}`,
+        email: normalized.email,
+        cid: normalized.cid,
+        fullName: normalized.fullName,
+        roles: ['test_taker'],
+        permissions: ['registration'],
+      };
+      mockAccounts.set(user.email.toLowerCase(), { user, password: normalized.password });
+      return { success: true, user: normalizeUser(user, MOCK_NDI_TOKEN) };
+    }
+
     try {
       const { data: envelope } = await apiClient.post('/auth/register', {
         fullName: normalized.fullName,
@@ -90,17 +157,16 @@ export const authService = {
   loginWithNDI: async () => {
 
 
+    if (USE_MOCK_DATA) {
+      return createMockNdiLogin();
+    }
+
     try {
       const { data: envelope } = await apiClient.post('/auth/ndi/initiate');
       return { success: true, ...envelope.data };
     } catch (err) {
       if (err.code === 'NDI_NOT_CONFIGURED') {
-        // Fallback to local mock since NDI isn't configured in .env
-        return { 
-           success: true, 
-           pollToken: `mock_ndi_${Date.now()}`, 
-           proofRequestUrl: 'mock:qr_code_for_local_development' 
-        };
+        return createMockNdiLogin();
       }
       return { success: false, error: err.message || 'NDI service unavailable.' };
     }
@@ -109,15 +175,13 @@ export const authService = {
   checkNDILogin: async (pollToken) => {
     if (pollToken.startsWith('mock_ndi_')) {
       const startTime = parseInt(pollToken.split('_')[2], 10);
-      if (Date.now() - startTime > 5000) {
-        // Simulate a successful login by calling the normal login endpoint with local acceptance credentials
-        try {
-          const { data: envelope } = await apiClient.post('/auth/login', { identifier: 'local.acceptance@dzongjuk.test', password: 'LocalTestOnly!2026' });
-          const { accessToken, user } = envelope.data;
-          return { status: 'VALIDATED', token: accessToken, user: normalizeUser(user, accessToken) };
-        } catch {
-          return { status: 'FAILED' };
-        }
+      if (Date.now() - startTime > MOCK_NDI_DELAY_MS) {
+        return {
+          status: 'VALIDATED',
+          token: MOCK_NDI_TOKEN,
+          user: normalizeUser(MOCK_NDI_USER, MOCK_NDI_TOKEN),
+          expiresIn: 900,
+        };
       }
       return { status: 'PENDING' };
     }
