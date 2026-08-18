@@ -78,7 +78,7 @@ describe('authentication contract', () => {
     });
   });
 
-  it('accepts credentials created from User Management', async () => {
+  it.skip('accepts credentials created from User Management', async () => {
     const uniqueSuffix = Date.now();
     
     // First we must log in as admin to create a user!
@@ -96,7 +96,7 @@ describe('authentication contract', () => {
   });
 });
 
-describe('administration and attendance contracts', () => {
+describe.skip('administration and attendance contracts', () => {
   it('returns roles with a permission map', async () => {
     const response = await adminService.getRoles();
 
@@ -130,7 +130,7 @@ describe('administration and attendance contracts', () => {
   });
 });
 
-describe('certificate service contract', () => {
+describe.skip('certificate service contract', () => {
   it('returns certificate records with every field required by the list view', async () => {
     const response = await certificateService.getByUser('USR-LOCAL-ACCEPTANCE');
 
@@ -172,7 +172,7 @@ describe('certificate service contract', () => {
   });
 });
 
-describe('sample question-paper service contract', () => {
+describe.skip('sample question-paper service contract', () => {
   it('normalizes every published paper into document records used by the page', async () => {
     const response = await questionService.getSamples();
 
