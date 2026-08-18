@@ -83,6 +83,31 @@ describe('authentication contract', () => {
     });
   });
 
+  it('starts mock NDI login locally and validates after the scanner delay', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-18T00:00:00.000Z'));
+
+    const login = await authService.loginWithNDI();
+
+    expect(login).toMatchObject({
+      success: true,
+      pollToken: expect.stringContaining('mock_ndi_'),
+      proofRequestUrl: expect.stringContaining('mock:bhutan-ndi-login:'),
+    });
+    await expect(authService.checkNDILogin(login.pollToken)).resolves.toMatchObject({ status: 'PENDING' });
+
+    vi.advanceTimersByTime(5001);
+
+    await expect(authService.checkNDILogin(login.pollToken)).resolves.toMatchObject({
+      status: 'VALIDATED',
+      token: expect.any(String),
+      user: {
+        email: 'local.acceptance@dzongjuk.test',
+        role: 'test_taker',
+      },
+    });
+  });
+
   it.skip('accepts credentials created from User Management', async () => {
     const uniqueSuffix = Date.now();
     
