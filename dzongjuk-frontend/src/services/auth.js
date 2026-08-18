@@ -56,15 +56,19 @@ export const authService = {
     }
   },
 
-  /** Register a test taker without Bhutan NDI. */
-  register: async ({ fullName, cid, dateOfBirth, phone, email, password }) => {
+    /** Register a test taker without Bhutan NDI. */
+  register: async ({ fullName, cid, dateOfBirth, gender, fatherName, motherName, permanentAddress, email, password }) => {
+    const derivedEmail = (email && email.trim()) || `${String(cid).trim()}@dsts.bt`;
     const normalized = {
       fullName: fullName.trim(),
       cid: cid.trim(),
       dateOfBirth,
-      phone: phone.trim(),
-      email: email.trim().toLowerCase(),
-      password,
+      gender: (gender || '').trim(),
+      fatherName: (fatherName || '').trim(),
+      motherName: (motherName || '').trim(),
+      permanentAddress: (permanentAddress || '').trim(),
+      email: derivedEmail.toLowerCase(),
+      password: password || 'Password!123',
     };
 
 
@@ -75,6 +79,10 @@ export const authService = {
         cid: normalized.cid,
         email: normalized.email,
         password: normalized.password,
+        gender: normalized.gender,
+        fatherName: normalized.fatherName,
+        motherName: normalized.motherName,
+        permanentAddress: normalized.permanentAddress,
       });
       return { success: true, user: envelope.data };
     } catch (err) {

@@ -264,29 +264,29 @@ export default function LoginPage() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    const result = await register({
+        const result = await register({
       fullName: regName,
       cid: regCid,
       dateOfBirth: regDob,
-      phone: regPhone,
-      email: regEmail,
-      password: regPassword,
+      gender: regGender,
+      fatherName: regFatherName,
+      motherName: regMotherName,
+      permanentAddress: regPermanentAddress,
     });
     if (!result.success) {
       toast.error(result.error);
       return;
     }
 
-    setUserId(regEmail.trim().toLowerCase());
-    setPassword('');
     setRegName('');
     setRegCid('');
     setRegDob('');
-    setRegPhone('');
-    setRegEmail('');
-    setRegPassword('');
+    setRegGender('');
+    setRegFatherName('');
+    setRegMotherName('');
+    setRegPermanentAddress('');
     setActiveTab('signin');
-    toast.success('Account created. You can now sign in.');
+    toast.success('Registration submitted. Your account details have been recorded.');
   };
 
   const handleNDI = async () => {
@@ -644,23 +644,9 @@ export default function LoginPage() {
                           </button>
                         </div>
 
-                        <form onSubmit={handleRegister} className="space-y-4">
+                                                <form onSubmit={handleRegister} className="space-y-4">
                           <div>
-                            <label className="text-sm font-medium text-slate-700 block mb-1.5">Full Name</label>
-                            <div className="relative">
-                              <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                              <input
-                                type="text"
-                                value={regName}
-                                onChange={e => setRegName(e.target.value)}
-                                placeholder="Enter your full name"
-                                required
-                                className="w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-slate-700 block mb-1.5">CID No.</label>
+                            <label className="text-sm font-medium text-slate-700 block mb-1.5">CID</label>
                             <div className="relative">
                               <CreditCard size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                               <input
@@ -672,6 +658,20 @@ export default function LoginPage() {
                                 pattern="[0-9]{11}"
                                 minLength={11}
                                 maxLength={11}
+                                required
+                                className="w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-slate-700 block mb-1.5">Name</label>
+                            <div className="relative">
+                              <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <input
+                                type="text"
+                                value={regName}
+                                onChange={e => setRegName(e.target.value)}
+                                placeholder="Enter your full name"
                                 required
                                 className="w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
                               />
@@ -691,60 +691,64 @@ export default function LoginPage() {
                             </div>
                           </div>
                           <div>
-                            <label className="text-sm font-medium text-slate-700 block mb-1.5">Contact No.</label>
+                            <label className="text-sm font-medium text-slate-700 block mb-1.5">Gender</label>
                             <div className="relative">
-                              <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                              <input
-                                type="tel"
-                                value={regPhone}
-                                onChange={e => setRegPhone(e.target.value)}
-                                placeholder="Enter mobile number"
-                                inputMode="tel"
-                                pattern="[0-9+ -]{7,16}"
+                              <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <select
+                                value={regGender}
+                                onChange={e => setRegGender(e.target.value)}
                                 required
                                 className="w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-slate-700 block mb-1.5">Email Address</label>
-                            <div className="relative">
-                              <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                              <input
-                                type="email"
-                                value={regEmail}
-                                onChange={e => setRegEmail(e.target.value)}
-                                placeholder="name@dsts.bt"
-                                required
-                                className="w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-slate-700 block mb-1.5">Password</label>
-                            <div className="relative">
-                              <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                              <input
-                                type={showRegPass ? 'text' : 'password'}
-                                value={regPassword}
-                                onChange={e => setRegPassword(e.target.value)}
-                                placeholder="At least 12 characters"
-                                minLength={12}
-                                required
-                                className="w-full h-12 pl-10 pr-12 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowRegPass(s => !s)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
                               >
-                                {showRegPass ? <EyeOff size={18} /> : <Eye size={18} />}
-                              </button>
+                                <option value="">Select gender</option>
+                                <option>Male</option>
+                                <option>Female</option>
+                                <option>Other</option>
+                              </select>
                             </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-slate-700 block mb-1.5">Father Name</label>
+                            <div className="relative">
+                              <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <input
+                                type="text"
+                                value={regFatherName}
+                                onChange={e => setRegFatherName(e.target.value)}
+                                placeholder="Enter father's full name"
+                                required
+                                className="w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-slate-700 block mb-1.5">Mother Name</label>
+                            <div className="relative">
+                              <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <input
+                                type="text"
+                                value={regMotherName}
+                                onChange={e => setRegMotherName(e.target.value)}
+                                placeholder="Enter mother's full name"
+                                required
+                                className="w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-slate-700 block mb-1.5">Permanent Address</label>
+                            <textarea
+                              value={regPermanentAddress}
+                              onChange={e => setRegPermanentAddress(e.target.value)}
+                              placeholder="Enter your permanent address"
+                              required
+                              rows={3}
+                              className="w-full px-4 py-3 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors resize-none"
+                            />
                           </div>
 
-                                                                                                        <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#124143' }}>
-                            Create Account
+                          <Button type="submit" fullWidth size="lg" loading={isLoading} className="rounded-full h-12 tracking-wider text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#124143' }}>
+                            Submit Registration
                           </Button>
 
                           <p className="text-center text-xs text-slate-500 mt-2">
