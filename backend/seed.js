@@ -12,7 +12,7 @@ const users = [
 ];
 
 async function seed() {
-  const client = new Client({ connectionString: 'postgresql://dzongjuk:development-only@localhost:5432/dzongjuk_identity' });
+  const client = new Client({ connectionString: 'postgresql://dzongjuk:change-me@localhost:5432/dzongjuk_identity' });
   await client.connect();
 
   for (const user of users) {
