@@ -12,21 +12,6 @@ import apiClient from './api';
 
 
 
-let mockUsers = systemUsers.map(user => ({ ...user }));
-let mockRoles = systemRoles.map(role => ({ ...role }));
-
-const hydrateMockUsers = () => {
-  const storedUsers = readMockAccounts().map(({ user }) => ({
-    ...user,
-    roleCode: user.role,
-    role: user.roleName,
-    roles: [user.role],
-    lastLogin: user.lastLogin || null,
-  }));
-  const storedIds = new Set(storedUsers.map(user => user.id));
-  mockUsers = [...storedUsers, ...mockUsers.filter(user => !storedIds.has(user.id))];
-};
-
 const normalizeRole = role => ({
   ...role,
   permissions: Array.isArray(role.permissions) ? role.permissions.map(permission => permission.name) : role.permissions,
