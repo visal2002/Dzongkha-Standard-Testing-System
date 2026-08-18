@@ -79,10 +79,6 @@ export const authService = {
         cid: normalized.cid,
         email: normalized.email,
         password: normalized.password,
-        gender: normalized.gender,
-        fatherName: normalized.fatherName,
-        motherName: normalized.motherName,
-        permanentAddress: normalized.permanentAddress,
       });
       return { success: true, user: envelope.data };
     } catch (err) {
