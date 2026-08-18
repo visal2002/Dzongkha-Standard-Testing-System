@@ -4,6 +4,8 @@
  * Phone: +975 - 1750 - 5267
  */
 
+console.log('MAIN.JSX IS EXECUTING!');
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
