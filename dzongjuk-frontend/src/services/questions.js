@@ -10,7 +10,7 @@
  */
 import apiClient from './api';
 
-import { createMockPdf } from '../utils/mockPdf';
+
 
 const fileSizeToBytes = (value) => {
   const match = String(value || '').match(/^([\d.]+)\s*(KB|MB)$/i);

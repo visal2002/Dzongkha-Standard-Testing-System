@@ -10,21 +10,8 @@
  */
 import apiClient from './api';
 
-import { createMockPdf } from '../utils/mockPdf';
 import { createUuid } from '../utils/uuid';
 
-function createMockCertificatePdf(certificate) {
-  return createMockPdf([
-    'Dzongkha Standard Testing System',
-    `Certificate: ${certificate.certificateNumber}`,
-    `Holder: ${certificate.holderName}`,
-    `Registration: ${certificate.registrationNumber}`,
-    `Band: ${certificate.bandLabel} (${certificate.cefrLevel})`,
-    `Issued: ${String(certificate.issuedAt).slice(0, 10)}`,
-    `Valid until: ${String(certificate.validUntil).slice(0, 10)}`,
-    'LOCAL ACCEPTANCE CERTIFICATE - NOT AN OFFICIAL CERTIFICATE',
-  ]);
-}
 
 export const certificateService = {
   /** @returns {Promise<{data: import('../types').Certificate[]}>} */

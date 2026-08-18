@@ -274,22 +274,7 @@ export default function ProfilePage() {
             </button>
           )}
         </div>
-        {/* New method to upload profile picture (stores base64 string in local storage for mock mode)
-  uploadProfilePicture: async (dataUrl) => {
-    if (USE_MOCK) {
-      await mockDelay(500);
-      // Save avatar to user storage
-      const stored = localStorage.getItem('dsts_user');
-      if (stored) {
-        const userObj = JSON.parse(stored);
-        userObj.avatar = dataUrl;
-        localStorage.setItem('dsts_user', JSON.stringify(userObj));
-      }
-      return mockResponse({ avatar: dataUrl }, 'Profile picture updated');
-    }
-    const { data } = await apiClient.put('/auth/avatar', { avatar: dataUrl });
-    return data;
-  }, */}
+
         {showPasswordForm && <ChangePasswordForm onClose={() => setShowPasswordForm(false)} />}
       </motion.div>
     </div>
