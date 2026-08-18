@@ -18,7 +18,7 @@ import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Pola
 export default function TestTakerDashboard() {
   const { user } = useAuth();
   const { data: applications, loading: loadingApps } = useApi(applicationService.getByUser, true, [user?.id]);
-  const { data: certificates, loading: loadingCerts } = useApi(certificateService.getAll);
+  const { data: certificates, loading: loadingCerts } = useApi(certificateService.getMy);
   const { data: examWindows, loading: loadingExams } = useApi(examService.getAll);
   const { data: bandScores, loading: loadingScores } = useApi(scoreService.getMyScores, true, [user?.id]);
 
@@ -38,13 +38,19 @@ export default function TestTakerDashboard() {
   const myApps = (applications || []).filter(a => a.testTakerId === user?.id || a.testTakerId === 'USR-006');
   const myCerts = (certificates || []).slice(0, 2);
   const myScore = (bandScores || [])[0];
+  const normalizedScore = myScore ? {
+    writing: myScore.writing ?? myScore.score?.scores?.WRITING ?? 0,
+    reading: myScore.reading ?? myScore.score?.scores?.READING ?? 0,
+    listening: myScore.listening ?? myScore.score?.scores?.LISTENING ?? 0,
+    speaking: myScore.speaking ?? myScore.score?.scores?.SPEAKING ?? 0,
+  } : null;
   const openExam = (examWindows || []).find(e => e.status === 'open');
 
-  const radarData = myScore ? [
-    { skill: 'Writing', score: myScore.writing },
-    { skill: 'Reading', score: myScore.reading },
-    { skill: 'Listening', score: myScore.listening },
-    { skill: 'Speaking', score: myScore.speaking },
+  const radarData = normalizedScore ? [
+    { skill: 'Writing', score: normalizedScore.writing },
+    { skill: 'Reading', score: normalizedScore.reading },
+    { skill: 'Listening', score: normalizedScore.listening },
+    { skill: 'Speaking', score: normalizedScore.speaking },
   ] : [];
 
   return (
@@ -166,7 +172,7 @@ export default function TestTakerDashboard() {
 
       <div className="flex-1 min-h-0 grid grid-cols-1 gap-2.5">
         {/* Latest Skill Scores */}
-        {myScore && (
+        {normalizedScore && (
           <div className="bg-surface-card border border-surface-border rounded-xl p-4 shadow-sm flex flex-col justify-between overflow-hidden h-full">
             <div className="flex justify-between items-center mb-2 shrink-0">
               <h3 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Latest Skill Scores <span className="font-normal text-text-muted normal-case ml-1">(January 2026)</span></h3>
@@ -177,10 +183,10 @@ export default function TestTakerDashboard() {
               {/* Progress Bars */}
               <div className="w-full md:w-1/2 space-y-3">
                 {[
-                  { label: 'Writing', value: myScore.writing, color: 'bg-purple-500', icon: <Edit3 size={13} />, iconBg: 'bg-purple-100 text-purple-600', max: 9, eval: 'Good' },
-                  { label: 'Reading', value: myScore.reading, color: 'bg-blue-500', icon: <BookOpen size={13} />, iconBg: 'bg-blue-100 text-blue-600', max: 9, eval: 'Very Good' },
-                  { label: 'Listening', value: myScore.listening, color: 'bg-emerald-500', icon: <Headphones size={13} />, iconBg: 'bg-emerald-100 text-emerald-600', max: 9, eval: 'Good' },
-                  { label: 'Speaking', value: myScore.speaking, color: 'bg-orange-500', icon: <MessageCircle size={13} />, iconBg: 'bg-orange-100 text-orange-600', max: 9, eval: 'Very Good' },
+                  { label: 'Writing', value: normalizedScore.writing, color: 'bg-purple-500', icon: <Edit3 size={13} />, iconBg: 'bg-purple-100 text-purple-600', max: 9, eval: 'Good' },
+                  { label: 'Reading', value: normalizedScore.reading, color: 'bg-blue-500', icon: <BookOpen size={13} />, iconBg: 'bg-blue-100 text-blue-600', max: 9, eval: 'Very Good' },
+                  { label: 'Listening', value: normalizedScore.listening, color: 'bg-emerald-500', icon: <Headphones size={13} />, iconBg: 'bg-emerald-100 text-emerald-600', max: 9, eval: 'Good' },
+                  { label: 'Speaking', value: normalizedScore.speaking, color: 'bg-orange-500', icon: <MessageCircle size={13} />, iconBg: 'bg-orange-100 text-orange-600', max: 9, eval: 'Very Good' },
                 ].map(skill => (
                   <div key={skill.label} className="flex items-center gap-2.5">
                     <div className={`w-7 h-7 rounded-full ${skill.iconBg} flex items-center justify-center shrink-0`}>
