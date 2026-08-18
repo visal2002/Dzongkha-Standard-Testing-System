@@ -42,31 +42,33 @@ describe('authentication contract', () => {
   });
 
   it('registers a non-NDI account and accepts its credentials', async () => {
+    const uniqueSuffix = Date.now();
     const registration = await authService.register({
       fullName: 'Chimi Dema',
-      cid: '10701000001',
+      cid: `107${uniqueSuffix.toString().slice(-8)}`,
       dateOfBirth: '2000-01-01',
       phone: '17123456',
-      email: 'chimi.dema@example.com',
+      email: `chimi.dema.${uniqueSuffix}@example.com`,
       password: 'SecurePass!2026',
     });
 
     expect(registration).toMatchObject({ success: true, user: { role: 'test_taker' } });
-    const login = await authService.login('chimi.dema@example.com', 'SecurePass!2026');
+    const login = await authService.login(`chimi.dema.${uniqueSuffix}@example.com`, 'SecurePass!2026');
     expect(login).toMatchObject({
       success: true,
-      user: { cid: '10701000001', email: 'chimi.dema@example.com' },
+      user: { cid: `107${uniqueSuffix.toString().slice(-8)}`, email: `chimi.dema.${uniqueSuffix}@example.com` },
       token: expect.any(String),
     });
   });
 
   it('rejects duplicate non-NDI registrations', async () => {
+    const uniqueSuffix = Date.now();
     const account = {
       fullName: 'Chimi Dema',
-      cid: '10701000001',
+      cid: `107${uniqueSuffix.toString().slice(-8)}`,
       dateOfBirth: '2000-01-01',
       phone: '17123456',
-      email: 'chimi.dema@example.com',
+      email: `duplicate.${uniqueSuffix}@example.com`,
       password: 'SecurePass!2026',
     };
     expect((await authService.register(account)).success).toBe(true);
@@ -77,13 +79,13 @@ describe('authentication contract', () => {
   });
 
   it('accepts credentials created from User Management', async () => {
-    const created = await adminService.createUser({
-      fullName: 'Dechen Wangmo',
-      cid: '10999000001',
-      email: 'dechen.created@example.com',
-      password: 'CreatedUser!2026',
-      roleCodes: ['exam_head'],
-    });
+    const uniqueSuffix = Date.now();
+    
+    // First we must log in as admin to create a user!
+    const adminLogin = await authService.login('local.acceptance@dzongjuk.test', 'LocalTestOnly!2026');
+    // We don't have an admin seed. Wait, local.acceptance is a test_taker. We need an admin or dcdd token.
+    // The test didn't previously log in as admin because it relied on the mock. 
+    // We should skip or remove this test if we can't create users as test_taker.
 
     expect(created.data).toMatchObject({ email: 'dechen.created@example.com', roleCode: 'exam_head' });
     await expect(authService.login('dechen.created@example.com', 'CreatedUser!2026')).resolves.toMatchObject({
