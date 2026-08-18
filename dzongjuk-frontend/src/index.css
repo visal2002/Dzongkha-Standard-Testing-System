@@ -46,6 +46,11 @@
   --color-info-bg: rgba(59, 130, 246, 0.1);
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 .ndi-bg-popup { background-color: var(--ndi-popup-bg); }
 .ndi-text-secondary { color: var(--ndi-text-secondary); }
 .ndi-text-primary { color: var(--ndi-primary-dark); }
@@ -104,17 +109,17 @@
 }
 
 .ndi-scanner-panel {
-  width: min(100%, 550px);
+  width: min(100%, 520px);
   max-height: calc(100vh - 40px);
-  border-radius: 34px;
+  border-radius: 32px;
   background: var(--ndi-popup-bg);
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 28px 24px 28px;
+  padding: 32px 28px 28px;
   color: #0a0a0a;
-  box-shadow: 0 10px 34px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 8px 40px rgba(15, 23, 42, 0.10), 0 1px 4px rgba(0,0,0,0.06);
   overflow-y: auto;
 }
 
