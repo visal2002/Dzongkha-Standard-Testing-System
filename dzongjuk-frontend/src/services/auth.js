@@ -176,6 +176,17 @@ export const authService = {
     if (pollToken.startsWith('mock_ndi_')) {
       const startTime = parseInt(pollToken.split('_')[2], 10);
       if (Date.now() - startTime > MOCK_NDI_DELAY_MS) {
+        if (!USE_MOCK_DATA) {
+          const loginResult = await authService.login(MOCK_NDI_USER.email, MOCK_PASSWORD);
+          if (loginResult.success) {
+            return {
+              status: 'VALIDATED',
+              token: loginResult.token,
+              user: loginResult.user,
+              expiresIn: loginResult.expiresIn,
+            };
+          }
+        }
         return {
           status: 'VALIDATED',
           token: MOCK_NDI_TOKEN,
