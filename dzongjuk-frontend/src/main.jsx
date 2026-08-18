@@ -13,7 +13,5 @@ import './index.css';
 import './i18n';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+  <div style={{ color: 'red', fontSize: '50px' }}>HELLO WORLD IF THIS WORKS REACT IS OK</div>
 );
