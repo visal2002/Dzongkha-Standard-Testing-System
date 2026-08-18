@@ -52,7 +52,7 @@ describe('authentication contract', () => {
       password: 'SecurePass!2026',
     });
 
-    expect(registration).toMatchObject({ success: true, user: { role: 'test_taker' } });
+    expect(registration).toMatchObject({ success: true, user: { roles: ['test_taker'] } });
     const login = await authService.login(`chimi.dema.${uniqueSuffix}@example.com`, 'SecurePass!2026');
     expect(login).toMatchObject({
       success: true,
