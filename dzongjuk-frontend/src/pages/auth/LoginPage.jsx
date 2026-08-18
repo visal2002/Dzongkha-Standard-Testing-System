@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, ChevronLeft, User, Mail, Lock, CreditCard, Calendar, Phone, ArrowLeft, AlertTriangle, X, Smartphone } from 'lucide-react';
+import { Eye, EyeOff, ChevronLeft, User, CreditCard, Calendar, ArrowLeft, AlertTriangle, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
