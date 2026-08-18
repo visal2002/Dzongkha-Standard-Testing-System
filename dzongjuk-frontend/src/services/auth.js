@@ -189,7 +189,8 @@ export const authService = {
     const { data: envelope } = await apiClient.post('/auth/ndi/status', { pollToken });
     const result = envelope.data;
     if (result.status === 'VALIDATED') {
-      return { ...result, token: result.accessToken, user: normalizeUser(result.user, result.accessToken) };
+      const token = result.accessToken || result.token;
+      return { ...result, token, user: normalizeUser(result.user, token), expiresIn: result.expiresIn || 900 };
     }
     return result;
   },
