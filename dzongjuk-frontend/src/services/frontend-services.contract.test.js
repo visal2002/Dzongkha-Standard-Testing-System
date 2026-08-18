@@ -4,7 +4,7 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { authService } from './auth';
 import { adminService } from './admin';
 import { attendanceService } from './attendance';
@@ -20,12 +20,17 @@ const expectPdf = async (blob) => {
 
 describe('authentication contract', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     const values = new Map();
     globalThis.localStorage = {
       getItem: key => values.get(key) ?? null,
       setItem: (key, value) => values.set(key, String(value)),
       removeItem: key => values.delete(key),
     };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('accepts the local acceptance credentials in mock mode', async () => {
