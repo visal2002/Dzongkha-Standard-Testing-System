@@ -49,7 +49,9 @@ export const ACCESS_MATRIX = {
     registration: 'create_own', questions: 'sample', scores: 'read_own',
     appeals: 'submit_own', certificates: 'read_own',
   },
-  chief_executive: {},
+  chief_executive: {
+    appeals: 'process'
+  },
 };
 
 const ALLOWED_ACTIONS = {
