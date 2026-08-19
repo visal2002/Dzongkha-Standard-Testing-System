@@ -31,7 +31,7 @@ export default function UploadQuestionPaper() {
   const navigate = useNavigate();
 
   const handleFile = (field, file) => {
-    if (file && file.type === 'application/pdf') {
+    if (file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
       setFiles(prev => ({ ...prev, [field]: file }));
     } else {
       toast.error('Only PDF files are accepted');
