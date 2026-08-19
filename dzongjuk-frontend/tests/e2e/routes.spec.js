@@ -54,7 +54,7 @@ const roleRoutes = [
 const login = async (page, email) => {
   await page.goto('/login');
   await page.getByPlaceholder('Enter your CID, email, or User ID').fill(email);
-  await page.getByPlaceholder('Enter your password').fill('password');
+  await page.getByPlaceholder('Enter your password').fill('LocalTestOnly!2026');
   await page.getByRole('button', { name: 'Sign in to DSTS' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 };
