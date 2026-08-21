@@ -24,6 +24,14 @@ const MOCK_NDI_TOKEN = 'mock-local-acceptance-token';
 const MOCK_PASSWORD = 'LocalTestOnly!2026';
 const mockAccounts = new Map([
   [MOCK_NDI_USER.email, { user: MOCK_NDI_USER, password: MOCK_PASSWORD }],
+  // Demo accounts for E2E tests
+  ['system.admin@demo.com',     { user: { id: 'USR-001', email: 'system.admin@demo.com',     cid: '11101001001', fullName: 'Sonam Dorji',    roles: ['admin'],            permissions: [] }, password: MOCK_PASSWORD }],
+  ['dcdd.admin@demo.com',       { user: { id: 'USR-002', email: 'dcdd.admin@demo.com',       cid: '11102002002', fullName: 'Karma Wangchuk', roles: ['dcdd'],             permissions: [] }, password: MOCK_PASSWORD }],
+  ['exam.head@demo.com',        { user: { id: 'USR-003', email: 'exam.head@demo.com',        cid: '11103003003', fullName: 'Tshering Pem',   roles: ['exam_head'],        permissions: [] }, password: MOCK_PASSWORD }],
+  ['committee.head@demo.com',   { user: { id: 'USR-004', email: 'committee.head@demo.com',   cid: '11104004004', fullName: 'Ugyen Tenzin',   roles: ['committee_head'],   permissions: [] }, password: MOCK_PASSWORD }],
+  ['chief.executive@demo.com',  { user: { id: 'USR-005', email: 'chief.executive@demo.com',  cid: '11105005005', fullName: 'Dorji Wangmo',   roles: ['chief_executive'],  permissions: [] }, password: MOCK_PASSWORD }],
+  ['test.taker@demo.com',       { user: { id: 'USR-006', email: 'test.taker@demo.com',       cid: '11106006006', fullName: 'Pema Choden',    roles: ['test_taker'],       permissions: ['registration'] }, password: MOCK_PASSWORD }],
+  ['member@dsts.bt',            { user: { id: 'USR-007', email: 'member@dsts.bt',            cid: '11107007007', fullName: 'Kinley Dorji',   roles: ['committee_member'], permissions: [] }, password: MOCK_PASSWORD }],
 ]);
 
 const createMockNdiLogin = () => {
