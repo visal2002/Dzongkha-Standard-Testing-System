@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Plus, Calendar, MapPin, CreditCard } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PageHeader from '../../components/ui/PageHeader';
@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 
 export default function MyApplications() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [myApps, setMyApps] = useState([]);
   const [examWindows, setExamWindows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,9 +43,9 @@ export default function MyApplications() {
         breadcrumbs={[{ label: 'Registration' }, { label: 'My Applications' }]}
         icon={<FileText size={18} />}
         action={
-          <Link to="/registration/windows">
-            <Button icon={<Plus size={14} />}>New Application</Button>
-          </Link>
+          <Button icon={<Plus size={14} />} onClick={() => navigate('/registration/windows')}>
+            New Application
+          </Button>
         }
       />
 
@@ -55,7 +56,7 @@ export default function MyApplications() {
           <FileText size={40} className="mx-auto mb-3 opacity-20" />
           <p className="text-sm font-medium text-text-primary">No applications yet</p>
           <p className="text-xs mt-1 mb-4">Register for an exam to get started.</p>
-          <Link to="/registration/windows"><Button size="sm">Browse Exam Windows</Button></Link>
+          <Button size="sm" onClick={() => navigate('/registration/windows')}>Browse Exam Windows</Button>
         </div>
       ) : (
         <div className="space-y-4">
