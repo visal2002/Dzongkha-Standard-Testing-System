@@ -54,7 +54,7 @@ const roleRoutes = [
 const login = async (page, email) => {
   await page.goto('/login');
   await page.getByPlaceholder('Enter your CID, email, or User ID').fill(email);
-  await page.getByPlaceholder('Enter password').fill('password');
+  await page.getByPlaceholder('Enter your password').fill('LocalTestOnly!2026');
   await page.getByRole('button', { name: 'Sign in to DSTS' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 };
@@ -64,16 +64,17 @@ test('a test taker can register without NDI and sign in', async ({ page }) => {
   await page.getByRole('button', { name: 'Register', exact: true }).click();
   await page.getByRole('button', { name: 'Register without NDI' }).click();
 
+  await page.getByPlaceholder('11-digit CID number').fill('10701000001');
   await page.getByPlaceholder('Enter your full name').fill('Chimi Dema');
-  await page.getByPlaceholder('Enter 11-digit CID No.').fill('10701000001');
   await page.locator('input[type="date"]').fill('2000-01-01');
-  await page.getByPlaceholder('Enter mobile number').fill('17123456');
-  await page.getByPlaceholder('name@dsts.bt').fill('chimi.dema@example.com');
-  await page.getByPlaceholder('At least 12 characters').fill('SecurePass!2026');
-  await page.getByRole('button', { name: 'Create Account' }).click();
+  await page.getByRole('combobox').selectOption('Female');
+  await page.getByPlaceholder("Father's full name").fill('Karma Dorji');
+  await page.getByPlaceholder("Mother's full name").fill('Sonam Choden');
+  await page.getByPlaceholder('Dzongkhag, Gewog, Village').fill('Thimphu, Thimphu, Chang');
+  await page.getByRole('button', { name: 'Submit Registration' }).click();
 
-  await expect(page.getByPlaceholder('Enter your CID, email, or User ID')).toHaveValue('chimi.dema@example.com');
-  await page.getByPlaceholder('Enter password').fill('SecurePass!2026');
+  await page.getByPlaceholder('Enter your CID, email, or User ID').fill('10701000001@dsts.bt');
+  await page.getByPlaceholder('Enter your password').fill('Password!123');
   await page.getByRole('button', { name: 'Sign in to DSTS' }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
@@ -95,7 +96,7 @@ test('a user created by the administrator can sign in', async ({ page }) => {
   await page.getByRole('button', { name: 'Open account menu' }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.getByPlaceholder('Enter your CID, email, or User ID').fill('dechen.created@example.com');
-  await page.getByPlaceholder('Enter password').fill('CreatedUser!2026');
+  await page.getByPlaceholder('Enter your password').fill('CreatedUser!2026');
   await page.getByRole('button', { name: 'Sign in to DSTS' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText('Welcome, Dechen!')).toBeVisible();
