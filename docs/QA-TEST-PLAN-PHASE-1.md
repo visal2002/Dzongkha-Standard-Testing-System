@@ -252,7 +252,7 @@ Immutability is implemented as **versioned rows** (`result.score_versions`), not
 | Tables | `appeal_certificate.appeals`, `appeal_skills`, `appeal_history`, `committee_reviews`, `approvals`, `payments`, `payment_events`, `fee_rules`, `idempotency_records` |
 | Contract assertions | `backend/test/contracts.spec.ts` (approval ≠ applied revision; internal-key transport scope) |
 
-The payment-confirm and revision endpoints are `@Public()` but guarded by an internal service key. A Phase 1 security test **must** confirm an external caller without that key is rejected — a public route decorator is exactly the kind of thing a regression can widen silently.
+The payment-confirm and revision endpoints are `@Public()` but guarded by an internal service key. `appeal.service.spec.ts` ("rejects payment with wrong internal service key") and `registration.service.spec.ts` ("returns 403 when internal key is wrong") assert this today — keep those cases green rather than letting them rot, because a public route decorator is exactly the kind of thing a regression can widen silently.
 
 ### 7.7 Certificates (§2.7)
 
@@ -313,25 +313,43 @@ Two implementation facts change how §2.9 should be tested:
 | Report field allow-listing and grouping; rejection of arbitrary fields | `backend/test/reporting.spec.ts` |
 | Score mean/band calculation, increment validation, privileged approval for formula/declaration | `backend/test/scoring.spec.ts` |
 | Permission guard grant/deny and admin wildcard | `backend/test/security.guard.spec.ts` |
-| Live gateway acceptance: registration, appeals, certificate PDF/QR/ownership, notification projection | `backend/scripts/local-acceptance.ts` (`npm run test:local-acceptance`) |
+| Full permission matrix: 14 permissions × 7 roles, admin wildcard, multi-role union, `@Public()` bypass, and per-role negative cases | `backend/test/rbac.matrix.spec.ts` |
+| Outbox envelope contract for all 13 domain events, NDI-timeout and census-mismatch contracts, notification trigger coverage, audit-row shape | `backend/test/integration.events.spec.ts` |
+| Exam state machine, registration window and duplicate-CID rejection, waitlist creation and promotion on cancellation, registration-number format, idempotency-key replay, absent marking, certificate-profile internal key | `backend/test/registration.service.spec.ts` |
+| Committee formation (duplicate members, zero/two Heads, lock after entry), score entry (non-Head, absent candidate, post-submit lock), declaration (MFA assurance, completeness), appeal revision versioning | `backend/test/result.service.spec.ts` |
+| Appeal submission gating, proportional fee, internal-key payment confirmation, committee recommendation paths, privileged Chief decision | `backend/test/appeal.service.spec.ts` |
+| Upload validation, download access-window enforcement (before and after), sample publication gated on declaration | `backend/test/assessment.service.spec.ts` |
+| Certificate owner-only access, validity = issuance + template months, per-attempt records, supersession on revision | `backend/test/certificate.service.spec.ts` |
+| Local login, lockout after five failures, disabled accounts, admin NDI enforcement, token claims, NDI webhook paths, duplicate registration | `backend/test/auth.service.spec.ts` |
+| Live-stack acceptance: registration, appeals, certificate PDF/QR/ownership, notification projection | `backend/scripts/local-acceptance.ts` (`npm run test:local-acceptance`) |
 | Frontend access matrix contract | `dzongjuk-frontend/src/config/accessMatrix.contract.test.js` |
 | Frontend RBAC rendering, service contracts, UI units | `src/rbac/rbac.test.jsx`, `src/services/frontend-services.contract.test.js`, `src/components/ui/Badge.test.jsx`, `src/utils/uuid.test.js` |
 | Route rendering per role, registration and admin-created login flows | `dzongjuk-frontend/tests/e2e/routes.spec.js` |
+| Registration window closed-state, mandatory fields, duplicate CID, cancel affordance, acknowledgement, own-status visibility | `dzongjuk-frontend/tests/e2e/registration.workflow.spec.js` |
 
-### 8.2 Gaps to close before Phase 1 sign-off
+### 8.2 Blocker: six backend suites do not currently compile
+
+On `main` at the time of writing, `npm test` in `backend/` reports **6 failed suites, 7 passed, 150 tests passing** — the six failures are TypeScript compile errors, not assertion failures, so none of those tests execute at all:
+
+`appeal.service.spec.ts`, `assessment.service.spec.ts`, `auth.service.spec.ts`, `certificate.service.spec.ts`, `registration.service.spec.ts`, `result.service.spec.ts`
+
+`npm run lint` in `backend/` also fails with **71 errors** (mostly `@typescript-eslint/require-await` and unused imports across the same files, plus a parse error at `certificate.service.spec.ts:192`).
+
+This matters for the plan, not just for CI: the §8.1 rows for those six suites describe tests that **exist but do not currently run**. Until they compile, treat that coverage as claimed rather than demonstrated, and do not count it toward Phase 1 sign-off.
+
+### 8.3 Gaps to close before Phase 1 sign-off
 
 | # | Gap | Section |
 |---|---|---|
-| 1 | No concurrency test for capacity/waitlist ordering under simultaneous submissions, or for Registration Number uniqueness under simultaneous approvals. | §2.2 |
-| 2 | No test asserting the timed download window on question papers rejects the correct role outside the scheduled window. | §2.4 |
-| 3 | No negative test proving the internal-key `@Public()` routes (`/appeals/:id/payment/confirm`, `/internal/...`) reject an external caller. | §2.6, §7.6 |
-| 4 | Full role × module × CRUD matrix is asserted on the frontend matrix only; the equivalent server-side matrix across all nine controllers is not exhaustively covered. | §2.9 |
-| 5 | Audit-log append-only enforcement is not tested (attempted UPDATE/DELETE on `*.audit_events`). | §2.8 |
-| 6 | Reporting projection convergence and replay idempotency are not asserted end to end. | §2.8, §7.8 |
-| 7 | NDI and DCRC adapters are foundation-only — integration tests in §3 cannot be executed until the official specifications and sandbox endpoints are supplied. | §3 |
-| 8 | SMS/email delivery, retry, and logging are unverifiable: notification workflow is in-app only; provider adapters are open. | §3, §2.2 |
-| 9 | Privileged MFA (§2.9) cannot be tested — provider and NDI assurance level are unresolved external decisions. | §2.9 |
-| 10 | No performance, load, availability, backup/restore, or VAPT evidence; these require target GovTech infrastructure. | §4 |
-| 11 | Frontend E2E runs only against the mock-data build, so no browser-level test currently exercises real server enforcement. | §6.1 |
+| 1 | The six suites above do not compile; their coverage is unverified until they do. | §8.2 |
+| 2 | Waitlist promotion, capacity, and registration-number uniqueness are covered only as single-threaded unit tests with mocked repositories. No test exercises real concurrent submissions or concurrent approvals against PostgreSQL, which is where the ordering and uniqueness guarantees actually live. | §2.2 |
+| 3 | Audit-log append-only enforcement is not tested — no attempted `UPDATE`/`DELETE` against `*.audit_events`. `integration.events.spec.ts` asserts audit-row *shape*, not immutability. | §2.8 |
+| 4 | Reporting projection convergence and replay idempotency are not asserted end to end (`reporting.processed_events`). | §2.8, §7.8 |
+| 5 | The RBAC matrix is asserted at the guard level. No test proves each of the nine controllers actually carries the intended `@Permissions(...)` decorator — a route shipped without one would pass the matrix suite. | §2.9 |
+| 6 | NDI and DCRC adapters are foundation-only. `integration.events.spec.ts` fixes the timeout and mismatch *contracts*, but no test runs against a real or sandbox provider. | §3 |
+| 7 | SMS/email delivery, retry, and logging remain unverifiable: the notification workflow is in-app only and provider adapters are open. | §3, §2.2 |
+| 8 | Assurance-level gating is tested (declaration, certificate issuance, Chief decision), but actual MFA enrolment and challenge cannot be tested — provider and NDI assurance level are unresolved. | §2.9 |
+| 9 | No performance, load, availability, backup/restore, or VAPT evidence; these require target GovTech infrastructure. | §4 |
+| 10 | Frontend E2E still runs only against the mock-data build, so no browser-level test exercises real server enforcement. | §6.1 |
 
-Gaps 7–10 are blocked on the external decisions listed in `backend/docs/IMPLEMENTATION-STATUS.md`; gaps 1–6 and 11 are actionable now against the existing code.
+Gaps 6–9 are blocked on the external decisions listed in `backend/docs/IMPLEMENTATION-STATUS.md`; gaps 1–5 and 10 are actionable now against the existing code, and gap 1 blocks the rest.
