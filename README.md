@@ -131,6 +131,8 @@ npm run frontend:test:e2e
 
 The route suite signs in as every demonstration role and checks all role-specific routes for rendering failures, browser errors, and runtime exception messages. GitHub Actions runs these checks together with the backend build, lint, tests, and production dependency audits on every pull request and every push to `main`.
 
+The Phase 1 QA test plan — module-by-module frontend, API, and database test cases, traceability to the endpoints and tables that exist today, and the list of coverage gaps still open — lives in [`docs/QA-TEST-PLAN-PHASE-1.md`](docs/QA-TEST-PLAN-PHASE-1.md).
+
 ---
 
 ## 📂 Project Architecture
