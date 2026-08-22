@@ -74,10 +74,10 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
 // ─── exhaustive matrix ────────────────────────────────────────────────────────
 
 describe('RBAC permission matrix — all 14 permissions × 7 roles (BRD §2.9)', () => {
-  const permissionNames = Object.entries(PERMS) as Array<[string, string]>;
+  const permissionNames = Object.values(PERMS);
   const roleNames = Object.keys(ROLE_PERMISSIONS);
 
-  for (const [permKey, permission] of permissionNames) {
+  for (const permission of permissionNames) {
     describe(`Permission: ${permission}`, () => {
       const guard = guardFor(permission);
 

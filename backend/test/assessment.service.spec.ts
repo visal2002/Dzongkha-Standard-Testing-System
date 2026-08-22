@@ -5,9 +5,8 @@
  */
 
 import { ConfigService } from '@nestjs/config';
-import { DataSource, EntityManager, Repository } from 'typeorm';
-import { AccessClaims, DomainEventTypes, QuestionPaperStatus } from '@dzongjuk/contracts';
-import { DomainException } from '@dzongjuk/common';
+import { DataSource, EntityManager, ObjectLiteral, Repository } from 'typeorm';
+import { AccessClaims, DomainEventTypes, QuestionPaperStatus, Skill } from '@dzongjuk/contracts';
 import { AssessmentService } from '../apps/assessment-content-service/src/assessment.service';
 import { EncryptionService } from '../apps/assessment-content-service/src/encryption.service';
 import { MalwareScannerService } from '../apps/assessment-content-service/src/malware-scanner.service';
@@ -66,7 +65,7 @@ const makeDataSource = (manager: EntityManager): DataSource =>
     manager,
   } as unknown as DataSource);
 
-const makeRepo = <T>(rows: T[] = []): Repository<T> =>
+const makeRepo = <T extends ObjectLiteral>(rows: T[] = []): Repository<T> =>
   ({
     find: jest.fn().mockResolvedValue(rows),
     findOne: jest.fn().mockResolvedValue(rows[0] ?? null),
@@ -125,7 +124,7 @@ describe('AssessmentService — Question paper upload (BRD §2.4)', () => {
   const validDto = {
     examId: uuid(),
     title: 'Dzongkha Writing Paper 2026',
-    skill: 'WRITING',
+    skill: Skill.Writing,
     accessAllowedFrom: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
     accessAllowedUntil: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
   };
@@ -140,7 +139,7 @@ describe('AssessmentService — Question paper upload (BRD §2.4)', () => {
         actor,
         'req-1',
       ),
-    ).rejects.toMatchObject({ code: 'ACCESS_WINDOW_INVALID' });
+    ).rejects.toMatchObject({ response: { code: 'ACCESS_WINDOW_INVALID' } });
   });
 
   it('rejects upload when question paper file is missing', async () => {
@@ -148,7 +147,7 @@ describe('AssessmentService — Question paper upload (BRD §2.4)', () => {
     const service = buildService();
     await expect(
       service.upload(validDto, {}, actor, 'req-2'),
-    ).rejects.toMatchObject({ code: 'QUESTION_DOCUMENT_REQUIRED' });
+    ).rejects.toMatchObject({ response: { code: 'QUESTION_DOCUMENT_REQUIRED' } });
   });
 
   it('rejects non-PDF file type', async () => {
@@ -161,7 +160,7 @@ describe('AssessmentService — Question paper upload (BRD §2.4)', () => {
     };
     await expect(
       service.upload(validDto, { questionPaper: [badFile] }, actor, 'req-3'),
-    ).rejects.toMatchObject({ code: 'QUESTION_FILE_TYPE_INVALID' });
+    ).rejects.toMatchObject({ response: { code: 'QUESTION_FILE_TYPE_INVALID' } });
   });
 
   it('stores the uploaded file encrypted and emits QuestionPaperUploaded outbox event', async () => {
@@ -196,7 +195,7 @@ describe('AssessmentService — Download access window enforcement (BRD §2.4)',
     const actor = examHeadActor();
     const service = buildService({ papers });
     await expect(service.download(paper.id, DocumentType.QuestionPaper, actor, 'req-5'))
-      .rejects.toMatchObject({ code: 'QUESTION_ACCESS_WINDOW_CLOSED' });
+      .rejects.toMatchObject({ response: { code: 'QUESTION_ACCESS_WINDOW_CLOSED' } });
   });
 
   it('blocks download after the access window has closed', async () => {
@@ -211,7 +210,7 @@ describe('AssessmentService — Download access window enforcement (BRD §2.4)',
     const actor = examHeadActor();
     const service = buildService({ papers });
     await expect(service.download(paper.id, DocumentType.QuestionPaper, actor, 'req-6'))
-      .rejects.toMatchObject({ code: 'QUESTION_ACCESS_WINDOW_CLOSED' });
+      .rejects.toMatchObject({ response: { code: 'QUESTION_ACCESS_WINDOW_CLOSED' } });
   });
 });
 
@@ -238,7 +237,7 @@ describe('AssessmentService — Sample publication (BRD §2.4)', () => {
     const actor = examHeadActor();
     const service = buildService({ manager, papers, declarations });
     await expect(service.publishSample(paper.id, actor, 'req-7'))
-      .rejects.toMatchObject({ code: 'RESULTS_NOT_DECLARED' });
+      .rejects.toMatchObject({ response: { code: 'RESULTS_NOT_DECLARED' } });
   });
 
   it('changes paper status to SamplePublished after results are declared and emits event', async () => {
@@ -257,10 +256,12 @@ describe('AssessmentService — Sample publication (BRD §2.4)', () => {
         return null;
       }),
       findBy: jest.fn().mockResolvedValue([]),
-      save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => {
-        if ((data as QuestionPaperEntity)?.status) savedPaperStatus = (data as QuestionPaperEntity).status;
-        if ((data as AssessmentOutboxEntity)?.eventType) outboxEvents.push(data as AssessmentOutboxEntity);
-        return { ...(data as Record<string, unknown>), id: uuid() };
+      // publishSample writes the paper with save(entity) and the outbox row with save(Entity, data)
+      save: jest.fn().mockImplementation(async (entityOrData: unknown, data?: unknown) => {
+        const row = (data ?? entityOrData) as QuestionPaperEntity & AssessmentOutboxEntity;
+        if (row?.status) savedPaperStatus = row.status;
+        if (row?.eventType) outboxEvents.push(row);
+        return { ...(row as unknown as Record<string, unknown>), id: uuid() };
       }),
       create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     });
@@ -285,6 +286,6 @@ describe('AssessmentService — Sample publication (BRD §2.4)', () => {
     const actor = examHeadActor();
     const service = buildService({ manager, papers });
     await expect(service.publishSample(paper.id, actor, 'req-9'))
-      .rejects.toMatchObject({ code: 'SAMPLE_PUBLICATION_INVALID' });
+      .rejects.toMatchObject({ response: { code: 'SAMPLE_PUBLICATION_INVALID' } });
   });
 });

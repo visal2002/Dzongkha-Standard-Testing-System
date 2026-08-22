@@ -5,18 +5,14 @@
  */
 
 import { ConfigService } from '@nestjs/config';
-import { DataSource, EntityManager, Repository } from 'typeorm';
-import { AccessClaims, CertificateStatus, DomainEventTypes } from '@dzongjuk/contracts';
-import { DomainException } from '@dzongjuk/common';
+import { DataSource, EntityManager, ObjectLiteral, Repository } from 'typeorm';
+import { AccessClaims, CertificateStatus } from '@dzongjuk/contracts';
 import { CertificateService } from '../apps/appeal-certificate-service/src/certificate.service';
 import { CertificateEncryptionService } from '../apps/appeal-certificate-service/src/certificate-encryption.service';
 import { CertificateStorageService } from '../apps/appeal-certificate-service/src/certificate-storage.service';
 import { CertificateRendererService } from '../apps/appeal-certificate-service/src/certificate-renderer.service';
 import { CertificateSourceClientService } from '../apps/appeal-certificate-service/src/certificate-source-client.service';
 import {
-  AppealAuditEntity,
-  AppealIdempotencyEntity,
-  AppealOutboxEntity,
   CertificateEntity,
   CertificateFileEntity,
   CertificateTemplateEntity,
@@ -87,8 +83,8 @@ const makeManager = (overrides: Partial<EntityManager> = {}): EntityManager =>
     findOneBy: jest.fn().mockResolvedValue(null),
     findBy: jest.fn().mockResolvedValue([]),
     find: jest.fn().mockResolvedValue([]),
-    save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => ({
-      ...(data as Record<string, unknown>), id: uuid(),
+    save: jest.fn().mockImplementation(async (entityOrData: unknown, data?: unknown) => ({
+      ...((data ?? entityOrData) as Record<string, unknown>), id: uuid(),
     })),
     create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     ...overrides,
@@ -101,14 +97,14 @@ const makeDataSource = (manager: EntityManager): DataSource =>
       return (transact as (m: EntityManager) => Promise<unknown>)(manager);
     }),
     manager,
-    getRepository: jest.fn().mockImplementation((entity: unknown) => ({
+    getRepository: jest.fn().mockImplementation(() => ({
       findOneBy: jest.fn().mockResolvedValue(null),
       findBy: jest.fn().mockResolvedValue([]),
       save: jest.fn().mockImplementation(async (data: unknown) => data),
     })),
   } as unknown as DataSource);
 
-const makeRepo = <T>(rows: T[] = []): Repository<T> =>
+const makeRepo = <T extends ObjectLiteral>(rows: T[] = []): Repository<T> =>
   ({
     find: jest.fn().mockResolvedValue(rows),
     findOne: jest.fn().mockResolvedValue(rows[0] ?? null),
@@ -123,7 +119,7 @@ const makeRepo = <T>(rows: T[] = []): Repository<T> =>
 const makeEncryption = (): CertificateEncryptionService => {
   const key = Buffer.alloc(32, 7).toString('base64');
   return new CertificateEncryptionService(
-    new ConfigService({ CERTIFICATE_ENCRYPTION_KEY_BASE64: key, CERTIFICATE_KEY_VERSION: 'cert-v1' }),
+    new ConfigService({ CERTIFICATE_MASTER_KEY_BASE64: key, CERTIFICATE_KEY_VERSION: 'cert-v1' }),
   );
 };
 
@@ -189,13 +185,13 @@ const buildService = ({
 // ─── authorization tests ──────────────────────────────────────────────────────
 
 describe('CertificateService — Authorization (BRD §2.7)', () => {
-  it('blocks non-owner without elevated permission from viewing another user's certificate', async () => {
+  it("blocks non-owner without elevated permission from viewing another user's certificate", async () => {
     const cert = makeCertificate({ testTakerUserId: uuid() });
     const certificates = makeRepo([cert]);
     const service = buildService({ certificates });
     const otherActor = mfaActor({ sub: uuid(), permissions: [] }); // different user, no manage permission
     await expect(service.getOne(cert.id, otherActor, 'req-1'))
-      .rejects.toMatchObject({ code: 'CERTIFICATE_FORBIDDEN' });
+      .rejects.toMatchObject({ response: { code: 'CERTIFICATE_FORBIDDEN' } });
   });
 
   it('allows owner to view their own certificate', async () => {
@@ -221,7 +217,7 @@ describe('CertificateService — Authorization (BRD §2.7)', () => {
     const service = buildService();
     const localActor = mfaActor({ assurance: 'LOCAL' });
     await expect(service.generate(uuid(), localActor, 'req-3', 'idem-cert-1'))
-      .rejects.toMatchObject({ code: 'PRIVILEGED_ASSURANCE_REQUIRED' });
+      .rejects.toMatchObject({ response: { code: 'PRIVILEGED_ASSURANCE_REQUIRED' } });
   });
 });
 
@@ -261,8 +257,8 @@ describe('CertificateService — Validity date calculation (BRD §2.7)', () => {
     const after = new Date();
 
     expect(savedCert).toBeDefined();
-    const issuedAt = savedCert!.issuedAt as Date;
-    const validUntil = savedCert!.validUntil as Date;
+    const issuedAt = savedCert!.issuedAt;
+    const validUntil = savedCert!.validUntil;
     expect(issuedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
     expect(issuedAt.getTime()).toBeLessThanOrEqual(after.getTime());
     // validUntil should be ~24 months after issuedAt
@@ -290,16 +286,18 @@ describe('CertificateService — Multiple exam attempts (BRD §2.7)', () => {
         return record;
       }),
       create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
-      countBy: jest.fn().mockResolvedValue(1), // prior certificate exists (version 1)
     });
     const ds = makeDataSource(manager);
+    // the version counter reads the injected repository, not the transaction manager
+    const certificates = makeRepo<CertificateEntity>();
+    (certificates.countBy as jest.Mock).mockResolvedValue(1); // one prior attempt already certified
     const service = new CertificateService(
       ds,
       new ConfigService({ CERTIFICATE_VERIFICATION_SECRET: verificationSecret, PRIVILEGED_ASSURANCE_LEVELS: 'MFA,NDI', NODE_ENV: 'test' }),
       makeEncryption(), makeStorage(), makeRenderer(),
       makeSources(examId, appId, userId),
       makeRepo([makeTemplate()]),
-      makeRepo<CertificateEntity>(),
+      certificates,
       makeRepo<CertificateFileEntity>(),
     );
     await service.generate(examId, mfaActor(), 'req-5', 'idem-cert-attempt-2');
@@ -317,9 +315,10 @@ describe('CertificateService — Supersession on score revision (BRD §2.7)', ()
     const superseded: CertificateEntity[] = [];
     const manager = makeManager({
       find: jest.fn().mockResolvedValue([staleCert]),
-      save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => {
-        if ((data as CertificateEntity)?.status === CertificateStatus.Superseded) superseded.push(data as CertificateEntity);
-        return { ...(data as Record<string, unknown>), id: uuid() };
+      save: jest.fn().mockImplementation(async (entityOrData: unknown, data?: unknown) => {
+        const row = (data ?? entityOrData) as CertificateEntity;
+        if (row?.status === CertificateStatus.Superseded) superseded.push(row);
+        return row;
       }),
       create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     });
@@ -335,9 +334,10 @@ describe('CertificateService — Supersession on score revision (BRD §2.7)', ()
     const superseded: CertificateEntity[] = [];
     const manager = makeManager({
       find: jest.fn().mockResolvedValue([currentCert]),
-      save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => {
-        if ((data as CertificateEntity)?.status === CertificateStatus.Superseded) superseded.push(data as CertificateEntity);
-        return data;
+      save: jest.fn().mockImplementation(async (entityOrData: unknown, data?: unknown) => {
+        const row = (data ?? entityOrData) as CertificateEntity;
+        if (row?.status === CertificateStatus.Superseded) superseded.push(row);
+        return row;
       }),
     });
     const service = buildService({ manager });

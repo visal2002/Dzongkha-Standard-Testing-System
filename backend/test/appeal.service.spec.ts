@@ -5,21 +5,22 @@
  */
 
 import { ConfigService } from '@nestjs/config';
-import { DataSource, EntityManager, Repository } from 'typeorm';
-import { AccessClaims, AppealStatus, DomainEventTypes } from '@dzongjuk/contracts';
+import { DataSource, EntityManager, ObjectLiteral, Repository } from 'typeorm';
+import { AccessClaims, AppealStatus, DomainEventTypes, Skill } from '@dzongjuk/contracts';
 import { DomainException } from '@dzongjuk/common';
 import { AppealService } from '../apps/appeal-certificate-service/src/appeal.service';
 import { CertificateService } from '../apps/appeal-certificate-service/src/certificate.service';
 import { ResultClientService } from '../apps/appeal-certificate-service/src/result-client.service';
 import {
+  AppealDecision,
   AppealEntity,
   AppealIdempotencyEntity,
   AppealOutboxEntity,
   AppealRecommendation,
-  AppealDecision,
   AppealSkillEntity,
   FeeRuleEntity,
   FeeRuleStatus,
+  PaymentStatus,
 } from '../apps/appeal-certificate-service/src/entities';
 
 // ─── shared fixtures ──────────────────────────────────────────────────────────
@@ -58,7 +59,7 @@ const makeDataSource = (manager: EntityManager): DataSource =>
     getRepository: jest.fn().mockReturnValue({ findBy: jest.fn().mockResolvedValue([]) }),
   } as unknown as DataSource);
 
-const makeRepo = <T>(rows: T[] = []): Repository<T> =>
+const makeRepo = <T extends ObjectLiteral>(rows: T[] = []): Repository<T> =>
   ({
     find: jest.fn().mockResolvedValue(rows),
     findOne: jest.fn().mockResolvedValue(rows[0] ?? null),
@@ -141,7 +142,7 @@ describe('AppealService — Submission (BRD §2.6)', () => {
     const actor = mfaActor({ roles: ['test_taker'], permissions: [] });
     await expect(
       service.submit(
-        { applicationId: uuid(), examId: uuid(), skills: ['WRITING'], reason: 'Query score' },
+        { applicationId: uuid(), examId: uuid(), skills: [Skill.Writing], reason: 'Query score' },
         actor,
         undefined,
         'req-1',
@@ -177,10 +178,10 @@ describe('AppealService — Submission (BRD §2.6)', () => {
     const actor = mfaActor({ roles: ['test_taker'] });
     await expect(
       service.submit(
-        { applicationId, examId, skills: ['WRITING'], reason: 'Resubmit' },
+        { applicationId, examId, skills: [Skill.Writing], reason: 'Resubmit' },
         actor, undefined, 'req-2', 'idem-2',
       ),
-    ).rejects.toMatchObject({ code: 'ACTIVE_APPEAL_EXISTS' });
+    ).rejects.toMatchObject({ response: { code: 'ACTIVE_APPEAL_EXISTS' } });
   });
 
   it('calculates appeal fee proportionally to number of appealed skills', async () => {
@@ -194,11 +195,16 @@ describe('AppealService — Submission (BRD §2.6)', () => {
       }),
     });
     const manager = makeManager({
-      findOneBy: jest.fn().mockResolvedValue(null),
       findOne: jest.fn().mockImplementation(async (entity: unknown) => {
         if (entity === FeeRuleEntity) return feeRule;
         return null;
       }),
+      // submit() first probes for an active appeal by applicationId, then projects the new
+      // one through detail() by id — only the second lookup may resolve to a row.
+      findOneBy: jest.fn().mockImplementation(async (entity: unknown, where: Record<string, unknown>) =>
+        (entity === AppealEntity && where?.id
+          ? Object.assign(new AppealEntity(), { id: where.id as string, examId, paymentId: null })
+          : null)),
       save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => {
         if ((data as Record<string, unknown>)?.referenceType === 'APPEAL') savedPayments.push(data as Record<string, unknown>);
         return { ...(data as Record<string, unknown>), id: uuid() };
@@ -208,7 +214,7 @@ describe('AppealService — Submission (BRD §2.6)', () => {
     const service = buildService({ manager, resultClient, fees: makeRepo([feeRule]) });
     const actor = mfaActor({ roles: ['test_taker'], assurance: 'LOCAL' });
     await service.submit(
-      { applicationId: uuid(), examId, skills: ['WRITING', 'READING'], reason: 'Check score' },
+      { applicationId: uuid(), examId, skills: [Skill.Writing, Skill.Reading], reason: 'Check score' },
       actor, undefined, 'req-3', 'idem-3',
     );
     expect(savedPayments[0]?.amount).toBe('1000.00'); // 2 skills × 500
@@ -217,8 +223,8 @@ describe('AppealService — Submission (BRD §2.6)', () => {
   it('throws when Idempotency-Key header is missing', async () => {
     const service = buildService();
     await expect(
-      service.submit({ applicationId: uuid(), examId: uuid(), skills: ['WRITING'], reason: 'Test' }, mfaActor(), undefined, 'req-4', ''),
-    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REQUIRED' });
+      service.submit({ applicationId: uuid(), examId: uuid(), skills: [Skill.Writing], reason: 'Test' }, mfaActor(), undefined, 'req-4', ''),
+    ).rejects.toMatchObject({ response: { code: 'IDEMPOTENCY_KEY_REQUIRED' } });
   });
 });
 
@@ -231,7 +237,7 @@ describe('AppealService — Payment confirmation (BRD §2.6)', () => {
       service.confirmPayment(uuid(), {
         externalTransactionId: 'tx-001', amount: 1000, currency: 'BTN', paidAt: new Date().toISOString(), gateway: 'BNB',
       }, 'wrong-key', 'req-5'),
-    ).rejects.toMatchObject({ code: 'INTERNAL_SERVICE_AUTH_FAILED' });
+    ).rejects.toMatchObject({ response: { code: 'INTERNAL_SERVICE_AUTH_FAILED' } });
   });
 
   it('rejects when appeal is not awaiting payment', async () => {
@@ -242,7 +248,7 @@ describe('AppealService — Payment confirmation (BRD §2.6)', () => {
     const manager = makeManager({
       findOne: jest.fn().mockImplementation(async (entity: unknown) => {
         if (entity === AppealEntity) return completedAppeal;
-        return { id: completedAppeal.paymentId, status: 'PAID', amount: '500.00', currency: 'BTN' };
+        return { id: completedAppeal.paymentId, status: PaymentStatus.Initiated, amount: '500.00', currency: 'BTN' };
       }),
     });
     const service = buildService({ manager });
@@ -250,7 +256,7 @@ describe('AppealService — Payment confirmation (BRD §2.6)', () => {
       service.confirmPayment(appealId, {
         externalTransactionId: 'tx-002', amount: 500, currency: 'BTN', paidAt: new Date().toISOString(), gateway: 'BNB',
       }, internalSecret, 'req-6'),
-    ).rejects.toMatchObject({ code: 'PAYMENT_STATE_INVALID' });
+    ).rejects.toMatchObject({ response: { code: 'PAYMENT_STATE_INVALID' } });
   });
 
   it('rejects when payment amount does not match fee', async () => {
@@ -264,7 +270,6 @@ describe('AppealService — Payment confirmation (BRD §2.6)', () => {
         if (entity === AppealEntity) return pendingAppeal;
         return { id: paymentId, status: 'INITIATED', amount: '1000.00', currency: 'BTN' };
       }),
-      findOneBy: jest.fn().mockResolvedValue(null),
       save: jest.fn().mockImplementation(async (_e: unknown, d: unknown) => d),
       create: jest.fn().mockImplementation((_e: unknown, d: unknown) => d),
     });
@@ -273,7 +278,7 @@ describe('AppealService — Payment confirmation (BRD §2.6)', () => {
       service.confirmPayment(appealId, {
         externalTransactionId: 'tx-003', amount: 500, currency: 'BTN', paidAt: new Date().toISOString(), gateway: 'BNB', // wrong amount
       }, internalSecret, 'req-7'),
-    ).rejects.toMatchObject({ code: 'PAYMENT_AMOUNT_MISMATCH' });
+    ).rejects.toMatchObject({ response: { code: 'PAYMENT_AMOUNT_MISMATCH' } });
   });
 });
 
@@ -289,11 +294,13 @@ describe('AppealService — Committee review (BRD §2.6)', () => {
       submittedAt: new Date(), completedAt: null,
     });
     const skills = [
-      Object.assign(new AppealSkillEntity(), { skill: 'WRITING', originalScore: '7', proposedScore: null, finalScore: null }),
+      Object.assign(new AppealSkillEntity(), { skill: Skill.Writing, originalScore: '7', proposedScore: null, finalScore: null }),
     ];
     const outboxEvents: AppealOutboxEntity[] = [];
     const manager = makeManager({
       findOne: jest.fn().mockResolvedValue(pendingAppeal),
+      // detail() re-reads the appeal through findOneBy after the transition is written
+      findOneBy: jest.fn().mockImplementation(async (entity: unknown) => (entity === AppealEntity ? pendingAppeal : null)),
       findBy: jest.fn().mockResolvedValue(skills),
       save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => {
         if ((data as AppealOutboxEntity)?.eventType) outboxEvents.push(data as AppealOutboxEntity);
@@ -302,7 +309,7 @@ describe('AppealService — Committee review (BRD §2.6)', () => {
       create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     });
     const resultClient = makeResultClient({ assertCommitteeAccess: jest.fn().mockResolvedValue(undefined) });
-    const service = buildService({ manager, resultClient });
+    const service = buildService({ manager, resultClient, appeals: makeRepo<AppealEntity>([pendingAppeal]) });
     await service.committeeReview(
       appealId,
       { recommendation: AppealRecommendation.NoChange, remarks: 'Score confirmed.' },
@@ -322,13 +329,14 @@ describe('AppealService — Committee review (BRD §2.6)', () => {
       submittedAt: new Date(), completedAt: null,
     });
     const skills = [
-      Object.assign(new AppealSkillEntity(), { skill: 'WRITING', originalScore: '7', proposedScore: null, finalScore: null }),
+      Object.assign(new AppealSkillEntity(), { skill: Skill.Writing, originalScore: '7', proposedScore: null, finalScore: null }),
     ];
     const appealStatuses: AppealStatus[] = [];
     const manager = makeManager({
       findOne: jest.fn().mockResolvedValue(pendingAppeal),
+      // detail() re-reads the appeal through findOneBy after the transition is written
+      findOneBy: jest.fn().mockImplementation(async (entity: unknown) => (entity === AppealEntity ? pendingAppeal : null)),
       findBy: jest.fn().mockResolvedValue(skills),
-      findOneBy: jest.fn().mockResolvedValue(null),
       find: jest.fn().mockResolvedValue([]),
       save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => {
         if ((data as AppealEntity)?.status) appealStatuses.push((data as AppealEntity).status);
@@ -337,7 +345,7 @@ describe('AppealService — Committee review (BRD §2.6)', () => {
       create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     });
     const resultClient = makeResultClient({ assertCommitteeAccess: jest.fn().mockResolvedValue(undefined) });
-    const service = buildService({ manager, resultClient });
+    const service = buildService({ manager, resultClient, appeals: makeRepo<AppealEntity>([pendingAppeal]) });
     await service.committeeReview(
       appealId,
       { recommendation: AppealRecommendation.Revise, proposedScores: { WRITING: 8 }, remarks: 'Higher score warranted.' },
@@ -354,11 +362,13 @@ describe('AppealService — Committee review (BRD §2.6)', () => {
       id: appealId, examId: uuid(), status: AppealStatus.PendingCommittee, paymentId: uuid(),
     });
     const skills = [
-      Object.assign(new AppealSkillEntity(), { skill: 'WRITING', originalScore: '7', proposedScore: null }),
+      Object.assign(new AppealSkillEntity(), { skill: Skill.Writing, originalScore: '7', proposedScore: null }),
     ];
     const appeals = makeRepo<AppealEntity>([pendingAppeal]);
     const manager = makeManager({
       findOne: jest.fn().mockResolvedValue(pendingAppeal),
+      // detail() re-reads the appeal through findOneBy after the transition is written
+      findOneBy: jest.fn().mockImplementation(async (entity: unknown) => (entity === AppealEntity ? pendingAppeal : null)),
       findBy: jest.fn().mockResolvedValue(skills),
     });
     const resultClient = makeResultClient({ assertCommitteeAccess: jest.fn().mockResolvedValue(undefined) });
@@ -371,7 +381,7 @@ describe('AppealService — Committee review (BRD §2.6)', () => {
         undefined,
         'req-10',
       ),
-    ).rejects.toMatchObject({ code: 'APPEAL_PROPOSED_SKILLS_INVALID' });
+    ).rejects.toMatchObject({ response: { code: 'APPEAL_PROPOSED_SKILLS_INVALID' } });
   });
 });
 
@@ -383,7 +393,7 @@ describe('AppealService — Chief Executive decision (BRD §2.6)', () => {
     const localActor = mfaActor({ assurance: 'LOCAL', roles: ['chief_executive'] });
     await expect(
       service.decide(uuid(), { decision: AppealDecision.Approved, remarks: '' }, localActor, 'req-11'),
-    ).rejects.toMatchObject({ code: 'PRIVILEGED_ASSURANCE_REQUIRED' });
+    ).rejects.toMatchObject({ response: { code: 'PRIVILEGED_ASSURANCE_REQUIRED' } });
   });
 
   it('Approved decision transitions appeal to ApprovedPendingScoreUpdate and emits AppealApproved', async () => {
@@ -398,8 +408,9 @@ describe('AppealService — Chief Executive decision (BRD §2.6)', () => {
     const outboxEvents: AppealOutboxEntity[] = [];
     const manager = makeManager({
       findOne: jest.fn().mockResolvedValue(pendingAppeal),
+      // detail() re-reads the appeal through findOneBy after the transition is written
+      findOneBy: jest.fn().mockImplementation(async (entity: unknown) => (entity === AppealEntity ? pendingAppeal : null)),
       findBy: jest.fn().mockResolvedValue([]),
-      findOneBy: jest.fn().mockResolvedValue(null),
       find: jest.fn().mockResolvedValue([]),
       save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => {
         if ((data as AppealOutboxEntity)?.eventType) outboxEvents.push(data as AppealOutboxEntity);
@@ -407,7 +418,7 @@ describe('AppealService — Chief Executive decision (BRD §2.6)', () => {
       }),
       create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     });
-    const service = buildService({ manager });
+    const service = buildService({ manager, appeals: makeRepo<AppealEntity>([pendingAppeal]) });
     await service.decide(appealId, { decision: AppealDecision.Approved, remarks: 'Approved.' }, mfaActor(), 'req-12');
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealApproved)).toBe(true);
   });
@@ -424,8 +435,9 @@ describe('AppealService — Chief Executive decision (BRD §2.6)', () => {
     const outboxEvents: AppealOutboxEntity[] = [];
     const manager = makeManager({
       findOne: jest.fn().mockResolvedValue(pendingAppeal),
+      // detail() re-reads the appeal through findOneBy after the transition is written
+      findOneBy: jest.fn().mockImplementation(async (entity: unknown) => (entity === AppealEntity ? pendingAppeal : null)),
       findBy: jest.fn().mockResolvedValue([]),
-      findOneBy: jest.fn().mockResolvedValue(null),
       find: jest.fn().mockResolvedValue([]),
       save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => {
         if ((data as AppealOutboxEntity)?.eventType) outboxEvents.push(data as AppealOutboxEntity);
@@ -433,7 +445,7 @@ describe('AppealService — Chief Executive decision (BRD §2.6)', () => {
       }),
       create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     });
-    const service = buildService({ manager });
+    const service = buildService({ manager, appeals: makeRepo<AppealEntity>([pendingAppeal]) });
     await service.decide(appealId, { decision: AppealDecision.Rejected, remarks: 'No merit.' }, mfaActor(), 'req-13');
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealRejected)).toBe(true);
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealCompleted)).toBe(true);
