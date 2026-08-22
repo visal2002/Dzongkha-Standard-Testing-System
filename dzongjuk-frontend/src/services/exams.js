@@ -9,7 +9,9 @@
  * CRUD operations for DSTS examination registration windows.
  */
 import apiClient from './api';
+import { examWindows as mockExamWindows } from '../data/mockData';
 
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 const normalizeExam = exam => ({
   ...exam,
@@ -35,6 +37,9 @@ const toRequest = payload => ({
 export const examService = {
   /** @returns {Promise<{data: import('../types').ExamWindow[]}>} */
   getAll: async () => {
+    // Without this branch the mock/CI build has no exam source at all, so every screen
+    // that lists windows renders a network error instead of its real empty or open state.
+    if (USE_MOCK_DATA) return { data: mockExamWindows.map(normalizeExam) };
 
     const { data } = await apiClient.get('/exams');
     return { ...data, data: unwrapList(data).map(normalizeExam) };
@@ -42,6 +47,10 @@ export const examService = {
 
   /** @param {string} id @returns {Promise<{data: import('../types').ExamWindow}>} */
   getById: async (id) => {
+    if (USE_MOCK_DATA) {
+      const found = mockExamWindows.find(exam => exam.id === id);
+      return { data: found ? normalizeExam(found) : null };
+    }
 
     const { data } = await apiClient.get(`/exams/${id}`);
     const exam = data?.data ?? data;
@@ -50,6 +59,11 @@ export const examService = {
 
   /** @param {Partial<import('../types').ExamWindow>} payload */
   create: async (payload) => {
+    if (USE_MOCK_DATA) {
+      const created = normalizeExam({ ...payload, id: `EXM-MOCK-${Date.now()}`, status: payload.status ?? 'DRAFT' });
+      mockExamWindows.push(created);
+      return { data: created };
+    }
 
     const request = toRequest(payload);
     const { data } = await apiClient.post('/exams', request);
@@ -58,6 +72,7 @@ export const examService = {
   },
 
   update: async (id, payload) => {
+    if (USE_MOCK_DATA) return { data: normalizeExam({ ...mockExamWindows.find(exam => exam.id === id), ...payload }) };
 
     const { data } = await apiClient.patch(`/exams/${id}`, toRequest(payload));
     const exam = data?.data ?? data;
@@ -66,6 +81,7 @@ export const examService = {
 
   /** @param {string} id @param {Partial<import('../types').ExamWindow>} payload */
   updateStatus: async (id, status) => {
+    if (USE_MOCK_DATA) return { data: normalizeExam({ ...mockExamWindows.find(exam => exam.id === id), status }) };
 
     const { data } = await apiClient.patch(`/exams/${id}/status`, { status: String(status).toUpperCase() });
     const exam = data?.data ?? data;

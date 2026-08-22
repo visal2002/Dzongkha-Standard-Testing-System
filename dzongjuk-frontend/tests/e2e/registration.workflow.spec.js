@@ -23,13 +23,13 @@ const login = async (page, email) => {
 test('registration form is disabled when window is not open and shows a clear message (BRD §2.2)', async ({ page }) => {
   await login(page, 'test.taker@demo.com');
   await page.goto('/registration/windows');
-  // When no open window exists in mock data, the form/button should be absent or disabled
   const applyButton = page.getByRole('link', { name: /Apply/i }).or(page.getByRole('button', { name: /Apply/i }));
   const closedMessage = page.getByText(/registration.*closed|not.*open|window.*closed/i);
-  const formExists = await applyButton.count() > 0;
-  const messageExists = await closedMessage.count() > 0;
-  // At least one of: no apply button or a closed message must be present
-  expect(formExists || messageExists).toBe(true);
+  // No window in the fixture set is inside its registration dates, so the page must offer
+  // no way to apply and must say why. The previous assertion was `formExists || messageExists`,
+  // which was satisfied by an Apply button being present — the inverse of what it describes.
+  await expect(closedMessage.first()).toBeVisible();
+  await expect(applyButton).toHaveCount(0);
 });
 
 test('all mandatory fields must be filled before submission is allowed (BRD §2.2)', async ({ page }) => {
