@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { applicationService } from '../../services/applications';
 import { certificateService } from '../../services/certificates';
 import { examService } from '../../services/exams';
+import { findOpenExamWindow } from '../../utils/examWindows';
 import { scoreService } from '../../services/scores';
 import { useApi } from '../../hooks/useApi';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, PolarRadiusAxis } from 'recharts';
@@ -44,7 +45,7 @@ export default function TestTakerDashboard() {
     listening: myScore.listening ?? myScore.score?.scores?.LISTENING ?? 0,
     speaking: myScore.speaking ?? myScore.score?.scores?.SPEAKING ?? 0,
   } : null;
-  const openExam = (examWindows || []).find(e => e.status === 'open');
+  const openExam = findOpenExamWindow(examWindows);
 
   const radarData = normalizedScore ? [
     { skill: 'Writing', score: normalizedScore.writing },

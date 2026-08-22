@@ -44,11 +44,18 @@ export const PaymentStatus = {
 /**
  * @enum {string}
  */
+// Mirrors the backend ExamStatus enum (libs/contracts). examService.normalizeExam
+// lowercases whatever the API returns, so these are the lowercased forms. Selecting an
+// exam by any other string silently matches nothing against a real backend.
 export const ExamWindowStatus = {
-  UPCOMING: 'upcoming',
-  OPEN: 'open',
-  CLOSED: 'closed',
-  COMPLETED: 'completed',
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+  REGISTRATION_OPEN: 'registration_open',
+  REGISTRATION_CLOSED: 'registration_closed',
+  IN_PROGRESS: 'in_progress',
+  RESULTS_DECLARED: 'results_declared',
+  ARCHIVED: 'archived',
+  CANCELLED: 'cancelled',
 };
 
 /**
