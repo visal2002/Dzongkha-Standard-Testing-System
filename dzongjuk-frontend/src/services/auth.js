@@ -59,6 +59,28 @@ const findMockAccount = (identifier) => {
   ));
 };
 
+/**
+ * Add an account to the in-memory mock directory so it can sign in afterwards.
+ * Used by adminService.createUser when the app runs on mock data, so a user
+ * created through the admin screens behaves like a real one for the rest of
+ * the session.
+ * @returns {object|null} the stored user, or null when the email is missing
+ */
+export const registerMockAccount = ({ email, cid, fullName, roles = ['test_taker'], permissions = [], password = MOCK_PASSWORD }) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail) return null;
+  const user = {
+    id: `USR-MOCK-${mockAccounts.size + 1}`,
+    email: normalizedEmail,
+    cid: String(cid || '').trim(),
+    fullName: String(fullName || '').trim(),
+    roles: roles.length ? roles : ['test_taker'],
+    permissions,
+  };
+  mockAccounts.set(normalizedEmail, { user, password });
+  return user;
+};
+
 const decodeClaims = (token) => {
   try {
     const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
