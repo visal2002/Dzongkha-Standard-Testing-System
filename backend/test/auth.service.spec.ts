@@ -6,9 +6,8 @@
 
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
+import { ObjectLiteral, Repository } from 'typeorm';
 import { CanonicalRole } from '@dzongjuk/contracts';
-import { DomainException } from '@dzongjuk/common';
 import { AuthService } from '../apps/identity-service/src/auth.service';
 import { AuditService } from '../apps/identity-service/src/audit.service';
 import { NdiProviderService } from '../apps/identity-service/src/ndi-provider.service';
@@ -47,7 +46,7 @@ const makeUser = (overrides: Partial<UserEntity> = {}): UserEntity =>
     ...overrides,
   });
 
-const makeRepo = <T>(rows: T[] = []): Repository<T> =>
+const makeRepo = <T extends ObjectLiteral>(rows: T[] = []): Repository<T> =>
   ({
     find: jest.fn().mockResolvedValue(rows),
     findOne: jest.fn().mockResolvedValue(rows[0] ?? null),
@@ -148,7 +147,7 @@ describe('AuthService — Local credential login (BRD §2.9)', () => {
     });
     const service = buildService({ users: usersRepo });
     await expect(service.login({ identifier: user.email, password: 'WrongPassword!' }, ctx))
-      .rejects.toMatchObject({ code: 'INVALID_CREDENTIALS', statusCode: 401 });
+      .rejects.toMatchObject({ response: { code: 'INVALID_CREDENTIALS' }, status: 401 });
   });
 
   it('rejects an unknown user identifier', async () => {
@@ -161,7 +160,7 @@ describe('AuthService — Local credential login (BRD §2.9)', () => {
     });
     const service = buildService({ users: usersRepo });
     await expect(service.login({ identifier: 'nobody@dsts.bt', password: 'Any!1234' }, ctx))
-      .rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' });
+      .rejects.toMatchObject({ response: { code: 'INVALID_CREDENTIALS' } });
   });
 
   it('locks an account after 5 consecutive failed login attempts', async () => {
@@ -176,7 +175,7 @@ describe('AuthService — Local credential login (BRD §2.9)', () => {
     const config = new ConfigService({ ALLOW_ADMIN_LOCAL_LOGIN: 'true', LOCKOUT_MINUTES: 30 });
     const service = buildService({ users: usersRepo, config });
     await expect(service.login({ identifier: user.email, password: 'WrongPassword!' }, ctx))
-      .rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' });
+      .rejects.toMatchObject({ response: { code: 'INVALID_CREDENTIALS' } });
     expect(user.status).toBe('LOCKED');
     expect(user.lockedUntil).toBeInstanceOf(Date);
   });
@@ -192,7 +191,7 @@ describe('AuthService — Local credential login (BRD §2.9)', () => {
     });
     const service = buildService({ users: usersRepo });
     await expect(service.login({ identifier: user.email, password: PLAIN }, ctx))
-      .rejects.toMatchObject({ code: 'ACCOUNT_DISABLED' });
+      .rejects.toMatchObject({ response: { code: 'ACCOUNT_DISABLED' } });
   });
 
   it('requires NDI login for administrative roles when ALLOW_ADMIN_LOCAL_LOGIN is false', async () => {
@@ -208,7 +207,7 @@ describe('AuthService — Local credential login (BRD §2.9)', () => {
     const config = new ConfigService({ ALLOW_ADMIN_LOCAL_LOGIN: 'false' });
     const service = buildService({ users: usersRepo, config });
     await expect(service.login({ identifier: adminUser.email, password: PLAIN }, ctx))
-      .rejects.toMatchObject({ code: 'ADMIN_NDI_REQUIRED' });
+      .rejects.toMatchObject({ response: { code: 'ADMIN_NDI_REQUIRED' } });
   });
 
   it('never stores raw password in session or token claims', async () => {
@@ -227,10 +226,21 @@ describe('AuthService — Local credential login (BRD §2.9)', () => {
       return { ...(data as Record<string, unknown>), id: uuid(), user };
     });
     const service = buildService({ users: usersRepo, sessions });
-    await service.login({ identifier: user.email, password: PLAIN }, ctx);
-    const sessionString = JSON.stringify(savedSessions);
+    const issued = await service.login({ identifier: user.email, password: PLAIN }, ctx);
+
+    // `user` is a ManyToOne relation, so only its FK reaches the sessions table — assert on
+    // the session's own persisted columns rather than the in-memory entity graph, which
+    // legitimately carries the eagerly loaded user.
+    const persistedColumns = savedSessions.map((session) => ({ ...session, user: undefined }));
+    const sessionString = JSON.stringify(persistedColumns);
     expect(sessionString).not.toContain(PLAIN);
     expect(sessionString).not.toContain(passwordHash.slice(0, 10));
+
+    // the half of this test its name promises but never checked: the issued token and the
+    // public user projection must not carry the password or its hash either.
+    const issuedString = JSON.stringify(issued);
+    expect(issuedString).not.toContain(PLAIN);
+    expect(issuedString).not.toContain(passwordHash.slice(0, 10));
   });
 });
 
@@ -278,7 +288,7 @@ describe('AuthService — NDI webhook (BRD §2.9 + §3)', () => {
   it('rejects webhook calls with invalid bearer token', async () => {
     const service = buildService({ config: ndiConfig });
     await expect(service.ndiWebhook('Bearer wrong-token', { thid: uuid(), type: 'present-proof/presentation-result' }))
-      .rejects.toMatchObject({ code: 'NDI_WEBHOOK_UNAUTHORIZED' });
+      .rejects.toMatchObject({ response: { code: 'NDI_WEBHOOK_UNAUTHORIZED' } });
   });
 
   it('marks login request REJECTED when NDI proof is rejected by the holder', async () => {
@@ -353,7 +363,7 @@ describe('AuthService — User registration (BRD §2.9)', () => {
     const rolesRepo = makeRepo<RoleEntity>([makeRole(CanonicalRole.TestTaker)]);
     (rolesRepo.findOneByOrFail as jest.Mock).mockResolvedValue(makeRole(CanonicalRole.TestTaker));
     const service = buildService({ users: usersRepo, roles: rolesRepo });
-    await expect(service.register({ email: existing.email, cid: existing.cid, fullName: 'Another', password: 'Pass!1234' }, ctx))
-      .rejects.toMatchObject({ code: 'USER_DUPLICATE' });
+    await expect(service.register({ email: existing.email, cid: existing.cid!, fullName: 'Another', password: 'Pass!1234' }, ctx))
+      .rejects.toMatchObject({ response: { code: 'USER_DUPLICATE' } });
   });
 });

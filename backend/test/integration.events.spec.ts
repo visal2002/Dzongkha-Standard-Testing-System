@@ -297,7 +297,7 @@ describe('Integration events — NDI availability contract (BRD §3)', () => {
   });
 
   it('all defined DomainEventTypes values are non-empty strings', () => {
-    for (const [key, value] of Object.entries(DomainEventTypes)) {
+    for (const value of Object.values(DomainEventTypes)) {
       expect(typeof value).toBe('string');
       expect(value.length).toBeGreaterThan(0);
     }
