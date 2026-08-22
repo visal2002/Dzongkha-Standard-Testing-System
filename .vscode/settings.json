@@ -31,5 +31,6 @@
     "scaniconimg",
     "zaproxy",
     "zricethezav"
-  ]
+  ],
+  "claudeCodeChat.permissions.yoloMode": false
 }
