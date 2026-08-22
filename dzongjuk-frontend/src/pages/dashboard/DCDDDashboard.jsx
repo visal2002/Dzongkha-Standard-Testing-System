@@ -16,6 +16,7 @@ import { StatusBadge } from '../../components/ui/Badge';
 import { scoreService } from '../../services/scores';
 import { applicationService } from '../../services/applications';
 import { examService } from '../../services/exams';
+import { findOpenExamWindow } from '../../utils/examWindows';
 import { useApi } from '../../hooks/useApi';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -59,7 +60,7 @@ export default function DCDDDashboard() {
   const { data: examWindows, loading: loadingExams } = useApi(examService.getAll);
 
   const isLoading = loadingStats || loadingApps || loadingExams;
-  const activeExam = examWindows?.find(e => e.status === 'open');
+  const activeExam = findOpenExamWindow(examWindows);
   const pendingApps = applications?.filter(a => a.status === 'submitted').length || 0;
 
   if (isLoading) {
