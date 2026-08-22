@@ -5,9 +5,8 @@
  */
 
 import { ConfigService } from '@nestjs/config';
-import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
+import { DataSource, EntityManager, ObjectLiteral, Repository } from 'typeorm';
 import { AccessClaims, DomainEventTypes, ScoreSheetStatus } from '@dzongjuk/contracts';
-import { DomainException } from '@dzongjuk/common';
 import { ResultService } from '../apps/result-service/src/result.service';
 import { ScoringService } from '../apps/result-service/src/scoring.service';
 import {
@@ -16,7 +15,6 @@ import {
   CommitteeMemberEntity,
   CommitteeRole,
   EligibilityStatus,
-  ResultDeclarationEntity,
   ResultIdempotencyEntity,
   ResultOutboxEntity,
   ScoreSheetEntity,
@@ -38,6 +36,9 @@ const mfaActor = (overrides: Partial<AccessClaims> = {}): AccessClaims => ({
   ...overrides,
 });
 
+const INTERNAL_KEY = 'a'.repeat(32);
+const config = new ConfigService({ PRIVILEGED_ASSURANCE_LEVELS: 'MFA', INTERNAL_SERVICE_SECRET: INTERNAL_KEY });
+
 const makeManager = (overrides: Partial<EntityManager> = {}): EntityManager =>
   ({
     findOne: jest.fn().mockResolvedValue(null),
@@ -47,7 +48,12 @@ const makeManager = (overrides: Partial<EntityManager> = {}): EntityManager =>
     exists: jest.fn().mockResolvedValue(false),
     existsBy: jest.fn().mockResolvedValue(false),
     countBy: jest.fn().mockResolvedValue(0),
-    save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => ({ ...data as Record<string, unknown>, id: uuid() })),
+    delete: jest.fn().mockResolvedValue({ affected: 0 }),
+    // ScoringService resolves the approved rule through the transaction manager
+    getRepository: jest.fn().mockReturnValue(makeRepo([approvedRule])),
+    // TypeORM save is called both as save(entity) and as save(Entity, data)
+    save: jest.fn().mockImplementation(async (entityOrData: unknown, data?: unknown) =>
+      ({ ...((data ?? entityOrData) as Record<string, unknown>), id: uuid() })),
     create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     ...overrides,
   } as unknown as EntityManager);
@@ -61,7 +67,7 @@ const makeDataSource = (manager: EntityManager): DataSource =>
     manager,
   } as unknown as DataSource);
 
-const makeRepo = <T>(rows: T[] = []): Repository<T> =>
+const makeRepo = <T extends ObjectLiteral>(rows: T[] = []): Repository<T> =>
   ({
     find: jest.fn().mockResolvedValue(rows),
     findOne: jest.fn().mockResolvedValue(rows[0] ?? null),
@@ -97,7 +103,7 @@ const makeScoring = (): ScoringService =>
   new ScoringService(
     {} as DataSource,
     makeRepo([approvedRule]),
-    new ConfigService({ PRIVILEGED_ASSURANCE_LEVELS: 'MFA' }),
+    config,
   );
 
 const buildService = (
@@ -118,7 +124,7 @@ const buildService = (
 ): ResultService => {
   const ds = makeDataSource(manager);
   const scoring = makeScoring();
-  return new ResultService(ds, scoring, new ConfigService({ PRIVILEGED_ASSURANCE_LEVELS: 'MFA' }), committees, members, eligibility, sheets, versions);
+  return new ResultService(ds, scoring, config, committees, members, eligibility, sheets, versions);
 };
 
 // ─── committee tests ──────────────────────────────────────────────────────────
@@ -134,7 +140,7 @@ describe('ResultService — Committee formation (BRD §2.5)', () => {
           { userId, role: CommitteeRole.Member },
         ],
       }, mfaActor(), 'req-1'),
-    ).rejects.toMatchObject({ code: 'COMMITTEE_MEMBER_DUPLICATE' });
+    ).rejects.toMatchObject({ response: { code: 'COMMITTEE_MEMBER_DUPLICATE' } });
   });
 
   it('rejects committee with zero Heads', async () => {
@@ -146,7 +152,7 @@ describe('ResultService — Committee formation (BRD §2.5)', () => {
           { userId: uuid(), role: CommitteeRole.Member },
         ],
       }, mfaActor(), 'req-1'),
-    ).rejects.toMatchObject({ code: 'COMMITTEE_HEAD_REQUIRED' });
+    ).rejects.toMatchObject({ response: { code: 'COMMITTEE_HEAD_REQUIRED' } });
   });
 
   it('rejects committee with two Heads', async () => {
@@ -158,7 +164,7 @@ describe('ResultService — Committee formation (BRD §2.5)', () => {
           { userId: uuid(), role: CommitteeRole.Head },
         ],
       }, mfaActor(), 'req-1'),
-    ).rejects.toMatchObject({ code: 'COMMITTEE_HEAD_REQUIRED' });
+    ).rejects.toMatchObject({ response: { code: 'COMMITTEE_HEAD_REQUIRED' } });
   });
 
   it('locks committee once score entry has begun', async () => {
@@ -174,7 +180,7 @@ describe('ResultService — Committee formation (BRD §2.5)', () => {
       service.setCommittee(examId, {
         members: [{ userId: uuid(), role: CommitteeRole.Head }],
       }, mfaActor(), 'req-1'),
-    ).rejects.toMatchObject({ code: 'COMMITTEE_LOCKED' });
+    ).rejects.toMatchObject({ response: { code: 'COMMITTEE_LOCKED' } });
   });
 
   it('emits CommitteeConfigured outbox event on success', async () => {
@@ -220,7 +226,7 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     });
     const service = buildService(manager);
     await expect(service.saveDraft(applicationId, validScores, headActor, 'req-1'))
-      .rejects.toMatchObject({ code: 'CANDIDATE_NOT_SCOREABLE' });
+      .rejects.toMatchObject({ response: { code: 'CANDIDATE_NOT_SCOREABLE' } });
   });
 
   it('blocks non-Head from saving a draft score', async () => {
@@ -233,7 +239,7 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     });
     const committee = { id: committeeId, examId, status: 'ACTIVE' };
     const manager = makeManager({
-      findOneBy: jest.fn().mockImplementation(async (entity: unknown, where: Record<string, unknown>) => {
+      findOneBy: jest.fn().mockImplementation(async (entity: unknown) => {
         if (entity === CandidateEligibilityEntity) return eligibleCandidate;
         if (entity === CommitteeEntity) return committee;
         if (entity === ScoreSheetEntity) return null;
@@ -244,7 +250,7 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     const memberActor = mfaActor({ sub: memberId, permissions: ['score.view'] });
     const service = buildService(manager);
     await expect(service.saveDraft(applicationId, validScores, memberActor, 'req-1'))
-      .rejects.toMatchObject({ code: 'COMMITTEE_HEAD_REQUIRED' });
+      .rejects.toMatchObject({ response: { code: 'COMMITTEE_HEAD_REQUIRED' } });
   });
 
   it('locks score sheet after submission — further save attempts throw SCORE_SHEET_LOCKED', async () => {
@@ -267,7 +273,7 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     });
     const service = buildService(manager);
     await expect(service.submit(sheetId, headActor, 'req-1', 'idem-key-2'))
-      .rejects.toMatchObject({ code: 'SCORE_SHEET_LOCKED' });
+      .rejects.toMatchObject({ response: { code: 'SCORE_SHEET_LOCKED' } });
   });
 
   it('emits ScoreSubmitted event and returns score details on successful submission', async () => {
@@ -305,7 +311,7 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     const ds = makeDataSource(manager);
     const scoring = makeScoring();
     jest.spyOn(scoring, 'activeRule').mockResolvedValue(approvedRule);
-    const service = new ResultService(ds, scoring, new ConfigService({ PRIVILEGED_ASSURANCE_LEVELS: 'MFA' }), makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo());
+    const service = new ResultService(ds, scoring, config, makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo());
     const result = await service.submit(sheetId, mfaActor({ sub: headActor.sub }), 'req-1', 'idem-submit-1');
     expect(result.status).toBe(ScoreSheetStatus.Submitted);
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.ScoreSubmitted)).toBe(true);
@@ -319,7 +325,7 @@ describe('ResultService — Result declaration (BRD §2.5)', () => {
     const service = buildService();
     const localActor = mfaActor({ assurance: 'LOCAL' });
     await expect(service.declareResults(uuid(), localActor, 'req-1'))
-      .rejects.toMatchObject({ code: 'PRIVILEGED_ASSURANCE_REQUIRED' });
+      .rejects.toMatchObject({ response: { code: 'PRIVILEGED_ASSURANCE_REQUIRED' } });
   });
 
   it('blocks declaration if already declared', async () => {
@@ -329,7 +335,7 @@ describe('ResultService — Result declaration (BRD §2.5)', () => {
     });
     const service = buildService(manager);
     await expect(service.declareResults(examId, mfaActor(), 'req-1'))
-      .rejects.toMatchObject({ code: 'RESULTS_ALREADY_DECLARED' });
+      .rejects.toMatchObject({ response: { code: 'RESULTS_ALREADY_DECLARED' } });
   });
 
   it('blocks declaration if any eligible candidate has no submitted score', async () => {
@@ -341,7 +347,7 @@ describe('ResultService — Result declaration (BRD §2.5)', () => {
     });
     const service = buildService(manager);
     await expect(service.declareResults(examId, mfaActor(), 'req-1'))
-      .rejects.toMatchObject({ code: 'RESULTS_INCOMPLETE' });
+      .rejects.toMatchObject({ response: { code: 'RESULTS_INCOMPLETE' } });
   });
 
   it('emits ResultsDeclared event and marks all sheets Published on success', async () => {
@@ -362,7 +368,7 @@ describe('ResultService — Result declaration (BRD §2.5)', () => {
     const ds = makeDataSource(manager);
     const scoring = makeScoring();
     jest.spyOn(scoring, 'activeRule').mockResolvedValue(approvedRule);
-    const service = new ResultService(ds, scoring, new ConfigService({ PRIVILEGED_ASSURANCE_LEVELS: 'MFA' }), makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo());
+    const service = new ResultService(ds, scoring, config, makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo());
     await service.declareResults(examId, mfaActor(), 'req-1');
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.ResultsDeclared)).toBe(true);
     expect(sheet1.status).toBe(ScoreSheetStatus.Published);
@@ -388,11 +394,11 @@ describe('ResultService — Appeal score revision (BRD §2.6)', () => {
       service.applyAppealRevision(
         sheetId,
         { appealId: uuid(), expectedVersion: 1, approvedByUserId: uuid(), changes: { writing: 8 } },
-        'a'.repeat(32),
+        INTERNAL_KEY,
         'req-1',
         'idem-rev-1',
       ),
-    ).rejects.toMatchObject({ code: 'SCORE_REVISION_STATE_INVALID' });
+    ).rejects.toMatchObject({ response: { code: 'SCORE_REVISION_STATE_INVALID' } });
   });
 
   it('detects version conflict when expected version does not match current', async () => {
@@ -414,11 +420,11 @@ describe('ResultService — Appeal score revision (BRD §2.6)', () => {
       service.applyAppealRevision(
         sheetId,
         { appealId: uuid(), expectedVersion: 1, approvedByUserId: uuid(), changes: { writing: 8 } }, // expecting v1 but current is v2
-        'a'.repeat(32),
+        INTERNAL_KEY,
         'req-1',
         'idem-rev-2',
       ),
-    ).rejects.toMatchObject({ code: 'SCORE_REVISION_VERSION_CONFLICT' });
+    ).rejects.toMatchObject({ response: { code: 'SCORE_REVISION_VERSION_CONFLICT' } });
   });
 
   it('rejects revision with empty skill changes', async () => {
@@ -433,9 +439,17 @@ describe('ResultService — Appeal score revision (BRD §2.6)', () => {
         if (entity === ScoreVersionEntity) return null;
         return publishedSheet;
       }),
-      findOneBy: jest.fn().mockResolvedValue({
-        status: EligibilityStatus.Eligible,
-        applicationId: publishedSheet.applicationId,
+      // applyAppealRevision resolves its idempotency replay, the prior appeal revision,
+      // the candidate and the current score version all through findOneBy, so a blanket
+      // stub makes the replay branch swallow the call before it can validate the changes.
+      findOneBy: jest.fn().mockImplementation(async (entity: unknown, where: Record<string, unknown>) => {
+        if (entity === ResultIdempotencyEntity) return null;
+        if (entity === ScoreVersionEntity) {
+          return where?.appealId
+            ? null
+            : { scoreSheetId: sheetId, versionNumber: 1, scores: { WRITING: 7, READING: 7, LISTENING: 7, SPEAKING: 7 } };
+        }
+        return { status: EligibilityStatus.Eligible, applicationId: publishedSheet.applicationId };
       }),
     });
     const service = buildService(manager);
@@ -443,10 +457,10 @@ describe('ResultService — Appeal score revision (BRD §2.6)', () => {
       service.applyAppealRevision(
         sheetId,
         { appealId: uuid(), expectedVersion: 1, approvedByUserId: uuid(), changes: {} }, // no changes
-        'a'.repeat(32),
+        INTERNAL_KEY,
         'req-1',
         'idem-rev-3',
       ),
-    ).rejects.toMatchObject({ code: 'SCORE_REVISION_EMPTY' });
+    ).rejects.toMatchObject({ response: { code: 'SCORE_REVISION_EMPTY' } });
   });
 });

@@ -26,4 +26,11 @@ export default tseslint.config(
       'complexity': ['warn', 10],
     },
   },
+  {
+    // Jest stubs mark themselves `async` to model the promise-returning repository and
+    // EntityManager APIs they stand in for. There is nothing for them to await, so
+    // require-await only fires on the idiom, never on a real missing await.
+    files: ['test/**/*.spec.ts'],
+    rules: { '@typescript-eslint/require-await': 'off' },
+  },
 );
