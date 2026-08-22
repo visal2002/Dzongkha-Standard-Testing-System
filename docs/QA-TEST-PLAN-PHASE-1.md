@@ -327,15 +327,22 @@ Two implementation facts change how §2.9 should be tested:
 | Route rendering per role, registration and admin-created login flows | `dzongjuk-frontend/tests/e2e/routes.spec.js` |
 | Registration window closed-state, mandatory fields, duplicate CID, cancel affordance, acknowledgement, own-status visibility | `dzongjuk-frontend/tests/e2e/registration.workflow.spec.js` |
 
-### 8.2 Blocker: six backend suites do not currently compile
+### 8.2 Blocker: the suites do not currently run clean
 
-On `main` at the time of writing, `npm test` in `backend/` reports **6 failed suites, 7 passed, 150 tests passing** — the six failures are TypeScript compile errors, not assertion failures, so none of those tests execute at all:
+Both CI jobs are failing on `main` itself, independently of any one change. Verified by checking out `main` and running the jobs' own steps.
+
+**Backend — `npm test` reports 6 failed suites, 7 passed, 150 tests passing.** The six failures are TypeScript compile errors, not assertion failures, so none of those tests execute at all:
 
 `appeal.service.spec.ts`, `assessment.service.spec.ts`, `auth.service.spec.ts`, `certificate.service.spec.ts`, `registration.service.spec.ts`, `result.service.spec.ts`
 
-`npm run lint` in `backend/` also fails with **71 errors** (mostly `@typescript-eslint/require-await` and unused imports across the same files, plus a parse error at `certificate.service.spec.ts:192`).
+`npm run lint` in `backend/` also fails with **71 errors** — mostly `@typescript-eslint/require-await` and unused imports across those same files, plus a parse error at `certificate.service.spec.ts:192` and a `Skill` type mismatch in `assessment.service.spec.ts`.
 
-This matters for the plan, not just for CI: the §8.1 rows for those six suites describe tests that **exist but do not currently run**. Until they compile, treat that coverage as claimed rather than demonstrated, and do not count it toward Phase 1 sign-off.
+**Frontend — the Playwright suite reports 1 failed, 14 passed.** The failure is `registration.workflow.spec.js:23`, "registration form is disabled when window is not open". Two things are wrong with it:
+
+- Its assertion is `formExists || messageExists`, which passes when the Apply button *is* present — the inverse of what its own comment says it checks. As written it asserts almost nothing.
+- It still fails, because on the mock build `/registration/windows` renders neither control. `RegistrationWindows.jsx:126` does emit "Registration is not open" for a test taker on a non-open window, which the test's regex would match — so the page is most likely falling through to its "No examination windows yet" empty state, where neither locator has anything to find. Either seed an open window in the mock fixtures or teach the test to accept the empty state.
+
+This matters for the plan, not just for CI. The §8.1 rows for the six backend suites describe tests that **exist but do not currently run**; until they compile, treat that coverage as claimed rather than demonstrated, and do not count it toward Phase 1 sign-off. A green pipeline is a precondition for the rest of this plan, not a parallel workstream.
 
 ### 8.3 Gaps to close before Phase 1 sign-off
 
