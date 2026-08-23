@@ -239,6 +239,8 @@ docker compose -f backend/compose.yml logs gateway | grep "connect() failed"   #
 
 A `502` indicates a routing or DNS fault. A `503` carrying a JSON body such as `NDI_NOT_CONFIGURED` is a legitimate application response and means routing is working correctly.
 
+The Phase 1 QA test plan — module-by-module frontend, API, and database test cases, traceability to the endpoints and tables that exist today, and the list of coverage gaps still open — lives in [`docs/qa/QA-TEST-PLAN-PHASE-1.md`](docs/qa/QA-TEST-PLAN-PHASE-1.md).
+
 ---
 
 ## 📂 Project Architecture
@@ -310,6 +312,7 @@ deploy/k8s/staging/         # Manifests staging actually runs (namespace: dzongj
 docs/
 ├── requirements/           # BRD, NFR, and TOR source documents plus text extracts
 ├── rbac/                   # RBAC integration contract and the generated access matrix
+├── qa/                     # Phase 1 QA test plan and traceability
 └── audits/                 # Frontend and RBAC audit reports
 ```
 

@@ -11,6 +11,8 @@ export enum RegistrationPaymentStatus {
   Initiated = 'INITIATED',
   Paid = 'PAID',
   Failed = 'FAILED',
+  Cancelled = 'CANCELLED',
+  Reversed = 'REVERSED',
   Waived = 'WAIVED',
 }
 
@@ -52,6 +54,11 @@ export class ApplicationEntity {
   @Column({ length: 3, default: 'BTN' }) paymentCurrency: string;
   @Column({ type: 'varchar', length: 40, nullable: true }) paymentMethod: string | null;
   @Index({ unique: true, where: '"paymentReference" IS NOT NULL' }) @Column({ type: 'varchar', length: 100, nullable: true }) paymentReference: string | null;
+  @Index({ unique: true, where: '"paymentAdviceNo" IS NOT NULL' }) @Column({ type: 'varchar', length: 100, nullable: true }) paymentAdviceNo: string | null;
+  @Column({ type: 'text', nullable: true }) paymentRedirectUrl: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) paymentReceiptNo: string | null;
+  @Column({ type: 'jsonb', nullable: true }) paymentProviderDetails: Record<string, unknown> | null;
+  @Column({ type: 'timestamptz', nullable: true }) paymentUpdatedAt: Date | null;
   @Column({ type: 'timestamptz', nullable: true }) paidAt: Date | null;
   @VersionColumn() version: number;
   @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;

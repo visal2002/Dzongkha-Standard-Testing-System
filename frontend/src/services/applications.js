@@ -37,6 +37,12 @@ export const normalizeApplication = application => {
     paymentStatus: String(application.paymentStatus || (Number(application.paymentAmount || 0) === 0 ? 'WAIVED' : 'INITIATED')).toLowerCase(),
     paymentAmount: Number(application.paymentAmount || 0),
     paymentCurrency: application.paymentCurrency || 'BTN',
+    paymentReference: application.paymentReference || null,
+    paymentAdviceNo: application.paymentAdviceNo || null,
+    paymentRedirectUrl: application.paymentRedirectUrl || null,
+    paymentReceiptNo: application.paymentReceiptNo || null,
+    paymentMethod: application.paymentMethod || null,
+    paidAt: application.paidAt || null,
   };
 };
 
@@ -120,4 +126,8 @@ export const applicationService = {
     });
     return { data: normalizeApplication(data?.data ?? data) };
   },
+  createPaymentAdvice: async id => (await apiClient.post(`/applications/${id}/payment-advice`)).data,
+  refreshPayment: async id => (await apiClient.post(`/applications/${id}/payment-refresh`)).data,
+  cancelPayment: async (id, reason) => (await apiClient.post(`/applications/${id}/payment-cancel`, { reason })).data,
+  getPaymentReceipt: async id => (await apiClient.get(`/applications/${id}/payment-receipt`)).data,
 };

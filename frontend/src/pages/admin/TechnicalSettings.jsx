@@ -324,33 +324,27 @@ function EmailSection() {
 }
 
 function PaymentSection() {
-  const KEY = 'ts_payment';
-  const [cfg, setCfg] = useState(() => load(KEY, {
-    provider: '', merchantId: '', apiKey: '', webhookSecret: '',
-    sandbox: true, callbackUrl: '', txTimeout: 300, retryPolicy: 3,
-  }));
-  const [saving, setSaving] = useState(false);
-  const set = (k, v) => setCfg(p => ({ ...p, [k]: v }));
-  const onSave = () => { setSaving(true); setTimeout(() => { save(KEY, cfg); setSaving(false); toast.success('Payment settings saved.'); }, 400); };
-
   return (
     <div className="p-5 space-y-4">
-      {cfg.sandbox && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
-          <AlertTriangle size={13} /> Sandbox mode is active. Payments will not be processed.
-        </div>
-      )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Gateway Provider"><input className={inputCls} value={cfg.provider} onChange={e => set('provider', e.target.value)} /></Field>
-        <Field label="Merchant ID"><input className={inputCls} value={cfg.merchantId} onChange={e => set('merchantId', e.target.value)} /></Field>
-        <Field label="API Key"><input className={inputCls} type="password" value={cfg.apiKey} onChange={e => set('apiKey', e.target.value)} /></Field>
-        <Field label="Webhook Secret"><input className={inputCls} type="password" value={cfg.webhookSecret} onChange={e => set('webhookSecret', e.target.value)} /></Field>
-        <Field label="Callback URL"><input className={inputCls} value={cfg.callbackUrl} onChange={e => set('callbackUrl', e.target.value)} placeholder="https://dsts.bt/api/payment/callback" /></Field>
-        <Field label="Transaction Timeout (seconds)"><input type="number" className={inputCls} value={cfg.txTimeout} onChange={e => set('txTimeout', +e.target.value)} /></Field>
-        <Field label="Retry Policy (attempts)"><input type="number" className={inputCls} value={cfg.retryPolicy} onChange={e => set('retryPolicy', +e.target.value)} /></Field>
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
+        <CreditCard size={14} className="mt-0.5 shrink-0" />
+        <div><p className="font-semibold">Bhutan Integrated Revenue Management System (BIRMS)</p><p className="mt-1 opacity-90">Dzongjuk generates a Payment Advice and redirects the payer to BIRMS. Bank account details, PINs, and OTPs are handled only by BIRMS and its payment processors.</p></div>
       </div>
-      <ToggleRow id="ts-sandbox" label="Sandbox / Test Mode" description="Enable to use test credentials" checked={cfg.sandbox} onChange={v => set('sandbox', v)} />
-      <SaveBtn onClick={onSave} loading={saving} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="Environment"><input className={inputCls} value="BIRMS Staging" readOnly /></Field>
+        <Field label="Agency Service"><input className={inputCls} value="Ministry of Home Affairs service" readOnly /></Field>
+        <Field label="Payment Callback"><input className={inputCls} value="/api/v1/payments/birms/callback" readOnly /></Field>
+        <Field label="Reversal Callback"><input className={inputCls} value="/api/v1/payments/birms/reversal" readOnly /></Field>
+      </div>
+      <div className="rounded-lg border border-surface-border p-4">
+        <p className="text-xs font-semibold text-text-primary mb-2">Available payer options</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-text-secondary">
+          {['Counter payment (cash, cheque, cash warrant, demand draft)', 'Online payment through the Domestic Payment Gateway', 'Supported bank mobile applications', 'BoB Internet Banking'].map(option => <div key={option} className="flex gap-2"><span className="text-emerald-400">✓</span><span>{option}</span></div>)}
+        </div>
+      </div>
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
+        <AlertTriangle size={13} className="mt-0.5 shrink-0" /> Credentials, platform, agency code, and service code must be installed as protected backend environment values issued by the BIRMS team. They are intentionally not editable or stored in this browser.
+      </div>
     </div>
   );
 }

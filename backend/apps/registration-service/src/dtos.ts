@@ -35,6 +35,9 @@ export class RecordRegistrationPaymentDto {
   @IsString() @Length(2, 40) method: string;
   @IsOptional() @IsString() @Length(3, 100) reference?: string;
 }
+export class CancelBirmsPaymentDto {
+  @IsString() @Length(3, 500) reason: string;
+}
 export class MarkAttendanceDto { @IsArray() @IsEnum(Skill, { each: true }) absentSkills: Skill[]; }
 
 export class PaginationDto {

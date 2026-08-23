@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Plus, Calendar, MapPin, CreditCard } from 'lucide-react';
+import { FileText, Plus, Calendar, MapPin, CreditCard, Download, ExternalLink, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
@@ -21,6 +21,55 @@ export default function MyApplications() {
   const [myApps, setMyApps] = useState([]);
   const [examWindows, setExamWindows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [paymentBusy, setPaymentBusy] = useState(null);
+
+  const reloadApplications = async () => {
+    const response = await applicationService.getByUser(user?.id);
+    setMyApps(response.data);
+  };
+
+  const continuePayment = async app => {
+    setPaymentBusy(app.id);
+    try {
+      const payment = app.paymentRedirectUrl
+        ? { redirectUrl: app.paymentRedirectUrl }
+        : await applicationService.createPaymentAdvice(app.id);
+      if (!payment.redirectUrl) throw new Error('BIRMS did not provide a payment page.');
+      window.location.assign(payment.redirectUrl);
+    } catch (error) {
+      toast.error(error.message || 'Unable to start BIRMS payment.');
+      setPaymentBusy(null);
+    }
+  };
+
+  const refreshPayment = async app => {
+    setPaymentBusy(app.id);
+    try {
+      const payment = await applicationService.refreshPayment(app.id);
+      toast.success(`Payment status: ${String(payment.status).replace(/_/g, ' ')}`);
+      await reloadApplications();
+    } catch (error) {
+      toast.error(error.message || 'Unable to check BIRMS payment status.');
+    } finally { setPaymentBusy(null); }
+  };
+
+  const downloadReceipt = async app => {
+    setPaymentBusy(app.id);
+    try {
+      const receipt = await applicationService.getPaymentReceipt(app.id);
+      if (!receipt.base64Pdf) throw new Error('BIRMS did not return a receipt file.');
+      const binary = atob(receipt.base64Pdf.replace(/\s/g, ''));
+      const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${receipt.receiptNumber || 'BIRMS-receipt'}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error.message || 'Unable to download the BIRMS receipt.');
+    } finally { setPaymentBusy(null); }
+  };
 
   useEffect(() => {
     let active = true;
@@ -114,6 +163,36 @@ export default function MyApplications() {
                 {app.remarks && (
                   <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-xs text-amber-400 mb-4">
                     <span className="font-semibold">Remarks: </span>{app.remarks}
+                  </div>
+                )}
+
+                {Number(app.paymentAmount) > 0 && (
+                  <div className="mb-4 rounded-xl border border-brand-gold/20 bg-brand-gold/5 p-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold text-text-primary">Payment through BIRMS</p>
+                        <p className="mt-0.5 text-[11px] text-text-muted">
+                          Choose counter payment, online payment, supported bank mobile apps, or internet banking on the secure BIRMS page.
+                        </p>
+                        {app.paymentAdviceNo && <p className="mt-1 text-[10px] text-text-muted">Payment Advice: {app.paymentAdviceNo}</p>}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {['initiated', 'failed', 'cancelled', 'reversed'].includes(app.paymentStatus) && app.status === 'verified' && (
+                          <Button size="xs" loading={paymentBusy === app.id} icon={<ExternalLink size={12} />} onClick={() => continuePayment(app)}>
+                            {app.paymentRedirectUrl ? 'Continue Payment' : 'Pay via BIRMS'}
+                          </Button>
+                        )}
+                        {app.paymentReference && app.paymentStatus !== 'paid' && (
+                          <Button size="xs" variant="outline" disabled={paymentBusy === app.id} icon={<RefreshCw size={12} />} onClick={() => refreshPayment(app)}>Check Status</Button>
+                        )}
+                        {app.paymentStatus === 'paid' && app.paymentReceiptNo && (
+                          <Button size="xs" variant="outline" disabled={paymentBusy === app.id} icon={<Download size={12} />} onClick={() => downloadReceipt(app)}>Receipt</Button>
+                        )}
+                        {app.status !== 'verified' && app.paymentStatus !== 'paid' && (
+                          <span className="self-center text-[11px] font-medium text-text-muted">Available after application verification</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
 

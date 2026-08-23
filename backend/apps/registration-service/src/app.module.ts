@@ -9,10 +9,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseOptions, PlatformModule } from '@dzongjuk/common';
 import { SecurityModule } from '@dzongjuk/security';
-import { ApplicationsController, AttendanceController, ExamsController, VerificationController } from './registration.controller';
+import { ApplicationsController, AttendanceController, BirmsPaymentsController, ExamsController, VerificationController } from './registration.controller';
 import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEntity, IdempotencyRecordEntity, OutboxEventEntity, WaitlistEntryEntity } from './entities';
 import { RegistrationService } from './registration.service';
 import { OutboxPublisherService } from './outbox-publisher.service';
+import { BirmsPaymentService } from './birms-payment.service';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { OutboxPublisherService } from './outbox-publisher.service';
     SecurityModule,
     PlatformModule,
   ],
-  controllers: [ExamsController, ApplicationsController, VerificationController, AttendanceController],
-  providers: [RegistrationService, OutboxPublisherService],
+  controllers: [ExamsController, ApplicationsController, BirmsPaymentsController, VerificationController, AttendanceController],
+  providers: [RegistrationService, OutboxPublisherService, BirmsPaymentService],
 })
 export class AppModule {}
