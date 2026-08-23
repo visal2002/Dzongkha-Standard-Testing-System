@@ -419,7 +419,7 @@ export default function LoginPage() {
           animate={{ opacity: 1, y: 0 }}
           className={`w-full ${isFullScreenForm ? "max-w-none" : "max-w-md"}`}
         >
-          <div className={`bg-white shadow-2xl shadow-slate-950/30 overflow-hidden ${isFullScreenForm ? "min-h-screen flex flex-col rounded-none border-0" : "rounded-3xl border border-slate-200"}`}>
+          <div className={`bg-white shadow-xl shadow-slate-300/40 overflow-hidden ${isFullScreenForm ? "min-h-screen flex flex-col rounded-none border-0" : "rounded-3xl border border-slate-200"}`}>
 
             {/* Logo + title */}
             <div className="flex flex-col items-center gap-3 pt-7 px-6 pb-4">
