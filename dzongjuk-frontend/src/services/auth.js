@@ -134,16 +134,14 @@ export const authService = {
   },
 
     /** Register a test taker without Bhutan NDI. */
-  register: async ({ fullName, cid, dateOfBirth, gender, fatherName, motherName, permanentAddress, email, password }) => {
+  register: async ({ fullName, cid, dateOfBirth, gender, contactNumber, email, password }) => {
     const derivedEmail = (email && email.trim()) || `${String(cid).trim()}@dsts.bt`;
     const normalized = {
       fullName: fullName.trim(),
       cid: cid.trim(),
       dateOfBirth,
       gender: (gender || '').trim(),
-      fatherName: (fatherName || '').trim(),
-      motherName: (motherName || '').trim(),
-      permanentAddress: (permanentAddress || '').trim(),
+      contactNumber: (contactNumber || '').trim(),
       email: derivedEmail.toLowerCase(),
       password: password || 'Password!123',
     };

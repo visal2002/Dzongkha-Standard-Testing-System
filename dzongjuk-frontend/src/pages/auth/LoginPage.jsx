@@ -9,7 +9,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Eye, EyeOff, ChevronLeft, User, CreditCard, Calendar,
-  ArrowLeft, AlertTriangle, X, Lock, Mail, Phone, MapPin,
+  ArrowLeft, AlertTriangle, X, Lock, Phone,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../context/AuthContext';
@@ -274,9 +274,7 @@ export default function LoginPage() {
   const [regName, setRegName]       = useState('');
   const [regDob, setRegDob]         = useState('');
   const [regGender, setRegGender]   = useState('');
-  const [regFather, setRegFather]   = useState('');
-  const [regMother, setRegMother]   = useState('');
-  const [regAddress, setRegAddress] = useState('');
+  const [regContact, setRegContact] = useState('');
 
   const { login, register, loginWithNDI, checkNDILogin, cancelNDILogin, isLoading } = useAuth();
   const navigate  = useNavigate();
@@ -309,16 +307,14 @@ export default function LoginPage() {
       cid:              regCid,
       dateOfBirth:      regDob,
       gender:           regGender,
-      fatherName:       regFather,
-      motherName:       regMother,
-      permanentAddress: regAddress,
+      contactNumber:    regContact,
     });
     if (!result.success) {
       toast.error(result.error || 'Registration failed. Please try again.');
       return;
     }
     setRegCid(''); setRegName(''); setRegDob('');
-    setRegGender(''); setRegFather(''); setRegMother(''); setRegAddress('');
+    setRegGender(''); setRegContact('');
     setActiveTab('signin');
     toast.success('Registration submitted successfully!');
   };
@@ -391,19 +387,17 @@ export default function LoginPage() {
     setNdiErrorMessage(null);
   };
 
+  const isFullScreenForm = activeTab === "register" && registerMode === "form";
+
   const tabs = [
     { id: 'signin',   label: 'Sign In' },
     { id: 'register', label: 'Register' },
   ];
 
   return (
-    <div
-      className="min-h-screen flex bg-cover bg-center relative"
-      style={{ backgroundImage: `url('/images/home page background.png')` }}
-    >
-      <div className="absolute inset-0 bg-slate-950/60 z-0 backdrop-blur-sm" />
+    <div className="min-h-screen flex relative bg-white">
 
-      <div className="relative z-10 flex-1 flex items-center justify-center p-6 lg:p-12">
+      <div className={`relative z-10 flex-1 flex overflow-y-auto ${isFullScreenForm ? "items-stretch p-0" : "items-start justify-center p-6 pt-20 lg:p-12 lg:pt-24"}`}>
         {/* Back to home */}
         <div className="absolute top-6 left-6 z-20">
           <button
@@ -419,9 +413,9 @@ export default function LoginPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md"
+          className={`w-full ${isFullScreenForm ? "max-w-none" : "max-w-md"}`}
         >
-          <div className="rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/30 overflow-hidden">
+          <div className={`bg-white shadow-xl shadow-slate-300/40 overflow-hidden ${isFullScreenForm ? "min-h-screen flex flex-col rounded-none border-0" : "rounded-3xl border border-slate-200"}`}>
 
             {/* Logo + title */}
             <div className="flex flex-col items-center gap-3 pt-7 px-6 pb-4">
@@ -464,7 +458,7 @@ export default function LoginPage() {
             </div>
 
             {/* Tab content */}
-            <div className="p-6">
+            <div className={isFullScreenForm ? "flex-1 flex flex-col lg:justify-center px-6 py-8 sm:px-10 lg:px-16 xl:px-24" : "p-6"}>
 
               {/* ── Sign In ── */}
               {activeTab === 'signin' && (
@@ -633,7 +627,7 @@ export default function LoginPage() {
                         </button>
                       </div>
 
-                      <form onSubmit={handleRegister} className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                      <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-5">
                         {/* CID */}
                         <div>
                           <label className="text-sm font-medium text-slate-700 block mb-1">CID No.</label>
@@ -701,50 +695,22 @@ export default function LoginPage() {
                           </select>
                         </div>
 
-                        {/* Father's Name */}
+                        {/* Contact No. */}
                         <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">Father's Name</label>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">Contact No.</label>
                           <div className="relative">
-                            <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
-                              type="text"
-                              value={regFather}
-                              onChange={e => setRegFather(e.target.value)}
-                              placeholder="Father's full name"
+                              type="tel"
+                              value={regContact}
+                              onChange={e => setRegContact(e.target.value)}
+                              placeholder="8-digit mobile number"
+                              inputMode="numeric"
+                              pattern="[0-9]{8}"
+                              minLength={8}
+                              maxLength={8}
                               required
                               className={INPUT_ICON_CLS}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Mother's Name */}
-                        <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">Mother's Name</label>
-                          <div className="relative">
-                            <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                              type="text"
-                              value={regMother}
-                              onChange={e => setRegMother(e.target.value)}
-                              placeholder="Mother's full name"
-                              required
-                              className={INPUT_ICON_CLS}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Permanent Address */}
-                        <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">Permanent Address</label>
-                          <div className="relative">
-                            <MapPin size={15} className="absolute left-3.5 top-3.5 text-slate-400" />
-                            <textarea
-                              value={regAddress}
-                              onChange={e => setRegAddress(e.target.value)}
-                              placeholder="Dzongkhag, Gewog, Village"
-                              required
-                              rows={2}
-                              className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors resize-none"
                             />
                           </div>
                         </div>
@@ -754,13 +720,13 @@ export default function LoginPage() {
                           fullWidth
                           size="lg"
                           loading={isLoading}
-                          className="rounded-full h-12 tracking-wide text-white hover:opacity-90 transition-opacity"
+                          className="md:col-span-2 xl:col-span-3 mt-2 sm:max-w-sm sm:mx-auto rounded-full h-12 tracking-wide text-white hover:opacity-90 transition-opacity"
                           style={{ backgroundColor: '#124143' }}
                         >
                           Submit Registration
                         </Button>
 
-                        <p className="text-center text-xs text-slate-500">
+                        <p className="md:col-span-2 xl:col-span-3 text-center text-xs text-slate-500">
                           Already have an account?{' '}
                           <button
                             type="button"
@@ -779,7 +745,7 @@ export default function LoginPage() {
           </div>
 
           {/* Footer */}
-          <div className="mt-5 text-center text-xs text-slate-300 leading-relaxed space-y-0.5">
+          <div className="mt-5 text-center text-xs text-slate-500 leading-relaxed space-y-0.5">
             <p>© {new Date().getFullYear()} Department of Culture and Dzongkha Development</p>
             <p>Ministry of Home Affairs · Powered by GovTech Bhutan</p>
           </div>
