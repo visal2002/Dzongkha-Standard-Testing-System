@@ -3,7 +3,7 @@
 # Phone: +975 - 1750 - 5267
 
 [build]
-  base = "dzongjuk-frontend"
+  base = "frontend"
   command = "npm run build"
   publish = "dist"
 

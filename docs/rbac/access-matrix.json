@@ -1,0 +1,182 @@
+{
+  "$comment": "Generated from frontend/src/features/rbac/accessMatrix.js. Do not edit by hand.",
+  "generatedAt": "2026-08-23",
+  "actions": {
+    "read_all": "Read records belonging to any user.",
+    "read_own": "Read only records belonging to the requesting user.",
+    "create": "Create a record on behalf of anyone.",
+    "create_own": "Create a record owned by the requesting user.",
+    "update": "Modify an existing record.",
+    "delete": "Remove a record.",
+    "manage": "Perform administrative operations on the module.",
+    "submit": "Submit band scores for any candidate.",
+    "submit_own": "Submit a request concerning the requesting user only.",
+    "process": "Advance a re-evaluation through its approval step.",
+    "sample": "Read published sample papers only."
+  },
+  "modules": [
+    {
+      "key": "users",
+      "label": "User Management"
+    },
+    {
+      "key": "roles",
+      "label": "Role Management"
+    },
+    {
+      "key": "registration",
+      "label": "Registration"
+    },
+    {
+      "key": "verification",
+      "label": "Verification"
+    },
+    {
+      "key": "attendance",
+      "label": "Absentee"
+    },
+    {
+      "key": "questions",
+      "label": "Question Upload"
+    },
+    {
+      "key": "scores",
+      "label": "Band Scores"
+    },
+    {
+      "key": "appeals",
+      "label": "Re-evaluation"
+    },
+    {
+      "key": "certificates",
+      "label": "Certificates"
+    },
+    {
+      "key": "reports",
+      "label": "Reports"
+    }
+  ],
+  "roles": [
+    {
+      "key": "admin",
+      "label": "System Administrator",
+      "inApprovedMatrix": true
+    },
+    {
+      "key": "dcdd",
+      "label": "DCDD Administrator",
+      "inApprovedMatrix": true
+    },
+    {
+      "key": "exam_head",
+      "label": "Exam Head",
+      "inApprovedMatrix": true
+    },
+    {
+      "key": "committee_head",
+      "label": "Committee Head",
+      "inApprovedMatrix": true
+    },
+    {
+      "key": "committee_member",
+      "label": "Committee Member",
+      "inApprovedMatrix": true
+    },
+    {
+      "key": "test_taker",
+      "label": "Test Taker",
+      "inApprovedMatrix": true
+    },
+    {
+      "key": "chief_executive",
+      "label": "Chief Executive",
+      "inApprovedMatrix": false
+    }
+  ],
+  "matrix": {
+    "admin": {
+      "users": "crud",
+      "roles": "crud",
+      "registration": "full",
+      "verification": "full",
+      "attendance": "full",
+      "questions": "full",
+      "scores": "read",
+      "appeals": "read",
+      "certificates": "full",
+      "reports": "full"
+    },
+    "dcdd": {
+      "users": "read",
+      "roles": "read",
+      "registration": "full",
+      "verification": "full",
+      "attendance": "full",
+      "questions": "read",
+      "scores": "read",
+      "appeals": "read",
+      "certificates": "full",
+      "reports": "full"
+    },
+    "exam_head": {
+      "users": "none",
+      "roles": "none",
+      "registration": "read",
+      "verification": "read",
+      "attendance": "read",
+      "questions": "full",
+      "scores": "read",
+      "appeals": "read",
+      "certificates": "read",
+      "reports": "read"
+    },
+    "committee_head": {
+      "users": "none",
+      "roles": "none",
+      "registration": "read",
+      "verification": "none",
+      "attendance": "none",
+      "questions": "read",
+      "scores": "submit",
+      "appeals": "process",
+      "certificates": "read",
+      "reports": "read"
+    },
+    "committee_member": {
+      "users": "none",
+      "roles": "none",
+      "registration": "read",
+      "verification": "none",
+      "attendance": "none",
+      "questions": "none",
+      "scores": "read",
+      "appeals": "read",
+      "certificates": "none",
+      "reports": "read"
+    },
+    "test_taker": {
+      "users": "none",
+      "roles": "none",
+      "registration": "create_own",
+      "verification": "none",
+      "attendance": "none",
+      "questions": "sample",
+      "scores": "read_own",
+      "appeals": "submit_own",
+      "certificates": "read_own",
+      "reports": "none"
+    },
+    "chief_executive": {
+      "users": "none",
+      "roles": "none",
+      "registration": "none",
+      "verification": "none",
+      "attendance": "none",
+      "questions": "none",
+      "scores": "none",
+      "appeals": "process",
+      "certificates": "none",
+      "reports": "none"
+    }
+  }
+}

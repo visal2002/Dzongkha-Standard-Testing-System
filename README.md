@@ -22,6 +22,7 @@ It provides a secure, role-based administration portal covering the examination 
 - [Troubleshooting](#-troubleshooting)
 - [Project Architecture](#-project-architecture)
 - [Available Roles & Navigation](#-available-roles--navigation)
+- [Access Control](#-access-control)
 - [Demo Accounts](#-demo-accounts)
 - [Developer Notes & Design Tokens](#-developer-notes--design-tokens)
 - [Performance & Security](#-performance--security)
@@ -37,7 +38,7 @@ The application presents a complete internal workflow for exam administration. I
 
 ## ✨ Key Features
 
-- 🔐 **Role-Based Access Control (RBAC):** Custom dashboards and navigation for 7 distinct roles, driven by the approved access matrix in `src/config/accessMatrix.js`.
+- 🔐 **Role-Based Access Control (RBAC):** Custom dashboards and navigation for 7 distinct roles, driven by the approved access matrix in `src/features/rbac/accessMatrix.js`.
 - 🪪 **Bhutan NDI Authentication:** QR-code and wallet deep-link sign-in against the Bhutan National Digital Identity service, with a self-contained demonstration flow when NDI credentials are not configured.
 - 🌐 **Bilingual Interface:** English and Dzongkha via i18next. Dzongkha strings are currently `[dz]`-prefixed placeholders awaiting review by a certified linguist.
 - 📝 **Registration Workflow:** Multi-step forms with Zod validation for robust application submissions.
@@ -101,7 +102,7 @@ npm run dev
 
 2. Install frontend dependencies and enable live APIs:
    ```bash
-   cd dzongjuk-frontend
+   cd frontend
    npm install
    cp .env.example .env.local
    # Set VITE_USE_MOCK_DATA=false in .env.local.
@@ -188,7 +189,7 @@ docker build --build-arg SERVICE=identity-service \
 docker push dev-harbor.systems.gov.bt/dzongjuk/identity-service:<tag>
 
 # 2. Build and push the frontend
-cd ../dzongjuk-frontend
+cd ../frontend
 docker build -t dev-harbor.systems.gov.bt/dzongjuk/frontend:<tag> .
 docker push dev-harbor.systems.gov.bt/dzongjuk/frontend:<tag>
 
@@ -238,27 +239,27 @@ docker compose -f backend/compose.yml logs gateway | grep "connect() failed"   #
 
 A `502` indicates a routing or DNS fault. A `503` carrying a JSON body such as `NDI_NOT_CONFIGURED` is a legitimate application response and means routing is working correctly.
 
-The Phase 1 QA test plan — module-by-module frontend, API, and database test cases, traceability to the endpoints and tables that exist today, and the list of coverage gaps still open — lives in [`docs/QA-TEST-PLAN-PHASE-1.md`](docs/QA-TEST-PLAN-PHASE-1.md).
+The Phase 1 QA test plan — module-by-module frontend, API, and database test cases, traceability to the endpoints and tables that exist today, and the list of coverage gaps still open — lives in [`docs/qa/QA-TEST-PLAN-PHASE-1.md`](docs/qa/QA-TEST-PLAN-PHASE-1.md).
 
 ---
 
 ## 📂 Project Architecture
 
 ```text
-dzongjuk-frontend/
+frontend/
 ├── src/
-│   ├── components/
-│   │   ├── layout/         # AppLayout, Sidebar, Header
-│   │   ├── rbac/           # AuthGuard, AccessDeniedPage, PermissionMatrix,
-│   │   │                   # RoleAssignmentDrawer
-│   │   └── ui/             # Button, Input, Modal, Table, Badge, Card, Tabs, Alert,
+│   ├── components/ui/      # Button, Input, Modal, Table, Badge, Card, Tabs, Alert,
 │   │                       # PageHeader, BhutanNDI (QR + wallet sign-in)
-│   ├── config/             # accessMatrix.js — ROLE_LABELS and the approved RBAC matrix
-│   ├── context/            # AuthContext, ThemeContext
-│   ├── data/               # mockData.js — seed data (no longer imported by pages)
+│   ├── layouts/            # AppLayout, Sidebar, Header
+│   ├── features/
+│   │   └── rbac/           # accessMatrix.js (the approved RBAC matrix and ROLE_LABELS),
+│   │                       # AuthGuard, AccessDeniedPage, PermissionMatrix,
+│   │                       # RoleAssignmentDrawer, and their tests
+│   ├── contexts/           # AuthContext, ThemeContext
+│   ├── constants/          # domain.js — shared enums, incl. ExamWindowStatus
 │   ├── hooks/              # useApi.js — centralized async data-fetching hook
 │   ├── i18n/               # index.js — English and Dzongkha resource bundles
-│   ├── types/              # index.js — shared enums, incl. ExamWindowStatus
+│   ├── mocks/              # mockData.js — seed data for demonstration mode
 │   ├── utils/              # examWindows.js (open-window selection), uuid.js
 │   ├── pages/
 │   │   ├── admin/          # UserManagement, RoleManagement, MasterConfiguration, TechnicalSettings
@@ -286,18 +287,33 @@ dzongjuk-frontend/
 └── tests/e2e/              # Playwright route and registration suites
 ```
 
+Modules inside `src/` import each other through the `@/` alias (`@/components/ui/Button`,
+`@/features/rbac/accessMatrix`), declared in `vite.config.js`, `vitest.config.js`, and
+`jsconfig.json`. Only same-directory imports stay relative.
+
 Backend and deployment layout:
 
 ```text
 backend/
-├── src/                    # Eight NestJS microservices
+├── apps/                   # Eight NestJS microservices, one folder per bounded context
+├── libs/                   # Shared code: @dzongjuk/common, @dzongjuk/contracts, @dzongjuk/security
 ├── database/               # Per-service schemas and numbered migrations
 ├── deploy/docker/          # nginx.conf — local API gateway (resolver fix applied)
 ├── deploy/k8s/             # base manifests + staging/production overlays
+├── test/
+│   ├── apps/               # Per-service unit specs, mirroring apps/
+│   ├── libs/               # Contract and security-guard specs
+│   └── integration/        # Cross-service event and outbox contracts
 ├── compose.yml             # Local stack: services, Postgres, Redis, RabbitMQ, MinIO
 └── .gitlab-ci.yml          # Reference pipeline (not executed by GitHub)
 
 deploy/k8s/staging/         # Manifests staging actually runs (namespace: dzongjuk)
+
+docs/
+├── requirements/           # BRD, NFR, and TOR source documents plus text extracts
+├── rbac/                   # RBAC integration contract and the generated access matrix
+├── qa/                     # Phase 1 QA test plan and traceability
+└── audits/                 # Frontend and RBAC audit reports
 ```
 
 ---
@@ -345,6 +361,56 @@ deploy/k8s/staging/         # Manifests staging actually runs (namespace: dzongj
 
 ### Test Taker
 - Dashboard, Register for Exam, My Applications, My Results, Certificates, Submit Appeal, My Appeals, Sample Papers
+
+---
+
+## 🔑 Access Control
+
+Module-level permissions come from the signed-off access matrix, transcribed into
+[`src/features/rbac/accessMatrix.js`](frontend/src/features/rbac/accessMatrix.js). That file is the
+single source of truth: routes, navigation, and in-page controls all read from it, and
+nothing hard-codes a role list against a matrix module.
+
+### Enforcement points
+
+| Layer | Mechanism |
+|---|---|
+| Routes | `PrivateRoute requiredAccess={{ module, action }}` redirects a denied request to `/dashboard` |
+| Navigation | Sidebar items declare `access: [module, action]` and hide when denied |
+| In-page controls | Pages call `canAccess(role, module, action)` to gate actions |
+
+### Own-scoped versus organisation-wide reads
+
+`read_own` and `read_all` are deliberately distinct actions. A "view own" grant must
+never satisfy a guard protecting an organisation-wide listing — otherwise a Test
+Taker holding *Create / view own* on Registration would pass a plain `read` check and
+load the full applicant list.
+
+- Guard personal screens (`/my-applications`) with `read_own`.
+- Guard cross-record listings (`/registration/applications`, `/scores/summary`) with `read_all`.
+
+The own-scoped levels (`create_own`, `read_own`, `submit_own`) never satisfy `read_all`.
+
+### Verification
+
+- `src/features/rbac/accessMatrix.contract.test.js` transcribes the approved document cell by
+  cell, so any drift from it fails the unit suite.
+- `tests/e2e/routes.spec.js` requests every denied route **directly by URL** for each
+  role, because hiding a menu item is not enforcement.
+
+### Backend integration
+
+[`docs/rbac/RBAC-INTEGRATION-CONTRACT.md`](docs/rbac/RBAC-INTEGRATION-CONTRACT.md) maps every API
+endpoint to the module and action the backend must require, and
+[`docs/rbac/access-matrix.json`](docs/rbac/access-matrix.json) is a generated, machine-readable copy of
+the matrix. Regenerate it after any change:
+
+```bash
+npm --prefix frontend run export:access-matrix
+```
+
+> **Frontend guards are a usability layer, not a security boundary.** Every rule above
+> has to be re-checked server side. A request made outside the browser bypasses all of it.
 
 ---
 
