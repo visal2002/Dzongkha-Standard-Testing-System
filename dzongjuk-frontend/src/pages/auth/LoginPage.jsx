@@ -403,7 +403,7 @@ export default function LoginPage() {
     >
       <div className="absolute inset-0 bg-slate-950/60 z-0 backdrop-blur-sm" />
 
-      <div className="relative z-10 flex-1 flex items-center justify-center p-6 lg:p-12">
+      <div className="relative z-10 flex-1 flex items-start justify-center overflow-y-auto p-6 pt-20 lg:p-12 lg:pt-24">
         {/* Back to home */}
         <div className="absolute top-6 left-6 z-20">
           <button
@@ -419,7 +419,9 @@ export default function LoginPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md"
+          className={`w-full transition-[max-width] duration-300 ${
+            activeTab === 'register' && registerMode === 'form' ? 'max-w-5xl' : 'max-w-md'
+          }`}
         >
           <div className="rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/30 overflow-hidden">
 
@@ -633,7 +635,7 @@ export default function LoginPage() {
                         </button>
                       </div>
 
-                      <form onSubmit={handleRegister} className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                      <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                         {/* CID */}
                         <div>
                           <label className="text-sm font-medium text-slate-700 block mb-1">CID No.</label>
