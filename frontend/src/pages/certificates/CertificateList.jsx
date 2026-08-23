@@ -7,17 +7,17 @@
 import { useEffect, useState } from 'react';
 import { Award, Download, Plus, QrCode, Search, Shield } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import PageHeader from '../../components/ui/PageHeader';
-import { StatusBadge } from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
-import Modal from '../../components/ui/Modal';
-import Input from '../../components/ui/Input';
-import { certificateService } from '../../services/certificates';
-import { examService } from '../../services/exams';
-import { API_BASE_URL } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import { canAccess } from '../../config/accessMatrix';
-import { Select } from '../../components/ui/Input';
+import PageHeader from '@/components/ui/PageHeader';
+import { StatusBadge } from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
+import Input from '@/components/ui/Input';
+import { certificateService } from '@/services/certificates';
+import { examService } from '@/services/exams';
+import { API_BASE_URL } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { canAccess } from '@/features/rbac/accessMatrix';
+import { Select } from '@/components/ui/Input';
 import toast from 'react-hot-toast';
 
 const skillOrder = ['WRITING', 'READING', 'LISTENING', 'SPEAKING'];

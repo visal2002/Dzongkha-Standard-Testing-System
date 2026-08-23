@@ -11,12 +11,12 @@
  * Decouples the Header component from direct mockData imports.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { notificationService } from '../services/notifications';
+import { useAuth } from '@/contexts/AuthContext';
+import { notificationService } from '@/services/notifications';
 
 /**
  * @returns {{
- *   notifications: import('../types/index').Notification[],
+ *   notifications: import('@/constants/domain').Notification[],
  *   unreadCount: number,
  *   loading: boolean,
  *   markAsRead: (id: string) => void,

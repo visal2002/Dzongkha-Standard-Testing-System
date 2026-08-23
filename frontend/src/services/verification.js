@@ -13,7 +13,7 @@ import apiClient from './api';
 import { normalizeApplication } from './applications';
 
 export const verificationService = {
-  /** @returns {Promise<{data: import('../types').Application[]}>} */
+  /** @returns {Promise<{data: import('@/constants/domain').Application[]}>} */
   getPendingApplications: async () => {
 
     const { data } = await apiClient.get('/verification/pending');

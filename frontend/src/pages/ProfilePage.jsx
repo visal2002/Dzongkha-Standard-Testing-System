@@ -7,8 +7,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Mail, CreditCard, Building2, Shield, Phone, Lock, Save, Edit2, X, Camera } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { authService } from '../services/auth';
+import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/services/auth';
 import toast from 'react-hot-toast';
 
 function InfoRow({ icon: Icon, label, value, placeholder = '—' }) {

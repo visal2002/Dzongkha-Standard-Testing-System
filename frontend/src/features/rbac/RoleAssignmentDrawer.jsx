@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import Button from '../ui/Button';
+import Button from '@/components/ui/Button';
 
 export function RoleAssignmentDrawer({ users = [], roles = [], onSave, onRemoveRole }) {
   const [query, setQuery] = useState('');

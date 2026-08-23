@@ -26,7 +26,7 @@
       "label": "DSTS: Frontend build",
       "type": "shell",
       "command": "npm run build",
-      "options": { "cwd": "${workspaceFolder}/dzongjuk-frontend" },
+      "options": { "cwd": "${workspaceFolder}/frontend" },
       "problemMatcher": []
     }
   ]

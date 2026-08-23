@@ -7,7 +7,7 @@
 import { ConfigService } from '@nestjs/config';
 import { DataSource, EntityManager, ObjectLiteral, Repository } from 'typeorm';
 import { ApplicationStatus, DomainEventTypes, ExamStatus, Skill } from '@dzongjuk/contracts';
-import { RegistrationService } from '../apps/registration-service/src/registration.service';
+import { RegistrationService } from '../../../apps/registration-service/src/registration.service';
 import {
   ApplicationEntity,
   ApplicationHistoryEntity,
@@ -17,7 +17,7 @@ import {
   OutboxEventEntity,
   RegistrationPaymentStatus,
   WaitlistEntryEntity,
-} from '../apps/registration-service/src/entities';
+} from '../../../apps/registration-service/src/entities';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 

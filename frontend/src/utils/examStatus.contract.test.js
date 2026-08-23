@@ -5,9 +5,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { examWindows } from './mockData';
-import { ExamWindowStatus } from '../types';
-import { findOpenExamWindow, isRegistrationOpen } from '../utils/examWindows';
+import { examWindows } from '@/mocks/mockData';
+import { ExamWindowStatus } from '@/constants/domain';
+import { findOpenExamWindow, isRegistrationOpen } from './examWindows';
 
 // The backend ExamStatus enum (backend/libs/contracts/src/index.ts) is the contract.
 // examService.normalizeExam lowercases whatever the API returns, so the frontend sees

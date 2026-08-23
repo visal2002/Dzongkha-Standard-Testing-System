@@ -6,11 +6,11 @@
 
 import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import PageHeader from '../../components/ui/PageHeader';
-import Button from '../../components/ui/Button';
-import Badge, { StatusBadge } from '../../components/ui/Badge';
-import { useNotifications } from '../../hooks/useNotifications';
-import { notificationService } from '../../services/notifications';
+import PageHeader from '@/components/ui/PageHeader';
+import Button from '@/components/ui/Button';
+import Badge, { StatusBadge } from '@/components/ui/Badge';
+import { useNotifications } from '@/hooks/useNotifications';
+import { notificationService } from '@/services/notifications';
 import toast from 'react-hot-toast';
 
 const TYPE_COLORS = {

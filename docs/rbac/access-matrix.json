@@ -1,5 +1,5 @@
 {
-  "$comment": "Generated from dzongjuk-frontend/src/config/accessMatrix.js. Do not edit by hand.",
+  "$comment": "Generated from frontend/src/features/rbac/accessMatrix.js. Do not edit by hand.",
   "generatedAt": "2026-08-23",
   "actions": {
     "read_all": "Read records belonging to any user.",

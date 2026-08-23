@@ -7,10 +7,10 @@
 import { ConfigService } from '@nestjs/config';
 import { DataSource, EntityManager, ObjectLiteral, Repository } from 'typeorm';
 import { AccessClaims, DomainEventTypes, QuestionPaperStatus, Skill } from '@dzongjuk/contracts';
-import { AssessmentService } from '../apps/assessment-content-service/src/assessment.service';
-import { EncryptionService } from '../apps/assessment-content-service/src/encryption.service';
-import { MalwareScannerService } from '../apps/assessment-content-service/src/malware-scanner.service';
-import { ObjectStorageService } from '../apps/assessment-content-service/src/object-storage.service';
+import { AssessmentService } from '../../../apps/assessment-content-service/src/assessment.service';
+import { EncryptionService } from '../../../apps/assessment-content-service/src/encryption.service';
+import { MalwareScannerService } from '../../../apps/assessment-content-service/src/malware-scanner.service';
+import { ObjectStorageService } from '../../../apps/assessment-content-service/src/object-storage.service';
 import {
   AssessmentOutboxEntity,
   DocumentType,
@@ -18,7 +18,7 @@ import {
   QuestionDocumentEntity,
   QuestionPaperEntity,
   ResultDeclarationProjectionEntity,
-} from '../apps/assessment-content-service/src/entities';
+} from '../../../apps/assessment-content-service/src/entities';
 
 // ─── shared fixtures ──────────────────────────────────────────────────────────
 

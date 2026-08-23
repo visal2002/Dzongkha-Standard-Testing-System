@@ -113,7 +113,7 @@ export const authService = {
    * Login with CID and password.
    * @param {string} identifier - CID or email
    * @param {string} password
-   * @returns {Promise<{success: boolean, user?: import('../types').AuthUser, token?: string, error?: string}>}
+   * @returns {Promise<{success: boolean, user?: import('@/constants/domain').AuthUser, token?: string, error?: string}>}
    */
   login: async (identifier, password) => {
 
@@ -299,7 +299,7 @@ export const authService = {
 
   /**
    * Update the authenticated user's profile.
-   * @param {Partial<import('../types').AuthUser>} fields
+   * @param {Partial<import('@/constants/domain').AuthUser>} fields
    */
   updateProfile: async (fields) => {
 

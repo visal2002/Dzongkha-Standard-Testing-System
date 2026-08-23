@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { AuthProvider } from '../context/AuthContext';
-import AppRoutes from '../routes';
-import { AuthGuard } from '../components/rbac/AuthGuard';
-import { AccessDeniedPage } from '../components/rbac/AccessDeniedPage';
+import { AuthProvider } from '@/contexts/AuthContext';
+import AppRoutes from '@/routes';
+import { AuthGuard } from './AuthGuard';
+import { AccessDeniedPage } from './AccessDeniedPage';
 
 function renderWithRouter(ui, initialEntries = ['/']) {
   return render(

@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { BarChart3, Megaphone, TrendingUp, Users } from 'lucide-react';
-import PageHeader from '../../components/ui/PageHeader';
-import { StatCard } from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Alert from '../../components/ui/Alert';
-import { Select } from '../../components/ui/Input';
-import { StatusBadge } from '../../components/ui/Badge';
-import { examService } from '../../services/exams';
-import { scoreService } from '../../services/scores';
-import { useApi } from '../../hooks/useApi';
-import { useAuth } from '../../context/AuthContext';
+import PageHeader from '@/components/ui/PageHeader';
+import { StatCard } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Alert from '@/components/ui/Alert';
+import { Select } from '@/components/ui/Input';
+import { StatusBadge } from '@/components/ui/Badge';
+import { examService } from '@/services/exams';
+import { scoreService } from '@/services/scores';
+import { useApi } from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function ScoreSummary() {

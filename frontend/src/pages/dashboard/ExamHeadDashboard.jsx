@@ -7,13 +7,13 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { BookOpen, Upload, FileText, Lock, ArrowRight, FileSearch } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { StatCard } from '../../components/ui/Card';
-import { StatusBadge } from '../../components/ui/Badge';
-import { questionService } from '../../services/questions';
-import { scoreService } from '../../services/scores';
-import { useApi } from '../../hooks/useApi';
-import Button from '../../components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
+import { StatCard } from '@/components/ui/Card';
+import { StatusBadge } from '@/components/ui/Badge';
+import { questionService } from '@/services/questions';
+import { scoreService } from '@/services/scores';
+import { useApi } from '@/hooks/useApi';
+import Button from '@/components/ui/Button';
 
 export default function ExamHeadDashboard() {
   const { user } = useAuth();

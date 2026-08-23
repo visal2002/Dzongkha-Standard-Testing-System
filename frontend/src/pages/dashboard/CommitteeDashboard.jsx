@@ -7,12 +7,12 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ClipboardList, Users, Scale, BarChart3, ArrowRight, CheckCircle } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { StatCard } from '../../components/ui/Card';
-import { StatusBadge } from '../../components/ui/Badge';
-import { scoreService } from '../../services/scores';
-import { appealService } from '../../services/appeals';
-import { useApi } from '../../hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
+import { StatCard } from '@/components/ui/Card';
+import { StatusBadge } from '@/components/ui/Badge';
+import { scoreService } from '@/services/scores';
+import { appealService } from '@/services/appeals';
+import { useApi } from '@/hooks/useApi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const scoreDistData = [

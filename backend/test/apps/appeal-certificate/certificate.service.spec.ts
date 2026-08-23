@@ -7,17 +7,17 @@
 import { ConfigService } from '@nestjs/config';
 import { DataSource, EntityManager, ObjectLiteral, Repository } from 'typeorm';
 import { AccessClaims, CertificateStatus } from '@dzongjuk/contracts';
-import { CertificateService } from '../apps/appeal-certificate-service/src/certificate.service';
-import { CertificateEncryptionService } from '../apps/appeal-certificate-service/src/certificate-encryption.service';
-import { CertificateStorageService } from '../apps/appeal-certificate-service/src/certificate-storage.service';
-import { CertificateRendererService } from '../apps/appeal-certificate-service/src/certificate-renderer.service';
-import { CertificateSourceClientService } from '../apps/appeal-certificate-service/src/certificate-source-client.service';
+import { CertificateService } from '../../../apps/appeal-certificate-service/src/certificate.service';
+import { CertificateEncryptionService } from '../../../apps/appeal-certificate-service/src/certificate-encryption.service';
+import { CertificateStorageService } from '../../../apps/appeal-certificate-service/src/certificate-storage.service';
+import { CertificateRendererService } from '../../../apps/appeal-certificate-service/src/certificate-renderer.service';
+import { CertificateSourceClientService } from '../../../apps/appeal-certificate-service/src/certificate-source-client.service';
 import {
   CertificateEntity,
   CertificateFileEntity,
   CertificateTemplateEntity,
   CertificateTemplateStatus,
-} from '../apps/appeal-certificate-service/src/entities';
+} from '../../../apps/appeal-certificate-service/src/entities';
 
 // ─── shared fixtures ──────────────────────────────────────────────────────────
 

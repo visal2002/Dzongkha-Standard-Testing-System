@@ -8,12 +8,12 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Scale, CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { StatCard } from '../../components/ui/Card';
-import { StatusBadge } from '../../components/ui/Badge';
-import { appealService } from '../../services/appeals';
-import { useApi } from '../../hooks/useApi';
-import Button from '../../components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
+import { StatCard } from '@/components/ui/Card';
+import { StatusBadge } from '@/components/ui/Badge';
+import { appealService } from '@/services/appeals';
+import { useApi } from '@/hooks/useApi';
+import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
 
 export default function ChiefDashboard() {

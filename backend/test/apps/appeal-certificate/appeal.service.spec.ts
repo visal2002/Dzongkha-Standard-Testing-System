@@ -8,9 +8,9 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource, EntityManager, ObjectLiteral, Repository } from 'typeorm';
 import { AccessClaims, AppealStatus, DomainEventTypes, Skill } from '@dzongjuk/contracts';
 import { DomainException } from '@dzongjuk/common';
-import { AppealService } from '../apps/appeal-certificate-service/src/appeal.service';
-import { CertificateService } from '../apps/appeal-certificate-service/src/certificate.service';
-import { ResultClientService } from '../apps/appeal-certificate-service/src/result-client.service';
+import { AppealService } from '../../../apps/appeal-certificate-service/src/appeal.service';
+import { CertificateService } from '../../../apps/appeal-certificate-service/src/certificate.service';
+import { ResultClientService } from '../../../apps/appeal-certificate-service/src/result-client.service';
 import {
   AppealDecision,
   AppealEntity,
@@ -21,7 +21,7 @@ import {
   FeeRuleEntity,
   FeeRuleStatus,
   PaymentStatus,
-} from '../apps/appeal-certificate-service/src/entities';
+} from '../../../apps/appeal-certificate-service/src/entities';
 
 // ─── shared fixtures ──────────────────────────────────────────────────────────
 

@@ -79,7 +79,7 @@ const toSamplePaper = paper => ({
 });
 
 export const questionService = {
-  /** @returns {Promise<{data: import('../types').QuestionPaper[]}>} */
+  /** @returns {Promise<{data: import('@/constants/domain').QuestionPaper[]}>} */
   getAll: async () => {
 
     const { data } = await apiClient.get('/questions');

@@ -9,7 +9,7 @@
  * Band score entry and retrieval for examination committees.
  */
 import apiClient from './api';
-import { createUuid } from '../utils/uuid';
+import { createUuid } from '@/utils/uuid';
 
 const normalizeExamScore = sheet => {
   const latest = sheet.versions?.[0] || {};
@@ -29,7 +29,7 @@ const normalizeExamScore = sheet => {
 };
 
 export const scoreService = {
-  /** @returns {Promise<{data: import('../types').BandScore[]}>} */
+  /** @returns {Promise<{data: import('@/constants/domain').BandScore[]}>} */
   getAll: async () => {
 
     const { data } = await apiClient.get('/scores');
@@ -38,7 +38,7 @@ export const scoreService = {
 
   /**
    * @param {string} examId
-   * @returns {Promise<{data: import('../types').BandScore[]}>}
+   * @returns {Promise<{data: import('@/constants/domain').BandScore[]}>}
    */
   getByExam: async (examId) => {
 
@@ -96,7 +96,7 @@ export const scoreService = {
   /**
    * Update a specific score entry.
    * @param {string} id
-   * @param {Partial<import('../types').BandScore>} payload
+   * @param {Partial<import('@/constants/domain').BandScore>} payload
    */
   update: async (id, payload) => {
 

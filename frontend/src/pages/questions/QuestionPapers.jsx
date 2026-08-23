@@ -7,16 +7,16 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Lock, FileText, Download, Eye, Upload, Trash2, LibraryBig } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import PageHeader from '../../components/ui/PageHeader';
-import { StatusBadge } from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
-import { ConfirmModal } from '../../components/ui/Modal';
-import Alert from '../../components/ui/Alert';
-import { questionService } from '../../services/questions';
-import { useApi } from '../../hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
+import PageHeader from '@/components/ui/PageHeader';
+import { StatusBadge } from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
+import { ConfirmModal } from '@/components/ui/Modal';
+import Alert from '@/components/ui/Alert';
+import { questionService } from '@/services/questions';
+import { useApi } from '@/hooks/useApi';
 import toast from 'react-hot-toast';
-import { canAccess } from '../../config/accessMatrix';
+import { canAccess } from '@/features/rbac/accessMatrix';
 
 const SKILL_COLORS = {
   WRITING: 'bg-blue-500/10 text-blue-400 border-blue-500/20',

@@ -12,8 +12,8 @@ import {
   ArrowLeft, AlertTriangle, X, Lock, Phone,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useAuth } from '../../context/AuthContext';
-import Button from '../../components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
+import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
 
 // ─── NDI Asset paths ──────────────────────────────────────────────────────────

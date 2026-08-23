@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Crown, Plus, Save, Trash2, Users } from 'lucide-react';
-import PageHeader from '../../components/ui/PageHeader';
-import Button from '../../components/ui/Button';
-import Modal from '../../components/ui/Modal';
-import { Select } from '../../components/ui/Input';
-import Alert from '../../components/ui/Alert';
-import { examService } from '../../services/exams';
-import { scoreService } from '../../services/scores';
-import { adminService } from '../../services/admin';
-import { useApi } from '../../hooks/useApi';
+import PageHeader from '@/components/ui/PageHeader';
+import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
+import { Select } from '@/components/ui/Input';
+import Alert from '@/components/ui/Alert';
+import { examService } from '@/services/exams';
+import { scoreService } from '@/services/scores';
+import { adminService } from '@/services/admin';
+import { useApi } from '@/hooks/useApi';
 import toast from 'react-hot-toast';
 
 export default function CommitteeSetup() {

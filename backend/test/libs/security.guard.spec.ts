@@ -6,7 +6,7 @@
 
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PermissionGuard } from '../libs/security/src/security.guards';
+import { PermissionGuard } from '../../libs/security/src/security.guards';
 
 describe('PermissionGuard', () => {
   const context = (permissions: string[]) => ({

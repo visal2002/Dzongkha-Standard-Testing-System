@@ -7,12 +7,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Plus, Calendar, MapPin, CreditCard } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import PageHeader from '../../components/ui/PageHeader';
-import Button from '../../components/ui/Button';
-import { StatusBadge } from '../../components/ui/Badge';
-import { applicationService } from '../../services/applications';
-import { examService } from '../../services/exams';
+import { useAuth } from '@/contexts/AuthContext';
+import PageHeader from '@/components/ui/PageHeader';
+import Button from '@/components/ui/Button';
+import { StatusBadge } from '@/components/ui/Badge';
+import { applicationService } from '@/services/applications';
+import { examService } from '@/services/exams';
 import toast from 'react-hot-toast';
 
 export default function MyApplications() {

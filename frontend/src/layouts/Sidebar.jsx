@@ -14,9 +14,9 @@ import {
   GraduationCap, Scale, Wrench, Server, SlidersHorizontal, FileCog,
   ClipboardCheck, FlaskConical, ScrollText
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import Badge from '../ui/Badge';
-import { canAccess } from '../../config/accessMatrix';
+import { useAuth } from '@/contexts/AuthContext';
+import Badge from '@/components/ui/Badge';
+import { canAccess } from '@/features/rbac/accessMatrix';
 
 const NAV_CONFIG = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },

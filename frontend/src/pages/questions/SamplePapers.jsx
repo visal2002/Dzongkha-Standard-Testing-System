@@ -6,10 +6,10 @@
 
 import { useEffect, useState } from 'react';
 import { BookOpen, Download, Eye, FileText } from 'lucide-react';
-import PageHeader from '../../components/ui/PageHeader';
-import { StatusBadge } from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
-import { questionService } from '../../services/questions';
+import PageHeader from '@/components/ui/PageHeader';
+import { StatusBadge } from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
+import { questionService } from '@/services/questions';
 import toast from 'react-hot-toast';
 
 const SKILL_COLORS = {

@@ -7,8 +7,8 @@
 import { ConfigService } from '@nestjs/config';
 import { DataSource, Repository } from 'typeorm';
 import { DomainException } from '@dzongjuk/common';
-import { ScoreValues, ScoringRuleEntity, ScoringRuleStatus } from '../apps/result-service/src/entities';
-import { ScoringService } from '../apps/result-service/src/scoring.service';
+import { ScoreValues, ScoringRuleEntity, ScoringRuleStatus } from '../../../apps/result-service/src/entities';
+import { ScoringService } from '../../../apps/result-service/src/scoring.service';
 
 describe('Approved scoring calculation', () => {
   const service = new ScoringService({} as DataSource, {} as Repository<ScoringRuleEntity>, new ConfigService({ PRIVILEGED_ASSURANCE_LEVELS: 'MFA' }));

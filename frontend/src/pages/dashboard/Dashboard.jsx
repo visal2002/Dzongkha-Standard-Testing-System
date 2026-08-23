@@ -4,7 +4,7 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import AdminDashboard from './AdminDashboard';
 import DCDDDashboard from './DCDDDashboard';
 import TestTakerDashboard from './TestTakerDashboard';

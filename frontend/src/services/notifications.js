@@ -9,7 +9,7 @@
  * In-app notification management.
  */
 import apiClient from './api';
-import { notifications as notificationFixtures } from '../data/mockData';
+import { notifications as notificationFixtures } from '@/mocks/mockData';
 
 const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 

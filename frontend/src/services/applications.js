@@ -10,7 +10,7 @@
  */
 import apiClient from './api';
 
-import { createUuid } from '../utils/uuid';
+import { createUuid } from '@/utils/uuid';
 
 export const normalizeApplication = application => {
   const profile = application.profileSnapshot || {};
@@ -46,7 +46,7 @@ const normalizeEnvelope = payload => ({
 });
 
 export const applicationService = {
-  /** @returns {Promise<{data: import('../types').Application[]}>} */
+  /** @returns {Promise<{data: import('@/constants/domain').Application[]}>} */
   getAll: async () => {
 
     const { data } = await apiClient.get('/applications');
@@ -95,7 +95,7 @@ export const applicationService = {
   /**
    * Update an existing application.
    * @param {string} id
-   * @param {Partial<import('../types').Application>} payload
+   * @param {Partial<import('@/constants/domain').Application>} payload
    */
   update: async (id, payload) => {
 

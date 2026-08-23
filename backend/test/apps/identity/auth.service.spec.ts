@@ -8,16 +8,16 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ObjectLiteral, Repository } from 'typeorm';
 import { CanonicalRole } from '@dzongjuk/contracts';
-import { AuthService } from '../apps/identity-service/src/auth.service';
-import { AuditService } from '../apps/identity-service/src/audit.service';
-import { NdiProviderService } from '../apps/identity-service/src/ndi-provider.service';
+import { AuthService } from '../../../apps/identity-service/src/auth.service';
+import { AuditService } from '../../../apps/identity-service/src/audit.service';
+import { NdiProviderService } from '../../../apps/identity-service/src/ndi-provider.service';
 import {
   LoginAttemptEntity,
   NdiLoginRequestEntity,
   RoleEntity,
   SessionEntity,
   UserEntity,
-} from '../apps/identity-service/src/entities';
+} from '../../../apps/identity-service/src/entities';
 
 // ─── shared fixtures ──────────────────────────────────────────────────────────
 

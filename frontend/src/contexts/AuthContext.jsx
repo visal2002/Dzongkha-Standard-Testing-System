@@ -6,7 +6,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { authService } from '../services/auth';
+import { authService } from '@/services/auth';
 
 const AuthContext = createContext(null);
 const SESSION_KEY = 'dsts_session';

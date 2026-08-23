@@ -10,7 +10,7 @@
  * here, so the status vocabulary is asserted in one place rather than restated as a
  * string literal per dashboard.
  */
-import { ExamWindowStatus } from '../types';
+import { ExamWindowStatus } from '@/constants/domain';
 
 /**
  * The exam window currently accepting registrations, or null.

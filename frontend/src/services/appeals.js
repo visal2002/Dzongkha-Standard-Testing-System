@@ -10,10 +10,10 @@
  */
 import apiClient from './api';
 
-import { createUuid } from '../utils/uuid';
+import { createUuid } from '@/utils/uuid';
 
 export const appealService = {
-  /** @returns {Promise<{data: import('../types').Appeal[]}>} */
+  /** @returns {Promise<{data: import('@/constants/domain').Appeal[]}>} */
   getAll: async () => {
 
     const { data } = await apiClient.get('/appeals');

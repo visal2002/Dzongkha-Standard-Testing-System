@@ -6,13 +6,13 @@
 
 import { useState } from 'react';
 import { Settings, Save, Award, CreditCard, Clock } from 'lucide-react';
-import PageHeader from '../../components/ui/PageHeader';
-import Input, { Select, Textarea } from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
-import Alert from '../../components/ui/Alert';
-import { Tabs, TabList, Tab, TabPanel } from '../../components/ui/Tabs';
-import { masterService } from '../../services/masters';
-import { useApi } from '../../hooks/useApi';
+import PageHeader from '@/components/ui/PageHeader';
+import Input, { Select, Textarea } from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
+import Alert from '@/components/ui/Alert';
+import { Tabs, TabList, Tab, TabPanel } from '@/components/ui/Tabs';
+import { masterService } from '@/services/masters';
+import { useApi } from '@/hooks/useApi';
 import toast from 'react-hot-toast';
 
 export default function MasterConfiguration() {

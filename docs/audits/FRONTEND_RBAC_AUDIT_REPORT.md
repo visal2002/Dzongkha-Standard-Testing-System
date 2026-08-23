@@ -1,5 +1,9 @@
 # Frontend RBAC Audit Report
 
+> **Note (2026-08-23):** This report is a point-in-time record. File paths below refer to
+> the pre-restructure layout, when the frontend lived in `dzongjuk-frontend/` and RBAC code
+> sat under `src/config/` and `src/components/rbac/`. See the README for the current layout.
+
 ## Executive Summary
 
 The DSTS frontend has significant RBAC foundations in place, including session-based auth state, guard logic, and admin role-permission screens. However, the implementation is not yet Phase 1 production-ready for a secure deployment.

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Save, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import PageHeader from '../../../components/ui/PageHeader';
-import Button from '../../../components/ui/Button';
-import { adminService } from '../../../services/admin';
-import { useApi } from '../../../hooks/useApi';
+import PageHeader from '@/components/ui/PageHeader';
+import Button from '@/components/ui/Button';
+import { adminService } from '@/services/admin';
+import { useApi } from '@/hooks/useApi';
 
 const permissionGroup = name => {
   if (name === '*') return 'System';

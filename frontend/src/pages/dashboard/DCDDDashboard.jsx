@@ -10,14 +10,14 @@ import {
   Users, CheckSquare, FileText, Clock, Award, AlertCircle,
   TrendingUp, Calendar, ArrowRight, BarChart3, Activity
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { StatCard } from '../../components/ui/Card';
-import { StatusBadge } from '../../components/ui/Badge';
-import { scoreService } from '../../services/scores';
-import { applicationService } from '../../services/applications';
-import { examService } from '../../services/exams';
-import { findOpenExamWindow } from '../../utils/examWindows';
-import { useApi } from '../../hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
+import { StatCard } from '@/components/ui/Card';
+import { StatusBadge } from '@/components/ui/Badge';
+import { scoreService } from '@/services/scores';
+import { applicationService } from '@/services/applications';
+import { examService } from '@/services/exams';
+import { findOpenExamWindow } from '@/utils/examWindows';
+import { useApi } from '@/hooks/useApi';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell

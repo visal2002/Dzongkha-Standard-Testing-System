@@ -7,8 +7,8 @@
 import { ConfigService } from '@nestjs/config';
 import { DataSource, EntityManager, ObjectLiteral, Repository } from 'typeorm';
 import { AccessClaims, DomainEventTypes, ScoreSheetStatus } from '@dzongjuk/contracts';
-import { ResultService } from '../apps/result-service/src/result.service';
-import { ScoringService } from '../apps/result-service/src/scoring.service';
+import { ResultService } from '../../../apps/result-service/src/result.service';
+import { ScoringService } from '../../../apps/result-service/src/scoring.service';
 import {
   CandidateEligibilityEntity,
   CommitteeEntity,
@@ -21,7 +21,7 @@ import {
   ScoreVersionEntity,
   ScoringRuleEntity,
   ScoringRuleStatus,
-} from '../apps/result-service/src/entities';
+} from '../../../apps/result-service/src/entities';
 
 // ─── shared fixtures ──────────────────────────────────────────────────────────
 

@@ -4,11 +4,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, ArrowRight, CheckCircle2, Send } from 'lucide-react';
-import { Button, Card, CardBody, Input, Select, Stepper } from '../../components/ui';
-import PageHeader from '../../components/ui/PageHeader';
-import { useAuth } from '../../context/AuthContext';
-import { applicationService } from '../../services/applications';
-import { examService } from '../../services/exams';
+import { Button, Card, CardBody, Input, Select, Stepper } from '@/components/ui';
+import PageHeader from '@/components/ui/PageHeader';
+import { useAuth } from '@/contexts/AuthContext';
+import { applicationService } from '@/services/applications';
+import { examService } from '@/services/exams';
 import toast from 'react-hot-toast';
 
 const steps = ['Personal Information', 'Education & Employment', 'Review'];

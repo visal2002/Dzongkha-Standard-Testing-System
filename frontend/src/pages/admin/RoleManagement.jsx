@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, Users } from 'lucide-react';
-import PageHeader from '../../components/ui/PageHeader';
-import Badge from '../../components/ui/Badge';
-import { ACCESS_MATRIX, ACCESS_MODULES, MATRIX_ROLES, ROLE_LABELS, SUPPLEMENTARY_ROLES, getAccessLevel } from '../../config/accessMatrix';
-import { useAuth } from '../../context/AuthContext';
+import PageHeader from '@/components/ui/PageHeader';
+import Badge from '@/components/ui/Badge';
+import { ACCESS_MATRIX, ACCESS_MODULES, MATRIX_ROLES, ROLE_LABELS, SUPPLEMENTARY_ROLES, getAccessLevel } from '@/features/rbac/accessMatrix';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DISPLAY_LEVELS = {
   none: { label: 'No access', style: 'bg-red-500/10 text-red-400 border-red-500/20' },

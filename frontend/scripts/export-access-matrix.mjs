@@ -1,6 +1,6 @@
 /**
  * Emits the approved access matrix as JSON so the backend can enforce exactly the
- * same rules the frontend does. `src/config/accessMatrix.js` is the single source
+ * same rules the frontend does. `src/features/rbac/accessMatrix.js` is the single source
  * of truth; this script never restates a permission, it only serialises it.
  *
  *   npm run export:access-matrix
@@ -11,12 +11,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const { ACCESS_MATRIX, ACCESS_MODULES, MATRIX_ROLES, ROLE_LABELS, SUPPLEMENTARY_ROLES, getAccessLevel } =
-  await import(pathToFileURL(resolve(here, '../src/config/accessMatrix.js')).href);
+  await import(pathToFileURL(resolve(here, '../src/features/rbac/accessMatrix.js')).href);
 
 const roles = [...MATRIX_ROLES, ...SUPPLEMENTARY_ROLES];
 
 const payload = {
-  $comment: 'Generated from dzongjuk-frontend/src/config/accessMatrix.js. Do not edit by hand.',
+  $comment: 'Generated from frontend/src/features/rbac/accessMatrix.js. Do not edit by hand.',
   generatedAt: new Date().toISOString().slice(0, 10),
   actions: {
     read_all: 'Read records belonging to any user.',
@@ -39,7 +39,7 @@ const payload = {
   ])),
 };
 
-const target = resolve(here, '../../docs/access-matrix.json');
+const target = resolve(here, '../../docs/rbac/access-matrix.json');
 mkdirSync(dirname(target), { recursive: true });
 writeFileSync(target, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
 console.log(`Wrote ${target}`);

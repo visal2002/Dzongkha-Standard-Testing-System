@@ -5,10 +5,10 @@ enforce the identical set. It exists because **frontend guards are a usability
 layer, not a security boundary** - every rule below has to be re-checked server
 side, or it is not enforced at all.
 
-- **Source of truth:** `dzongjuk-frontend/src/config/accessMatrix.js`
+- **Source of truth:** `frontend/src/features/rbac/accessMatrix.js`
 - **Machine-readable copy:** [`access-matrix.json`](access-matrix.json), regenerated with
-  `npm --prefix dzongjuk-frontend run export:access-matrix`
-- **Pinned by:** `src/config/accessMatrix.contract.test.js` (transcribes the approved
+  `npm --prefix frontend run export:access-matrix`
+- **Pinned by:** `src/features/rbac/accessMatrix.contract.test.js` (transcribes the approved
   document cell by cell) and `tests/e2e/routes.spec.js` (requests every denied route
   directly by URL)
 
@@ -201,6 +201,6 @@ A Test Taker must additionally only receive **published** results.
    unlisted module, and `canAccess` then returns `false`. The backend should fail
    closed the same way.
 
-5. **Consuming the matrix.** `docs/access-matrix.json` is generated from the frontend
+5. **Consuming the matrix.** `docs/rbac/access-matrix.json` is generated from the frontend
    source. Read it directly rather than re-typing the rules, so the two sides cannot
    drift. Regenerate after any change to `accessMatrix.js`.

@@ -9,7 +9,7 @@
  * CRUD operations for DSTS examination registration windows.
  */
 import apiClient from './api';
-import { examWindows as mockExamWindows } from '../data/mockData';
+import { examWindows as mockExamWindows } from '@/mocks/mockData';
 
 const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
@@ -35,7 +35,7 @@ const toRequest = payload => ({
 });
 
 export const examService = {
-  /** @returns {Promise<{data: import('../types').ExamWindow[]}>} */
+  /** @returns {Promise<{data: import('@/constants/domain').ExamWindow[]}>} */
   getAll: async () => {
     // Without this branch the mock/CI build has no exam source at all, so every screen
     // that lists windows renders a network error instead of its real empty or open state.
@@ -45,7 +45,7 @@ export const examService = {
     return { ...data, data: unwrapList(data).map(normalizeExam) };
   },
 
-  /** @param {string} id @returns {Promise<{data: import('../types').ExamWindow}>} */
+  /** @param {string} id @returns {Promise<{data: import('@/constants/domain').ExamWindow}>} */
   getById: async (id) => {
     if (USE_MOCK_DATA) {
       const found = mockExamWindows.find(exam => exam.id === id);
@@ -57,7 +57,7 @@ export const examService = {
     return { data: exam ? normalizeExam(exam) : null };
   },
 
-  /** @param {Partial<import('../types').ExamWindow>} payload */
+  /** @param {Partial<import('@/constants/domain').ExamWindow>} payload */
   create: async (payload) => {
     if (USE_MOCK_DATA) {
       const created = normalizeExam({ ...payload, id: `EXM-MOCK-${Date.now()}`, status: payload.status ?? 'DRAFT' });
@@ -79,7 +79,7 @@ export const examService = {
     return { data: normalizeExam(exam) };
   },
 
-  /** @param {string} id @param {Partial<import('../types').ExamWindow>} payload */
+  /** @param {string} id @param {Partial<import('@/constants/domain').ExamWindow>} payload */
   updateStatus: async (id, status) => {
     if (USE_MOCK_DATA) return { data: normalizeExam({ ...mockExamWindows.find(exam => exam.id === id), status }) };
 

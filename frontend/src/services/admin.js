@@ -10,7 +10,7 @@
  */
 import apiClient from './api';
 import { registerMockAccount } from './auth';
-import { ACCESS_MODULES, ROLE_LABELS } from '../config/accessMatrix';
+import { ACCESS_MODULES, ROLE_LABELS } from '@/features/rbac/accessMatrix';
 
 const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
@@ -71,7 +71,7 @@ const normalizeUser = user => {
 export const adminService = {
   // ── Users ────────────────────────────────────────────────────────────────────
 
-  /** @returns {Promise<{data: import('../types').SystemUser[]}>} */
+  /** @returns {Promise<{data: import('@/constants/domain').SystemUser[]}>} */
   getUsers: async () => {
     if (USE_MOCK_DATA) return mockUsers.map(normalizeUser);
 
@@ -88,7 +88,7 @@ export const adminService = {
     return data;
   },
 
-  /** @param {Partial<import('../types').SystemUser>} payload */
+  /** @param {Partial<import('@/constants/domain').SystemUser>} payload */
   createUser: async (payload) => {
     if (USE_MOCK_DATA) {
       const roleCodes = payload.roleCodes?.length ? payload.roleCodes : ['test_taker'];
@@ -113,7 +113,7 @@ export const adminService = {
 
   /**
    * @param {string} id
-   * @param {Partial<import('../types').SystemUser>} payload
+   * @param {Partial<import('@/constants/domain').SystemUser>} payload
    */
   updateUser: async (id, payload) => {
     if (USE_MOCK_DATA) {
@@ -158,7 +158,7 @@ export const adminService = {
 
   // ── Roles ────────────────────────────────────────────────────────────────────
 
-  /** @returns {Promise<{data: import('../types').SystemRole[]}>} */
+  /** @returns {Promise<{data: import('@/constants/domain').SystemRole[]}>} */
   getRoles: async () => {
     if (USE_MOCK_DATA) {
       return MOCK_ROLES.map(role => normalizeRole({
@@ -182,7 +182,7 @@ export const adminService = {
 
   /**
    * @param {string} id
-   * @param {import('../types').SystemRole['permissions']} permissions
+   * @param {import('@/constants/domain').SystemRole['permissions']} permissions
    */
   updateRolePermissions: async (id, permissions) => {
 
@@ -192,7 +192,7 @@ export const adminService = {
 
   /**
    * Create a new system role.
-   * @param {Partial<import('../types').SystemRole>} payload
+   * @param {Partial<import('@/constants/domain').SystemRole>} payload
    */
   createRole: async (payload) => {
 
@@ -203,7 +203,7 @@ export const adminService = {
   /**
    * Update a role's metadata (name, description, code).
    * @param {string} id
-   * @param {Partial<import('../types').SystemRole>} payload
+   * @param {Partial<import('@/constants/domain').SystemRole>} payload
    */
   updateRole: async (id, payload) => {
 

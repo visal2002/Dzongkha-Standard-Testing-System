@@ -5,21 +5,21 @@
  */
 
 import { BarChart3, Download, Filter, Calendar, TrendingUp, Users, Award, Scale } from 'lucide-react';
-import PageHeader from '../../components/ui/PageHeader';
-import { StatCard } from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import { Select } from '../../components/ui/Input';
-import { Tabs, TabList, Tab, TabPanel } from '../../components/ui/Tabs';
+import PageHeader from '@/components/ui/PageHeader';
+import { StatCard } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import { Select } from '@/components/ui/Input';
+import { Tabs, TabList, Tab, TabPanel } from '@/components/ui/Tabs';
 import {
   BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend
 } from 'recharts';
-import { reportService } from '../../services/reports';
-import { examService } from '../../services/exams';
-import { useApi } from '../../hooks/useApi';
+import { reportService } from '@/services/reports';
+import { examService } from '@/services/exams';
+import { useApi } from '@/hooks/useApi';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../context/AuthContext';
-import { canAccess } from '../../config/accessMatrix';
+import { useAuth } from '@/contexts/AuthContext';
+import { canAccess } from '@/features/rbac/accessMatrix';
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;

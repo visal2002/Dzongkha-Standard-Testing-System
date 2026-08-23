@@ -5,9 +5,9 @@
  */
 
 import { Repository } from 'typeorm';
-import { DomainException } from '../libs/common/src/http';
-import { ReportDataset, ReportResourceProjectionEntity, ReportResourceType } from '../apps/reporting-service/src/entities';
-import { ReportingService } from '../apps/reporting-service/src/reporting.service';
+import { DomainException } from '../../../libs/common/src/http';
+import { ReportDataset, ReportResourceProjectionEntity, ReportResourceType } from '../../../apps/reporting-service/src/entities';
+import { ReportingService } from '../../../apps/reporting-service/src/reporting.service';
 
 describe('ReportingService', () => {
   const resource = (id: string, status: string, dimensions: Record<string, unknown> = {}) => ({

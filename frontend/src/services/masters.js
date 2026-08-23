@@ -12,7 +12,7 @@ import apiClient from './api';
 
 
 export const masterService = {
-  /** @returns {Promise<{data: import('../types').MasterConfig}>} */
+  /** @returns {Promise<{data: import('@/constants/domain').MasterConfig}>} */
   getConfig: async () => {
 
     const { data } = await apiClient.get('/masters');
@@ -21,7 +21,7 @@ export const masterService = {
 
   /**
    * Update master configuration.
-   * @param {Partial<import('../types').MasterConfig>} payload
+   * @param {Partial<import('@/constants/domain').MasterConfig>} payload
    */
   updateConfig: async (payload) => {
 

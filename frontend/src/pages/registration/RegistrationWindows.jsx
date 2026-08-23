@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Users, Plus, MapPin, Clock } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import PageHeader from '../../components/ui/PageHeader';
-import { StatusBadge } from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
-import Modal from '../../components/ui/Modal';
-import Input, { Select } from '../../components/ui/Input';
-import { examService } from '../../services/exams';
-import { useApi } from '../../hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
+import PageHeader from '@/components/ui/PageHeader';
+import { StatusBadge } from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
+import Input, { Select } from '@/components/ui/Input';
+import { examService } from '@/services/exams';
+import { useApi } from '@/hooks/useApi';
 import toast from 'react-hot-toast';
 
 const emptyForm = { code: '', title: '', examDate: '', venue: '', registrationStart: '', registrationEnd: '', maxCapacity: '', paymentAmount: '' };

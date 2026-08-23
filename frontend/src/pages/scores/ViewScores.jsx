@@ -7,11 +7,11 @@
 import { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { AlertCircle, BarChart3 } from 'lucide-react';
-import PageHeader from '../../components/ui/PageHeader';
-import DataTable from '../../components/ui/Table';
-import { StatusBadge } from '../../components/ui/Badge';
-import { useAuth } from '../../context/AuthContext';
-import { scoreService } from '../../services/scores';
+import PageHeader from '@/components/ui/PageHeader';
+import DataTable from '@/components/ui/Table';
+import { StatusBadge } from '@/components/ui/Badge';
+import { useAuth } from '@/contexts/AuthContext';
+import { scoreService } from '@/services/scores';
 
 const columnHelper = createColumnHelper();
 

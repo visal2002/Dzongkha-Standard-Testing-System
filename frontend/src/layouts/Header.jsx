@@ -11,10 +11,10 @@ import {
   PanelLeft, Bell, Sun, Moon, Search, ChevronDown, LogOut,
   User, Settings, RefreshCw, Check
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { useNotifications } from '../../hooks/useNotifications';
-import Badge from '../ui/Badge';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useNotifications } from '@/hooks/useNotifications';
+import Badge from '@/components/ui/Badge';
 
 const ROLE_SWITCHER = [
   { email: 'system.admin@demo.com', label: 'System Admin' },

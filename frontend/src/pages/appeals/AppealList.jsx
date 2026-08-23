@@ -7,15 +7,15 @@
 import { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { CheckCircle, Eye, Scale, XCircle } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import PageHeader from '../../components/ui/PageHeader';
-import DataTable from '../../components/ui/Table';
-import { StatusBadge } from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
-import Modal from '../../components/ui/Modal';
-import { Textarea } from '../../components/ui/Input';
-import Alert from '../../components/ui/Alert';
-import { appealService } from '../../services/appeals';
+import { useAuth } from '@/contexts/AuthContext';
+import PageHeader from '@/components/ui/PageHeader';
+import DataTable from '@/components/ui/Table';
+import { StatusBadge } from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
+import { Textarea } from '@/components/ui/Input';
+import Alert from '@/components/ui/Alert';
+import { appealService } from '@/services/appeals';
 import toast from 'react-hot-toast';
 
 const columnHelper = createColumnHelper();

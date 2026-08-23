@@ -7,13 +7,13 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Award, FileText, AlertCircle, Calendar, ArrowRight, Download, CheckCircle, BarChart2, Edit3, Check, Headphones, MessageCircle, BookOpen } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { applicationService } from '../../services/applications';
-import { certificateService } from '../../services/certificates';
-import { examService } from '../../services/exams';
-import { findOpenExamWindow } from '../../utils/examWindows';
-import { scoreService } from '../../services/scores';
-import { useApi } from '../../hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
+import { applicationService } from '@/services/applications';
+import { certificateService } from '@/services/certificates';
+import { examService } from '@/services/exams';
+import { findOpenExamWindow } from '@/utils/examWindows';
+import { scoreService } from '@/services/scores';
+import { useApi } from '@/hooks/useApi';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, PolarRadiusAxis } from 'recharts';
 
 export default function TestTakerDashboard() {

@@ -9,8 +9,8 @@ import { useState, useEffect } from 'react';
 // ... (rest of imports unchanged)
 import { motion } from 'framer-motion';
 import { Sun, Moon, Globe, Bell, BellOff, LogOut, ChevronRight, Palette, Mail, Phone, Building2 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 

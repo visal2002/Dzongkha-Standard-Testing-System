@@ -5,11 +5,11 @@
  */
 
 import { AppealStatus, ApplicationStatus, CertificateStatus, DomainEventTypes, ExamStatus, Skill } from '@dzongjuk/contracts';
-import { IS_PUBLIC } from '../libs/security/src/security.decorators';
-import { SamplePapersController } from '../apps/assessment-content-service/src/assessment.controller';
-import { AppealsController } from '../apps/appeal-certificate-service/src/appeal.controller';
-import { CertificatesController, PublicCertificatesController } from '../apps/appeal-certificate-service/src/certificate.controller';
-import { ScoresController } from '../apps/result-service/src/result.controller';
+import { IS_PUBLIC } from '../../libs/security/src/security.decorators';
+import { SamplePapersController } from '../../apps/assessment-content-service/src/assessment.controller';
+import { AppealsController } from '../../apps/appeal-certificate-service/src/appeal.controller';
+import { CertificatesController, PublicCertificatesController } from '../../apps/appeal-certificate-service/src/certificate.controller';
+import { ScoresController } from '../../apps/result-service/src/result.controller';
 
 describe('authoritative workflow contracts', () => {
   it('contains exactly the four BRD examination skills', () => {

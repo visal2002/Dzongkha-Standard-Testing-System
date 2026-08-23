@@ -7,13 +7,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle, Scale } from 'lucide-react';
-import PageHeader from '../../components/ui/PageHeader';
-import Button from '../../components/ui/Button';
-import { Select, Textarea } from '../../components/ui/Input';
-import Alert from '../../components/ui/Alert';
-import { useAuth } from '../../context/AuthContext';
-import { appealService } from '../../services/appeals';
-import { scoreService } from '../../services/scores';
+import PageHeader from '@/components/ui/PageHeader';
+import Button from '@/components/ui/Button';
+import { Select, Textarea } from '@/components/ui/Input';
+import Alert from '@/components/ui/Alert';
+import { useAuth } from '@/contexts/AuthContext';
+import { appealService } from '@/services/appeals';
+import { scoreService } from '@/services/scores';
 import toast from 'react-hot-toast';
 
 const SKILLS = ['WRITING', 'READING', 'LISTENING', 'SPEAKING'];

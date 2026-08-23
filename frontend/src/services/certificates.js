@@ -10,11 +10,11 @@
  */
 import apiClient from './api';
 
-import { createUuid } from '../utils/uuid';
+import { createUuid } from '@/utils/uuid';
 
 
 export const certificateService = {
-  /** @returns {Promise<{data: import('../types').Certificate[]}>} */
+  /** @returns {Promise<{data: import('@/constants/domain').Certificate[]}>} */
   getAll: async () => {
 
     const { data } = await apiClient.get('/certificates');

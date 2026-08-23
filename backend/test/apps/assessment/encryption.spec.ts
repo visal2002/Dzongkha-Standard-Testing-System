@@ -5,7 +5,7 @@
  */
 
 import { ConfigService } from '@nestjs/config';
-import { EncryptionService } from '../apps/assessment-content-service/src/encryption.service';
+import { EncryptionService } from '../../../apps/assessment-content-service/src/encryption.service';
 
 describe('Assessment encryption', () => {
   const key = Buffer.alloc(32, 7).toString('base64');

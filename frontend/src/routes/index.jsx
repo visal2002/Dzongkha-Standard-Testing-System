@@ -6,43 +6,43 @@
 
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { canAccess } from '../config/accessMatrix';
+import { useAuth } from '@/contexts/AuthContext';
+import { canAccess } from '@/features/rbac/accessMatrix';
 
 // Layout
-import AppLayout from '../components/layout/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 
 // Eagerly loaded critical pages
-import LoginPage, { NdiLoginPage, NdiRegistrationPage } from '../pages/auth/LoginPage';
-import HomePage from '../pages/HomePage';
-import Dashboard from '../pages/dashboard/Dashboard';
+import LoginPage, { NdiLoginPage, NdiRegistrationPage } from '@/pages/auth/LoginPage';
+import HomePage from '@/pages/HomePage';
+import Dashboard from '@/pages/dashboard/Dashboard';
 
 // Lazy loaded pages
-const RegistrationWindows = lazy(() => import('../pages/registration/RegistrationWindows'));
-const MyApplications = lazy(() => import('../pages/registration/MyApplications'));
-const ApplicationForm = lazy(() => import('../pages/registration/ApplicationForm'));
-const VerificationList = lazy(() => import('../pages/verification/VerificationList'));
-const AttendanceList = lazy(() => import('../pages/attendance/AttendanceList'));
-const ScoreEntry = lazy(() => import('../pages/scores/ScoreEntry'));
-const ViewScores = lazy(() => import('../pages/scores/ViewScores'));
-const CommitteeSetup = lazy(() => import('../pages/scores/CommitteeSetup'));
-const ScoreSummary = lazy(() => import('../pages/scores/ScoreSummary'));
-const AppealList = lazy(() => import('../pages/appeals/AppealList'));
-const SubmitAppeal = lazy(() => import('../pages/appeals/SubmitAppeal'));
-const CertificateList = lazy(() => import('../pages/certificates/CertificateList'));
-const QuestionPapers = lazy(() => import('../pages/questions/QuestionPapers'));
-const UploadQuestionPaper = lazy(() => import('../pages/questions/UploadQuestionPaper'));
-const SamplePapers = lazy(() => import('../pages/questions/SamplePapers'));
-const Reports = lazy(() => import('../pages/reports/Reports'));
-const Notifications = lazy(() => import('../pages/notifications/Notifications'));
-const UserManagement = lazy(() => import('../pages/admin/UserManagement'));
-const RoleManagement = lazy(() => import('../pages/admin/RoleManagement'));
-const PermissionManagement = lazy(() => import('../pages/admin/permissions/PermissionManagement'));
-const MasterConfiguration = lazy(() => import('../pages/admin/MasterConfiguration'));
-const ProfilePage = lazy(() => import('../pages/ProfilePage'));
-const SettingsPage = lazy(() => import('../pages/SettingsPage'));
-const TechnicalSettings = lazy(() => import('../pages/admin/TechnicalSettings'));
-const OperationalSettings = lazy(() => import('../pages/dcdd/OperationalSettings'));
+const RegistrationWindows = lazy(() => import('@/pages/registration/RegistrationWindows'));
+const MyApplications = lazy(() => import('@/pages/registration/MyApplications'));
+const ApplicationForm = lazy(() => import('@/pages/registration/ApplicationForm'));
+const VerificationList = lazy(() => import('@/pages/verification/VerificationList'));
+const AttendanceList = lazy(() => import('@/pages/attendance/AttendanceList'));
+const ScoreEntry = lazy(() => import('@/pages/scores/ScoreEntry'));
+const ViewScores = lazy(() => import('@/pages/scores/ViewScores'));
+const CommitteeSetup = lazy(() => import('@/pages/scores/CommitteeSetup'));
+const ScoreSummary = lazy(() => import('@/pages/scores/ScoreSummary'));
+const AppealList = lazy(() => import('@/pages/appeals/AppealList'));
+const SubmitAppeal = lazy(() => import('@/pages/appeals/SubmitAppeal'));
+const CertificateList = lazy(() => import('@/pages/certificates/CertificateList'));
+const QuestionPapers = lazy(() => import('@/pages/questions/QuestionPapers'));
+const UploadQuestionPaper = lazy(() => import('@/pages/questions/UploadQuestionPaper'));
+const SamplePapers = lazy(() => import('@/pages/questions/SamplePapers'));
+const Reports = lazy(() => import('@/pages/reports/Reports'));
+const Notifications = lazy(() => import('@/pages/notifications/Notifications'));
+const UserManagement = lazy(() => import('@/pages/admin/UserManagement'));
+const RoleManagement = lazy(() => import('@/pages/admin/RoleManagement'));
+const PermissionManagement = lazy(() => import('@/pages/admin/permissions/PermissionManagement'));
+const MasterConfiguration = lazy(() => import('@/pages/admin/MasterConfiguration'));
+const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const TechnicalSettings = lazy(() => import('@/pages/admin/TechnicalSettings'));
+const OperationalSettings = lazy(() => import('@/pages/dcdd/OperationalSettings'));
 
 // Page loader
 export function PageLoader() {
