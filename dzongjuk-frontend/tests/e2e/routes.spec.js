@@ -71,9 +71,7 @@ test('a test taker can register without NDI and sign in', async ({ page }) => {
   await page.getByPlaceholder('Enter your full name').fill('Chimi Dema');
   await page.locator('input[type="date"]').fill('2000-01-01');
   await page.getByRole('combobox').selectOption('Female');
-  await page.getByPlaceholder("Father's full name").fill('Karma Dorji');
-  await page.getByPlaceholder("Mother's full name").fill('Sonam Choden');
-  await page.getByPlaceholder('Dzongkhag, Gewog, Village').fill('Thimphu, Thimphu, Chang');
+  await page.getByPlaceholder('8-digit mobile number').fill('17123456');
   await page.getByRole('button', { name: 'Submit Registration' }).click();
 
   await page.getByPlaceholder('Enter your CID, email, or User ID').fill('10701000001@dsts.bt');
