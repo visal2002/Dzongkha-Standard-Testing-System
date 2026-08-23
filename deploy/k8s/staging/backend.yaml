@@ -29,6 +29,9 @@ data:
   CERTIFICATE_BUCKET: dzongjuk-certificates
   CERTIFICATE_KEY_VERSION: "1"
   NDI_ALLOW_TEST_TAKER_PROVISIONING: "true"
+  BIRMS_BASE_URL: https://birmsstagging.drc.gov.bt/api-services
+  BIRMS_SERVICE_PATH: moha-service/api/v1
+  BIRMS_SERVICE_DESCRIPTION: DSTS EXAMINATION REGISTRATION
 ---
 apiVersion: apps/v1
 kind: Deployment

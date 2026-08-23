@@ -10,6 +10,7 @@ import { SamplePapersController } from '../apps/assessment-content-service/src/a
 import { AppealsController } from '../apps/appeal-certificate-service/src/appeal.controller';
 import { CertificatesController, PublicCertificatesController } from '../apps/appeal-certificate-service/src/certificate.controller';
 import { ScoresController } from '../apps/result-service/src/result.controller';
+import { ApplicationsController, BirmsPaymentsController } from '../apps/registration-service/src/registration.controller';
 
 describe('authoritative workflow contracts', () => {
   it('contains exactly the four BRD examination skills', () => {
@@ -48,6 +49,15 @@ describe('authoritative workflow contracts', () => {
     const submitHandler = Reflect.get(AppealsController.prototype, 'submit') as (...args: unknown[]) => unknown;
     expect(Reflect.getMetadata(IS_PUBLIC, paymentHandler)).toBe(true);
     expect(Reflect.getMetadata(IS_PUBLIC, submitHandler)).not.toBe(true);
+  });
+
+  it('keeps payment advice creation authenticated while exposing only BIRMS notification transports', () => {
+    const adviceHandler = Reflect.get(ApplicationsController.prototype, 'createPaymentAdvice') as (...args: unknown[]) => unknown;
+    const callbackHandler = Reflect.get(BirmsPaymentsController.prototype, 'callback') as (...args: unknown[]) => unknown;
+    const reversalHandler = Reflect.get(BirmsPaymentsController.prototype, 'reversal') as (...args: unknown[]) => unknown;
+    expect(Reflect.getMetadata(IS_PUBLIC, adviceHandler)).not.toBe(true);
+    expect(Reflect.getMetadata(IS_PUBLIC, callbackHandler)).toBe(true);
+    expect(Reflect.getMetadata(IS_PUBLIC, reversalHandler)).toBe(true);
   });
 
   it('exposes only signed certificate verification publicly while protecting owner records and files', () => {
