@@ -8,8 +8,9 @@ import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Req } from '
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions, Public } from '@dzongjuk/security';
-import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto, UpdateExamStatusDto } from './dtos';
+import { CancelBirmsPaymentDto, CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto, UpdateExamStatusDto } from './dtos';
 import { RegistrationService } from './registration.service';
+import { BirmsPaymentService } from './birms-payment.service';
 
 @ApiTags('Examinations')
 @Controller('exams')
@@ -27,7 +28,7 @@ export class ExamsController {
 @ApiTags('Applications')
 @Controller('applications')
 export class ApplicationsController {
-  constructor(private readonly service: RegistrationService) {}
+  constructor(private readonly service: RegistrationService, private readonly birms: BirmsPaymentService) {}
 
   @Permissions('registration.application.submit') @Post('exam/:examId')
   submit(@Param('examId') examId: string, @Body() dto: SubmitApplicationDto, @Req() req: Request, @Headers('idempotency-key') key: string) {
@@ -48,11 +49,33 @@ export class ApplicationsController {
   @Permissions('registration.application.verify') @Post(':id/payment') payment(@Param('id') id: string, @Body() dto: RecordRegistrationPaymentDto, @Req() req: Request) {
     return this.service.recordPayment(id, dto, req.user!.sub, req.id);
   }
+  @Permissions('registration.application.submit') @Post(':id/payment-advice')
+  createPaymentAdvice(@Param('id') id: string, @Req() req: Request) { return this.birms.createAdvice(id, req.user!.sub, req.id); }
+  @Permissions('registration.application.submit') @Post(':id/payment-refresh')
+  refreshPayment(@Param('id') id: string, @Req() req: Request) { return this.birms.refresh(id, req.user!.sub, req.id); }
+  @Permissions('registration.application.submit') @Post(':id/payment-cancel')
+  cancelPayment(@Param('id') id: string, @Body() dto: CancelBirmsPaymentDto, @Req() req: Request) { return this.birms.cancel(id, dto.reason, req.user!.sub, req.id); }
+  @Permissions('registration.application.submit') @Get(':id/payment-receipt')
+  receipt(@Param('id') id: string, @Req() req: Request) { return this.birms.receipt(id, req.user!.sub); }
   @Get(':id/history') history(@Param('id') id: string) { return this.service.applicationHistory(id); }
 
   @Public() @Get('internal/:id/certificate-profile')
   certificateProfile(@Param('id') id: string, @Headers('x-internal-service-key') key: string | undefined) {
     return this.service.certificateProfile(id, key);
+  }
+}
+
+@ApiTags('BIRMS Payments')
+@Controller('payments/birms')
+export class BirmsPaymentsController {
+  constructor(private readonly birms: BirmsPaymentService) {}
+
+  @Public() @Post('callback') callback(@Body() payload: Record<string, unknown>, @Req() req: Request) {
+    return this.birms.receiveCallback(payload, req.id);
+  }
+
+  @Public() @Post('reversal') reversal(@Body() payload: Record<string, unknown>, @Req() req: Request) {
+    return this.birms.receiveReversal(payload, req.id);
   }
 }
 

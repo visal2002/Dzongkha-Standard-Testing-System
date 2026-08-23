@@ -19,6 +19,7 @@ configMapGenerator:
       - 0008_access_matrix.sql=../../../backend/database/migrations/0008_access_matrix.sql
       - 0009_registration_payments.sql=../../../backend/database/migrations/0009_registration_payments.sql
       - 0010_staging_workflow_baseline.sql=../../../backend/database/migrations/0010_staging_workflow_baseline.sql
+      - 0011_birms_registration_payments.sql=../../../backend/database/migrations/0011_birms_registration_payments.sql
   - name: api-gateway-config
     files:
       - nginx.conf=api-gateway.conf

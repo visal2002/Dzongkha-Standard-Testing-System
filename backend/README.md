@@ -83,6 +83,17 @@ The acceptance script is blocked when `NODE_ENV=production`. If approved effecti
 ## Security constraints
 
 - Production NDI, DCRC, payment, SMTP/SMS, object storage, secrets manager and GovTech platform values must be supplied by the Procuring Authority.
+
+## BIRMS payment integration
+
+Registration payments use a server-side BIRMS Payment Advice flow. Configure `BIRMS_USERNAME`, `BIRMS_PASSWORD`, `BIRMS_PLATFORM`, `BIRMS_AGENCY_CODE`, and `BIRMS_SERVICE_CODE` as protected runtime secrets issued by the BIRMS team. The non-secret staging defaults are `BIRMS_BASE_URL=https://birmsstagging.drc.gov.bt/api-services` and `BIRMS_SERVICE_PATH=moha-service/api/v1`.
+
+BIRMS must be given publicly reachable HTTPS endpoints for successful payment and reversal notifications:
+
+- `POST https://<staging-host>/api/v1/payments/birms/callback`
+- `POST https://<staging-host>/api/v1/payments/birms/reversal`
+
+Notification payloads are never trusted as payment authorization. The backend resolves the stored reference number against BIRMS before changing the authoritative payment status. Payers select counter, online, mobile-app, or internet-banking payment on the BIRMS-hosted page; Dzongjuk never collects bank credentials, PINs, or OTPs.
 - No production secret belongs in Git, image layers, or frontend environment variables.
 - Production data, backups, DR copies, logs and metadata must remain in Bhutan unless written approval says otherwise.
 - Container/pod/service networks must not use `10.0.0.0/8` or `172.16.0.0/12`. Local Compose uses `192.168.240.0/24`; production CIDRs still require GovTech approval.
