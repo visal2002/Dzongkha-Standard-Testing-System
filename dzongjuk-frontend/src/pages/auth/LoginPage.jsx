@@ -391,6 +391,8 @@ export default function LoginPage() {
     setNdiErrorMessage(null);
   };
 
+  const isFullScreenForm = activeTab === "register" && registerMode === "form";
+
   const tabs = [
     { id: 'signin',   label: 'Sign In' },
     { id: 'register', label: 'Register' },
@@ -403,7 +405,7 @@ export default function LoginPage() {
     >
       <div className="absolute inset-0 bg-slate-950/60 z-0 backdrop-blur-sm" />
 
-      <div className="relative z-10 flex-1 flex items-start justify-center overflow-y-auto p-6 pt-20 lg:p-12 lg:pt-24">
+      <div className={`relative z-10 flex-1 flex overflow-y-auto ${isFullScreenForm ? "items-stretch p-0" : "items-start justify-center p-6 pt-20 lg:p-12 lg:pt-24"}`}>
         {/* Back to home */}
         <div className="absolute top-6 left-6 z-20">
           <button
@@ -419,9 +421,9 @@ export default function LoginPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`w-full transition-[max-width] duration-300 ${activeTab === "register" && registerMode === "form" ? "max-w-5xl" : "max-w-md"}`}
+          className={`w-full ${isFullScreenForm ? "max-w-none" : "max-w-md"}`}
         >
-          <div className="rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/30 overflow-hidden">
+          <div className={`bg-white shadow-2xl shadow-slate-950/30 overflow-hidden ${isFullScreenForm ? "min-h-screen flex flex-col rounded-none border-0" : "rounded-3xl border border-slate-200"}`}>
 
             {/* Logo + title */}
             <div className="flex flex-col items-center gap-3 pt-7 px-6 pb-4">
