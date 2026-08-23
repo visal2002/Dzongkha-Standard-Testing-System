@@ -16,6 +16,7 @@ import { certificateService } from '../../services/certificates';
 import { examService } from '../../services/exams';
 import { API_BASE_URL } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { canAccess } from '../../config/accessMatrix';
 import { Select } from '../../components/ui/Input';
 import toast from 'react-hot-toast';
 
@@ -115,7 +116,10 @@ function CertificateCard({ cert }) {
 
 export default function CertificateList() {
   const { user } = useAuth();
-  const administrative = ['admin', 'dcdd'].includes(user?.role);
+  // Matrix: Certificates is Full for admin/DCDD and Read for Exam Head and
+  // Committee Head, so those two must see every certificate, not their own.
+  const canReadAll = canAccess(user?.role, 'certificates', 'read_all');
+  const canManage = canAccess(user?.role, 'certificates', 'manage');
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -128,10 +132,10 @@ export default function CertificateList() {
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    (administrative ? certificateService.getAll() : certificateService.getByUser()).then(result => setCertificates(result?.data ?? []))
+    (canReadAll ? certificateService.getAll() : certificateService.getByUser()).then(result => setCertificates(result?.data ?? []))
       .catch(error => toast.error(error.message || 'Could not load certificates.')).finally(() => setLoading(false));
-    if (administrative) examService.getAll().then(result => setExams(result?.data ?? [])).catch(() => undefined);
-  }, [administrative]);
+    if (canManage) examService.getAll().then(result => setExams(result?.data ?? [])).catch(() => undefined);
+  }, [canReadAll, canManage]);
 
   const generate = async () => {
     if (!examId) return toast.error('Select an examination');
@@ -163,7 +167,7 @@ export default function CertificateList() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={administrative ? 'Certificates' : 'My Certificates'} subtitle="Secure certificate issuance, downloads, and privacy-safe QR verification" breadcrumbs={[{ label: 'Certificates' }]} icon={<Award size={18} />} action={administrative && <Button icon={<Plus size={14} />} onClick={() => setShowGenerate(true)}>Generate Certificates</Button>} />
+      <PageHeader title={canReadAll ? 'Certificates' : 'My Certificates'} subtitle="Secure certificate issuance, downloads, and privacy-safe QR verification" breadcrumbs={[{ label: 'Certificates' }]} icon={<Award size={18} />} action={canManage && <Button icon={<Plus size={14} />} onClick={() => setShowGenerate(true)}>Generate Certificates</Button>} />
 
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
         <p className="text-sm font-semibold text-text-primary mb-1 flex items-center gap-2"><Shield size={15} className="text-brand-gold" /> Verify certificate</p>

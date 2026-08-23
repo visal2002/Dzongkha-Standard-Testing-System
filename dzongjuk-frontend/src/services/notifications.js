@@ -9,7 +9,35 @@
  * In-app notification management.
  */
 import apiClient from './api';
+import { notifications as notificationFixtures } from '../data/mockData';
 
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
+
+// The API returns an eventType and a readAt timestamp; useNotifications derives the
+// display type and the read flag from those. The fixtures store the derived values
+// instead, so they are mapped back to the wire shape here rather than teaching the
+// hook about two different formats.
+const EVENT_TYPES = {
+  success: 'ApplicationVerified',
+  warning: 'ApplicationReturned',
+  error: 'ApplicationRejected',
+  info: 'GeneralAnnouncement',
+};
+
+const toWireShape = (fixture) => ({
+  id: fixture.id,
+  userId: fixture.userId,
+  title: fixture.title,
+  message: fixture.message,
+  eventType: EVENT_TYPES[fixture.type] || EVENT_TYPES.info,
+  readAt: fixture.read ? fixture.createdAt : null,
+  createdAt: fixture.createdAt,
+});
+
+// Mutable session state so marking as read and dismissing behave like the real API.
+// Every demonstration role sees the same list: scoping to the signed-in user is the
+// backend's job, driven by the token subject rather than by anything sent from here.
+let mockNotifications = notificationFixtures.map(toWireShape);
 
 export const notificationService = {
   getAll: async (limit = 50) => notificationService.getUserNotifications(undefined, limit),
@@ -20,6 +48,9 @@ export const notificationService = {
    * @param {number} [limit=20]
    */
   getUserNotifications: async (userId, limit = 20) => {
+    if (USE_MOCK_DATA) {
+      return { data: mockNotifications.slice(0, limit) };
+    }
 
     const { data } = await apiClient.get(`/notifications?limit=${limit}`);
     return data;
@@ -30,6 +61,12 @@ export const notificationService = {
    * @param {string} id
    */
   markAsRead: async (id) => {
+    if (USE_MOCK_DATA) {
+      mockNotifications = mockNotifications.map(item => (
+        item.id === id ? { ...item, readAt: item.readAt || new Date().toISOString() } : item
+      ));
+      return { success: true };
+    }
 
     const { data } = await apiClient.patch(`/notifications/${id}/read`);
     return data;
@@ -40,6 +77,11 @@ export const notificationService = {
    * @param {string} userId
    */
   markAllAsRead: async (userId) => {
+    if (USE_MOCK_DATA) {
+      const readAt = new Date().toISOString();
+      mockNotifications = mockNotifications.map(item => ({ ...item, readAt: item.readAt || readAt }));
+      return { success: true };
+    }
 
     const { data } = await apiClient.post('/notifications/read-all');
     return data;
@@ -52,6 +94,10 @@ export const notificationService = {
    * @param {string} id
    */
   delete: async (id) => {
+    if (USE_MOCK_DATA) {
+      mockNotifications = mockNotifications.filter(item => item.id !== id);
+      return { success: true };
+    }
 
     const { data } = await apiClient.delete(`/notifications/${id}`);
     return data;

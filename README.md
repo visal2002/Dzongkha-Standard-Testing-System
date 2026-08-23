@@ -22,6 +22,7 @@ It provides a secure, role-based administration portal covering the examination 
 - [Troubleshooting](#-troubleshooting)
 - [Project Architecture](#-project-architecture)
 - [Available Roles & Navigation](#-available-roles--navigation)
+- [Access Control](#-access-control)
 - [Demo Accounts](#-demo-accounts)
 - [Developer Notes & Design Tokens](#-developer-notes--design-tokens)
 - [Performance & Security](#-performance--security)
@@ -343,6 +344,56 @@ deploy/k8s/staging/         # Manifests staging actually runs (namespace: dzongj
 
 ### Test Taker
 - Dashboard, Register for Exam, My Applications, My Results, Certificates, Submit Appeal, My Appeals, Sample Papers
+
+---
+
+## 🔑 Access Control
+
+Module-level permissions come from the signed-off access matrix, transcribed into
+[`src/config/accessMatrix.js`](dzongjuk-frontend/src/config/accessMatrix.js). That file is the
+single source of truth: routes, navigation, and in-page controls all read from it, and
+nothing hard-codes a role list against a matrix module.
+
+### Enforcement points
+
+| Layer | Mechanism |
+|---|---|
+| Routes | `PrivateRoute requiredAccess={{ module, action }}` redirects a denied request to `/dashboard` |
+| Navigation | Sidebar items declare `access: [module, action]` and hide when denied |
+| In-page controls | Pages call `canAccess(role, module, action)` to gate actions |
+
+### Own-scoped versus organisation-wide reads
+
+`read_own` and `read_all` are deliberately distinct actions. A "view own" grant must
+never satisfy a guard protecting an organisation-wide listing — otherwise a Test
+Taker holding *Create / view own* on Registration would pass a plain `read` check and
+load the full applicant list.
+
+- Guard personal screens (`/my-applications`) with `read_own`.
+- Guard cross-record listings (`/registration/applications`, `/scores/summary`) with `read_all`.
+
+The own-scoped levels (`create_own`, `read_own`, `submit_own`) never satisfy `read_all`.
+
+### Verification
+
+- `src/config/accessMatrix.contract.test.js` transcribes the approved document cell by
+  cell, so any drift from it fails the unit suite.
+- `tests/e2e/routes.spec.js` requests every denied route **directly by URL** for each
+  role, because hiding a menu item is not enforcement.
+
+### Backend integration
+
+[`docs/RBAC-INTEGRATION-CONTRACT.md`](docs/RBAC-INTEGRATION-CONTRACT.md) maps every API
+endpoint to the module and action the backend must require, and
+[`docs/access-matrix.json`](docs/access-matrix.json) is a generated, machine-readable copy of
+the matrix. Regenerate it after any change:
+
+```bash
+npm --prefix dzongjuk-frontend run export:access-matrix
+```
+
+> **Frontend guards are a usability layer, not a security boundary.** Every rule above
+> has to be re-checked server side. A request made outside the browser bypasses all of it.
 
 ---
 

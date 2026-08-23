@@ -106,7 +106,7 @@ export default function AppRoutes() {
           <Route path="/registration/windows" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'read' }}><RegistrationWindows /></PrivateRoute>} />
           <Route path="/my-applications" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'read_own' }}><MyApplications /></PrivateRoute>} />
           <Route path="/registration/apply/:examId" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'create_own' }}><ApplicationForm /></PrivateRoute>} />
-          <Route path="/registration/applications" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'read' }}><VerificationList /></PrivateRoute>} />
+          <Route path="/registration/applications" element={<PrivateRoute requiredAccess={{ module: 'registration', action: 'read_all' }}><VerificationList /></PrivateRoute>} />
 
           {/* DCDD Workflows */}
           <Route path="/verification" element={<PrivateRoute requiredAccess={{ module: 'verification', action: 'read' }}><VerificationList /></PrivateRoute>} />
@@ -121,7 +121,7 @@ export default function AppRoutes() {
           <Route path="/scores" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'submit' }}><ScoreEntry /></PrivateRoute>} />
           <Route path="/scores/view" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read' }}><ViewScores /></PrivateRoute>} />
           <Route path="/scores/committee" element={<PrivateRoute requiredRoles={['admin', 'dcdd', 'committee_head']}><CommitteeSetup /></PrivateRoute>} />
-          <Route path="/scores/summary" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read' }}><ScoreSummary /></PrivateRoute>} />
+          <Route path="/scores/summary" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read_all' }}><ScoreSummary /></PrivateRoute>} />
 
           {/* Appeals & Certificates */}
           <Route path="/appeals" element={<PrivateRoute requiredAccess={{ module: 'appeals', action: 'read' }}><AppealList /></PrivateRoute>} />

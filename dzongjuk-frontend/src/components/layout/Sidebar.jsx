@@ -25,7 +25,7 @@ const NAV_CONFIG = [
   {
     label: 'Registration', icon: FileText, access: ['registration', 'read'], children: [
       { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'] },
-      { label: 'Applications', icon: ClipboardList, to: '/registration/applications', access: ['registration', 'read'], excludeRoles: ['test_taker'] },
+      { label: 'Applications', icon: ClipboardList, to: '/registration/applications', access: ['registration', 'read_all'] },
       { label: 'My Applications', icon: ClipboardList, to: '/my-applications', access: ['registration', 'read_own'] },
     ],
   },
@@ -40,7 +40,7 @@ const NAV_CONFIG = [
   { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'] },
   { label: 'Band Score Entry', icon: ClipboardList, to: '/scores', access: ['scores', 'submit'] },
   { label: 'View Scores', icon: FileText, to: '/scores/view', access: ['scores', 'read'], excludeRoles: ['admin', 'dcdd', 'exam_head', 'committee_head'] },
-  { label: 'Score Summary', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read'], excludeRoles: ['test_taker'] },
+  { label: 'Score Summary', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'] },
   { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'] },
   { label: 'Submit Re-evaluation', icon: AlertCircle, to: '/appeals/new', access: ['appeals', 'submit_own'] },
   { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'] },

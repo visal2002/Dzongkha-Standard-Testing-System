@@ -21,8 +21,21 @@ export const ROLE_LABELS = {
   chief_executive: 'Chief Executive',
 };
 
-// This is the approved access matrix. Chief Executive is intentionally not
-// assigned module access because that role is absent from the supplied matrix.
+// The six roles covered by the approved access matrix, in its column order.
+export const MATRIX_ROLES = ['admin', 'dcdd', 'exam_head', 'committee_head', 'committee_member', 'test_taker'];
+
+// Roles that carry permissions the approved matrix does not describe. These are
+// shown separately wherever the matrix is displayed so that no permission is
+// granted invisibly.
+export const SUPPLEMENTARY_ROLES = ['chief_executive'];
+
+// This is the approved access matrix, transcribed from the signed-off document.
+//
+// Chief Executive is absent from that document but holds `appeals: process`,
+// because the re-evaluation workflow requires a chief approval step and no other
+// role can complete it. That grant is deliberately narrow and is surfaced in the
+// Role & Access Matrix screen rather than left implicit. It needs ratifying
+// alongside the rest of the matrix.
 export const ACCESS_MATRIX = {
   admin: {
     users: 'crud', roles: 'crud', registration: 'full', verification: 'full',
@@ -50,16 +63,24 @@ export const ACCESS_MATRIX = {
     appeals: 'submit_own', certificates: 'read_own',
   },
   chief_executive: {
-    appeals: 'process'
+    appeals: 'process',
   },
 };
 
+// Actions each access level satisfies.
+//
+// `read_all` means "read records belonging to anyone" and is the action that
+// separates an organisation-wide listing from a personal one. The own-scoped
+// levels below deliberately omit it: without that separation a "view own" grant
+// silently satisfies any guard asking for a plain `read`, which is how a Test
+// Taker could reach the full applicant list. Guard organisation-wide screens
+// with `read_all`, and personal screens with `read_own`.
 const ALLOWED_ACTIONS = {
-  crud: ['read', 'create', 'update', 'delete', 'manage'],
-  full: ['read', 'create', 'update', 'delete', 'manage', 'submit', 'process', 'sample'],
-  read: ['read', 'sample'],
-  submit: ['read', 'submit'],
-  process: ['read', 'process'],
+  crud: ['read', 'read_all', 'read_own', 'create', 'update', 'delete', 'manage'],
+  full: ['read', 'read_all', 'read_own', 'create', 'create_own', 'update', 'delete', 'manage', 'submit', 'process', 'sample'],
+  read: ['read', 'read_all', 'read_own', 'sample'],
+  submit: ['read', 'read_all', 'read_own', 'submit'],
+  process: ['read', 'read_all', 'read_own', 'process'],
   create_own: ['read', 'read_own', 'create', 'create_own'],
   read_own: ['read', 'read_own'],
   submit_own: ['read', 'read_own', 'submit', 'submit_own'],

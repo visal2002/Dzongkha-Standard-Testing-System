@@ -12,7 +12,8 @@
     "test:watch": "cross-env VITE_USE_MOCK_DATA=true vitest",
     "test:e2e": "npm run build:mock && playwright test",
     "test:e2e:local": "cross-env PLAYWRIGHT_CHANNEL=chrome npm run test:e2e",
-    "test:e2e:ci": "npm run build:mock && playwright test --reporter=line"
+    "test:e2e:ci": "npm run build:mock && playwright test --reporter=line",
+    "export:access-matrix": "node scripts/export-access-matrix.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

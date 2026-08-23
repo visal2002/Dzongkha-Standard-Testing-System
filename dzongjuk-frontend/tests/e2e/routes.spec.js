@@ -140,3 +140,63 @@ for (const account of roleRoutes) {
     expect(runtimeErrors, runtimeErrors.join('\n')).toEqual([]);
   });
 }
+
+// The access matrix denies these routes. A guard that only hides the menu item is
+// not enough, so each one is requested directly by URL. PrivateRoute sends a denied
+// request back to /dashboard.
+const deniedRoutes = [
+  {
+    role: 'Test Taker',
+    email: 'test.taker@demo.com',
+    // Registration is "Create / view own": the applicant's own records only, never
+    // the organisation-wide list. Band Scores is "View own result", so the
+    // cross-candidate summary is closed too.
+    routes: [
+      '/registration/applications', '/verification', '/attendance', '/questions',
+      '/questions/upload', '/scores', '/scores/summary', '/reports',
+      '/admin/users', '/admin/roles',
+    ],
+  },
+  {
+    role: 'Committee Member',
+    email: 'member@dsts.bt',
+    routes: [
+      '/verification', '/attendance', '/questions', '/questions/upload',
+      '/certificates', '/scores', '/admin/users', '/admin/roles',
+    ],
+  },
+  {
+    role: 'Committee Head',
+    email: 'committee.head@demo.com',
+    routes: ['/verification', '/attendance', '/questions/upload', '/admin/users', '/admin/roles'],
+  },
+  {
+    role: 'Exam Head',
+    email: 'exam.head@demo.com',
+    routes: ['/admin/users', '/admin/roles', '/scores'],
+  },
+];
+
+for (const account of deniedRoutes) {
+  test(`${account.role} is denied the routes the access matrix withholds`, async ({ page }) => {
+    await login(page, account.email);
+
+    for (const route of account.routes) {
+      await test.step(route, async () => {
+        await page.goto(route);
+        await expect(page, `${account.role} reached ${route}`).toHaveURL(/\/dashboard$/);
+      });
+    }
+  });
+}
+
+test('a test taker cannot read another applicant through the applications list', async ({ page }) => {
+  await login(page, 'test.taker@demo.com');
+
+  await page.goto('/registration/applications');
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  // The own-scoped screen stays reachable.
+  await page.goto('/my-applications');
+  await expect(page).toHaveURL(/\/my-applications$/);
+});
