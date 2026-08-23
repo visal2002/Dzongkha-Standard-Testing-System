@@ -18,6 +18,8 @@ It provides a secure, role-based administration portal covering the examination 
 - [Tech Stack](#-tech-stack)
 - [Getting Started](#-getting-started)
 - [Quality Checks](#quality-checks)
+- [Deployment](#-deployment)
+- [Troubleshooting](#-troubleshooting)
 - [Project Architecture](#-project-architecture)
 - [Available Roles & Navigation](#-available-roles--navigation)
 - [Demo Accounts](#-demo-accounts)
@@ -35,7 +37,9 @@ The application presents a complete internal workflow for exam administration. I
 
 ## ✨ Key Features
 
-- 🔐 **Role-Based Access Control (RBAC):** Custom dashboards and navigation for 6 distinct roles.
+- 🔐 **Role-Based Access Control (RBAC):** Custom dashboards and navigation for 7 distinct roles, driven by the approved access matrix in `src/config/accessMatrix.js`.
+- 🪪 **Bhutan NDI Authentication:** QR-code and wallet deep-link sign-in against the Bhutan National Digital Identity service, with a self-contained demonstration flow when NDI credentials are not configured.
+- 🌐 **Bilingual Interface:** English and Dzongkha via i18next. Dzongkha strings are currently `[dz]`-prefixed placeholders awaiting review by a certified linguist.
 - 📝 **Registration Workflow:** Multi-step forms with Zod validation for robust application submissions.
 - ✅ **Verification & Attendance:** Streamlined data tables for application verification and test day attendance.
 - 📊 **Scoring & Appeals:** Secure band score entry and re-evaluation appeal workflows with chief approval.
@@ -56,9 +60,14 @@ The application presents a complete internal workflow for exam administration. I
 | **Routing** | React Router DOM v7 |
 | **Styling** | Tailwind CSS v4, Framer Motion v11, Lucide React |
 | **Forms** | React Hook Form, Zod |
+| **HTTP** | Axios (single `apiClient` in `src/services/api.js`) |
+| **i18n** | i18next, react-i18next, i18next-browser-languagedetector (English + Dzongkha) |
 | **Data Viz** | Recharts, TanStack Table v8 |
 | **PDF** | @react-pdf/renderer v4 |
-| **Utils** | React Hot Toast, qrcode.react |
+| **Utils** | React Hot Toast, qrcode.react (NDI login QR + certificate QR) |
+| **Testing** | Vitest (service contracts), Playwright (Chromium route suite) |
+| **Backend** | NestJS microservices, TypeORM, PostgreSQL, Redis, RabbitMQ, MinIO |
+| **Gateway** | nginx (Docker Compose locally, Kubernetes in staging) |
 
 ---
 
@@ -108,6 +117,16 @@ npm run dev
 
 The API gateway runs at `http://localhost:8000`. Backend implementation evidence and unresolved external decisions are documented in `backend/docs/IMPLEMENTATION-STATUS.md`.
 
+### Bhutan NDI sign-in
+
+NDI is optional for local development. If `NDI_CLIENT_ID` and `NDI_CLIENT_SECRET` are blank in `backend/.env`, the identity service answers `POST /api/v1/auth/ndi/initiate` with HTTP 503 and the error code `NDI_NOT_CONFIGURED`. The frontend treats that specific code as a signal to render a self-contained demonstration QR flow, so the scanner still appears and completes after a short delay.
+
+**A 503 on `/auth/ndi/initiate` during local development is therefore expected, not a fault.** Supply real credentials from [bhutanndi.com](https://bhutanndi.com/developers) to exercise the live service. The relevant backend settings are `NDI_AUTHENTICATION_URL`, `NDI_VERIFIER_URL`, `NDI_WEBHOOK_URL`, `NDI_CLIENT_ID`, `NDI_CLIENT_SECRET`, and `NDI_LOGIN_TTL_SECONDS`.
+
+### CORS
+
+The backend accepts browser origins listed in `CORS_ORIGINS` (default `http://localhost:5000`). Serving the frontend from another port, or reaching it via `127.0.0.1` rather than `localhost`, will be rejected by the browser as a CORS failure. Add any additional origin to that variable rather than working around it in the client.
+
 ### Building for Production
 
 ```bash
@@ -129,7 +148,95 @@ Run the production-style Chromium route suite from the repository root:
 npm run frontend:test:e2e
 ```
 
-The route suite signs in as every demonstration role and checks all role-specific routes for rendering failures, browser errors, and runtime exception messages. GitHub Actions runs these checks together with the backend build, lint, tests, and production dependency audits on every pull request and every push to `main`.
+The route suite signs in as every demonstration role and checks all role-specific routes for rendering failures, browser errors, and runtime exception messages. Both frontend suites run against a mock build (`VITE_USE_MOCK_DATA=true`), so they need no backend containers.
+
+Run the backend build, lint, and Jest suites:
+
+```bash
+npm run backend:build
+npm run lint
+npm test
+```
+
+Run the frontend contracts, backend build, lint, and backend tests in one command:
+
+```bash
+npm run quality
+```
+
+Note that `npm run quality` does not include the Playwright route suite or the `npm audit` dependency checks; CI runs both in addition, so a clean `quality` run is not by itself a guarantee that CI will pass.
+
+GitHub Actions (`.github/workflows/quality.yml`) runs the frontend contract and route suites alongside the backend build, lint, tests, and production dependency audits on every pull request and every push to `main`.
+
+---
+
+## 🚢 Deployment
+
+> **GitHub Actions performs continuous integration only.** `quality.yml` builds, lints, and tests; it holds no registry or cluster credentials and contains no deploy job. **Pushing to GitHub does not deploy anything.**
+
+`backend/.gitlab-ci.yml` describes a full GitLab pipeline including `deploy-staging` and a manual `deploy-production`. That file is inert in this repository, because GitHub does not execute GitLab CI definitions. It is retained as the reference for the intended automated pipeline.
+
+### Staging (manual)
+
+Staging runs from the manifests in `deploy/k8s/staging/` against the GovTech registry `dev-harbor.systems.gov.bt`, in namespace `dzongjuk`. It comprises all eight backend services, the frontend, an nginx API gateway exposed via NodePort, and the PostgreSQL, Redis, RabbitMQ, and MinIO infrastructure.
+
+```bash
+# 1. Build and push a backend service image
+cd backend
+docker build --build-arg SERVICE=identity-service \
+  -t dev-harbor.systems.gov.bt/dzongjuk/identity-service:<tag> .
+docker push dev-harbor.systems.gov.bt/dzongjuk/identity-service:<tag>
+
+# 2. Build and push the frontend
+cd ../dzongjuk-frontend
+docker build -t dev-harbor.systems.gov.bt/dzongjuk/frontend:<tag> .
+docker push dev-harbor.systems.gov.bt/dzongjuk/frontend:<tag>
+
+# 3. Update the image tags in deploy/k8s/staging/{backend,frontend}.yaml, then apply
+cd ..
+kubectl apply -k deploy/k8s/staging
+kubectl rollout status deployment/identity-service -n dzongjuk
+```
+
+Deploying requires a kubeconfig for the GovTech cluster and a `docker login` against `dev-harbor.systems.gov.bt`. Both are issued by GovTech and are not present in this repository.
+
+### Known deployment issues
+
+These are recorded so they are not rediscovered the hard way:
+
+- **Two divergent Kubernetes definitions exist.** `deploy/k8s/staging/` (namespace `dzongjuk`, all eight services, real registry) is what staging actually runs. `backend/deploy/k8s/overlays/staging/` (namespace `dzongjuk-staging`, four services, placeholder registry `registry.example.gov.bt`) is what `.gitlab-ci.yml` targets. They are not reconciled, and the GitLab pipeline would not update the running staging environment.
+- **Image tags have drifted.** Services are pinned to a mixture of hand-set tags rather than one release identifier, so staging does not necessarily represent a single commit.
+- **`deploy/k8s/staging/api-gateway.conf` still uses literal `proxy_pass` hostnames with no `resolver` directive** — the same defect described under [Troubleshooting](#-troubleshooting), which has been fixed in the Docker Compose gateway but not yet in the Kubernetes one.
+
+---
+
+## 🔧 Troubleshooting
+
+### "Network Error" in the browser, or the NDI scanner fails to render
+
+If the frontend reports a network failure across many screens shortly after a backend rebuild, the API gateway is most likely proxying to stale container addresses.
+
+nginx resolves a hostname written directly into `proxy_pass` **once, while loading its configuration**, and then caches that address for the lifetime of the worker process. Every `docker compose up --build` recreates the service containers, and Docker assigns them new IP addresses. The gateway carries on forwarding to addresses nothing is listening on and answers `502`, which the browser surfaces as `Network Error`. Because a `502` response carries no CORS headers, the browser may report it as a CORS failure instead, which is misleading.
+
+This is fixed in `backend/deploy/docker/nginx.conf` by declaring Docker's embedded DNS server and holding each upstream in a variable, which defers resolution to request time:
+
+```nginx
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+set $identity http://identity-service:8001;
+location ~ ^/api/v1/(auth|admin) { proxy_pass $identity$request_uri; }
+```
+
+Using a variable upstream also stops nginx appending the request URI implicitly, so `$request_uri` must be supplied explicitly, and any path-rewriting location must use `rewrite ... break` to produce the final path.
+
+To confirm the gateway is healthy rather than guessing:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/health          # expect 200
+docker compose -f backend/compose.yml logs gateway | grep "connect() failed"   # expect no recent hits
+```
+
+A `502` indicates a routing or DNS fault. A `503` carrying a JSON body such as `NDI_NOT_CONFIGURED` is a legitimate application response and means routing is working correctly.
 
 ---
 
@@ -140,10 +247,17 @@ dzongjuk-frontend/
 ├── src/
 │   ├── components/
 │   │   ├── layout/         # AppLayout, Sidebar, Header
-│   │   └── ui/             # Button, Input, Modal, Table, Badge, Card, Tabs, Alert, PageHeader
+│   │   ├── rbac/           # AuthGuard, AccessDeniedPage, PermissionMatrix,
+│   │   │                   # RoleAssignmentDrawer
+│   │   └── ui/             # Button, Input, Modal, Table, Badge, Card, Tabs, Alert,
+│   │                       # PageHeader, BhutanNDI (QR + wallet sign-in)
+│   ├── config/             # accessMatrix.js — ROLE_LABELS and the approved RBAC matrix
 │   ├── context/            # AuthContext, ThemeContext
 │   ├── data/               # mockData.js — seed data (no longer imported by pages)
 │   ├── hooks/              # useApi.js — centralized async data-fetching hook
+│   ├── i18n/               # index.js — English and Dzongkha resource bundles
+│   ├── types/              # index.js — shared enums, incl. ExamWindowStatus
+│   ├── utils/              # examWindows.js (open-window selection), uuid.js
 │   ├── pages/
 │   │   ├── admin/          # UserManagement, RoleManagement, MasterConfiguration, TechnicalSettings
 │   │   ├── auth/           # LoginPage
@@ -167,6 +281,21 @@ dzongjuk-frontend/
 │   ├── routes/             # index.jsx — React Router v7 route configuration with lazy loading
 │   ├── App.jsx             # App entry with providers
 │   └── main.jsx            # Application entry point
+└── tests/e2e/              # Playwright route and registration suites
+```
+
+Backend and deployment layout:
+
+```text
+backend/
+├── src/                    # Eight NestJS microservices
+├── database/               # Per-service schemas and numbered migrations
+├── deploy/docker/          # nginx.conf — local API gateway (resolver fix applied)
+├── deploy/k8s/             # base manifests + staging/production overlays
+├── compose.yml             # Local stack: services, Postgres, Redis, RabbitMQ, MinIO
+└── .gitlab-ci.yml          # Reference pipeline (not executed by GitHub)
+
+deploy/k8s/staging/         # Manifests staging actually runs (namespace: dzongjuk)
 ```
 
 ---
@@ -219,19 +348,22 @@ dzongjuk-frontend/
 
 ## 🧪 Demo Accounts
 
-Log in using CID / User ID and password `password`.
+These accounts exist only when the frontend runs with `VITE_USE_MOCK_DATA=true` (which is how `npm test` and the Playwright suites build it). They are defined in `src/services/auth.js`.
 
-| Role | CID / User ID | Password |
+Every demonstration account shares the same password: **`LocalTestOnly!2026`**
+
+| Role | CID | Email |
 |---|---|---|
-| System Admin | `11101001001` | password |
-| DCDD Admin | `11102002002` | password |
-| Exam Head | `11103003003` | password |
-| Committee Head | `11104004004` | password |
-| Chief Executive | `11105005005` | password |
-| Test Taker | `11106006006` | password |
-| Local acceptance test taker | `local.acceptance@dzongjuk.test` | `LocalTestOnly!2026` |
+| System Admin | `11101001001` | `system.admin@demo.com` |
+| DCDD Admin | `11102002002` | `dcdd.admin@demo.com` |
+| Exam Head | `11103003003` | `exam.head@demo.com` |
+| Committee Head | `11104004004` | `committee.head@demo.com` |
+| Committee Member | `11107007007` | `member@dsts.bt` |
+| Chief Executive | `11105005005` | `chief.executive@demo.com` |
+| Test Taker | `11106006006` | `test.taker@demo.com` |
+| Local acceptance test taker | `11111111111` | `local.acceptance@dzongjuk.test` |
 
-> **Note:** Standard demonstration roles use the listed CID. The local acceptance test taker uses the listed email address.
+> **Note:** The sign-in field accepts either the CID or the email address for any of these accounts. When connected to a live backend (`VITE_USE_MOCK_DATA=false`) none of these accounts exist — authenticate against real identity-service records instead.
 
 ---
 
@@ -253,10 +385,14 @@ Log in using CID / User ID and password `password`.
 
 - **Dark Mode First:** Light mode toggled via `.light` class on `<html>`.
 - **Routing:** All role-specific dashboards dispatch from `Dashboard.jsx` via `user.role`.
-- **Service Layer:** All data fetched via `useApi(serviceFunction)` in `src/hooks/useApi.js`. Each module has a corresponding service in `src/services/`. To connect a real backend, update `src/services/api.js` (Axios baseURL) and implement real endpoints in each service.
-- **Mock Responses:** Services fall back to `mockData.js` in development until a real backend is connected.
+- **Service Layer:** All data fetched via `useApi(serviceFunction)` in `src/hooks/useApi.js`. Each module has a corresponding service in `src/services/`, and every service issues requests through the single Axios instance in `src/services/api.js`. To point at a different backend, set `VITE_API_BASE_URL`.
+- **Error Shape:** `api.js` rejects with `{ status, code, message, raw }` rather than the raw Axios error. Callers branch on `err.code` — this is how `authService.loginWithNDI` detects `NDI_NOT_CONFIGURED` and falls back to the demonstration flow.
+- **Mock Responses:** `VITE_USE_MOCK_DATA=true` switches services to local fixtures. **This is currently implemented in `auth.js`, `exams.js`, and `admin.js` only.** The remaining services (`appeals`, `applications`, `attendance`, `certificates`, `masters`, `notifications`, `questions`, `reports`, `scores`, `verification`) always issue live HTTP requests and will fail without a running backend. Screens that depend on them — the dashboards in particular — are not fully exercised by the mock build.
+- **Exam Status Vocabulary:** `ExamWindowStatus` in `src/types/index.js` holds the canonical lowercase values the API returns (`draft`, `published`, `registration_open`, `registration_closed`, `in_progress`, `results_declared`, `archived`, `cancelled`). Select the active window through `findOpenExamWindow` / `isRegistrationOpen` in `src/utils/examWindows.js` rather than comparing status strings inline; `src/data/examStatus.contract.test.js` pins this vocabulary.
 - **Mock Persistence:** Profile picture and settings use `localStorage` keys (`dsts_user`, `system_contact_info`, `ts_*`, `ops_*`) for demo state.
 - **Component Imports:** Always import `Select` from `../../components/ui/Input`.
+- **Self-Registration Form:** The "Register without NDI" form on `LoginPage` collects CID, full name, date of birth, gender, and contact number. Parental names and permanent address were removed; those details are captured later during exam application rather than at account creation. The form renders full-screen on a white background, in a responsive one-to-three column grid.
+- **Registration Payload:** `authService.register` accepts `contactNumber`, but `POST /auth/register` currently transmits only `fullName`, `cid`, `email`, and `password`. Extend the backend DTO before relying on the contact number being persisted.
 - **Settings Separation:**
   - *System Admin* → `/admin/technical` — infrastructure, security, integrations, backup, audit, API, QR, performance.
   - *DCDD Admin* → `/dcdd/operational` — exam dates, fees, certificate templates, notification messages, workflow, dashboard widgets.
