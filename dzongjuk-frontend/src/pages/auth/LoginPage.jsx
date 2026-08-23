@@ -466,7 +466,7 @@ export default function LoginPage() {
             </div>
 
             {/* Tab content */}
-            <div className={isFullScreenForm ? "flex-1 px-6 py-8 sm:px-10 lg:px-16 xl:px-24" : "p-6"}>
+            <div className={isFullScreenForm ? "flex-1 flex flex-col lg:justify-center px-6 py-8 sm:px-10 lg:px-16 xl:px-24" : "p-6"}>
 
               {/* ── Sign In ── */}
               {activeTab === 'signin' && (
@@ -756,7 +756,7 @@ export default function LoginPage() {
                           fullWidth
                           size="lg"
                           loading={isLoading}
-                          className="md:col-span-2 xl:col-span-3 mt-2 rounded-full h-12 tracking-wide text-white hover:opacity-90 transition-opacity"
+                          className="md:col-span-2 xl:col-span-3 mt-2 sm:max-w-sm sm:mx-auto rounded-full h-12 tracking-wide text-white hover:opacity-90 transition-opacity"
                           style={{ backgroundColor: '#124143' }}
                         >
                           Submit Registration
