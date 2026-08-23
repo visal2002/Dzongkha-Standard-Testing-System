@@ -466,7 +466,7 @@ export default function LoginPage() {
             </div>
 
             {/* Tab content */}
-            <div className="p-6">
+            <div className={isFullScreenForm ? "flex-1 px-6 py-8 sm:px-10 lg:px-16 xl:px-24" : "p-6"}>
 
               {/* ── Sign In ── */}
               {activeTab === 'signin' && (
@@ -635,7 +635,7 @@ export default function LoginPage() {
                         </button>
                       </div>
 
-                      <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                      <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-5">
                         {/* CID */}
                         <div>
                           <label className="text-sm font-medium text-slate-700 block mb-1">CID No.</label>
@@ -736,7 +736,7 @@ export default function LoginPage() {
                         </div>
 
                         {/* Permanent Address */}
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-2 xl:col-span-3">
                           <label className="text-sm font-medium text-slate-700 block mb-1">Permanent Address</label>
                           <div className="relative">
                             <MapPin size={15} className="absolute left-3.5 top-3.5 text-slate-400" />
@@ -756,13 +756,13 @@ export default function LoginPage() {
                           fullWidth
                           size="lg"
                           loading={isLoading}
-                          className="md:col-span-2 mt-2 rounded-full h-12 tracking-wide text-white hover:opacity-90 transition-opacity"
+                          className="md:col-span-2 xl:col-span-3 mt-2 rounded-full h-12 tracking-wide text-white hover:opacity-90 transition-opacity"
                           style={{ backgroundColor: '#124143' }}
                         >
                           Submit Registration
                         </Button>
 
-                        <p className="md:col-span-2 text-center text-xs text-slate-500">
+                        <p className="md:col-span-2 xl:col-span-3 text-center text-xs text-slate-500">
                           Already have an account?{' '}
                           <button
                             type="button"
