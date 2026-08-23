@@ -1,0 +1,16 @@
+import { chromium } from '@playwright/test';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
+const errors = [];
+p.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 140)); });
+await p.goto('http://localhost:5000/login', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(2000);
+await p.getByRole('button', { name: /Login with Bhutan NDI/i }).click();
+await p.waitForTimeout(5000);
+const body = await p.locator('body').innerText();
+console.log('QR canvas/svg count:', await p.locator('canvas, svg').count());
+console.log('Shows "Network Error":', /network error/i.test(body));
+console.log('Modal tail:', body.split('\n').filter(l => l.trim()).slice(-10).join(' | ').slice(0, 260));
+console.log('Console errors:', errors.slice(0, 2));
+await p.screenshot({ path: '/tmp/ndi-real.png' });
+await b.close();
