@@ -9,7 +9,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Eye, EyeOff, ChevronLeft, User, CreditCard, Calendar,
-  ArrowLeft, AlertTriangle, X, Lock, Mail, Phone, MapPin,
+  ArrowLeft, AlertTriangle, X, Lock, Phone,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../context/AuthContext';
