@@ -61,7 +61,7 @@ spec:
           livenessProbe: &live8001 { httpGet: { path: /health/live, port: 8001 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: &resources { requests: { cpu: 50m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
         - name: registration-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/registration-service:8a68757
+          image: dev-harbor.systems.gov.bt/dzongjuk/registration-service:birms-d5d9eb1
           ports: [{ name: registration, containerPort: 8002 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_registration }, { name: REGISTRATION_PORT, value: "8002" }]
