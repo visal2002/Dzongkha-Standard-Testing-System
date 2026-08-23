@@ -399,11 +399,7 @@ export default function LoginPage() {
   ];
 
   return (
-    <div
-      className="min-h-screen flex bg-cover bg-center relative"
-      style={{ backgroundImage: `url('/images/home page background.png')` }}
-    >
-      <div className="absolute inset-0 bg-slate-950/60 z-0 backdrop-blur-sm" />
+    <div className="min-h-screen flex relative bg-white">
 
       <div className={`relative z-10 flex-1 flex overflow-y-auto ${isFullScreenForm ? "items-stretch p-0" : "items-start justify-center p-6 pt-20 lg:p-12 lg:pt-24"}`}>
         {/* Back to home */}
@@ -781,7 +777,7 @@ export default function LoginPage() {
           </div>
 
           {/* Footer */}
-          <div className="mt-5 text-center text-xs text-slate-300 leading-relaxed space-y-0.5">
+          <div className="mt-5 text-center text-xs text-slate-500 leading-relaxed space-y-0.5">
             <p>© {new Date().getFullYear()} Department of Culture and Dzongkha Development</p>
             <p>Ministry of Home Affairs · Powered by GovTech Bhutan</p>
           </div>
