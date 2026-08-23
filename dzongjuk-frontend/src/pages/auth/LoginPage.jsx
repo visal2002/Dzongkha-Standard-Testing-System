@@ -274,9 +274,7 @@ export default function LoginPage() {
   const [regName, setRegName]       = useState('');
   const [regDob, setRegDob]         = useState('');
   const [regGender, setRegGender]   = useState('');
-  const [regFather, setRegFather]   = useState('');
-  const [regMother, setRegMother]   = useState('');
-  const [regAddress, setRegAddress] = useState('');
+  const [regContact, setRegContact] = useState('');
 
   const { login, register, loginWithNDI, checkNDILogin, cancelNDILogin, isLoading } = useAuth();
   const navigate  = useNavigate();
@@ -309,16 +307,14 @@ export default function LoginPage() {
       cid:              regCid,
       dateOfBirth:      regDob,
       gender:           regGender,
-      fatherName:       regFather,
-      motherName:       regMother,
-      permanentAddress: regAddress,
+      contactNumber:    regContact,
     });
     if (!result.success) {
       toast.error(result.error || 'Registration failed. Please try again.');
       return;
     }
     setRegCid(''); setRegName(''); setRegDob('');
-    setRegGender(''); setRegFather(''); setRegMother(''); setRegAddress('');
+    setRegGender(''); setRegContact('');
     setActiveTab('signin');
     toast.success('Registration submitted successfully!');
   };
@@ -699,50 +695,22 @@ export default function LoginPage() {
                           </select>
                         </div>
 
-                        {/* Father's Name */}
+                        {/* Contact No. */}
                         <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">Father's Name</label>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">Contact No.</label>
                           <div className="relative">
-                            <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
-                              type="text"
-                              value={regFather}
-                              onChange={e => setRegFather(e.target.value)}
-                              placeholder="Father's full name"
+                              type="tel"
+                              value={regContact}
+                              onChange={e => setRegContact(e.target.value)}
+                              placeholder="8-digit mobile number"
+                              inputMode="numeric"
+                              pattern="[0-9]{8}"
+                              minLength={8}
+                              maxLength={8}
                               required
                               className={INPUT_ICON_CLS}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Mother's Name */}
-                        <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">Mother's Name</label>
-                          <div className="relative">
-                            <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                              type="text"
-                              value={regMother}
-                              onChange={e => setRegMother(e.target.value)}
-                              placeholder="Mother's full name"
-                              required
-                              className={INPUT_ICON_CLS}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Permanent Address */}
-                        <div className="md:col-span-2 xl:col-span-3">
-                          <label className="text-sm font-medium text-slate-700 block mb-1">Permanent Address</label>
-                          <div className="relative">
-                            <MapPin size={15} className="absolute left-3.5 top-3.5 text-slate-400" />
-                            <textarea
-                              value={regAddress}
-                              onChange={e => setRegAddress(e.target.value)}
-                              placeholder="Dzongkhag, Gewog, Village"
-                              required
-                              rows={2}
-                              className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors resize-none"
                             />
                           </div>
                         </div>
