@@ -16,7 +16,14 @@ import {
 } from 'recharts';
 import { reportService } from '@/services/reports';
 import { examService } from '@/services/exams';
+import { applicationService } from '@/services/applications';
+import { appealService } from '@/services/appeals';
 import { useApi } from '@/hooks/useApi';
+import {
+  monthlyCounts, monthlyAverages, toPieSlices, hasChartData, CEFR_BAND_COLORS,
+} from '@/utils/analytics';
+import ChartEmpty from '@/components/ui/ChartEmpty';
+import { useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccess } from '@/features/rbac/accessMatrix';
@@ -30,42 +37,6 @@ const CustomTooltip = ({ active, payload, label }) => {
     </div>
   );
 };
-
-const registrationMonthly = [
-  { month: 'Jan', applications: 45, verified: 42, approved: 38 },
-  { month: 'Feb', applications: 62, verified: 58, approved: 55 },
-  { month: 'Mar', applications: 38, verified: 35, approved: 30 },
-  { month: 'Apr', applications: 78, verified: 72, approved: 68 },
-  { month: 'May', applications: 95, verified: 88, approved: 82 },
-  { month: 'Jun', applications: 142, verified: 118, approved: 110 },
-];
-
-const skillAvgMonthly = [
-  { month: 'Jan', writing: 5.8, reading: 6.2, listening: 5.5, speaking: 6.0 },
-  { month: 'Feb', writing: 6.0, reading: 6.4, listening: 5.8, speaking: 6.2 },
-  { month: 'Mar', writing: 5.5, reading: 6.0, listening: 5.2, speaking: 5.8 },
-  { month: 'Apr', writing: 6.2, reading: 6.5, listening: 6.0, speaking: 6.5 },
-  { month: 'May', writing: 6.4, reading: 6.8, listening: 6.2, speaking: 6.7 },
-  { month: 'Jun', writing: 6.5, reading: 7.0, listening: 6.0, speaking: 7.5 },
-];
-
-const bandDistribution = [
-  { name: 'C2', value: 2, color: '#7C3AED' },
-  { name: 'C1', value: 8, color: '#3B82F6' },
-  { name: 'B2', value: 18, color: '#0D9488' },
-  { name: 'B1', value: 12, color: '#10B981' },
-  { name: 'A2', value: 5, color: '#F59E0B' },
-  { name: 'A1', value: 2, color: '#EF4444' },
-];
-
-const appealTrend = [
-  { month: 'Jan', submitted: 3, approved: 2, rejected: 1 },
-  { month: 'Feb', submitted: 5, approved: 3, rejected: 2 },
-  { month: 'Mar', submitted: 2, approved: 1, rejected: 1 },
-  { month: 'Apr', submitted: 4, approved: 3, rejected: 1 },
-  { month: 'May', submitted: 6, approved: 4, rejected: 2 },
-  { month: 'Jun', submitted: 2, approved: 1, rejected: 0 },
-];
 
 const PREDEFINED_REPORTS = [
   { id: 'reg-summary', label: 'Registration Summary', icon: Users, description: 'Total applications by status, dzongkhag, and exam window' },
@@ -81,7 +52,49 @@ export default function Reports() {
   const canGenerate = canAccess(user?.role, 'reports', 'manage');
   const { data: summary, loading } = useApi(reportService.getSummary);
   const { data: examWindowsData } = useApi(examService.getAll);
+  const { data: applications } = useApi(applicationService.getAll);
+  const { data: appeals } = useApi(appealService.getAll);
+  const { data: scoreReport } = useApi(reportService.getScoreDistribution);
   const examWindows = examWindowsData || [];
+
+  // Every chart below is aggregated from records the API returned. When an environment
+  // has no data the chart says so rather than drawing a representative curve.
+  const registrationMonthly = useMemo(() => monthlyCounts(applications, {
+    dateOf: application => application.submittedAt || application.createdAt,
+    series: {
+      applications: () => true,
+      verified: application => ['verified', 'approved'].includes(application.status),
+      approved: application => application.status === 'approved',
+    },
+  }), [applications]);
+
+  const skillAvgMonthly = useMemo(() => monthlyAverages(applications, {
+    dateOf: application => application.scoredAt || application.updatedAt || application.createdAt,
+    metrics: {
+      writing: application => application.scores?.writing,
+      reading: application => application.scores?.reading,
+      listening: application => application.scores?.listening,
+      speaking: application => application.scores?.speaking,
+    },
+  }), [applications]);
+
+  const bandDistribution = useMemo(() => toPieSlices(
+    Object.fromEntries((scoreReport?.bands || []).map(entry => [entry.band, entry.count])),
+    CEFR_BAND_COLORS,
+  ), [scoreReport]);
+
+  const appealTrend = useMemo(() => monthlyCounts(appeals, {
+    dateOf: appeal => appeal.submittedAt || appeal.createdAt,
+    series: {
+      submitted: () => true,
+      approved: appeal => ['approved_pending_score_update', 'completed'].includes(String(appeal.status || '').toLowerCase()),
+      rejected: appeal => ['rejected', 'no_change'].includes(String(appeal.status || '').toLowerCase()),
+    },
+  }), [appeals]);
+
+  const hasRegistrationTrend = hasChartData(registrationMonthly, ['applications', 'verified', 'approved']);
+  const hasSkillTrend = skillAvgMonthly.some(row => ['writing', 'reading', 'listening', 'speaking'].some(key => row[key] !== null));
+  const hasAppealTrend = hasChartData(appealTrend, ['submitted', 'approved', 'rejected']);
 
   return (
     <div className="space-y-6">
@@ -119,7 +132,10 @@ export default function Reports() {
           <TabPanel value="overview">
             <div className="grid grid-cols-1 gap-4">
               <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-                <h3 className="text-sm font-semibold text-text-primary mb-4">Registration Trend — 2026</h3>
+                <h3 className="text-sm font-semibold text-text-primary mb-4">Registration Trend — last 6 months</h3>
+                {!hasRegistrationTrend ? (
+                  <ChartEmpty height={220} message="No applications submitted in the last six months" />
+                ) : (
                 <ResponsiveContainer width="100%" height={220}>
                   <AreaChart data={registrationMonthly}>
                     <defs>
@@ -142,10 +158,14 @@ export default function Reports() {
                     <Area type="monotone" dataKey="approved" stroke="#3B82F6" fill="none" strokeWidth={2} strokeDasharray="4 4" name="Approved" />
                   </AreaChart>
                 </ResponsiveContainer>
+                )}
               </div>
 
               <div className="bg-surface-card border border-surface-border rounded-xl p-5">
                 <h3 className="text-sm font-semibold text-text-primary mb-4">CEFR Band Distribution</h3>
+                {bandDistribution.length === 0 ? (
+                  <ChartEmpty height={180} message="No published band scores yet" />
+                ) : (
                 <div className="flex items-center gap-4">
                   <PieChart width={180} height={180}>
                     <Pie data={bandDistribution} cx={85} cy={85} innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={0}>
@@ -164,6 +184,7 @@ export default function Reports() {
                     ))}
                   </div>
                 </div>
+                )}
               </div>
             </div>
           </TabPanel>
@@ -178,6 +199,9 @@ export default function Reports() {
                   {canGenerate && <Button variant="secondary" size="sm" icon={<Download size={13} />} onClick={() => toast.success('Exporting...')}>CSV</Button>}
                 </div>
               </div>
+              {!hasRegistrationTrend ? (
+                <ChartEmpty height={260} message="No applications to break down yet" />
+              ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={registrationMonthly} barGap={4}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-border)" />
@@ -190,6 +214,7 @@ export default function Reports() {
                   <Bar dataKey="approved" fill="#3B82F6" radius={[3, 3, 0, 0]} name="Approved" barSize={20} />
                 </BarChart>
               </ResponsiveContainer>
+              )}
             </div>
           </TabPanel>
 
@@ -197,6 +222,13 @@ export default function Reports() {
           <TabPanel value="scores">
             <div className="bg-surface-card border border-surface-border rounded-xl p-5">
               <h3 className="text-sm font-semibold text-text-primary mb-4">Average Score by Skill — Monthly Trend</h3>
+              {!hasSkillTrend ? (
+                <ChartEmpty
+                  height={260}
+                  message="No skill scores available for this period"
+                  hint="Averages appear once band scores are published for the exam windows in range."
+                />
+              ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={skillAvgMonthly}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-border)" />
@@ -210,6 +242,7 @@ export default function Reports() {
                   <Line type="monotone" dataKey="speaking" stroke="#F59E0B" strokeWidth={2} dot={false} name="Speaking" />
                 </LineChart>
               </ResponsiveContainer>
+              )}
             </div>
           </TabPanel>
 
@@ -217,6 +250,9 @@ export default function Reports() {
           <TabPanel value="appeals">
             <div className="bg-surface-card border border-surface-border rounded-xl p-5">
               <h3 className="text-sm font-semibold text-text-primary mb-4">Appeal Outcomes — Monthly</h3>
+              {!hasAppealTrend ? (
+                <ChartEmpty height={260} message="No appeals submitted in the last six months" />
+              ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={appealTrend} barGap={4}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-border)" />
@@ -229,6 +265,7 @@ export default function Reports() {
                   <Bar dataKey="rejected" fill="#EF4444" radius={[3, 3, 0, 0]} name="Rejected" barSize={20} />
                 </BarChart>
               </ResponsiveContainer>
+              )}
             </div>
           </TabPanel>
 

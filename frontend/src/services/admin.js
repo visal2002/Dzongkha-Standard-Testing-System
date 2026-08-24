@@ -12,7 +12,12 @@ import apiClient from './api';
 import { registerMockAccount } from './auth';
 import { ACCESS_MODULES, ROLE_LABELS } from '@/features/rbac/accessMatrix';
 
-const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
+// Fixture-backed responses exist for the automated suites only. `DEV` is false in every
+// built bundle and the mock build is the one Vite runs with `--mode test`, so a UAT or
+// production build folds this to `false` and the fixtures drop out of the bundle
+// entirely — VITE_USE_MOCK_DATA cannot switch them back on there.
+const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test';
+const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 // The admin screens are the only place a role list is offered for selection,
 // so without these fixtures every mock/CI run renders an empty role picker.

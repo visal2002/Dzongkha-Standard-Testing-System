@@ -9,22 +9,12 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   PanelLeft, Bell, Sun, Moon, Search, ChevronDown, LogOut,
-  User, Settings, RefreshCw, Check
+  User, Settings
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import Badge from '@/components/ui/Badge';
-
-const ROLE_SWITCHER = [
-  { email: 'system.admin@demo.com', label: 'System Admin' },
-  { email: 'dcdd.admin@demo.com', label: 'DCDD Admin' },
-  { email: 'exam.head@demo.com', label: 'Exam Head' },
-  { email: 'committee.head@demo.com', label: 'Committee Head' },
-  { email: 'chief.executive@demo.com', label: 'Chief Executive' },
-  { email: 'test.taker@demo.com', label: 'Test Taker' },
-  { email: 'member@dsts.bt', label: 'Committee Member' },
-];
 
 function NotificationPanel({ notifications: items = [], onClose }) {
   const unread = items.filter(n => !n.read);

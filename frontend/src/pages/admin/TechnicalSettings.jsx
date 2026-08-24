@@ -245,7 +245,7 @@ function NDISection() {
           <Field label="Authentication Token"><input className={inputCls} value={cfg.dcrcToken} onChange={e => set('dcrcToken', e.target.value)} type="password" /></Field>
         </div>
         <div className="mt-3 p-3 rounded-lg bg-surface-elevated flex items-center gap-2 text-xs text-text-muted">
-          <Activity size={13} className="text-emerald-400" /> Last sync: <span className="text-text-secondary">Today 08:00 AM — 1,247 records synced</span>
+          <Activity size={13} className="text-text-muted" /> Sync history is not reported by the API yet.
         </div>
       </div>
       <SaveBtn onClick={onSave} loading={saving} />
@@ -427,7 +427,7 @@ function BackupSection() {
         <ToggleRow id="ts-encrypt-backup" label="Encrypt Backup Files" checked={cfg.encryptBackup} onChange={v => set('encryptBackup', v)} />
       </div>
       <div className="mt-2 p-3 rounded-lg bg-surface-elevated flex items-center justify-between text-xs">
-        <span className="text-text-muted flex items-center gap-1.5"><Database size={13} className="text-brand-gold" /> Last Backup: <span className="text-text-secondary">Today 02:01 AM — 512 MB</span></span>
+        <span className="text-text-muted flex items-center gap-1.5"><Database size={13} className="text-brand-gold" /> Backup history is not reported by the API yet.</span>
         <div className="flex gap-2">
           <button className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-surface-border text-text-secondary hover:bg-surface-border/60 transition-colors" onClick={() => toast('Backup download initiated.')}>
             <Download size={12} /> Download
@@ -662,19 +662,24 @@ function HardeningSection() {
 }
 
 function SysInfoSection() {
+  // Only values this build genuinely knows about itself. Host metrics — CPU, memory,
+  // storage, uptime, backup and deployment times — need a server endpoint to report
+  // them; until one exists the panel says so rather than displaying stand-in figures.
   const metrics = [
-    { icon: Server, label: 'Hostname', value: 'dsts-prod-01.dcdd.bt' },
-    { icon: Activity, label: 'Application Version', value: 'v1.0.0' },
-    { icon: Database, label: 'Database Version', value: 'PostgreSQL 15.4' },
-    { icon: Cpu, label: 'CPU Usage', value: '34%' },
-    { icon: Storage, label: 'Memory Usage', value: '2.1 GB / 8 GB' },
-    { icon: Storage, label: 'Storage Usage', value: '48 GB / 200 GB' },
-    { icon: Clock, label: 'System Uptime', value: '14 days 6 hours' },
-    { icon: Database, label: 'Last Backup', value: 'Today 02:01 AM' },
-    { icon: Clock, label: 'Last Deployment', value: '2026-08-08 10:30 AM' },
+    { icon: Activity, label: 'Application Version', value: import.meta.env.VITE_APP_VERSION || 'unknown' },
+    { icon: Server, label: 'API Endpoint', value: import.meta.env.VITE_API_BASE_URL || 'not configured' },
+    { icon: Cpu, label: 'Build Mode', value: import.meta.env.MODE },
+    { icon: Clock, label: 'Client Time Zone', value: Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown' },
   ];
   return (
     <div className="p-5">
+      <div className="mb-4 flex items-start gap-2 rounded-lg border border-surface-border bg-surface-elevated p-3">
+        <Database size={14} className="text-text-muted mt-0.5 shrink-0" />
+        <p className="text-[11px] text-text-muted leading-relaxed">
+          Host metrics (CPU, memory, storage, uptime, backup and deployment history) are not
+          published by the API yet, so they are not shown here.
+        </p>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {metrics.map(m => (
           <div key={m.label} className="flex items-start gap-3 p-3 rounded-lg bg-surface-elevated border border-surface-border">

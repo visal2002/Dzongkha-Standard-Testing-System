@@ -17,29 +17,29 @@ import { scoreService } from '@/services/scores';
 import { applicationService } from '@/services/applications';
 import { examService } from '@/services/exams';
 import { findOpenExamWindow } from '@/utils/examWindows';
+import { monthlyCounts, toPieSlices, hasChartData } from '@/utils/analytics';
 import { useApi } from '@/hooks/useApi';
+import ChartEmpty from '@/components/ui/ChartEmpty';
+import { useMemo } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 
-const registrationTrend = [
-  { month: 'Jan', applications: 45, verified: 42 },
-  { month: 'Feb', applications: 62, verified: 58 },
-  { month: 'Mar', applications: 38, verified: 35 },
-  { month: 'Apr', applications: 78, verified: 72 },
-  { month: 'May', applications: 95, verified: 88 },
-  { month: 'Jun', applications: 142, verified: 118 },
-];
-
-const statusDist = [
-  { name: 'Verified', value: 118, color: '#10B981' },
-  { name: 'Pending', value: 15, color: '#F59E0B' },
-  { name: 'Waitlisted', value: 12, color: '#3B82F6' },
-  { name: 'Absent', value: 8, color: '#EF4444' },
-];
-
 const getDCDDStats = () => scoreService.getDashboardStats('dcdd');
+
+/** Statuses that count as "already verified" for the trend line. */
+const VERIFIED_STATUSES = ['verified', 'approved'];
+
+const STATUS_SLICE_COLORS = {
+  Verified: '#10B981',
+  Pending: '#F59E0B',
+  Waitlisted: '#3B82F6',
+  Absent: '#EF4444',
+};
+
+const applicationDate = (application) =>
+  application.submittedAt || application.createdAt || application.updatedAt || null;
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
@@ -62,6 +62,25 @@ export default function DCDDDashboard() {
   const isLoading = loadingStats || loadingApps || loadingExams;
   const activeExam = findOpenExamWindow(examWindows);
   const pendingApps = applications?.filter(a => a.status === 'submitted').length || 0;
+
+  // Both charts are aggregated from the applications the API actually returned, so an
+  // empty environment shows an empty chart rather than illustrative numbers.
+  const registrationTrend = useMemo(() => monthlyCounts(applications, {
+    dateOf: applicationDate,
+    series: {
+      applications: () => true,
+      verified: application => VERIFIED_STATUSES.includes(application.status),
+    },
+  }), [applications]);
+
+  const statusDist = useMemo(() => toPieSlices({
+    Verified: (applications || []).filter(a => VERIFIED_STATUSES.includes(a.status)).length,
+    Pending: (applications || []).filter(a => ['submitted', 'under_review'].includes(a.status)).length,
+    Waitlisted: (applications || []).filter(a => a.status === 'waitlisted').length,
+    Absent: (applications || []).filter(a => a.status === 'absent' || a.attendanceStatus === 'absent').length,
+  }, STATUS_SLICE_COLORS), [applications]);
+
+  const hasTrend = hasChartData(registrationTrend, ['applications', 'verified']);
 
   if (isLoading) {
     return (
@@ -118,6 +137,13 @@ export default function DCDDDashboard() {
             </div>
             <TrendingUp size={16} className="text-brand-gold" />
           </div>
+          {!hasTrend ? (
+            <ChartEmpty
+              height={200}
+              message="No registrations in the last six months"
+              hint="The trend appears once applications are submitted for this period."
+            />
+          ) : (
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={registrationTrend}>
               <defs>
@@ -138,30 +164,37 @@ export default function DCDDDashboard() {
               <Area type="monotone" dataKey="verified" stroke="#10B981" fill="url(#verGrad)" strokeWidth={2} name="Verified" />
             </AreaChart>
           </ResponsiveContainer>
+          )}
         </div>
 
         {/* Status Distribution */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-5">
           <h3 className="text-sm font-semibold text-text-primary mb-1">Status Distribution</h3>
           <p className="text-xs text-text-muted mb-4">Current exam window</p>
-          <div className="flex justify-center mb-4">
-            <PieChart width={160} height={160}>
-              <Pie data={statusDist} cx={75} cy={75} innerRadius={45} outerRadius={70} dataKey="value" strokeWidth={0}>
-                {statusDist.map((d, i) => <Cell key={i} fill={d.color} />)}
-              </Pie>
-            </PieChart>
-          </div>
-          <div className="space-y-2">
-            {statusDist.map(d => (
-              <div key={d.name} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: d.color }} />
-                  <span className="text-text-secondary">{d.name}</span>
-                </div>
-                <span className="font-semibold text-text-primary">{d.value}</span>
+          {statusDist.length === 0 ? (
+            <ChartEmpty height={220} message="No applications in this window yet" />
+          ) : (
+            <>
+              <div className="flex justify-center mb-4">
+                <PieChart width={160} height={160}>
+                  <Pie data={statusDist} cx={75} cy={75} innerRadius={45} outerRadius={70} dataKey="value" strokeWidth={0}>
+                    {statusDist.map((d, i) => <Cell key={i} fill={d.color} />)}
+                  </Pie>
+                </PieChart>
               </div>
-            ))}
-          </div>
+              <div className="space-y-2">
+                {statusDist.map(d => (
+                  <div key={d.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: d.color }} />
+                      <span className="text-text-secondary">{d.name}</span>
+                    </div>
+                    <span className="font-semibold text-text-primary">{d.value}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 

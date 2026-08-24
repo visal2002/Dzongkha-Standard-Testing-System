@@ -28,22 +28,91 @@ const NDI_ASSETS = {
 
 // ─── NDI Sub-components ───────────────────────────────────────────────────────
 
-function NdiQrFrame({ qrUrl, isLoading, error, onRetry, label = 'Bhutan NDI QR code' }) {
+/**
+ * Turns a raw error string into a human explanation of *why* NDI is not working,
+ * so the failure state can keep the normal scanner layout and simply say what broke.
+ */
+function describeNdiError(error) {
+  const raw = typeof error === 'string' ? error.trim() : '';
+  const hints = [
+    {
+      match: /network|failed to fetch|err_network|econnrefused|connection|offline/i,
+      title: "Can't reach the Bhutan NDI service",
+      detail: 'Your device could not connect to the server. Check your internet connection, then try again.',
+    },
+    {
+      match: /timeout|timed out|etimedout/i,
+      title: 'The Bhutan NDI service took too long to respond',
+      detail: 'The request timed out before a QR code was issued. Please try again in a moment.',
+    },
+    {
+      match: /expired/i,
+      title: 'This QR code has expired',
+      detail: 'QR codes stay valid for a few minutes only. Generate a new one to continue.',
+    },
+    {
+      match: /declined|rejected/i,
+      title: 'The request was declined in your wallet',
+      detail: 'Open Bhutan NDI Wallet again and approve the request to continue.',
+    },
+    {
+      match: /cancel/i,
+      title: 'This Bhutan NDI request was cancelled',
+      detail: 'Nothing was shared. You can start a new request whenever you are ready.',
+    },
+    {
+      match: /unavailable|not configured|maintenance|503|502|500/i,
+      title: 'Bhutan NDI is not responding right now',
+      detail: 'The identity service is temporarily unavailable. Please try again shortly.',
+    },
+    {
+      match: /validate|verify|identity/i,
+      title: 'Bhutan NDI could not verify this identity',
+      detail: 'The credential in your wallet could not be validated for this account.',
+    },
+  ];
+
+  const hint = hints.find(h => h.match.test(raw));
+  if (hint) {
+    return { title: hint.title, detail: hint.detail, raw: raw && raw !== hint.detail ? raw : null };
+  }
+  return {
+    title: 'Bhutan NDI login could not be completed',
+    detail: raw || 'An unexpected error stopped the request.',
+    raw: null,
+  };
+}
+
+const NDI_RETRY_BTN_STYLE = {
+  border: '1px solid #5AC994',
+  borderRadius: '999px',
+  padding: '6px 18px',
+  fontSize: '12px',
+  fontWeight: 600,
+  color: '#38ad78',
+  background: 'transparent',
+  cursor: 'pointer',
+  transition: 'background .15s',
+};
+
+function NdiQrFrame({ qrUrl, isLoading, error, label = 'Bhutan NDI QR code' }) {
   return (
     <div className="ndi-scanner-qr-frame" aria-label={label}>
       {error ? (
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', padding:'12px', textAlign:'center' }}>
-          <AlertTriangle size={30} style={{ color:'#f59e0b', marginBottom:'10px' }} />
-          <p style={{ fontSize:'12px', fontWeight:500, color:'#475569', marginBottom:'12px', lineHeight:1.4 }}>{error}</p>
-          <button
-            type="button"
-            onClick={onRetry}
-            style={{ border:'1px solid #5AC994', borderRadius:'999px', padding:'6px 18px', fontSize:'12px', fontWeight:600, color:'#38ad78', background:'transparent', cursor:'pointer', transition:'background .15s' }}
-            onMouseEnter={e => e.target.style.background = '#f0fdf8'}
-            onMouseLeave={e => e.target.style.background = 'transparent'}
-          >
-            Try again
-          </button>
+        // Keep the exact framing of the working state: the QR placeholder stays in
+        // place, dimmed, with a small badge marking it as unavailable. The reason
+        // itself is shown below the instructions so the layout never collapses.
+        <div style={{ position:'relative', display:'flex', alignItems:'center', justifyContent:'center', width:'100%', height:'100%' }}>
+          <img
+            src={NDI_ASSETS.qrLogo}
+            alt=""
+            aria-hidden="true"
+            style={{ width:170, height:170, objectFit:'contain', filter:'grayscale(1)', opacity:0.18 }}
+          />
+          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px', padding:'14px', textAlign:'center' }}>
+            <AlertTriangle size={28} style={{ color:'#f59e0b' }} />
+            <p style={{ margin:0, fontSize:'12px', fontWeight:700, color:'#334155' }}>QR code unavailable</p>
+          </div>
         </div>
       ) : isLoading ? (
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:'10px', color:'#5AC994' }}>
@@ -66,7 +135,8 @@ function NdiQrFrame({ qrUrl, isLoading, error, onRetry, label = 'Bhutan NDI QR c
   );
 }
 
-function NdiInstructions({ status }) {
+function NdiInstructions({ status, error, onRetry }) {
+  const reason = error ? describeNdiError(error) : null;
   return (
     <div className="ndi-scanner-instructions">
       <p>1. Open Bhutan NDI Wallet on your phone</p>
@@ -75,11 +145,37 @@ function NdiInstructions({ status }) {
         <img src={NDI_ASSETS.scanIcon} alt="Scan" style={{ width:22, height:22, display:'inline-block' }} />
         <span>located on the menu bar and scan the QR code</span>
       </p>
-      {status === 'PENDING' && (
+
+      {reason ? (
+        // Same slot the "Waiting for approval..." line uses, so the failure state
+        // keeps the working design and only explains what went wrong.
+        <div
+          style={{ paddingTop:'8px', display:'flex', flexDirection:'column', alignItems:'center', gap:'6px' }}
+          role="alert"
+          aria-live="polite"
+        >
+          <p style={{ fontSize:'12px', fontWeight:700, color:'#b45309' }}>{reason.title}</p>
+          <p style={{ fontSize:'12px', fontWeight:500, color:'#64748b', lineHeight:1.45 }}>{reason.detail}</p>
+          {reason.raw && (
+            <p style={{ fontSize:'11px', fontWeight:500, color:'#94a3b8', lineHeight:1.4 }}>Details: {reason.raw}</p>
+          )}
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              style={{ ...NDI_RETRY_BTN_STYLE, marginTop:'2px' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#f0fdf8'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      ) : status === 'PENDING' ? (
         <p style={{ paddingTop:'6px', fontSize:'12px', fontWeight:600, color:'#38ad78' }} aria-live="polite">
           Waiting for approval in your wallet...
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -158,11 +254,10 @@ function NdiScannerPanel({ qrUrl, isLoading, error, status, onRetry, embedded = 
         qrUrl={qrUrl}
         isLoading={isLoading}
         error={error}
-        onRetry={onRetry}
         label="Bhutan NDI scanner QR code"
       />
 
-      {!error && <NdiInstructions status={status} />}
+      <NdiInstructions status={status} error={error} onRetry={onRetry} />
 
       <a
         href="https://www.youtube.com/@bhutanndi"

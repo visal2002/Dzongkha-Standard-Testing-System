@@ -94,7 +94,7 @@ function ExamMasterSection() {
   const KEY = 'ops_exam';
   const [cfg, setCfg] = useState(() => load(KEY, {
     regStart: '', regEnd: '', maxCapacity: 500, waitingList: true,
-    sessionName: 'DSTS January 2026', venue: '', venueAddress: '',
+    sessionName: '', venue: '', venueAddress: '',
   }));
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setCfg(p => ({ ...p, [k]: v }));

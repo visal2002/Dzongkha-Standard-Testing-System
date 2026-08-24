@@ -12,9 +12,49 @@ import { applicationService } from '@/services/applications';
 import { certificateService } from '@/services/certificates';
 import { examService } from '@/services/exams';
 import { findOpenExamWindow } from '@/utils/examWindows';
+import { StatusBadge } from '@/components/ui/Badge';
 import { scoreService } from '@/services/scores';
 import { useApi } from '@/hooks/useApi';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, PolarRadiusAxis } from 'recharts';
+
+/**
+ * Wording for a single skill band, on the same 1-9 scale the scoring rule uses, so the
+ * label always reflects the score beside it.
+ */
+const bandDescriptor = (score) => {
+  const value = Number(score);
+  if (!Number.isFinite(value) || value <= 0) return '';
+  if (value >= 8.5) return 'Expert';
+  if (value >= 7.5) return 'Advanced';
+  if (value >= 6.5) return 'Proficient';
+  if (value >= 5) return 'Independent';
+  if (value >= 3.5) return 'Basic';
+  return 'Foundation';
+};
+
+/** The registration journey shown on the dashboard stepper, in order. */
+const APPLICATION_STEPS = [
+  { key: 'submitted', label: 'Submitted', statuses: ['submitted', 'under_review', 'returned'] },
+  { key: 'verified', label: 'Verified', statuses: ['verified', 'approved'] },
+  { key: 'payment', label: 'Payment', statuses: ['paid'] },
+  { key: 'admit_card', label: 'Admit Card', statuses: ['admit_card_issued'] },
+  { key: 'exam', label: 'Exam', statuses: ['completed', 'absent'] },
+];
+
+/**
+ * How far along the stepper an application has reached. Payment is read from the
+ * payment status rather than the application status, because the two advance
+ * independently in the registration workflow.
+ */
+const stepIndexFor = (application) => {
+  if (!application) return -1;
+  const status = String(application.status || '').toLowerCase();
+  if (['completed', 'absent'].includes(status)) return 4;
+  if (application.admitCardIssuedAt) return 3;
+  if (String(application.paymentStatus || '').toLowerCase() === 'paid') return 2;
+  if (['verified', 'approved'].includes(status)) return 1;
+  return 0;
+};
 
 export default function TestTakerDashboard() {
   const { user } = useAuth();
@@ -36,7 +76,9 @@ export default function TestTakerDashboard() {
     );
   }
 
-  const myApps = (applications || []).filter(a => a.testTakerId === user?.id || a.testTakerId === 'USR-006');
+  // `/applications/my` is already scoped to the signed-in user; the filter is a guard,
+  // not a lookup, so it must never widen to a fixed account id.
+  const myApps = (applications || []).filter(a => !a.testTakerId || a.testTakerId === user?.id);
   const myCerts = (certificates || []).slice(0, 2);
   const myScore = (bandScores || [])[0];
   const normalizedScore = myScore ? {
@@ -46,6 +88,21 @@ export default function TestTakerDashboard() {
     speaking: myScore.speaking ?? myScore.score?.scores?.SPEAKING ?? 0,
   } : null;
   const openExam = findOpenExamWindow(examWindows);
+
+  // The banner advertises the window that is genuinely open, and counts down to its own
+  // registration deadline, rather than naming a fixed exam sitting.
+  const latestApp = [...myApps].sort((a, b) => (
+    new Date(b.submittedAt || b.createdAt || 0) - new Date(a.submittedAt || a.createdAt || 0)
+  ))[0] || null;
+  const latestAppSubmittedAt = latestApp?.submittedAt || latestApp?.createdAt
+    ? new Date(latestApp.submittedAt || latestApp.createdAt)
+    : null;
+  const currentStepIndex = stepIndexFor(latestApp);
+
+  const registrationClosesAt = openExam?.registrationEnd ? new Date(openExam.registrationEnd) : null;
+  const daysToClose = registrationClosesAt
+    ? Math.max(0, Math.ceil((registrationClosesAt.getTime() - Date.now()) / 86400000))
+    : null;
 
   const radarData = normalizedScore ? [
     { skill: 'Writing', score: normalizedScore.writing },
@@ -72,22 +129,35 @@ export default function TestTakerDashboard() {
           <h1 className="text-xl lg:text-2xl font-bold text-white mb-1">Kuzuzangpo la, {user?.name?.split(' ')[0]}! 👋</h1>
           <p className="text-xs text-slate-300 mb-3">Continue your Dzongkha proficiency journey.</p>
           
-          <button className="bg-brand-gold hover:bg-brand-gold-light text-brand-navy font-bold text-xs px-4 py-1.5 rounded-lg flex items-center gap-2 transition-colors">
-            <Calendar size={14} /> Register for DSTS Examination - July 2026 <ArrowRight size={14} />
-          </button>
+          {openExam ? (
+            <Link
+              to={`/registration/apply/${openExam.id}`}
+              className="bg-brand-gold hover:bg-brand-gold-light text-brand-navy font-bold text-xs px-4 py-1.5 rounded-lg inline-flex items-center gap-2 transition-colors"
+            >
+              <Calendar size={14} /> Register for {openExam.title} <ArrowRight size={14} />
+            </Link>
+          ) : (
+            <p className="text-xs text-slate-300">
+              No exam window is open for registration right now.
+            </p>
+          )}
         </div>
 
-        <div className="relative z-10 mt-3 md:mt-0 text-center md:text-right w-full md:w-auto">
-          <div className="inline-block md:block text-right">
-            <div className="flex items-center justify-center md:justify-end gap-1 text-[11px] text-slate-300 mb-0.5">
-              <Calendar size={12} /> Registration closes in
+        {registrationClosesAt && (
+          <div className="relative z-10 mt-3 md:mt-0 text-center md:text-right w-full md:w-auto">
+            <div className="inline-block md:block text-right">
+              <div className="flex items-center justify-center md:justify-end gap-1 text-[11px] text-slate-300 mb-0.5">
+                <Calendar size={12} /> Registration closes in
+              </div>
+              <div className="text-3xl font-bold text-brand-gold mb-0.5">
+                {daysToClose} <span className="text-base font-normal text-white">{daysToClose === 1 ? 'day' : 'days'}</span>
+              </div>
+              <div className="text-[10px] text-slate-300">
+                {registrationClosesAt.toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </div>
             </div>
-            <div className="text-3xl font-bold text-brand-gold mb-0.5">
-              14 <span className="text-base font-normal text-white">days</span>
-            </div>
-            <div className="text-[10px] text-slate-300">31 Jul 2026, 11:59 PM</div>
           </div>
-        </div>
+        )}
       </motion.div>
 
       {/* Stats Cards */}
@@ -176,7 +246,7 @@ export default function TestTakerDashboard() {
         {normalizedScore && (
           <div className="bg-surface-card border border-surface-border rounded-xl p-4 shadow-sm flex flex-col justify-between overflow-hidden h-full">
             <div className="flex justify-between items-center mb-2 shrink-0">
-              <h3 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Latest Skill Scores <span className="font-normal text-text-muted normal-case ml-1">(January 2026)</span></h3>
+              <h3 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Latest Skill Scores</h3>
               <Link to="/scores/view" className="text-[11px] text-brand-gold font-medium hover:underline flex items-center gap-1">View all results <ArrowRight size={10} /></Link>
             </div>
             
@@ -184,10 +254,10 @@ export default function TestTakerDashboard() {
               {/* Progress Bars */}
               <div className="w-full md:w-1/2 space-y-3">
                 {[
-                  { label: 'Writing', value: normalizedScore.writing, color: 'bg-purple-500', icon: <Edit3 size={13} />, iconBg: 'bg-purple-100 text-purple-600', max: 9, eval: 'Good' },
-                  { label: 'Reading', value: normalizedScore.reading, color: 'bg-blue-500', icon: <BookOpen size={13} />, iconBg: 'bg-blue-100 text-blue-600', max: 9, eval: 'Very Good' },
-                  { label: 'Listening', value: normalizedScore.listening, color: 'bg-emerald-500', icon: <Headphones size={13} />, iconBg: 'bg-emerald-100 text-emerald-600', max: 9, eval: 'Good' },
-                  { label: 'Speaking', value: normalizedScore.speaking, color: 'bg-orange-500', icon: <MessageCircle size={13} />, iconBg: 'bg-orange-100 text-orange-600', max: 9, eval: 'Very Good' },
+                  { label: 'Writing', value: normalizedScore.writing, color: 'bg-purple-500', icon: <Edit3 size={13} />, iconBg: 'bg-purple-100 text-purple-600', max: 9 },
+                  { label: 'Reading', value: normalizedScore.reading, color: 'bg-blue-500', icon: <BookOpen size={13} />, iconBg: 'bg-blue-100 text-blue-600', max: 9 },
+                  { label: 'Listening', value: normalizedScore.listening, color: 'bg-emerald-500', icon: <Headphones size={13} />, iconBg: 'bg-emerald-100 text-emerald-600', max: 9 },
+                  { label: 'Speaking', value: normalizedScore.speaking, color: 'bg-orange-500', icon: <MessageCircle size={13} />, iconBg: 'bg-orange-100 text-orange-600', max: 9 },
                 ].map(skill => (
                   <div key={skill.label} className="flex items-center gap-2.5">
                     <div className={`w-7 h-7 rounded-full ${skill.iconBg} flex items-center justify-center shrink-0`}>
@@ -197,12 +267,12 @@ export default function TestTakerDashboard() {
                       <div className="flex justify-between items-end mb-0.5">
                         <span className="text-[11px] font-medium text-text-muted">{skill.label}</span>
                         <div className="text-right flex items-baseline gap-1">
-                           <span className="text-xs font-bold text-text-primary">{skill.value.toFixed(1)}</span>
-                           <span className={`text-[8px] font-medium ${skill.iconBg.split(' ')[1]} ml-2`}>{skill.eval}</span>
+                           <span className="text-xs font-bold text-text-primary">{Number(skill.value || 0).toFixed(1)}</span>
+                           <span className={`text-[8px] font-medium ${skill.iconBg.split(' ')[1]} ml-2`}>{bandDescriptor(skill.value)}</span>
                         </div>
                       </div>
                       <div className="h-1.5 bg-surface-border rounded-full overflow-hidden flex relative">
-                        <div className={`h-full ${skill.color} rounded-full`} style={{ width: `${(skill.value / skill.max) * 100}%` }} />
+                        <div className={`h-full ${skill.color} rounded-full`} style={{ width: `${(Number(skill.value || 0) / skill.max) * 100}%` }} />
                       </div>
                     </div>
                   </div>
@@ -235,50 +305,67 @@ export default function TestTakerDashboard() {
             <h3 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">My Applications</h3>
             <Link to="/my-applications" className="text-[11px] text-brand-gold font-medium hover:underline flex items-center gap-1">View all <ArrowRight size={10} /></Link>
           </div>
-          
+
+          {!latestApp ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center py-6">
+              <FileText size={18} className="text-text-muted opacity-60" />
+              <p className="text-[11px] text-text-muted">You have not submitted an application yet.</p>
+              {openExam && (
+                <Link to={`/registration/apply/${openExam.id}`} className="text-[11px] text-brand-gold font-medium hover:underline">
+                  Register for {openExam.title}
+                </Link>
+              )}
+            </div>
+          ) : (
           <div className="flex-1 flex flex-col justify-between min-h-0">
             <div className="flex justify-between items-start">
                <div>
-                  <h4 className="text-base font-bold text-text-primary leading-tight">APP-2026-0001</h4>
-                  <p className="text-[11px] text-text-muted">DSTS-2026-07-0001</p>
-                  <p className="text-[10px] text-text-muted flex items-center gap-1 mt-0.5"><Calendar size={10} /> Submitted on 15 Jun 2026</p>
+                  <h4 className="text-base font-bold text-text-primary leading-tight">{latestApp.id}</h4>
+                  {latestApp.registrationNumber && (
+                    <p className="text-[11px] text-text-muted">{latestApp.registrationNumber}</p>
+                  )}
+                  {latestAppSubmittedAt && (
+                    <p className="text-[10px] text-text-muted flex items-center gap-1 mt-0.5">
+                      <Calendar size={10} /> Submitted on {latestAppSubmittedAt.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
                </div>
-               <div className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-semibold flex items-center gap-1 border border-emerald-200">
-                 <CheckCircle size={12} /> Verified
-               </div>
+               <StatusBadge status={latestApp.status} />
             </div>
 
-            {/* Horizontal Stepper */}
+            {/* Horizontal Stepper — driven by the application's real status */}
             <div className="relative flex justify-between my-auto px-1 py-2">
               <div className="absolute top-3 left-0 right-0 h-1 bg-surface-border rounded-full -z-10">
-                <div className="h-full bg-emerald-500 rounded-full w-[25%]" />
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all"
+                  style={{ width: `${(Math.max(0, currentStepIndex) / (APPLICATION_STEPS.length - 1)) * 100}%` }}
+                />
               </div>
-              
-              {[
-                { step: 1, label: 'Submitted', date: '15 Jun', active: true, done: true },
-                { step: 2, label: 'Verified', date: '18 Jun', active: true, done: true },
-                { step: 3, label: 'Payment Pending', date: '', active: true, done: false, color: 'bg-purple-600 text-white' },
-                { step: 4, label: 'Admit Card', date: '', active: false, done: false },
-                { step: 5, label: 'Exam', date: '', active: false, done: false },
-              ].map((s, i) => (
-                <div key={i} className="flex flex-col items-center flex-1">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mb-1 shadow-sm ${
-                    s.done ? 'bg-emerald-500 text-white' : 
-                    s.color ? s.color : 'bg-surface-card border border-surface-border text-text-muted'
-                  }`}>
-                    {s.done ? <Check size={12} /> : s.step}
+
+              {APPLICATION_STEPS.map((step, index) => {
+                const done = index < currentStepIndex;
+                const active = index <= currentStepIndex;
+                return (
+                  <div key={step.key} className="flex flex-col items-center flex-1">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mb-1 shadow-sm ${
+                      done ? 'bg-emerald-500 text-white'
+                        : index === currentStepIndex ? 'bg-purple-600 text-white'
+                        : 'bg-surface-card border border-surface-border text-text-muted'
+                    }`}>
+                      {done ? <Check size={12} /> : index + 1}
+                    </div>
+                    <p className={`text-[9px] font-semibold text-center leading-tight ${active ? 'text-text-primary' : 'text-text-muted'}`}>{step.label}</p>
                   </div>
-                  <p className={`text-[9px] font-semibold text-center leading-tight ${s.active ? 'text-text-primary' : 'text-text-muted'}`}>{s.label}</p>
-                  <p className="text-[8px] text-text-muted">{s.date || '\u00A0'}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="bg-purple-50 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300 rounded-lg p-2 text-[10px] flex items-center gap-1.5 shrink-0">
                <MessageCircle size={14} className="shrink-0" />
-               <span className="leading-tight">Need help? Visit our <a href="#" className="font-bold underline">Help Center</a> or contact DSTS support.</span>
+               <span className="leading-tight">Need help? Contact DSTS support at <a href="mailto:support@dsts.bt" className="font-bold underline">support@dsts.bt</a>.</span>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>
