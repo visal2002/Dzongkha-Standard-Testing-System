@@ -11,7 +11,12 @@
 import apiClient from './api';
 import { notifications as notificationFixtures } from '@/mocks/mockData';
 
-const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
+// Fixture-backed responses exist for the automated suites only. `DEV` is false in every
+// built bundle and the mock build is the one Vite runs with `--mode test`, so a UAT or
+// production build folds this to `false` and the fixtures drop out of the bundle
+// entirely — VITE_USE_MOCK_DATA cannot switch them back on there.
+const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test';
+const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 // The API returns an eventType and a readAt timestamp; useNotifications derives the
 // display type and the read flag from those. The fixtures store the derived values
@@ -37,7 +42,7 @@ const toWireShape = (fixture) => ({
 // Mutable session state so marking as read and dismissing behave like the real API.
 // Every demonstration role sees the same list: scoping to the signed-in user is the
 // backend's job, driven by the token subject rather than by anything sent from here.
-let mockNotifications = notificationFixtures.map(toWireShape);
+let mockNotifications = MOCK_DATA_ALLOWED ? notificationFixtures.map(toWireShape) : [];
 
 export const notificationService = {
   getAll: async (limit = 50) => notificationService.getUserNotifications(undefined, limit),

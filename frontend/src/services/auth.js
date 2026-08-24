@@ -10,7 +10,12 @@
  */
 import apiClient from './api';
 
-const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
+// Fixture-backed responses exist for the automated suites only. `DEV` is false in every
+// built bundle and the mock build is the one Vite runs with `--mode test`, so a UAT or
+// production build folds this to `false` and the fixtures drop out of the bundle
+// entirely — VITE_USE_MOCK_DATA cannot switch them back on there.
+const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test';
+const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
 const MOCK_NDI_DELAY_MS = 5000;
 const MOCK_NDI_USER = {
   id: 'USR-LOCAL-ACCEPTANCE',
@@ -193,7 +198,11 @@ export const authService = {
       const { data: envelope } = await apiClient.post('/auth/ndi/initiate');
       return { success: true, ...envelope.data };
     } catch (err) {
-      if (err.code === 'NDI_NOT_CONFIGURED') {
+      // A backend without NDI credentials stands in with a local proof request so the
+      // developer and CI suites can walk the flow. A deployed build must surface the
+      // failure instead — silently issuing a session for an unconfigured verifier
+      // would be an authentication bypass.
+      if (MOCK_DATA_ALLOWED && err.code === 'NDI_NOT_CONFIGURED') {
         return createMockNdiLogin();
       }
       return { success: false, error: err.message || 'NDI service unavailable.' };
@@ -201,7 +210,7 @@ export const authService = {
   },
 
   checkNDILogin: async (pollToken) => {
-    if (pollToken.startsWith('mock_ndi_')) {
+    if (MOCK_DATA_ALLOWED && pollToken.startsWith('mock_ndi_')) {
       const startTime = parseInt(pollToken.split('_')[2], 10);
       if (Date.now() - startTime > MOCK_NDI_DELAY_MS) {
         if (!USE_MOCK_DATA) {
@@ -235,7 +244,7 @@ export const authService = {
   },
 
   cancelNDILogin: async (pollToken) => {
-    if (pollToken?.startsWith('mock_ndi_')) return;
+    if (MOCK_DATA_ALLOWED && pollToken?.startsWith('mock_ndi_')) return;
     try { await apiClient.post('/auth/ndi/cancel', { pollToken }); } catch { /* best-effort cleanup */ }
   },
 
