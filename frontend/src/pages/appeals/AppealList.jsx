@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { CheckCircle, Eye, Scale, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { canAccess } from '@/features/rbac/accessMatrix';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -37,16 +38,21 @@ export default function AppealList() {
   const [remarks, setRemarks] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const isChief = user?.role === 'chief_executive';
-  const isCommittee = user?.role === 'committee_head';
+  // Derived from the approved matrix, never from a role name. `approve` is the
+  // Chief of Examiner's final decision and `process` the Committee Head's review
+  // step; the two are separate actions, so a Committee Member - View only on
+  // Re-evaluation - reaches neither, and neither role can perform the other's step.
+  const canApprove = canAccess(user?.role, 'appeals', 'approve');
+  const canProcess = canAccess(user?.role, 'appeals', 'process');
 
   const load = async () => {
     setLoading(true);
     setError('');
     try {
-      const response = user?.role === 'test_taker'
-        ? await appealService.getByUser(user.id)
-        : await appealService.getAll();
+      // Only a role that may read everyone's appeals gets the organisation-wide list.
+      const response = canAccess(user?.role, 'appeals', 'read_all')
+        ? await appealService.getAll()
+        : await appealService.getByUser(user.id);
       setData((response.data || []).map(normalizeAppeal));
     } catch (requestError) {
       setError(requestError.message || 'Unable to load appeals.');
@@ -100,13 +106,13 @@ export default function AppealList() {
     <div className="space-y-6">
       <PageHeader
         title="Appeals & Re-evaluations"
-        subtitle={isChief ? 'Review privileged score-revision requests' : 'Track payment, committee review, and final outcomes'}
+        subtitle={canApprove ? 'Review privileged score-revision requests' : 'Track payment, committee review, and final outcomes'}
         breadcrumbs={[{ label: 'Appeals' }]}
         icon={<Scale size={18} />}
       />
 
       {error && <Alert variant="error" title="Appeals unavailable">{error}</Alert>}
-      {isChief && data.some(appeal => appeal.status === 'PENDING_CHIEF_APPROVAL') && (
+      {canApprove && data.some(appeal => appeal.status === 'PENDING_CHIEF_APPROVAL') && (
         <Alert variant="warning" title="Approval Required">One or more committee revision requests require a privileged decision.</Alert>
       )}
 
@@ -120,7 +126,7 @@ export default function AppealList() {
         title={`Appeal Details - ${selected?.id || ''}`}
         size="lg"
         footer={
-          isChief && selected?.status === 'PENDING_CHIEF_APPROVAL' ? (
+          canApprove && selected?.status === 'PENDING_CHIEF_APPROVAL' ? (
             <>
               <Button variant="danger" onClick={() => handleDecision(selected.id, 'REJECTED')} icon={<XCircle size={13} />}>Reject</Button>
               <Button variant="success" onClick={() => handleDecision(selected.id, 'APPROVED')} icon={<CheckCircle size={13} />}>Approve Revision</Button>
@@ -156,10 +162,10 @@ export default function AppealList() {
                 )}
               </div>
             </div>
-            {(isCommittee && selected.status === 'PENDING_COMMITTEE') || (isChief && selected.status === 'PENDING_CHIEF_APPROVAL') ? (
+            {(canProcess && selected.status === 'PENDING_COMMITTEE') || (canApprove && selected.status === 'PENDING_CHIEF_APPROVAL') ? (
               <Textarea label="Decision remarks" rows={3} value={remarks} onChange={event => setRemarks(event.target.value)} placeholder="Record the review rationale..." />
             ) : null}
-            {isCommittee && selected.status === 'PENDING_COMMITTEE' && (
+            {canProcess && selected.status === 'PENDING_COMMITTEE' && (
               <div className="space-y-2">
                 <Button disabled={remarks.length < 3} onClick={() => handleNoChange(selected.id)}>Complete as No Change</Button>
                 <p className="text-xs text-text-muted">Selected-skill revision entry remains available through the secured API until the committee score-entry UI is completed.</p>

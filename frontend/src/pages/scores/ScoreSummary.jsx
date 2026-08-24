@@ -10,6 +10,7 @@ import { examService } from '@/services/exams';
 import { scoreService } from '@/services/scores';
 import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { canPerform } from '@/features/rbac/outOfMatrix';
 import toast from 'react-hot-toast';
 
 export default function ScoreSummary() {
@@ -19,7 +20,10 @@ export default function ScoreSummary() {
   const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(false);
   const [declaring, setDeclaring] = useState(false);
-  const canDeclare = ['admin', 'dcdd'].includes(user?.role);
+  // Declaring results is an exam operation, not band score entry: the approved matrix
+  // gives no role `manage` on Band Scores, so this grant is registered and explained
+  // in the out-of-matrix registry rather than hard-coded here.
+  const canDeclare = canPerform('declareResults', user?.role);
 
   useEffect(() => { if (!examId && exams?.length) setExamId(exams[0].id); }, [examId, exams]);
   useEffect(() => {

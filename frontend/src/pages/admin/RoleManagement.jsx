@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, Users } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import Badge from '@/components/ui/Badge';
-import { ACCESS_MATRIX, ACCESS_MODULES, MATRIX_ROLES, ROLE_LABELS, SUPPLEMENTARY_ROLES, getAccessLevel } from '@/features/rbac/accessMatrix';
+import { ACCESS_MATRIX, ACCESS_MODULES, MATRIX_ROLES, ROLE_LABELS } from '@/features/rbac/accessMatrix';
+import { OUT_OF_MATRIX_OPERATIONS } from '@/features/rbac/outOfMatrix';
 import { useAuth } from '@/contexts/AuthContext';
 
 const DISPLAY_LEVELS = {
@@ -12,6 +13,7 @@ const DISPLAY_LEVELS = {
   read: { label: 'Read', style: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
   submit: { label: 'Submit', style: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
   process: { label: 'Process', style: 'bg-violet-500/15 text-violet-400 border-violet-500/30' },
+  approve: { label: 'Approve', style: 'bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/30' },
   create_own: { label: 'Create / view own', style: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' },
   read_own: { label: 'View own', style: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' },
   submit_own: { label: 'Submit own', style: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' },
@@ -27,13 +29,11 @@ export default function RoleManagement() {
   const { user } = useAuth();
   const readOnly = user?.role !== 'admin';
 
-  // Any module a supplementary role can reach. These are permissions the signed-off
-  // matrix does not describe, so they are listed explicitly rather than left to be
-  // discovered in the source.
-  const supplementaryGrants = SUPPLEMENTARY_ROLES.flatMap(role =>
-    ACCESS_MODULES
-      .map(module => ({ role, module, level: getAccessLevel(role, module.key) }))
-      .filter(entry => entry.level !== 'none'));
+  // Every role is now covered by the approved matrix. What still sits outside it are
+  // individual operations - declaring results, constituting the committee, the
+  // settings screens - so those are listed below rather than left to be discovered in
+  // the source.
+  const outOfMatrixOperations = OUT_OF_MATRIX_OPERATIONS;
 
   return <div className="space-y-6">
     <PageHeader title="Role & Access Matrix" subtitle="Approved module-level access for every defined DSTS role" breadcrumbs={[{ label: 'Administration' }, { label: 'Roles' }]} icon={<Shield size={18} />} />
@@ -71,30 +71,30 @@ export default function RoleManagement() {
       <div className="flex items-start gap-3">
         <Users size={18} className="text-brand-gold mt-0.5 shrink-0" />
         <div className="w-full">
-          <h3 className="text-sm font-semibold text-text-primary">Permissions outside the approved matrix</h3>
+          <h3 className="text-sm font-semibold text-text-primary">Operations outside the approved matrix</h3>
           <p className="text-xs text-text-muted mt-1">
-            The supplied matrix defines the six roles above. Any other grant the system relies on is listed here so it can be reviewed and ratified. Roles not shown below hold no module access beyond the dashboard, profile, settings, and notifications.
+            All seven roles are covered by the matrix above. These individual operations are not: each one is listed here with the roles it admits and why it has no matrix row, so it can be reviewed and ratified rather than discovered in the source.
           </p>
-          {supplementaryGrants.length > 0
+          {outOfMatrixOperations.length > 0
             ? <table className="w-full text-xs mt-4">
                 <thead>
                   <tr className="border-b border-surface-border">
-                    <th className="text-left py-2 pr-3 text-text-muted">Role</th>
-                    <th className="text-left px-2 py-2 text-text-muted">Module</th>
-                    <th className="text-left px-2 py-2 text-text-muted">Access</th>
-                    <th className="text-left px-2 py-2 text-text-muted">Reason</th>
+                    <th className="text-left py-2 pr-3 text-text-muted">Operation</th>
+                    <th className="text-left px-2 py-2 text-text-muted">Where</th>
+                    <th className="text-left px-2 py-2 text-text-muted">Roles</th>
+                    <th className="text-left px-2 py-2 text-text-muted">Why it is not in the matrix</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {supplementaryGrants.map(entry => <tr key={`${entry.role}-${entry.module.key}`} className="border-b border-surface-border/50">
-                    <td className="py-2 pr-3 font-medium text-text-primary">{ROLE_LABELS[entry.role]}</td>
-                    <td className="px-2 py-2 text-text-primary">{entry.module.label}</td>
-                    <td className="px-2 py-2"><LevelBadge level={entry.level} /></td>
-                    <td className="px-2 py-2 text-text-muted">Re-evaluation requires a chief approval step that no matrix role can complete.</td>
+                  {outOfMatrixOperations.map(operation => <tr key={operation.key} className="border-b border-surface-border/50">
+                    <td className="py-2 pr-3 font-medium text-text-primary">{operation.label}</td>
+                    <td className="px-2 py-2 text-text-muted font-mono text-[10px]">{operation.surface}</td>
+                    <td className="px-2 py-2 text-text-primary">{operation.roles.map(role => ROLE_LABELS[role] || role).join(', ')}</td>
+                    <td className="px-2 py-2 text-text-muted">{operation.reason}</td>
                   </tr>)}
                 </tbody>
               </table>
-            : <p className="text-xs text-text-muted mt-3">No permissions are granted outside the approved matrix.</p>}
+            : <p className="text-xs text-text-muted mt-3">No operations are granted outside the approved matrix.</p>}
         </div>
       </div>
     </div>

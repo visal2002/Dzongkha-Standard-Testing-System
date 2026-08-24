@@ -16,8 +16,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Badge from '@/components/ui/Badge';
-import { canAccess } from '@/features/rbac/accessMatrix';
+import { canAccess, isOwnScoped } from '@/features/rbac/accessMatrix';
+import { rolesFor } from '@/features/rbac/outOfMatrix';
 
+// `access: [module, action]`  shown when the matrix grants that action.
+// `ownScoped: module`         shown only to roles that may read their own records in
+//                             the module but not everyone's - the personal screens.
+// `roles: [...]`              an operation outside the matrix; roles come from the
+//                             out-of-matrix registry, never from a literal here.
 const NAV_CONFIG = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
   { label: 'User Management', icon: Users, to: '/admin/users', access: ['users', 'read'] },
@@ -39,26 +45,30 @@ const NAV_CONFIG = [
   },
   { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'] },
   { label: 'Band Score Entry', icon: ClipboardList, to: '/scores', access: ['scores', 'submit'] },
-  { label: 'View Scores', icon: FileText, to: '/scores/view', access: ['scores', 'read'], excludeRoles: ['admin', 'dcdd', 'exam_head', 'committee_head'] },
+  // ViewScores only ever loads the caller's own results; every other role gets an
+  // empty table. It is a personal screen, so it is offered to own-scoped roles only -
+  // the organisation-wide view is Score Summary.
+  { label: 'My Results', icon: FileText, to: '/scores/view', ownScoped: 'scores' },
   { label: 'Score Summary', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'] },
   { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'] },
   { label: 'Submit Re-evaluation', icon: AlertCircle, to: '/appeals/new', access: ['appeals', 'submit_own'] },
   { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'] },
-  { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read'] },
-  { label: 'Technical Settings', icon: Wrench, to: '/admin/technical', roles: ['admin'] },
-  { label: 'Exam Configuration', icon: Settings, to: '/masters', roles: ['admin', 'dcdd'] },
-  { label: 'Operational Settings', icon: SlidersHorizontal, to: '/dcdd/operational', roles: ['dcdd'] },
+  { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read_all'] },
+  { label: 'My Reports', icon: BarChart3, to: '/reports/my', ownScoped: 'reports' },
+  { label: 'Technical Settings', icon: Wrench, to: '/admin/technical', roles: rolesFor('technicalSettings') },
+  { label: 'Exam Configuration', icon: Settings, to: '/masters', roles: rolesFor('examConfiguration') },
+  { label: 'Operational Settings', icon: SlidersHorizontal, to: '/dcdd/operational', roles: rolesFor('operationalSettings') },
   { label: 'Notifications', icon: Zap, to: '/notifications' },
 ];
 
 function permitted(item, role) {
   if (item.roles && !item.roles.includes(role)) return false;
-  if (item.excludeRoles?.includes(role)) return false;
+  if (item.ownScoped && !isOwnScoped(role, item.ownScoped)) return false;
   if (item.access && !canAccess(role, item.access[0], item.access[1])) return false;
   return true;
 }
 
-function navigationFor(role) {
+export function navigationFor(role) {
   return NAV_CONFIG.filter(item => permitted(item, role)).map(item => {
     if (!item.children) return item;
     const children = item.children.filter(child => permitted(child, role));

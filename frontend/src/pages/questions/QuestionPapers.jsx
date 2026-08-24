@@ -47,8 +47,15 @@ export default function QuestionPapers() {
   
   const [deleting, setDeleting] = useState(null);
   const [working, setWorking] = useState(null);
-  const canRead = canAccess(user?.role, 'questions', 'read');
+  // Reaching this page at all already requires Question Upload `read`, enforced by
+  // the route guard, so the listing itself needs no further check.
   const canManage = canAccess(user?.role, 'questions', 'manage');
+  // Reading the repository is not the same as opening what is in it. Question Upload
+  // "Read" shows the paper's metadata; only a role with Full access may open the
+  // encrypted question paper or answer sheet, which the BRD reserves for the Exam
+  // Head until the scheduled window. This hides the control - the binding check is
+  // `question.secure.download` on the server.
+  const canOpenDocument = canAccess(user?.role, 'questions', 'secure_read');
 
   const handleDelete = async () => {
     try {
@@ -161,8 +168,8 @@ export default function QuestionPapers() {
             {/* Status & Actions */}
             <div className="flex items-center gap-2 shrink-0">
               <StatusBadge status={paper.status} />
-              {canRead && <Button variant="ghost" size="xs" loading={working === `preview-${paper.id}`} icon={<Eye size={12} />} onClick={() => handleDocument(paper, true)}>View</Button>}
-              {canRead && <Button variant="ghost" size="xs" loading={working === `download-${paper.id}`} icon={<Download size={12} />} onClick={() => handleDocument(paper)}>Download</Button>}
+              {canOpenDocument && <Button variant="ghost" size="xs" loading={working === `preview-${paper.id}`} icon={<Eye size={12} />} onClick={() => handleDocument(paper, true)}>View</Button>}
+              {canOpenDocument && <Button variant="ghost" size="xs" loading={working === `download-${paper.id}`} icon={<Download size={12} />} onClick={() => handleDocument(paper)}>Download</Button>}
               {canManage && (
                 <>
                   {paper.status === 'READY' && (

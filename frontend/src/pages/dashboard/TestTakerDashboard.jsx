@@ -59,7 +59,7 @@ const stepIndexFor = (application) => {
 export default function TestTakerDashboard() {
   const { user } = useAuth();
   const { data: applications, loading: loadingApps } = useApi(applicationService.getByUser, true, [user?.id]);
-  const { data: certificates, loading: loadingCerts } = useApi(certificateService.getMy);
+  const { data: certificates, loading: loadingCerts } = useApi(certificateService.getByUser, true, [user?.id]);
   const { data: examWindows, loading: loadingExams } = useApi(examService.getAll);
   const { data: bandScores, loading: loadingScores } = useApi(scoreService.getMyScores, true, [user?.id]);
 

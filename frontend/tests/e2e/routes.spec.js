@@ -37,9 +37,15 @@ const roleRoutes = [
     routes: ['/dashboard', '/scores/view', '/scores/summary', '/appeals'],
   },
   {
-    role: 'Chief Executive',
+    // Chief of Examiner. The approved matrix gives this role Read across
+    // Registration, Question Upload, Band Scores, Certificates and Reports, plus the
+    // Approve step on Re-evaluation.
+    role: 'Chief of Examiner',
     email: 'chief.executive@demo.com',
-    routes: ['/dashboard'],
+    routes: [
+      '/dashboard', '/registration/windows', '/registration/applications', '/questions',
+      '/questions/samples', '/scores/summary', '/appeals', '/certificates', '/reports',
+    ],
   },
   {
     role: 'Test Taker',
@@ -47,6 +53,7 @@ const roleRoutes = [
     routes: [
       '/dashboard', '/registration/windows', '/registration/apply', '/my-applications',
       '/scores/view', '/certificates', '/appeals/new', '/appeals', '/questions/samples',
+      '/reports/my',
     ],
   },
 ];
@@ -111,9 +118,18 @@ for (const account of roleRoutes) {
     page.on('console', message => {
       if (message.type() === 'error') {
         const text = message.text();
-        // FIX 3: Filter out network errors — no real backend runs in mock/CI mode.
-        // Services other than auth.js still call http://localhost:8000 which is refused.
-        if (text.includes('ERR_CONNECTION_REFUSED') || text.includes('Failed to load resource')) return;
+        // FIX 3: Filter out network errors — no real backend serves the mock build.
+        // Services other than auth.js still call http://localhost:8000. With nothing
+        // listening the browser reports ERR_CONNECTION_REFUSED; on a developer machine
+        // running the backend locally it answers the preflight without an
+        // Access-Control-Allow-Origin for the preview origin, so the same dead call
+        // surfaces as a CORS error instead. Both are network noise, not the runtime
+        // errors these smoke tests exist to catch.
+        if (
+          text.includes('ERR_CONNECTION_REFUSED')
+          || text.includes('Failed to load resource')
+          || text.includes('blocked by CORS policy')
+        ) return;
         runtimeErrors.push(text);
       }
     });
@@ -151,6 +167,9 @@ const deniedRoutes = [
     // Registration is "Create / view own": the applicant's own records only, never
     // the organisation-wide list. Band Scores is "View own result", so the
     // cross-candidate summary is closed too.
+    // Reports is "View own": /reports/my is theirs, the organisation-wide analytics
+    // page is not. `read_own` satisfies a plain `read`, so /reports is guarded with
+    // `read_all` precisely to keep this closed.
     routes: [
       '/registration/applications', '/verification', '/attendance', '/questions',
       '/questions/upload', '/scores', '/scores/summary', '/reports',
@@ -174,6 +193,26 @@ const deniedRoutes = [
     role: 'Exam Head',
     email: 'exam.head@demo.com',
     routes: ['/admin/users', '/admin/roles', '/scores'],
+  },
+  {
+    // Chief of Examiner holds Read plus the appeal approval step, and nothing else:
+    // no administration, no verification, no absentee, no question upload, no score
+    // entry, and no committee constitution.
+    role: 'Chief of Examiner',
+    email: 'chief.executive@demo.com',
+    routes: [
+      '/admin/users', '/admin/roles', '/verification', '/attendance',
+      '/questions/upload', '/scores', '/scores/committee', '/masters',
+      '/dcdd/operational', '/appeals/new',
+    ],
+  },
+  {
+    // The matrix confines the System Administrator to users, roles and permissions.
+    // The backend keeps a `*` wildcard as documented break-glass; the frontend must
+    // not mirror it, so score entry and DCDD operational settings stay closed.
+    role: 'System Admin',
+    email: 'system.admin@demo.com',
+    routes: ['/scores', '/dcdd/operational'],
   },
 ];
 
@@ -199,4 +238,49 @@ test('a test taker cannot read another applicant through the applications list',
   // The own-scoped screen stays reachable.
   await page.goto('/my-applications');
   await expect(page).toHaveURL(/\/my-applications$/);
+});
+
+test('a test taker gets their own reports but not the organisation-wide analytics', async ({ page }) => {
+  await login(page, 'test.taker@demo.com');
+
+  await page.goto('/reports');
+  await expect(page, 'a test taker reached organisation-wide Reports').toHaveURL(/\/dashboard$/);
+
+  await page.goto('/reports/my');
+  await expect(page).toHaveURL(/\/reports\/my$/);
+  await expect(page.getByRole('heading', { name: 'My Reports' })).toBeVisible();
+});
+
+test('the sidebar offers a test taker the personal screens and no organisation-wide ones', async ({ page }) => {
+  await login(page, 'test.taker@demo.com');
+
+  const sidebar = page.locator('aside');
+  await expect(sidebar.getByRole('link', { name: 'My Reports' })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'My Results' })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'Reports', exact: true })).toHaveCount(0);
+  await expect(sidebar.getByRole('link', { name: 'User Management' })).toHaveCount(0);
+  await expect(sidebar.getByRole('link', { name: 'Verification' })).toHaveCount(0);
+});
+
+test('a committee member sees the appeal queue read-only, with no decision controls', async ({ page }) => {
+  await login(page, 'member@dsts.bt');
+
+  await page.goto('/appeals');
+  await expect(page).toHaveURL(/\/appeals$/);
+  await page.waitForTimeout(800);
+
+  // Process and Approve are separate matrix actions; a Committee Member holds neither.
+  await expect(page.getByRole('button', { name: 'Approve Revision' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Complete as No Change' })).toHaveCount(0);
+});
+
+test('the encrypted question document controls are withheld from metadata-only roles', async ({ page }) => {
+  await login(page, 'dcdd.admin@demo.com');
+
+  await page.goto('/questions');
+  await expect(page).toHaveURL(/\/questions$/);
+  await page.waitForTimeout(800);
+
+  // DCDD holds Question Upload "Read" - the listing, never the encrypted file.
+  await expect(page.getByRole('button', { name: 'Download' })).toHaveCount(0);
 });
