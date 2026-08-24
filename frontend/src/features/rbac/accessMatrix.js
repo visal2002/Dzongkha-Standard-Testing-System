@@ -17,25 +17,25 @@ export const ROLE_LABELS = {
   exam_head: 'Exam Head',
   committee_head: 'Committee Head',
   committee_member: 'Committee Member',
+  chief_executive: 'Chief of Examiner',
   test_taker: 'Test Taker',
-  chief_executive: 'Chief Executive',
 };
 
-// The six roles covered by the approved access matrix, in its column order.
-export const MATRIX_ROLES = ['admin', 'dcdd', 'exam_head', 'committee_head', 'committee_member', 'test_taker'];
+// The seven roles covered by the approved access matrix, in its column order.
+//
+// `chief_executive` is the role key for Chief of Examiner. The approved document
+// names the role "Chief of Examiner" and treats it as the same role the BRD calls
+// "Chief Executive"; only the display label follows the document, because renaming
+// the key would mean migrating JWT claims, seeded roles, and fixtures for no
+// functional gain.
+export const MATRIX_ROLES = ['admin', 'dcdd', 'exam_head', 'committee_head', 'committee_member', 'chief_executive', 'test_taker'];
 
-// Roles that carry permissions the approved matrix does not describe. These are
-// shown separately wherever the matrix is displayed so that no permission is
-// granted invisibly.
-export const SUPPLEMENTARY_ROLES = ['chief_executive'];
+// Roles carrying permissions the approved matrix does not describe. Every role is
+// now covered by the matrix, so this is empty. Operations that sit outside the
+// matrix are registered in `outOfMatrix.js` instead, per action rather than role.
+export const SUPPLEMENTARY_ROLES = [];
 
 // This is the approved access matrix, transcribed from the signed-off document.
-//
-// Chief Executive is absent from that document but holds `appeals: process`,
-// because the re-evaluation workflow requires a chief approval step and no other
-// role can complete it. That grant is deliberately narrow and is surfaced in the
-// Role & Access Matrix screen rather than left implicit. It needs ratifying
-// alongside the rest of the matrix.
 export const ACCESS_MATRIX = {
   admin: {
     users: 'crud', roles: 'crud', registration: 'full', verification: 'full',
@@ -58,12 +58,13 @@ export const ACCESS_MATRIX = {
   committee_member: {
     registration: 'read', scores: 'read', appeals: 'read', reports: 'read',
   },
+  chief_executive: {
+    registration: 'read', questions: 'read', scores: 'read', appeals: 'approve',
+    certificates: 'read', reports: 'read',
+  },
   test_taker: {
     registration: 'create_own', questions: 'sample', scores: 'read_own',
-    appeals: 'submit_own', certificates: 'read_own',
-  },
-  chief_executive: {
-    appeals: 'process',
+    appeals: 'submit_own', certificates: 'read_own', reports: 'read_own',
   },
 };
 
@@ -75,12 +76,23 @@ export const ACCESS_MATRIX = {
 // silently satisfies any guard asking for a plain `read`, which is how a Test
 // Taker could reach the full applicant list. Guard organisation-wide screens
 // with `read_all`, and personal screens with `read_own`.
+//
+// Two actions are narrower than they look, and the narrowness is the point:
+//
+//   `approve`      the Chief of Examiner's final decision on a re-evaluation. It is
+//                  separate from `process` in both directions - the Committee Head
+//                  processes a request but cannot approve it, and the Chief approves
+//                  but does not run the committee review step.
+//   `secure_read`  opening the encrypted question paper or answer sheet. Only `full`
+//                  grants it, so a role holding Question Upload "Read" sees the
+//                  paper's metadata and never its contents.
 const ALLOWED_ACTIONS = {
   crud: ['read', 'read_all', 'read_own', 'create', 'update', 'delete', 'manage'],
-  full: ['read', 'read_all', 'read_own', 'create', 'create_own', 'update', 'delete', 'manage', 'submit', 'process', 'sample'],
+  full: ['read', 'read_all', 'read_own', 'create', 'create_own', 'update', 'delete', 'manage', 'submit', 'process', 'approve', 'sample', 'secure_read'],
   read: ['read', 'read_all', 'read_own', 'sample'],
   submit: ['read', 'read_all', 'read_own', 'submit'],
   process: ['read', 'read_all', 'read_own', 'process'],
+  approve: ['read', 'read_all', 'read_own', 'approve'],
   create_own: ['read', 'read_own', 'create', 'create_own'],
   read_own: ['read', 'read_own'],
   submit_own: ['read', 'read_own', 'submit', 'submit_own'],
@@ -94,6 +106,13 @@ export function getAccessLevel(role, module) {
 export function canAccess(role, module, action = 'read') {
   const level = getAccessLevel(role, module);
   return (ALLOWED_ACTIONS[level] || []).includes(action);
+}
+
+// True when a role may read its own records in a module but not anyone else's.
+// Personal screens - My Results, My Reports - are shown on this, so that a role
+// holding the organisation-wide view is not also offered an empty personal one.
+export function isOwnScoped(role, module) {
+  return canAccess(role, module, 'read_own') && !canAccess(role, module, 'read_all');
 }
 
 export function isMatrixManager(role) {

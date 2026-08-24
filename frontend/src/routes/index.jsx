@@ -8,6 +8,7 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccess } from '@/features/rbac/accessMatrix';
+import { rolesFor } from '@/features/rbac/outOfMatrix';
 
 // Layout
 import AppLayout from '@/layouts/AppLayout';
@@ -34,6 +35,7 @@ const QuestionPapers = lazy(() => import('@/pages/questions/QuestionPapers'));
 const UploadQuestionPaper = lazy(() => import('@/pages/questions/UploadQuestionPaper'));
 const SamplePapers = lazy(() => import('@/pages/questions/SamplePapers'));
 const Reports = lazy(() => import('@/pages/reports/Reports'));
+const MyReports = lazy(() => import('@/pages/reports/MyReports'));
 const Notifications = lazy(() => import('@/pages/notifications/Notifications'));
 const UserManagement = lazy(() => import('@/pages/admin/UserManagement'));
 const RoleManagement = lazy(() => import('@/pages/admin/RoleManagement'));
@@ -75,8 +77,12 @@ function PrivateRoute({ children, requiredRoles, requiredAccess }) {
   if (isLoading) return <PageLoader />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
+  // A System Administrator is not admitted to a route just for being one. The
+  // backend keeps a `*` wildcard as documented break-glass, but the frontend follows
+  // the approved matrix and the out-of-matrix registry, so `admin` reaches a
+  // role-listed route only where it is actually listed.
   const roles = Array.isArray(user?.roles) ? user.roles : [user?.role];
-  const hasRequiredRole = !requiredRoles || requiredRoles.some(role => roles.includes(role) || user?.role === role || user?.role === 'admin');
+  const hasRequiredRole = !requiredRoles || requiredRoles.some(role => roles.includes(role) || user?.role === role);
 
   if (!hasRequiredRole) {
     return <Navigate to="/dashboard" replace />;
@@ -120,7 +126,7 @@ export default function AppRoutes() {
           {/* Scores */}
           <Route path="/scores" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'submit' }}><ScoreEntry /></PrivateRoute>} />
           <Route path="/scores/view" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read' }}><ViewScores /></PrivateRoute>} />
-          <Route path="/scores/committee" element={<PrivateRoute requiredRoles={['admin', 'dcdd', 'committee_head']}><CommitteeSetup /></PrivateRoute>} />
+          <Route path="/scores/committee" element={<PrivateRoute requiredRoles={rolesFor('committeeSetup')}><CommitteeSetup /></PrivateRoute>} />
           <Route path="/scores/summary" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read_all' }}><ScoreSummary /></PrivateRoute>} />
 
           {/* Appeals & Certificates */}
@@ -129,16 +135,20 @@ export default function AppRoutes() {
           <Route path="/certificates" element={<PrivateRoute requiredAccess={{ module: 'certificates', action: 'read' }}><CertificateList /></PrivateRoute>} />
 
           {/* Reports & Notifications */}
-          <Route path="/reports" element={<PrivateRoute requiredAccess={{ module: 'reports', action: 'read' }}><Reports /></PrivateRoute>} />
+          {/* Organisation-wide analytics demands `read_all`. A plain `read` would admit
+              the Test Taker, whose Reports grant is "view own": every own-scoped level
+              satisfies `read`. */}
+          <Route path="/reports" element={<PrivateRoute requiredAccess={{ module: 'reports', action: 'read_all' }}><Reports /></PrivateRoute>} />
+          <Route path="/reports/my" element={<PrivateRoute requiredAccess={{ module: 'reports', action: 'read_own' }}><MyReports /></PrivateRoute>} />
           <Route path="/notifications" element={<Notifications />} />
 
           {/* Administration */}
           <Route path="/admin/users" element={<PrivateRoute requiredAccess={{ module: 'users', action: 'read' }}><UserManagement /></PrivateRoute>} />
           <Route path="/admin/roles" element={<PrivateRoute requiredAccess={{ module: 'roles', action: 'read' }}><RoleManagement /></PrivateRoute>} />
-          <Route path="/admin/permissions" element={<PrivateRoute requiredRoles={['admin']}><PermissionManagement /></PrivateRoute>} />
-          <Route path="/admin/technical" element={<PrivateRoute requiredRoles={['admin']}><TechnicalSettings /></PrivateRoute>} />
-          <Route path="/masters" element={<PrivateRoute requiredRoles={['dcdd', 'admin']}><MasterConfiguration /></PrivateRoute>} />
-          <Route path="/dcdd/operational" element={<PrivateRoute requiredRoles={['dcdd']}><OperationalSettings /></PrivateRoute>} />
+          <Route path="/admin/permissions" element={<PrivateRoute requiredRoles={rolesFor('permissionManagement')}><PermissionManagement /></PrivateRoute>} />
+          <Route path="/admin/technical" element={<PrivateRoute requiredRoles={rolesFor('technicalSettings')}><TechnicalSettings /></PrivateRoute>} />
+          <Route path="/masters" element={<PrivateRoute requiredRoles={rolesFor('examConfiguration')}><MasterConfiguration /></PrivateRoute>} />
+          <Route path="/dcdd/operational" element={<PrivateRoute requiredRoles={rolesFor('operationalSettings')}><OperationalSettings /></PrivateRoute>} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Route>
