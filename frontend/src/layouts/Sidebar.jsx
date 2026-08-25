@@ -9,8 +9,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FileText, CheckSquare, Users, Upload, ClipboardList,
-  Award, AlertCircle, BarChart3, Settings, Shield, ChevronDown,
-  ChevronRight, Bookmark, BookOpen, UserCog, Zap, Home, FileSearch,
+  Award, BarChart3, Settings, Shield, ChevronDown,
+  ChevronRight, Bookmark, BookOpen, UserCog, Home, FileSearch,
   GraduationCap, Scale, Wrench, Server, SlidersHorizontal, FileCog,
   ClipboardCheck, FlaskConical, ScrollText
 } from 'lucide-react';
@@ -24,19 +24,42 @@ import { rolesFor } from '@/features/rbac/outOfMatrix';
 //                             the module but not everyone's - the personal screens.
 // `roles: [...]`              an operation outside the matrix; roles come from the
 //                             out-of-matrix registry, never from a literal here.
+// `onlyRoles: [...]`          a UI-only carve-out for one role's presentation, not an
+//                             access grant - use when a role needs a different shape of
+//                             an entry other roles already see (e.g. flattened out of a
+//                             collapsible group into its own top-level item).
+// `excludeRoles: [...]`       the inverse - hides an otherwise-permitted entry from one
+//                             role because that role has its own carve-out entry instead.
+// `type: 'section'`           a non-interactive uppercase label, not a nav link.
 const NAV_CONFIG = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+  // System Admin's menu is split into labelled sections; every other role keeps the
+  // flat list it already had, so these headers are scoped to admin only.
+  { type: 'section', label: 'Identity & Access', onlyRoles: ['admin'] },
   { label: 'User Management', icon: Users, to: '/admin/users', access: ['users', 'read'] },
   { label: 'Role Management', icon: UserCog, to: '/admin/roles', access: ['roles', 'read'] },
+  { label: 'Technical Settings', icon: Wrench, to: '/admin/technical', roles: rolesFor('technicalSettings') },
+  { type: 'section', label: 'Operations', onlyRoles: ['admin'] },
   {
-    label: 'Registration', icon: FileText, access: ['registration', 'read'], children: [
-      { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'] },
+    label: 'Registration', icon: FileText, access: ['registration', 'read'], excludeRoles: ['test_taker'], children: [
+      // BRD §5.2.1 gives DCDD ownership of exam window configuration; System Admin's
+      // matrix grant is superuser oversight, not a day-to-day task, so its copy of
+      // this link lives in Admin Overrides below instead of here.
+      { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'], excludeRoles: ['admin'] },
       { label: 'Applications', icon: ClipboardList, to: '/registration/applications', access: ['registration', 'read_all'] },
-      { label: 'My Applications', icon: ClipboardList, to: '/my-applications', access: ['registration', 'read_own'] },
+      // System Admin has no "own" registration record - `read_own` is only incidentally
+      // granted by the `full` access level, not a real personal screen for this role.
+      { label: 'My Applications', icon: ClipboardList, to: '/my-applications', access: ['registration', 'read_own'], excludeRoles: ['admin'] },
     ],
   },
-  { label: 'Verification', icon: CheckSquare, to: '/verification', access: ['verification', 'read'] },
-  { label: 'Absentee', icon: Users, to: '/attendance', access: ['attendance', 'read'] },
+  // Test Taker sees a flat section instead of the collapsible group above - they only
+  // ever have the one child, so a always-visible section reads better than a toggle.
+  { type: 'section', label: 'Registration', onlyRoles: ['test_taker'] },
+  { label: 'My Applications', icon: ClipboardList, to: '/my-applications', onlyRoles: ['test_taker'], access: ['registration', 'read_own'] },
+  // Verification and Absentee are BRD §5.3.1 DCDD workflows; System Admin holds them
+  // only as matrix "Full" oversight, so its copies move to Admin Overrides too.
+  { label: 'Verification', icon: CheckSquare, to: '/verification', access: ['verification', 'read'], excludeRoles: ['admin'] },
+  { label: 'Absentee', icon: Users, to: '/attendance', access: ['attendance', 'read'], excludeRoles: ['admin'] },
   {
     label: 'Question Papers', icon: BookOpen, access: ['questions', 'read'], children: [
       { label: 'Upload Papers', icon: Upload, to: '/questions/upload', access: ['questions', 'create'] },
@@ -47,21 +70,29 @@ const NAV_CONFIG = [
   { label: 'Band Score Entry', icon: ClipboardList, to: '/scores', access: ['scores', 'submit'] },
   // ViewScores only ever loads the caller's own results; every other role gets an
   // empty table. It is a personal screen, so it is offered to own-scoped roles only -
-  // the organisation-wide view is Score Summary.
+  // the organisation-wide view is Band Scores.
   { label: 'My Results', icon: FileText, to: '/scores/view', ownScoped: 'scores' },
-  { label: 'Score Summary', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'] },
+  { label: 'Band Scores', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'] },
   { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'] },
-  { label: 'Submit Re-evaluation', icon: AlertCircle, to: '/appeals/new', access: ['appeals', 'submit_own'] },
   { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'] },
   { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read_all'] },
-  { label: 'My Reports', icon: BarChart3, to: '/reports/my', ownScoped: 'reports' },
-  { label: 'Technical Settings', icon: Wrench, to: '/admin/technical', roles: rolesFor('technicalSettings') },
+  { label: 'My Records', icon: BarChart3, to: '/reports/my', ownScoped: 'reports' },
   { label: 'Exam Configuration', icon: Settings, to: '/masters', roles: rolesFor('examConfiguration') },
   { label: 'Operational Settings', icon: SlidersHorizontal, to: '/dcdd/operational', roles: rolesFor('operationalSettings') },
-  { label: 'Notifications', icon: Zap, to: '/notifications' },
+  // System Admin's superuser copies of DCDD's day-to-day screens, collapsed and
+  // placed last so they read as break-glass oversight rather than core admin work.
+  {
+    label: 'Admin Overrides', icon: Shield, onlyRoles: ['admin'], children: [
+      { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'] },
+      { label: 'Verification', icon: CheckSquare, to: '/verification', access: ['verification', 'read'] },
+      { label: 'Absentee', icon: Users, to: '/attendance', access: ['attendance', 'read'] },
+    ],
+  },
 ];
 
 function permitted(item, role) {
+  if (item.onlyRoles && !item.onlyRoles.includes(role)) return false;
+  if (item.excludeRoles && item.excludeRoles.includes(role)) return false;
   if (item.roles && !item.roles.includes(role)) return false;
   if (item.ownScoped && !isOwnScoped(role, item.ownScoped)) return false;
   if (item.access && !canAccess(role, item.access[0], item.access[1])) return false;
@@ -182,7 +213,13 @@ export default function Sidebar({ collapsed, isDesktop, mobileOpen }) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">
         {navItems.map((item, i) => (
-          <NavItem key={i} item={item} collapsed={collapsed} />
+          item.type === 'section'
+            ? (!collapsed && (
+                <p key={i} className="px-3 pt-3 pb-1 text-[10px] font-bold text-text-muted uppercase tracking-wider select-none">
+                  {item.label}
+                </p>
+              ))
+            : <NavItem key={i} item={item} collapsed={collapsed} />
         ))}
       </nav>
 

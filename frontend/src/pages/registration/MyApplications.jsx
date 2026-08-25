@@ -6,14 +6,20 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Plus, Calendar, MapPin, CreditCard, Download, ExternalLink, RefreshCw } from 'lucide-react';
+import { FileText, Plus, Calendar, MapPin, CreditCard, Download, ExternalLink, RefreshCw, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
 import { StatusBadge } from '@/components/ui/Badge';
 import { applicationService } from '@/services/applications';
 import { examService } from '@/services/exams';
 import toast from 'react-hot-toast';
+
+// Cancellation is only meaningful before DCDD verification begins - the backend
+// enforces the same cutoff (409 once review has started), this just avoids offering
+// the button for a status where it would always fail.
+const CANCELLABLE_STATUSES = ['submitted', 'waitlisted'];
 
 export default function MyApplications() {
   const { user } = useAuth();
@@ -22,10 +28,27 @@ export default function MyApplications() {
   const [examWindows, setExamWindows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [paymentBusy, setPaymentBusy] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const reloadApplications = async () => {
     const response = await applicationService.getByUser(user?.id);
     setMyApps(response.data);
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelTarget) return;
+    setCancelling(true);
+    try {
+      await applicationService.cancel(cancelTarget.id);
+      toast.success('Application cancelled.');
+      setCancelTarget(null);
+      await reloadApplications();
+    } catch (error) {
+      toast.error(error.message || 'Unable to cancel the application.');
+    } finally {
+      setCancelling(false);
+    }
   };
 
   const continuePayment = async app => {
@@ -118,7 +141,14 @@ export default function MyApplications() {
                     <p className="text-base font-semibold text-text-primary">{exam?.title || app.examId}</p>
                     <p className="text-xs text-text-muted mt-0.5">Application ID: {app.id}</p>
                   </div>
-                  <StatusBadge status={app.status} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={app.status} />
+                    {CANCELLABLE_STATUSES.includes(app.status) && (
+                      <Button size="xs" variant="outline" icon={<XCircle size={12} />} onClick={() => setCancelTarget(app)}>
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs mb-4">
@@ -216,6 +246,24 @@ export default function MyApplications() {
           })}
         </div>
       )}
+
+      <Modal
+        isOpen={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        title="Cancel application?"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setCancelTarget(null)}>Keep application</Button>
+            <Button variant="danger" loading={cancelling} onClick={confirmCancel}>Cancel application</Button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary">
+          This withdraws your application for {cancelTarget && (examWindows.find(e => e.id === cancelTarget.examId)?.title || cancelTarget.examId)}.
+          This cannot be undone, and you will need to submit a new application to register again.
+        </p>
+      </Modal>
     </div>
   );
 }

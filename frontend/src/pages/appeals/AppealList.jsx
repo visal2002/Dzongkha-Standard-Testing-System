@@ -5,8 +5,9 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createColumnHelper } from '@tanstack/react-table';
-import { CheckCircle, Eye, Scale, XCircle } from 'lucide-react';
+import { CheckCircle, Eye, Plus, Scale, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccess } from '@/features/rbac/accessMatrix';
 import PageHeader from '@/components/ui/PageHeader';
@@ -14,12 +15,24 @@ import DataTable from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
+import { Stepper } from '@/components/ui';
 import { Textarea } from '@/components/ui/Input';
 import Alert from '@/components/ui/Alert';
 import { appealService } from '@/services/appeals';
 import toast from 'react-hot-toast';
 
 const columnHelper = createColumnHelper();
+
+// Re-evaluation pipeline, mirrored from the AppealStatus states the backend can return
+// (backend/libs/contracts/src/index.ts). Purely presentational - the request's real
+// status still drives every actual decision.
+const PIPELINE_STEPS = ['Payment', 'Committee Review', 'Chief of Examiner Approval', 'Outcome'];
+const pipelineStepIndex = status => {
+  if (['NO_CHANGE', 'REJECTED', 'APPROVED_PENDING_SCORE_UPDATE', 'COMPLETED'].includes(status)) return 3;
+  if (status === 'PENDING_CHIEF_APPROVAL') return 2;
+  if (['PAYMENT_COMPLETED', 'PENDING_COMMITTEE', 'REVISION_REQUESTED'].includes(status)) return 1;
+  return 0;
+};
 
 const normalizeAppeal = appeal => ({
   ...appeal,
@@ -33,6 +46,7 @@ const normalizeAppeal = appeal => ({
 
 export default function AppealList() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [selected, setSelected] = useState(null);
   const [remarks, setRemarks] = useState('');
@@ -44,6 +58,7 @@ export default function AppealList() {
   // Re-evaluation - reaches neither, and neither role can perform the other's step.
   const canApprove = canAccess(user?.role, 'appeals', 'approve');
   const canProcess = canAccess(user?.role, 'appeals', 'process');
+  const canSubmit = canAccess(user?.role, 'appeals', 'submit_own');
 
   const load = async () => {
     setLoading(true);
@@ -55,7 +70,7 @@ export default function AppealList() {
         : await appealService.getByUser(user.id);
       setData((response.data || []).map(normalizeAppeal));
     } catch (requestError) {
-      setError(requestError.message || 'Unable to load appeals.');
+      setError(requestError.message || 'Unable to load re-evaluation requests.');
     } finally {
       setLoading(false);
     }
@@ -65,8 +80,8 @@ export default function AppealList() {
 
   const handleDecision = async (id, decision) => {
     try {
-      await appealService.decide(id, decision, remarks || `Appeal ${decision.toLowerCase()} after privileged review.`);
-      toast.success(`Appeal ${decision.toLowerCase()} successfully.`);
+      await appealService.decide(id, decision, remarks || `Re-evaluation ${decision.toLowerCase()} after privileged review.`);
+      toast.success(`Re-evaluation ${decision.toLowerCase()} successfully.`);
       setSelected(null);
       setRemarks('');
       await load();
@@ -89,7 +104,7 @@ export default function AppealList() {
   };
 
   const columns = [
-    columnHelper.accessor('id', { header: 'Appeal ID', cell: info => <span className="font-mono text-xs text-text-muted">{info.getValue()}</span> }),
+    columnHelper.accessor('id', { header: 'Request ID', cell: info => <span className="font-mono text-xs text-text-muted">{info.getValue()}</span> }),
     columnHelper.accessor('applicationId', { header: 'Application', cell: info => <span className="font-mono text-xs text-brand-gold">{info.getValue()}</span> }),
     columnHelper.accessor('skills', { header: 'Skills', cell: info => <span className="text-xs text-text-secondary">{info.getValue().join(', ')}</span> }),
     columnHelper.accessor('paymentAmount', { header: 'Fee', cell: info => <span className="text-xs font-medium text-text-primary">{info.row.original.paymentCurrency} {Number(info.getValue()).toFixed(2)}</span> }),
@@ -105,25 +120,28 @@ export default function AppealList() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Appeals & Re-evaluations"
+        title="Re-evaluation"
         subtitle={canApprove ? 'Review privileged score-revision requests' : 'Track payment, committee review, and final outcomes'}
-        breadcrumbs={[{ label: 'Appeals' }]}
+        breadcrumbs={[{ label: 'Re-evaluation' }]}
         icon={<Scale size={18} />}
+        action={canSubmit && (
+          <Button icon={<Plus size={14} />} onClick={() => navigate('/appeals/new')}>Submit New</Button>
+        )}
       />
 
-      {error && <Alert variant="error" title="Appeals unavailable">{error}</Alert>}
+      {error && <Alert variant="error" title="Re-evaluation unavailable">{error}</Alert>}
       {canApprove && data.some(appeal => appeal.status === 'PENDING_CHIEF_APPROVAL') && (
         <Alert variant="warning" title="Approval Required">One or more committee revision requests require a privileged decision.</Alert>
       )}
 
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <DataTable data={data} columns={columns} loading={loading} searchPlaceholder="Search by appeal or application ID..." emptyMessage="No appeals found" />
+        <DataTable data={data} columns={columns} loading={loading} searchPlaceholder="Search by request or application ID..." emptyMessage="No re-evaluation requests found" />
       </div>
 
       <Modal
         isOpen={!!selected}
         onClose={() => { setSelected(null); setRemarks(''); }}
-        title={`Appeal Details - ${selected?.id || ''}`}
+        title={`Re-evaluation Details - ${selected?.id || ''}`}
         size="lg"
         footer={
           canApprove && selected?.status === 'PENDING_CHIEF_APPROVAL' ? (
@@ -136,17 +154,21 @@ export default function AppealList() {
       >
         {selected && (
           <div className="space-y-4">
+            <div>
+              <p className="text-xs font-semibold text-text-muted uppercase mb-2">Progress</p>
+              <Stepper steps={PIPELINE_STEPS} currentStep={pipelineStepIndex(selected.status)} />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               {[
                 ['Application', selected.applicationId],
                 ['Examination', selected.examId],
-                ['Skills Appealed', selected.skills.join(', ')],
+                ['Skills', selected.skills.join(', ')],
                 ['Payment', `${selected.paymentCurrency} ${Number(selected.paymentAmount).toFixed(2)} (${selected.paymentStatus})`],
                 ['Submitted', new Date(selected.submittedAt).toLocaleDateString()],
                 ['Status', selected.status],
               ].map(([label, value]) => <div key={label}><p className="text-text-muted mb-0.5">{label}</p><p className="font-medium text-text-primary break-all">{value}</p></div>)}
             </div>
-            <div className="p-3 bg-surface-bg rounded-xl border border-surface-border"><p className="text-xs text-text-muted mb-1">Reason for Appeal</p><p className="text-sm text-text-primary">{selected.reason}</p></div>
+            <div className="p-3 bg-surface-bg rounded-xl border border-surface-border"><p className="text-xs text-text-muted mb-1">Reason for Re-evaluation</p><p className="text-sm text-text-primary">{selected.reason}</p></div>
             <div>
               <p className="text-xs font-semibold text-text-muted uppercase mb-2">Selected-skill score snapshot</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

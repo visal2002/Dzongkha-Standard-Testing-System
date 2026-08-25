@@ -5,7 +5,7 @@
  */
 
 /**
- * My Reports - the Test Taker's "view own" Reports surface from the approved matrix.
+ * My Records - the Test Taker's "view own" Reports surface from the approved matrix.
  *
  * Every figure on this page comes from an endpoint that is already scoped to the
  * caller by the token subject server-side: /applications/my, /results/my,
@@ -16,11 +16,18 @@
  * organisation-wide, and pulling one in here would hand a Test Taker the aggregate
  * figures the matrix withholds. The organisation-wide screen is Reports.jsx, guarded
  * by `reports:read_all`.
+ *
+ * It also deliberately does not duplicate the standalone My Results / Certificates
+ * screens with full per-category tables - it is an export surface (PDF/CSV) over a
+ * single combined history, not a third place to browse the same records.
  */
-import { Award, BarChart3, FileText, Scale } from 'lucide-react';
+import { useState } from 'react';
+import { pdf } from '@react-pdf/renderer';
+import { Award, BarChart3, Download, FileSpreadsheet, FileText, Scale } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
 import Alert from '@/components/ui/Alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApi } from '@/hooks/useApi';
@@ -28,26 +35,30 @@ import { applicationService } from '@/services/applications';
 import { scoreService } from '@/services/scores';
 import { appealService } from '@/services/appeals';
 import { certificateService } from '@/services/certificates';
+import MyRecordsDocument from './MyRecordsPdf';
 
 const asList = value => (Array.isArray(value) ? value : []);
 
 const formatDate = value => (value ? new Date(value).toLocaleDateString() : '—');
 
-function Section({ title, description, children }) {
-  return (
-    <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
-        <p className="text-xs text-text-muted mt-0.5">{description}</p>
-      </div>
-      {children}
-    </div>
-  );
-}
+const downloadBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
 
-function EmptyRow({ message }) {
-  return <p className="py-8 text-center text-xs text-text-muted">{message}</p>;
-}
+const toCsv = rows => {
+  const header = ['Date', 'Type', 'Reference', 'Status'];
+  const escape = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
+  return [header, ...rows.map(row => [row.date, row.type, row.reference, row.status])]
+    .map(row => row.map(escape).join(','))
+    .join('\r\n');
+};
 
 export default function MyReports() {
   const { user } = useAuth();
@@ -55,6 +66,7 @@ export default function MyReports() {
   const { data: results, loading: loadingResults } = useApi(scoreService.getMyScores, true, [user?.id]);
   const { data: appeals, loading: loadingAppeals } = useApi(appealService.getByUser, true, [user?.id]);
   const { data: certificates, loading: loadingCerts } = useApi(certificateService.getByUser, true, [user?.id]);
+  const [exporting, setExporting] = useState(null);
 
   const myApplications = asList(applications);
   const myResults = asList(results);
@@ -64,13 +76,71 @@ export default function MyReports() {
   const loading = loadingApps || loadingResults || loadingAppeals || loadingCerts;
   const publishedResults = myResults.filter(result => String(result.status || '').toLowerCase() === 'published');
 
+  const historyRows = [
+    ...myApplications.map(application => ({
+      date: application.submittedAt || application.createdAt,
+      type: 'Application',
+      reference: application.registrationNumber || application.id,
+      status: application.status,
+    })),
+    ...publishedResults.map(result => ({
+      date: result.publishedAt || result.updatedAt || result.createdAt,
+      type: 'Result',
+      reference: result.applicationId,
+      status: result.status,
+    })),
+    ...myAppeals.map(appeal => ({
+      date: appeal.submittedAt || appeal.createdAt,
+      type: 'Re-evaluation',
+      reference: appeal.id,
+      status: appeal.status,
+    })),
+    ...myCertificates.map(certificate => ({
+      date: certificate.issuedAt,
+      type: 'Certificate',
+      reference: certificate.certificateNumber || certificate.id,
+      status: certificate.status,
+    })),
+  ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+  const exportCsv = () => {
+    const csv = toCsv(historyRows.map(row => ({ ...row, date: formatDate(row.date) })));
+    downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `my-records-${user?.id || 'export'}.csv`);
+  };
+
+  const exportPdf = async () => {
+    setExporting('pdf');
+    try {
+      const blob = await pdf(
+        <MyRecordsDocument
+          userName={user?.name || 'Test Taker'}
+          generatedAt={new Date().toLocaleString()}
+          rows={historyRows.map(row => ({ ...row, date: formatDate(row.date) }))}
+        />
+      ).toBlob();
+      downloadBlob(blob, `my-records-${user?.id || 'export'}.pdf`);
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Reports"
-        subtitle="A summary of your own registrations, results, re-evaluations, and certificates"
-        breadcrumbs={[{ label: 'Reports' }, { label: 'My Reports' }]}
+        title="My Records"
+        subtitle="Export a record of your own applications, results, re-evaluations, and certificates"
+        breadcrumbs={[{ label: 'My Records' }]}
         icon={<BarChart3 size={18} />}
+        action={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" icon={<FileSpreadsheet size={13} />} disabled={loading} onClick={exportCsv}>
+              Export CSV
+            </Button>
+            <Button size="sm" icon={<Download size={13} />} loading={exporting === 'pdf'} disabled={loading} onClick={exportPdf}>
+              Export PDF
+            </Button>
+          </div>
+        }
       />
 
       <Alert variant="info" title="Your records only">
@@ -85,112 +155,39 @@ export default function MyReports() {
         <StatCard title="My Certificates" value={loading ? '...' : myCertificates.length} icon={<Award size={18} />} color="success" />
       </div>
 
-      <Section title="Registration history" description="Every application you have submitted, with its current status.">
-        {loading ? <EmptyRow message="Loading your records..." />
-          : myApplications.length === 0 ? <EmptyRow message="You have not submitted an application yet." />
-          : <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-surface-border">
-                    {['Application', 'Examination', 'Submitted', 'Status'].map(label => (
-                      <th key={label} className="pb-3 pr-4 text-left text-xs font-medium text-text-muted">{label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {myApplications.map(application => (
-                    <tr key={application.id} className="border-b border-surface-border/40">
-                      <td className="py-3 pr-4 font-mono text-xs text-brand-gold">{application.registrationNumber || application.id}</td>
-                      <td className="py-3 pr-4 text-text-primary">{application.examTitle || application.examId || '—'}</td>
-                      <td className="py-3 pr-4 text-xs text-text-muted">{formatDate(application.submittedAt || application.createdAt)}</td>
-                      <td className="py-3"><StatusBadge status={application.status} /></td>
-                    </tr>
+      <div className="bg-surface-card border border-surface-border rounded-xl p-5">
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-text-primary">Combined history</h3>
+          <p className="text-xs text-text-muted mt-0.5">Every application, result, re-evaluation, and certificate on your account, most recent first.</p>
+        </div>
+        {loading ? (
+          <p className="py-8 text-center text-xs text-text-muted">Loading your records...</p>
+        ) : historyRows.length === 0 ? (
+          <p className="py-8 text-center text-xs text-text-muted">You have no records yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-surface-border">
+                  {['Date', 'Type', 'Reference', 'Status'].map(label => (
+                    <th key={label} className="pb-3 pr-4 text-left text-xs font-medium text-text-muted">{label}</th>
                   ))}
-                </tbody>
-              </table>
-            </div>}
-      </Section>
-
-      <Section title="My results" description="Band scores published against your applications.">
-        {loading ? <EmptyRow message="Loading your records..." />
-          : myResults.length === 0 ? <EmptyRow message="No results have been published for you yet." />
-          : <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-surface-border">
-                    {['Application', 'Writing', 'Reading', 'Listening', 'Speaking', 'Overall', 'Level', 'Status'].map(label => (
-                      <th key={label} className="pb-3 pr-4 text-left text-xs font-medium text-text-muted">{label}</th>
-                    ))}
+                </tr>
+              </thead>
+              <tbody>
+                {historyRows.map((row, index) => (
+                  <tr key={index} className="border-b border-surface-border/40">
+                    <td className="py-3 pr-4 text-xs text-text-muted">{formatDate(row.date)}</td>
+                    <td className="py-3 pr-4 text-text-primary">{row.type}</td>
+                    <td className="py-3 pr-4 font-mono text-xs text-brand-gold">{row.reference}</td>
+                    <td className="py-3"><StatusBadge status={row.status} /></td>
                   </tr>
-                </thead>
-                <tbody>
-                  {myResults.map(result => (
-                    <tr key={result.id || result.applicationId} className="border-b border-surface-border/40">
-                      <td className="py-3 pr-4 font-mono text-xs text-brand-gold">{result.applicationId}</td>
-                      {['writing', 'reading', 'listening', 'speaking'].map(skill => (
-                        <td key={skill} className="py-3 pr-4 text-text-primary tabular-nums">{Number(result[skill] ?? 0).toFixed(1)}</td>
-                      ))}
-                      <td className="py-3 pr-4 font-bold text-brand-gold tabular-nums">{Number(result.average ?? result.overall ?? 0).toFixed(2)}</td>
-                      <td className="py-3 pr-4 text-text-primary">{result.cefrLevel || '—'}</td>
-                      <td className="py-3"><StatusBadge status={result.status} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>}
-      </Section>
-
-      <Section title="My re-evaluations" description="Re-evaluation requests you have submitted and their outcomes.">
-        {loading ? <EmptyRow message="Loading your records..." />
-          : myAppeals.length === 0 ? <EmptyRow message="You have not submitted a re-evaluation request." />
-          : <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-surface-border">
-                    {['Appeal', 'Application', 'Submitted', 'Status'].map(label => (
-                      <th key={label} className="pb-3 pr-4 text-left text-xs font-medium text-text-muted">{label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {myAppeals.map(appeal => (
-                    <tr key={appeal.id} className="border-b border-surface-border/40">
-                      <td className="py-3 pr-4 font-mono text-xs text-text-muted">{appeal.id}</td>
-                      <td className="py-3 pr-4 font-mono text-xs text-brand-gold">{appeal.applicationId}</td>
-                      <td className="py-3 pr-4 text-xs text-text-muted">{formatDate(appeal.submittedAt || appeal.createdAt)}</td>
-                      <td className="py-3"><StatusBadge status={appeal.status} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>}
-      </Section>
-
-      <Section title="My certificates" description="Certificates issued to you, and their validity.">
-        {loading ? <EmptyRow message="Loading your records..." />
-          : myCertificates.length === 0 ? <EmptyRow message="No certificate has been issued to you yet." />
-          : <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-surface-border">
-                    {['Certificate', 'Issued', 'Valid until', 'Status'].map(label => (
-                      <th key={label} className="pb-3 pr-4 text-left text-xs font-medium text-text-muted">{label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {myCertificates.map(certificate => (
-                    <tr key={certificate.id} className="border-b border-surface-border/40">
-                      <td className="py-3 pr-4 font-mono text-xs text-brand-gold">{certificate.certificateNumber || certificate.id}</td>
-                      <td className="py-3 pr-4 text-xs text-text-muted">{formatDate(certificate.issuedAt)}</td>
-                      <td className="py-3 pr-4 text-xs text-text-muted">{formatDate(certificate.validUntil || certificate.expiresAt)}</td>
-                      <td className="py-3"><StatusBadge status={certificate.status} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>}
-      </Section>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

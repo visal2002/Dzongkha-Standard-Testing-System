@@ -49,7 +49,7 @@ export default function SubmitAppeal() {
         setSelectedApplicationId(published[0]?.applicationId || '');
         setFeeRule(feeResponse.data);
       } catch (requestError) {
-        if (active) setError(requestError.message || 'Unable to load appeal eligibility.');
+        if (active) setError(requestError.message || 'Unable to load re-evaluation eligibility.');
       } finally {
         if (active) setLoading(false);
       }
@@ -77,24 +77,24 @@ export default function SubmitAppeal() {
         skills: selectedSkills,
         reason,
       });
-      toast.success('Appeal submitted. Payment confirmation is pending.');
+      toast.success('Re-evaluation request submitted. Payment confirmation is pending.');
       navigate('/appeals');
     } catch (requestError) {
-      toast.error(requestError.message || 'Unable to submit appeal.');
+      toast.error(requestError.message || 'Unable to submit the re-evaluation request.');
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
-    return <div className="py-24 text-center text-sm text-text-muted">Loading published results and appeal fee...</div>;
+    return <div className="py-24 text-center text-sm text-text-muted">Loading published results and re-evaluation fee...</div>;
   }
 
   if (error) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Submit Appeal" subtitle="Request re-evaluation of published scores" icon={<Scale size={18} />} />
-        <Alert variant="error" title="Appeal unavailable">{error}</Alert>
+        <PageHeader title="Submit Re-evaluation" subtitle="Request re-evaluation of published scores" icon={<Scale size={18} />} />
+        <Alert variant="error" title="Re-evaluation unavailable">{error}</Alert>
       </div>
     );
   }
@@ -102,8 +102,8 @@ export default function SubmitAppeal() {
   if (!selectedResult) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Submit Appeal" subtitle="Request re-evaluation of published scores" icon={<Scale size={18} />} />
-        <Alert variant="warning" title="No Results Available">A published result is required before an appeal can be submitted.</Alert>
+        <PageHeader title="Submit Re-evaluation" subtitle="Request re-evaluation of published scores" icon={<Scale size={18} />} />
+        <Alert variant="warning" title="No Results Available">A published result is required before a re-evaluation request can be submitted.</Alert>
       </div>
     );
   }
@@ -111,14 +111,14 @@ export default function SubmitAppeal() {
   return (
     <div className="space-y-6 w-full">
       <PageHeader
-        title="Submit Appeal"
+        title="Submit Re-evaluation"
         subtitle="Request re-evaluation of published DSTS scores"
-        breadcrumbs={[{ label: 'Appeals', href: '/appeals' }, { label: 'New Appeal' }]}
+        breadcrumbs={[{ label: 'Re-evaluation', href: '/appeals' }, { label: 'Submit New' }]}
         icon={<Scale size={18} />}
       />
 
       <Alert variant="info" title="Payment provider pending">
-        Submission creates a payment-pending appeal. It reaches the Examination Committee only after the configured payment integration confirms the exact fee.
+        Submission creates a payment-pending re-evaluation request. It reaches the Examination Committee only after the configured payment integration confirms the exact fee.
       </Alert>
 
       <div className="flex items-center gap-2">
@@ -188,7 +188,7 @@ export default function SubmitAppeal() {
             </div>
             <div className="p-4 bg-surface-bg rounded-xl border border-surface-border"><p className="text-xs font-semibold text-text-muted uppercase mb-2">Reason</p><p className="text-sm text-text-primary">{reason}</p></div>
             <div className="p-4 bg-[#D4830A]/5 border border-brand-gold/20 rounded-xl flex items-center justify-between"><span className="text-sm font-medium text-text-primary">Payment required after submission</span><span className="text-2xl font-bold text-brand-gold">{feeRule.currency} {fee.toFixed(2)}</span></div>
-            <div className="flex justify-between"><Button variant="ghost" onClick={() => setStep(1)}>Back</Button><Button loading={submitting} onClick={handleSubmit} icon={<Scale size={13} />}>Submit Appeal</Button></div>
+            <div className="flex justify-between"><Button variant="ghost" onClick={() => setStep(1)}>Back</Button><Button loading={submitting} onClick={handleSubmit} icon={<Scale size={13} />}>Submit Re-evaluation</Button></div>
           </div>
         )}
       </div>

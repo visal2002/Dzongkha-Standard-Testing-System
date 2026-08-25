@@ -138,7 +138,7 @@ export default function TestTakerDashboard() {
             </Link>
           ) : (
             <p className="text-xs text-slate-300">
-              No exam window is open for registration right now.
+              No exam window is open right now.
             </p>
           )}
         </div>
@@ -207,9 +207,9 @@ export default function TestTakerDashboard() {
             <AlertCircle size={18} />
           </div>
           <div>
-            <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider mb-0.5">Active Appeals</p>
+            <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider mb-0.5">Active Re-evaluations</p>
             <p className="text-xl font-bold text-text-primary leading-none">0</p>
-            <p className="text-[9px] text-text-muted font-medium mt-1">No active appeals</p>
+            <p className="text-[9px] text-text-muted font-medium mt-1">No active re-evaluations</p>
           </div>
         </div>
       </div>
@@ -232,7 +232,7 @@ export default function TestTakerDashboard() {
           </Link>
           <Link to="/appeals/new" className="flex items-center gap-2 p-2 rounded-lg bg-surface-bg/60 border border-surface-border/60 hover:border-orange-500/40 hover:bg-orange-500/5 text-[11px] font-semibold text-text-primary transition-all">
             <div className="w-7 h-7 rounded-md bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center text-orange-500 shrink-0"><Edit3 size={13} /></div>
-            <span className="truncate">Submit Appeal</span>
+            <span className="truncate">Submit Re-evaluation</span>
           </Link>
           <Link to="/questions/samples" className="flex items-center gap-2 p-2 rounded-lg bg-surface-bg/60 border border-surface-border/60 hover:border-teal-500/40 hover:bg-teal-500/5 text-[11px] font-semibold text-text-primary transition-all">
             <div className="w-7 h-7 rounded-md bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center text-teal-600 shrink-0"><FileText size={13} /></div>

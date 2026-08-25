@@ -130,4 +130,11 @@ export const applicationService = {
   refreshPayment: async id => (await apiClient.post(`/applications/${id}/payment-refresh`)).data,
   cancelPayment: async (id, reason) => (await apiClient.post(`/applications/${id}/payment-cancel`, { reason })).data,
   getPaymentReceipt: async id => (await apiClient.get(`/applications/${id}/payment-receipt`)).data,
+
+  /**
+   * Cancel an own application. Only allowed while it is still Submitted or Waitlisted -
+   * the backend rejects with 409 once DCDD review has started.
+   * @param {string} id
+   */
+  cancel: async id => (await apiClient.post(`/applications/${id}/cancel`)).data,
 };

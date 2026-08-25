@@ -1,6 +1,5 @@
 # Dzongjuk - Dzongkha Standard Testing System
 
-
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![React](https://img.shields.io/badge/React-19-61dafb.svg?logo=react)
 ![Vite](https://img.shields.io/badge/Vite-6-646cff.svg?logo=vite)
@@ -13,6 +12,7 @@ It provides a secure, role-based administration portal covering the examination 
 ---
 
 ## 📑 Table of Contents
+
 - [Overview](#-overview)
 - [Key Features](#-key-features)
 - [Tech Stack](#-tech-stack)
@@ -56,7 +56,7 @@ The application presents a complete internal workflow for exam administration. I
 ## 🛠 Tech Stack
 
 | Category | Technologies |
-|---|---|
+| --- | --- |
 | **Core** | React 19, Vite 6 |
 | **Routing** | React Router DOM v7 |
 | **Styling** | Tailwind CSS v4, Framer Motion v11, Lucide React |
@@ -75,6 +75,7 @@ The application presents a complete internal workflow for exam administration. I
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js 22+
 - npm or yarn
 - Docker Desktop with Docker Compose
@@ -91,6 +92,7 @@ npm run dev
 `npm start` is also an alias for the frontend development server. Keep the backend containers running while using the frontend.
 
 1. Configure and start the backend:
+
    ```bash
    cd backend
    cp .env.example .env
@@ -101,6 +103,7 @@ npm run dev
    Compose creates and migrates eight service-owned databases before starting the APIs. See `backend/database/README.md` for ownership and removal rules.
 
 2. Install frontend dependencies and enable live APIs:
+
    ```bash
    cd frontend
    npm install
@@ -109,6 +112,7 @@ npm run dev
    ```
 
 3. Start the development server:
+
    ```bash
    npm run dev
    ```
@@ -321,10 +325,11 @@ docs/
 ## 👥 Available Roles & Navigation
 
 ### System Administrator
+
 > Manages IT infrastructure, security, and platform administration.
 
 | Nav Item | Route |
-|---|---|
+| --- | --- |
 | Dashboard | `/dashboard` |
 | User Management | `/admin/users` |
 | Role Management | `/admin/roles` |
@@ -333,10 +338,11 @@ docs/
 | System Monitoring | `/admin/technical` |
 
 ### DCDD Administrator
+
 > Manages examination operations, business rules, and certifications.
 
 | Nav Item | Route |
-|---|---|
+| --- | --- |
 | Dashboard | `/dashboard` |
 | Registration → Exam Windows | `/registration/windows` |
 | Registration → Applications | `/registration/applications` |
@@ -351,16 +357,20 @@ docs/
 | **Operational Settings** | `/dcdd/operational` |
 
 ### Exam Head
+
 - Dashboard, Upload Papers, My Uploads, Sample Papers, Score Summary, Reports
 
 ### Committee Head / Member
+
 - Dashboard, Committee Setup, Band Score Entry, Score Summary, Appeals, Reports
 
 ### Chief Executive
+
 - Dashboard, Appeal Approvals, Reports
 
 ### Test Taker
-- Dashboard, Register for Exam, My Applications, My Results, Certificates, Submit Appeal, My Appeals, Sample Papers
+
+- Dashboard, My Applications, Sample Papers, My Results, Re-evaluation, Certificates, My Records
 
 ---
 
@@ -374,7 +384,7 @@ nothing hard-codes a role list against a matrix module.
 ### Enforcement points
 
 | Layer | Mechanism |
-|---|---|
+| --- | --- |
 | Routes | `PrivateRoute requiredAccess={{ module, action }}` redirects a denied request to `/dashboard` |
 | Navigation | Sidebar items declare `access: [module, action]` and hide when denied |
 | In-page controls | Pages call `canAccess(role, module, action)` to gate actions |
@@ -421,7 +431,7 @@ These accounts exist only when the frontend runs with `VITE_USE_MOCK_DATA=true` 
 Every demonstration account shares the same password: **`LocalTestOnly!2026`**
 
 | Role | CID | Email |
-|---|---|---|
+| --- | --- | --- |
 | System Admin | `11101001001` | `system.admin@demo.com` |
 | DCDD Admin | `11102002002` | `dcdd.admin@demo.com` |
 | Exam Head | `11103003003` | `exam.head@demo.com` |
@@ -440,7 +450,7 @@ Every demonstration account shares the same password: **`LocalTestOnly!2026`**
 ### Brand Color Palette
 
 | Token | Value | Usage |
-|---|---|---|
+| --- | --- | --- |
 | `--color-brand-gold` | `#F59E0B` | Primary accent — buttons, active states, highlights |
 | `--color-brand-gold-light` | `#FCD34D` | Hover states |
 | `--color-brand-gold-dark` | `#D97706` | Pressed/dark variant |

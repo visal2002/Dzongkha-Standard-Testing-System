@@ -21,7 +21,7 @@ export const OUT_OF_MATRIX_OPERATIONS = [
     key: 'declareResults',
     label: 'Declare examination results',
     roles: ['admin', 'dcdd'],
-    surface: 'Score Summary — "Declare Results"',
+    surface: 'Band Scores — "Declare Results"',
     reason:
       'Publishing results is an exam operation, not band score entry. The matrix gives DCDD ' +
       'Read on Band Scores and no role `manage`, so a strict reading would leave the action ' +
@@ -41,9 +41,14 @@ export const OUT_OF_MATRIX_OPERATIONS = [
   {
     key: 'examConfiguration',
     label: 'Exam configuration and master data',
-    roles: ['admin', 'dcdd'],
+    roles: ['dcdd'],
     surface: '/masters',
-    reason: 'Reference data - dzongkhags, venues, fee heads. No matrix module covers it.',
+    reason:
+      'Registration timeline, certificate validity and payment amount are business and ' +
+      'policy settings, not technical configuration. §5.1 sits directly ahead of the ' +
+      'Registration section, which the BRD treats as DCDD\'s domain throughout, and DCDD ' +
+      'confirmed ownership over the System Administrator, whose matrix remit is users, roles ' +
+      'and permissions.',
   },
   {
     key: 'permissionManagement',

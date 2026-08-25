@@ -554,8 +554,8 @@ export const notifications = [
   {
     id: 'NOT-003',
     userId: 'USR-004',
-    title: 'Appeal Submitted',
-    message: 'Tshering Yangzom has submitted an appeal for re-evaluation of Writing and Listening scores.',
+    title: 'Re-evaluation Submitted',
+    message: 'Tshering Yangzom has submitted a re-evaluation request for Writing and Listening scores.',
     type: 'warning',
     read: true,
     createdAt: daysAgo(5)
@@ -604,7 +604,7 @@ export const masterConfig = {
     applicationVerified: 'Dear {name}, your application has been verified. Registration Number: {regNumber}',
     applicationReturned: 'Dear {name}, your application requires corrections: {remarks}',
     resultDeclared: 'Dear {name}, the results for {examTitle} have been declared. Please log in to view your scores.',
-    appealResult: 'Dear {name}, your appeal for {examTitle} has been processed. Status: {status}'
+    appealResult: 'Dear {name}, your re-evaluation request for {examTitle} has been processed. Status: {status}'
   }
 };
 
@@ -688,7 +688,7 @@ export const systemRoles = [
     id: 'ROLE-004',
     name: 'Committee Head',
     code: 'committee_head',
-    description: 'Band score entry and appeal management',
+    description: 'Band score entry and re-evaluation management',
     userCount: 1,
     permissions: {
       scores: { create: true, read: true, update: true, delete: false },
@@ -721,7 +721,7 @@ export const systemRoles = [
     id: 'ROLE-007',
     name: 'Test Taker',
     code: 'test_taker',
-    description: 'Registration, result viewing, certificate access, and appeal submission',
+    description: 'Registration, result viewing, certificate access, and re-evaluation submission',
     userCount: 500,
     permissions: {
       registration: { create: true, read: true, update: true, delete: false },

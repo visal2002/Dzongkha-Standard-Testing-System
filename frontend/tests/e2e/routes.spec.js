@@ -210,9 +210,11 @@ const deniedRoutes = [
     // The matrix confines the System Administrator to users, roles and permissions.
     // The backend keeps a `*` wildcard as documented break-glass; the frontend must
     // not mirror it, so score entry and DCDD operational settings stay closed.
+    // Exam configuration (masters) is DCDD's business/policy config, not System
+    // Admin's technical remit, so it stays closed too.
     role: 'System Admin',
     email: 'system.admin@demo.com',
-    routes: ['/scores', '/dcdd/operational'],
+    routes: ['/scores', '/dcdd/operational', '/masters'],
   },
 ];
 

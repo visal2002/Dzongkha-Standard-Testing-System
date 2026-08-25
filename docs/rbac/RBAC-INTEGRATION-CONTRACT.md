@@ -231,7 +231,7 @@ scoped by the token subject and must not satisfy any `read_all` route above.
    the frontend: because "view own" implied a plain `read`, a Test Taker could load
    the full applicant list. Enforce the two as distinct permissions.
 
-3. **Operations outside the matrix.** `masters`, `notifications`, `dashboard`,
+3. **Operations outside the matrix.** `masters`, `dashboard`,
    technical and operational settings, result declaration and committee setup have no
    entry in the approved document. They are no longer hard-coded ad hoc: each is
    registered in `frontend/src/features/rbac/outOfMatrix.js` with its roles and its

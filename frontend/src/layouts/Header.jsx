@@ -159,8 +159,8 @@ export default function Header({ collapsed, setCollapsed, isDesktop, onOpenMobil
         <div className="flex items-center gap-2 h-8 px-3 bg-surface-bg border border-surface-border rounded-lg">
           <Search size={13} className="text-text-muted shrink-0" />
           <input
-            aria-label="Search applicants, certificates, exams"
-            placeholder="Search applicants, certificates, exams..."
+            aria-label={user?.role === 'test_taker' ? 'Search my applications, results, certificates' : 'Search applicants, certificates, exams'}
+            placeholder={user?.role === 'test_taker' ? 'Search my applications, results, certificates...' : 'Search applicants, certificates, exams...'}
             className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-muted outline-none"
           />
           <kbd className="text-[10px] text-text-muted bg-surface-border px-1.5 py-0.5 rounded font-mono">⌘K</kbd>

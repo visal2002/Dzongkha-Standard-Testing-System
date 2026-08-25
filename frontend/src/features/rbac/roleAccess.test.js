@@ -60,9 +60,9 @@ describe('every approved role resolves a sidebar', () => {
   });
 
   it('offers each personal screen only to the role scoped to its own records', () => {
-    expect(menuFor('test_taker')).toEqual(expect.arrayContaining(['My Reports', 'My Results', 'My Applications']));
+    expect(menuFor('test_taker')).toEqual(expect.arrayContaining(['My Records', 'My Results', 'My Applications']));
     MATRIX_ROLES.filter(role => role !== 'test_taker').forEach(role => {
-      expect(menuFor(role), role).not.toContain('My Reports');
+      expect(menuFor(role), role).not.toContain('My Records');
       expect(menuFor(role), role).not.toContain('My Results');
     });
   });
@@ -87,6 +87,39 @@ describe('every approved role resolves a sidebar', () => {
   it('does not offer the System Administrator DCDD-only operational settings', () => {
     expect(menuFor('admin')).not.toContain('Operational Settings');
     expect(menuFor('dcdd')).toContain('Operational Settings');
+  });
+
+  it('keeps My Applications out of the System Administrator menu', () => {
+    // `read_own` on Registration is only incidental to the `full` access level admin
+    // holds - the System Administrator has no personal registration record to view.
+    expect(menuFor('admin')).not.toContain('My Applications');
+  });
+
+  it('gives Exam Configuration to DCDD only, not the System Administrator', () => {
+    // §5.1 Masters is business/policy configuration sitting ahead of the Registration
+    // section, which the BRD treats as DCDD's domain throughout; DCDD confirmed
+    // ownership over the System Administrator, whose remit is technical.
+    expect(menuFor('admin')).not.toContain('Exam Configuration');
+    expect(menuFor('dcdd')).toContain('Exam Configuration');
+  });
+
+  it('collapses the System Administrator\'s DCDD-oversight screens into Admin Overrides', () => {
+    // BRD §5.2.1/§5.3.1 assign window configuration, verification and absentee
+    // marking to DCDD. The matrix still gives System Admin "Full" access, but that is
+    // break-glass oversight, not a day-to-day task, so its copies are collapsed into
+    // one group instead of sitting at the same level as core admin work.
+    const adminNav = navigationFor('admin');
+    const registration = adminNav.find(item => item.label === 'Registration');
+    const overrides = adminNav.find(item => item.label === 'Admin Overrides');
+
+    expect(registration.children.map(child => child.label)).not.toContain('Exam Windows');
+    expect(overrides).toBeDefined();
+    expect(overrides.children.map(child => child.label)).toEqual(['Exam Windows', 'Verification', 'Absentee']);
+
+    // DCDD keeps these as ordinary, top-level day-to-day screens.
+    expect(menuFor('dcdd')).toEqual(expect.arrayContaining(['Exam Windows', 'Verification', 'Absentee']));
+    const dcddNav = navigationFor('dcdd');
+    expect(dcddNav.find(item => item.label === 'Admin Overrides')).toBeUndefined();
   });
 });
 
@@ -134,6 +167,8 @@ describe('route guards admit exactly the roles the matrix allows', () => {
     // `*` server-side would satisfy score submission; the matrix gives admin Read.
     expect(reachable).not.toContain('/scores');
     expect(reachable).not.toContain('/dcdd/operational');
+    // §5.1 Masters is DCDD's business/policy configuration, not System Admin's remit.
+    expect(reachable).not.toContain('/masters');
   });
 
   it('gives the Exam Head the question repository but no administration', () => {
