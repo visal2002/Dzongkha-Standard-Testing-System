@@ -250,14 +250,14 @@ test('a test taker gets their own reports but not the organisation-wide analytic
 
   await page.goto('/reports/my');
   await expect(page).toHaveURL(/\/reports\/my$/);
-  await expect(page.getByRole('heading', { name: 'My Reports' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'My Records' })).toBeVisible();
 });
 
 test('the sidebar offers a test taker the personal screens and no organisation-wide ones', async ({ page }) => {
   await login(page, 'test.taker@demo.com');
 
   const sidebar = page.locator('aside');
-  await expect(sidebar.getByRole('link', { name: 'My Reports' })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'My Records' })).toBeVisible();
   await expect(sidebar.getByRole('link', { name: 'My Results' })).toBeVisible();
   await expect(sidebar.getByRole('link', { name: 'Reports', exact: true })).toHaveCount(0);
   await expect(sidebar.getByRole('link', { name: 'User Management' })).toHaveCount(0);
