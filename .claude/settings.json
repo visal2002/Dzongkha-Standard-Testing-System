@@ -26,10 +26,7 @@
       "Bash(disown)",
       "Bash(export MSYS_NO_PATHCONV=1)",
       "Bash(timeout 30 bash -c 'until curl -sf http://localhost:5000/ >/dev/null; do sleep 1; done')",
-      "Read(//c/Users/Administrator/AppData/Local/ms-playwright/**)",
-      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"identifier\":\"1005\",\"password\":\"password\"}')",
-      "Bash(node .tmp-render-pdf.mjs)",
-      "Bash(rm -f .tmp-render-pdf.mjs)"
+      "Read(//c/Users/Administrator/AppData/Local/ms-playwright/**)"
     ]
   }
 }
