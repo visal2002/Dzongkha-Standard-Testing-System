@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { MATRIX_ROLES, canAccess } from './accessMatrix';
 import { OUT_OF_MATRIX_OPERATIONS, canPerform, rolesFor } from './outOfMatrix';
 import { navigationFor } from '@/layouts/Sidebar';
+import { DASHBOARD_ROLES } from '@/pages/dashboard/Dashboard';
 
 // Transcribed from routes/index.jsx. `access` mirrors requiredAccess, `operation`
 // mirrors a requiredRoles list sourced from the out-of-matrix registry.
@@ -148,6 +149,17 @@ describe('encrypted question documents stay with the roles that hold Full access
       expect(canAccess(role, 'questions', 'secure_read'), role).toBe(true));
     ['dcdd', 'committee_head', 'chief_executive', 'committee_member', 'test_taker'].forEach(role =>
       expect(canAccess(role, 'questions', 'secure_read'), role).toBe(false));
+  });
+});
+
+describe('dashboards deny by default', () => {
+  it('gives every approved role a dashboard of its own', () => {
+    MATRIX_ROLES.forEach(role => expect(DASHBOARD_ROLES, role).toContain(role));
+  });
+
+  it('has no dashboard for an unknown role, rather than falling back to a populated one', () => {
+    expect(DASHBOARD_ROLES).not.toContain('unknown_role');
+    expect(DASHBOARD_ROLES).toHaveLength(MATRIX_ROLES.length);
   });
 });
 
