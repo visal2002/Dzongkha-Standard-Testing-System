@@ -69,7 +69,8 @@
       "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"identifier\":\"chief.executive@dzongjuk.test\",\"password\":\"password\"}')",
       "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"identifier\":\"committee.head@dzongjuk.test\",\"password\":\"password\"}')",
       "Bash(docker exec dzongjuk-postgres-1 psql -U dzongjuk -d dzongjuk_identity -t -A '-F|' -c ' *)",
-      "Bash(node .tmp-render-pdf.mjs)"
+      "Bash(node .tmp-render-pdf.mjs)",
+      "Bash(rm -f .tmp-render-pdf.mjs)"
     ]
   }
 }
