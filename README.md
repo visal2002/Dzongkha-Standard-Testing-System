@@ -436,7 +436,7 @@ Every demonstration account shares the same password: **`LocalTestOnly!2026`**
 | DCDD Admin | `11102002002` | `dcdd.admin@demo.com` |
 | Exam Head | `11103003003` | `exam.head@demo.com` |
 | Committee Head | `11104004004` | `committee.head@demo.com` |
-| Committee Member | `11107007007` | `member@dsts.bt` |
+| Committee Member | `11107007007` | `member@dsts.bt` (Pending) |
 | Chief Executive | `11105005005` | `chief.executive@demo.com` |
 | Test Taker | `11106006006` | `test.taker@demo.com` |
 | Local acceptance test taker | `11111111111` | `local.acceptance@dzongjuk.test` |

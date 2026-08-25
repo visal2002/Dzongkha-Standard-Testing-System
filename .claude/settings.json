@@ -43,7 +43,11 @@
       "Bash(node _seed_exam_head_qa.js)",
       "Bash(git -C /d/Dzongkha-Standard-Testing-System status --porcelain backend/_seed_exam_head_qa.js backend/database/migrations/)",
       "Bash(git -C /d/Dzongkha-Standard-Testing-System status --porcelain)",
-      "Bash(git -C /d/Dzongkha-Standard-Testing-System diff --stat)"
+      "Bash(git -C /d/Dzongkha-Standard-Testing-System diff --stat)",
+      "Bash(xargs grep -l -i \"candidate\")",
+      "Bash(npx jest *)",
+      "Bash(npx nest *)",
+      "Bash(npx eslint *)"
     ]
   }
 }
