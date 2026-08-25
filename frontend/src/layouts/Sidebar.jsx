@@ -9,8 +9,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FileText, CheckSquare, Users, Upload, ClipboardList,
-  Award, AlertCircle, BarChart3, Settings, Shield, ChevronDown,
-  ChevronRight, Bookmark, BookOpen, UserCog, Zap, Home, FileSearch,
+  Award, BarChart3, Settings, Shield, ChevronDown,
+  ChevronRight, Bookmark, BookOpen, UserCog, Home, FileSearch,
   GraduationCap, Scale, Wrench, Server, SlidersHorizontal, FileCog,
   ClipboardCheck, FlaskConical, ScrollText
 } from 'lucide-react';
@@ -24,17 +24,28 @@ import { rolesFor } from '@/features/rbac/outOfMatrix';
 //                             the module but not everyone's - the personal screens.
 // `roles: [...]`              an operation outside the matrix; roles come from the
 //                             out-of-matrix registry, never from a literal here.
+// `onlyRoles: [...]`          a UI-only carve-out for one role's presentation, not an
+//                             access grant - use when a role needs a different shape of
+//                             an entry other roles already see (e.g. flattened out of a
+//                             collapsible group into its own top-level item).
+// `excludeRoles: [...]`       the inverse - hides an otherwise-permitted entry from one
+//                             role because that role has its own carve-out entry instead.
+// `type: 'section'`           a non-interactive uppercase label, not a nav link.
 const NAV_CONFIG = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
   { label: 'User Management', icon: Users, to: '/admin/users', access: ['users', 'read'] },
   { label: 'Role Management', icon: UserCog, to: '/admin/roles', access: ['roles', 'read'] },
   {
-    label: 'Registration', icon: FileText, access: ['registration', 'read'], children: [
+    label: 'Registration', icon: FileText, access: ['registration', 'read'], excludeRoles: ['test_taker'], children: [
       { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'] },
       { label: 'Applications', icon: ClipboardList, to: '/registration/applications', access: ['registration', 'read_all'] },
       { label: 'My Applications', icon: ClipboardList, to: '/my-applications', access: ['registration', 'read_own'] },
     ],
   },
+  // Test Taker sees a flat section instead of the collapsible group above - they only
+  // ever have the one child, so a always-visible section reads better than a toggle.
+  { type: 'section', label: 'Registration', onlyRoles: ['test_taker'] },
+  { label: 'My Applications', icon: ClipboardList, to: '/my-applications', onlyRoles: ['test_taker'], access: ['registration', 'read_own'] },
   { label: 'Verification', icon: CheckSquare, to: '/verification', access: ['verification', 'read'] },
   { label: 'Absentee', icon: Users, to: '/attendance', access: ['attendance', 'read'] },
   {
@@ -51,17 +62,17 @@ const NAV_CONFIG = [
   { label: 'My Results', icon: FileText, to: '/scores/view', ownScoped: 'scores' },
   { label: 'Score Summary', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'] },
   { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'] },
-  { label: 'Submit Re-evaluation', icon: AlertCircle, to: '/appeals/new', access: ['appeals', 'submit_own'] },
   { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'] },
   { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read_all'] },
-  { label: 'My Reports', icon: BarChart3, to: '/reports/my', ownScoped: 'reports' },
+  { label: 'My Records', icon: BarChart3, to: '/reports/my', ownScoped: 'reports' },
   { label: 'Technical Settings', icon: Wrench, to: '/admin/technical', roles: rolesFor('technicalSettings') },
   { label: 'Exam Configuration', icon: Settings, to: '/masters', roles: rolesFor('examConfiguration') },
   { label: 'Operational Settings', icon: SlidersHorizontal, to: '/dcdd/operational', roles: rolesFor('operationalSettings') },
-  { label: 'Notifications', icon: Zap, to: '/notifications' },
 ];
 
 function permitted(item, role) {
+  if (item.onlyRoles && !item.onlyRoles.includes(role)) return false;
+  if (item.excludeRoles && item.excludeRoles.includes(role)) return false;
   if (item.roles && !item.roles.includes(role)) return false;
   if (item.ownScoped && !isOwnScoped(role, item.ownScoped)) return false;
   if (item.access && !canAccess(role, item.access[0], item.access[1])) return false;
@@ -182,7 +193,13 @@ export default function Sidebar({ collapsed, isDesktop, mobileOpen }) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">
         {navItems.map((item, i) => (
-          <NavItem key={i} item={item} collapsed={collapsed} />
+          item.type === 'section'
+            ? (!collapsed && (
+                <p key={i} className="px-3 pt-3 pb-1 text-[10px] font-bold text-text-muted uppercase tracking-wider select-none">
+                  {item.label}
+                </p>
+              ))
+            : <NavItem key={i} item={item} collapsed={collapsed} />
         ))}
       </nav>
 

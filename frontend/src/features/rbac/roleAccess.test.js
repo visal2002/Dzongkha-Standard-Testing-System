@@ -60,9 +60,9 @@ describe('every approved role resolves a sidebar', () => {
   });
 
   it('offers each personal screen only to the role scoped to its own records', () => {
-    expect(menuFor('test_taker')).toEqual(expect.arrayContaining(['My Reports', 'My Results', 'My Applications']));
+    expect(menuFor('test_taker')).toEqual(expect.arrayContaining(['My Records', 'My Results', 'My Applications']));
     MATRIX_ROLES.filter(role => role !== 'test_taker').forEach(role => {
-      expect(menuFor(role), role).not.toContain('My Reports');
+      expect(menuFor(role), role).not.toContain('My Records');
       expect(menuFor(role), role).not.toContain('My Results');
     });
   });

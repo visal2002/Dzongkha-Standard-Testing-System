@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 40 bash -c 'until curl -sf http://localhost:5001 >/dev/null; do sleep 1; done')",
+      "Bash(curl -sf http://localhost:5001)",
+      "Bash(cat /tmp/dsts-dev2.log 2>&1 | head -40)",
+      "Read(//tmp/**)",
+      "Bash(curl -s \"http://localhost:5001/src/services/auth.js\")",
+      "Bash(lsof -ti:5001 -sTCP:LISTEN)",
+      "Bash(docker --version)",
+      "Bash(curl -sf http://localhost:8000/api/v1/exams -o /dev/null -w \"gateway responded: %{http_code}\\\\n\")",
+      "Bash(echo \"started pid $!\")",
+      "Bash(node verify-real.mjs)",
+      "Bash(npx --yes markdownlint-cli2 \"README.md\")"
+    ]
+  }
+}
