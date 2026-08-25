@@ -430,15 +430,15 @@ These accounts exist only when the frontend runs with `VITE_USE_MOCK_DATA=true` 
 
 Every demonstration account shares the same password: **`LocalTestOnly!2026`**
 
-| Role | CID | Email |
+| Role | USER ID l CID | Email |
 | --- | --- | --- |
-| System Admin | `11101001001` | `system.admin@demo.com` |
-| DCDD Admin | `11102002002` | `dcdd.admin@demo.com` |
-| Exam Head | `11103003003` | `exam.head@demo.com` |
-| Committee Head | `11104004004` | `committee.head@demo.com` |
-| Committee Member | `11107007007` | `member@dsts.bt` (Pending) |
-| Chief Executive | `11105005005` | `chief.executive@demo.com` |
-| Test Taker | `11106006006` | `test.taker@demo.com` |
+| System Admin | `1001` | `system.admin@demo.com` |
+| DCDD Admin | `1002` | `dcdd.admin@demo.com` |
+| Exam Head | `1003` | `exam.head@demo.com` |
+| Committee Head | `1004` | `committee.head@demo.com` |
+| Committee Member | `1007` | `member@dsts.bt` (Pending) |
+| Chief Executive | `1005` | `chief.executive@demo.com` |
+| Test Taker | `1006` | `test.taker@demo.com` |
 
 > **Note:** The sign-in field accepts either the CID or the email address for any of these accounts. When connected to a live backend (`VITE_USE_MOCK_DATA=false`) none of these accounts exist — authenticate against real identity-service records instead.
 

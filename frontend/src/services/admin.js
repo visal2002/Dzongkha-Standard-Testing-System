@@ -40,13 +40,13 @@ const mockRole = code => ({ code, name: ROLE_LABELS[code] || code });
 // Mirrors the demo accounts in auth.js so the directory and the sign-in
 // credentials stay in step.
 let mockUsers = [
-  { id: 'USR-001', fullName: 'Sonam Dorji',    email: 'system.admin@demo.com',    cid: '11101001001', roles: [mockRole('admin')],            status: 'ACTIVE', lastLogin: null },
-  { id: 'USR-002', fullName: 'Karma Wangchuk', email: 'dcdd.admin@demo.com',      cid: '11102002002', roles: [mockRole('dcdd')],             status: 'ACTIVE', lastLogin: null },
-  { id: 'USR-003', fullName: 'Tshering Pem',   email: 'exam.head@demo.com',       cid: '11103003003', roles: [mockRole('exam_head')],        status: 'ACTIVE', lastLogin: null },
-  { id: 'USR-004', fullName: 'Ugyen Tenzin',   email: 'committee.head@demo.com',  cid: '11104004004', roles: [mockRole('committee_head')],   status: 'ACTIVE', lastLogin: null },
-  { id: 'USR-005', fullName: 'Dorji Wangmo',   email: 'chief.executive@demo.com', cid: '11105005005', roles: [mockRole('chief_executive')],  status: 'ACTIVE', lastLogin: null },
-  { id: 'USR-006', fullName: 'Pema Choden',    email: 'test.taker@demo.com',      cid: '11106006006', roles: [mockRole('test_taker')],       status: 'ACTIVE', lastLogin: null },
-  { id: 'USR-007', fullName: 'Kinley Dorji',   email: 'member@dsts.bt',           cid: '11107007007', roles: [mockRole('committee_member')], status: 'ACTIVE', lastLogin: null },
+  { id: 'USR-001', fullName: 'Sonam Dorji',    email: 'system.admin@demo.com',    cid: '1001', roles: [mockRole('admin')],            status: 'ACTIVE', lastLogin: null },
+  { id: 'USR-002', fullName: 'Karma Wangchuk', email: 'dcdd.admin@demo.com',      cid: '1002', roles: [mockRole('dcdd')],             status: 'ACTIVE', lastLogin: null },
+  { id: 'USR-003', fullName: 'Tshering Pem',   email: 'exam.head@demo.com',       cid: '1003', roles: [mockRole('exam_head')],        status: 'ACTIVE', lastLogin: null },
+  { id: 'USR-004', fullName: 'Ugyen Tenzin',   email: 'committee.head@demo.com',  cid: '1004', roles: [mockRole('committee_head')],   status: 'ACTIVE', lastLogin: null },
+  { id: 'USR-005', fullName: 'Dorji Wangmo',   email: 'chief.executive@demo.com', cid: '1005', roles: [mockRole('chief_executive')],  status: 'ACTIVE', lastLogin: null },
+  { id: 'USR-006', fullName: 'Pema Choden',    email: 'test.taker@demo.com',      cid: '1006', roles: [mockRole('test_taker')],       status: 'ACTIVE', lastLogin: null },
+  { id: 'USR-007', fullName: 'Kinley Dorji',   email: 'member@dsts.bt',           cid: '1007', roles: [mockRole('committee_member')], status: 'ACTIVE', lastLogin: null },
 ];
 
 

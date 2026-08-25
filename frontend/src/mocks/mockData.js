@@ -78,7 +78,7 @@ export const applications = [
     examId: 'EXM-2026-001',
     testTakerId: 'USR-006',
     testTakerName: 'Pema Choden',
-    cid: '11106006006',
+    cid: '1006',
     email: 'pema.choden@gmail.com',
     phone: '+975-17123456',
     dob: '1995-03-15',
@@ -263,7 +263,7 @@ export const bandScores = [
     examId: 'EXM-2025-003',
     applicationId: 'APP-2025-0001',
     testTakerName: 'Pema Choden',
-    cid: '11106006006',
+    cid: '1006',
     registrationNumber: 'DSTS-2026-01-0001',
     writing: 6.5,
     reading: 7.0,
@@ -733,11 +733,11 @@ export const systemRoles = [
 
 /* === System Users for Admin === */
 export const systemUsers = [
-  { id: 'USR-001', name: 'Sonam Dorji', email: 'system.admin@demo.com', cid: '11101001001', role: 'System Administrator', roleCode: 'admin', status: 'active', lastLogin: daysAgo(0) },
-  { id: 'USR-002', name: 'Karma Wangchuk', email: 'dcdd.admin@demo.com', cid: '11102002002', role: 'DCDD Administrator', roleCode: 'dcdd', status: 'active', lastLogin: daysAgo(0) },
-  { id: 'USR-003', name: 'Tshering Pem', email: 'exam.head@demo.com', cid: '11103003003', role: 'Exam Head', roleCode: 'exam_head', status: 'active', lastLogin: daysAgo(2) },
-  { id: 'USR-004', name: 'Ugyen Tenzin', email: 'committee.head@demo.com', cid: '11104004004', role: 'Committee Head', roleCode: 'committee_head', status: 'active', lastLogin: daysAgo(1) },
-  { id: 'USR-005', name: 'Dorji Wangmo', email: 'chief.executive@demo.com', cid: '11105005005', role: 'Chief Executive', roleCode: 'chief_executive', status: 'active', lastLogin: daysAgo(3) },
-  { id: 'USR-006', name: 'Pema Choden', email: 'test.taker@demo.com', cid: '11106006006', role: 'Test Taker', roleCode: 'test_taker', status: 'active', lastLogin: daysAgo(0) },
-  { id: 'USR-007', name: 'Kinley Dorji', email: 'member@dsts.bt', cid: '11107007007', role: 'Committee Member', roleCode: 'committee_member', status: 'active', lastLogin: daysAgo(4) }
+  { id: 'USR-001', name: 'Sonam Dorji', email: 'system.admin@demo.com', cid: '1001', role: 'System Administrator', roleCode: 'admin', status: 'active', lastLogin: daysAgo(0) },
+  { id: 'USR-002', name: 'Karma Wangchuk', email: 'dcdd.admin@demo.com', cid: '1002', role: 'DCDD Administrator', roleCode: 'dcdd', status: 'active', lastLogin: daysAgo(0) },
+  { id: 'USR-003', name: 'Tshering Pem', email: 'exam.head@demo.com', cid: '1003', role: 'Exam Head', roleCode: 'exam_head', status: 'active', lastLogin: daysAgo(2) },
+  { id: 'USR-004', name: 'Ugyen Tenzin', email: 'committee.head@demo.com', cid: '1004', role: 'Committee Head', roleCode: 'committee_head', status: 'active', lastLogin: daysAgo(1) },
+  { id: 'USR-005', name: 'Dorji Wangmo', email: 'chief.executive@demo.com', cid: '1005', role: 'Chief Executive', roleCode: 'chief_executive', status: 'active', lastLogin: daysAgo(3) },
+  { id: 'USR-006', name: 'Pema Choden', email: 'test.taker@demo.com', cid: '1006', role: 'Test Taker', roleCode: 'test_taker', status: 'active', lastLogin: daysAgo(0) },
+  { id: 'USR-007', name: 'Kinley Dorji', email: 'member@dsts.bt', cid: '1007', role: 'Committee Member', roleCode: 'committee_member', status: 'active', lastLogin: daysAgo(4) }
 ];
