@@ -21,7 +21,14 @@
       "Bash(node \"C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Dzongkha-Standard-Testing-System\\\\70995b02-4893-4243-b123-fbfd7c43e732\\\\scratchpad\\\\sidebar-check.mjs\")",
       "Bash(node sidebar-check.mjs)",
       "Bash(npx vite *)",
-      "Bash(node upload-check.mjs)"
+      "Bash(node upload-check.mjs)",
+      "Bash(git fetch *)",
+      "Bash(export MSYS_NO_PATHCONV=1)",
+      "Bash(git merge-tree *)",
+      "Bash(git merge *)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
