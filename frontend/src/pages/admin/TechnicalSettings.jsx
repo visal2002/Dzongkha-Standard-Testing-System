@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Shield, Users, Link2, MessageSquare, Mail, CreditCard, HardDrive,
+  Shield, Users, Link2, Mail, CreditCard, HardDrive,
   Lock, Database, FileText, Wrench, Zap, Globe2, Code2, QrCode,
   Languages, ShieldCheck, Monitor, ChevronDown, Save, RefreshCw,
   CheckCircle, XCircle, AlertTriangle, Eye, EyeOff, TestTube, Download,
@@ -96,7 +96,6 @@ const SECTIONS = [
   { id: 'auth',        label: 'Authentication & Security', icon: Shield },
   { id: 'users',       label: 'Users & Roles',             icon: Users },
   { id: 'ndi',         label: 'NDI & Integrations',        icon: Link2 },
-  { id: 'sms',         label: 'SMS Gateway',               icon: MessageSquare },
   { id: 'email',       label: 'Email (SMTP)',               icon: Mail },
   { id: 'payment',     label: 'Payment Gateway',           icon: CreditCard },
   { id: 'storage',     label: 'File Storage',              icon: HardDrive },
@@ -249,36 +248,6 @@ function NDISection() {
         </div>
       </div>
       <SaveBtn onClick={onSave} loading={saving} />
-    </div>
-  );
-}
-
-function SMSSection() {
-  const KEY = 'ts_sms';
-  const [cfg, setCfg] = useState(() => load(KEY, { provider: '', apiUrl: '', apiKey: '', senderId: '', enabled: true, retryFailed: true }));
-  const [saving, setSaving] = useState(false);
-  const set = (k, v) => setCfg(p => ({ ...p, [k]: v }));
-  const onSave = () => { setSaving(true); setTimeout(() => { save(KEY, cfg); setSaving(false); toast.success('SMS settings saved.'); }, 400); };
-  const onTest = () => toast('Test SMS sent!', { icon: '📱' });
-
-  return (
-    <div className="p-5 space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Provider Name"><input className={inputCls} value={cfg.provider} onChange={e => set('provider', e.target.value)} placeholder="e.g. Bhutan Telecom" /></Field>
-        <Field label="API URL"><input className={inputCls} value={cfg.apiUrl} onChange={e => set('apiUrl', e.target.value)} /></Field>
-        <Field label="API Key"><input className={inputCls} type="password" value={cfg.apiKey} onChange={e => set('apiKey', e.target.value)} /></Field>
-        <Field label="Sender ID"><input className={inputCls} value={cfg.senderId} onChange={e => set('senderId', e.target.value)} placeholder="DSTS" /></Field>
-      </div>
-      <div className="divide-y divide-surface-border border border-surface-border rounded-lg overflow-hidden">
-        <ToggleRow id="ts-sms-enable" label="Enable SMS Notifications" checked={cfg.enabled} onChange={v => set('enabled', v)} />
-        <ToggleRow id="ts-sms-retry" label="Retry Failed Notifications" checked={cfg.retryFailed} onChange={v => set('retryFailed', v)} />
-      </div>
-      <div className="flex gap-2">
-        <SaveBtn onClick={onSave} loading={saving} />
-        <button onClick={onTest} className="flex items-center gap-1.5 px-4 py-2 mt-4 rounded-lg border border-surface-border text-text-secondary text-sm hover:bg-surface-border/60 transition-colors">
-          <TestTube size={14} /> Send Test SMS
-        </button>
-      </div>
     </div>
   );
 }
@@ -719,7 +688,6 @@ const SECTION_COMPONENTS = {
   auth:        AuthSection,
   users:       UsersSection,
   ndi:         NDISection,
-  sms:         SMSSection,
   email:       EmailSection,
   payment:     PaymentSection,
   storage:     StorageSection,

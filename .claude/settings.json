@@ -19,7 +19,8 @@
       "Bash(curl -sf http://localhost:8000/api/v1/exams -o /dev/null -w \"backend gateway: %{http_code}\\\\n\")",
       "Bash(node -e \"console.log\\(require\\('@playwright/test/package.json'\\).version\\)\")",
       "Bash(node \"C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Dzongkha-Standard-Testing-System\\\\70995b02-4893-4243-b123-fbfd7c43e732\\\\scratchpad\\\\sidebar-check.mjs\")",
-      "Bash(node sidebar-check.mjs)"
+      "Bash(node sidebar-check.mjs)",
+      "Bash(npx vite *)"
     ]
   }
 }

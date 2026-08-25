@@ -6,7 +6,7 @@
 
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, X, CheckCircle, Lock } from 'lucide-react';
+import { Upload, X, CheckCircle, Lock, ShieldAlert, FileText, Circle } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import Input, { Select } from '@/components/ui/Input';
