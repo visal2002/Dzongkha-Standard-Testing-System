@@ -50,6 +50,9 @@ export default function AppealList() {
   const [data, setData] = useState([]);
   const [selected, setSelected] = useState(null);
   const [remarks, setRemarks] = useState('');
+  // Keyed by skill (e.g. 'WRITING') rather than one value for the whole request - BRD
+  // §5.6.2 Committee BR-2 requires only the selected and approved skills to be updated.
+  const [skillDecisions, setSkillDecisions] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   // Derived from the approved matrix, never from a role name. `approve` is the
@@ -59,6 +62,7 @@ export default function AppealList() {
   const canApprove = canAccess(user?.role, 'appeals', 'approve');
   const canProcess = canAccess(user?.role, 'appeals', 'process');
   const canSubmit = canAccess(user?.role, 'appeals', 'submit_own');
+  const decisionsComplete = selected?.skills?.every(skill => skillDecisions[skill]) ?? false;
 
   const load = async () => {
     setLoading(true);
@@ -78,12 +82,25 @@ export default function AppealList() {
 
   useEffect(() => { load(); }, [user?.id, user?.role]);
 
-  const handleDecision = async (id, decision) => {
+  const openAppeal = appeal => {
+    setSelected(appeal);
+    // No default decision - the Chief must explicitly choose approve or reject for
+    // every appealed skill before a decision can be submitted.
+    setSkillDecisions({});
+  };
+
+  const closeModal = () => {
+    setSelected(null);
+    setRemarks('');
+    setSkillDecisions({});
+  };
+
+  const handleDecision = async id => {
     try {
-      await appealService.decide(id, decision, remarks || `Re-evaluation ${decision.toLowerCase()} after privileged review.`);
-      toast.success(`Re-evaluation ${decision.toLowerCase()} successfully.`);
-      setSelected(null);
-      setRemarks('');
+      await appealService.decide(id, skillDecisions, remarks || 'Re-evaluation reviewed after privileged review.');
+      const anyApproved = Object.values(skillDecisions).includes('APPROVED');
+      toast.success(anyApproved ? 'Re-evaluation decision recorded; approved skills will be revised.' : 'Re-evaluation rejected for every appealed skill.');
+      closeModal();
       await load();
     } catch (requestError) {
       toast.error(requestError.message || 'Unable to record the decision.');
@@ -95,8 +112,7 @@ export default function AppealList() {
     try {
       await appealService.submitRevision(id, { recommendation: 'NO_CHANGE', remarks });
       toast.success('No-change review completed.');
-      setSelected(null);
-      setRemarks('');
+      closeModal();
       await load();
     } catch (requestError) {
       toast.error(requestError.message || 'Unable to complete committee review.');
@@ -113,7 +129,7 @@ export default function AppealList() {
     columnHelper.accessor('submittedAt', { header: 'Submitted', cell: info => <span className="text-xs text-text-muted">{new Date(info.getValue()).toLocaleDateString()}</span> }),
     columnHelper.display({
       id: 'actions',
-      cell: ({ row }) => <Button variant="ghost" size="xs" icon={<Eye size={12} />} onClick={() => setSelected(row.original)}>View</Button>,
+      cell: ({ row }) => <Button variant="ghost" size="xs" icon={<Eye size={12} />} onClick={() => openAppeal(row.original)}>View</Button>,
     }),
   ];
 
@@ -140,16 +156,13 @@ export default function AppealList() {
 
       <Modal
         isOpen={!!selected}
-        onClose={() => { setSelected(null); setRemarks(''); }}
+        onClose={closeModal}
         title={`Re-evaluation Details - ${selected?.id || ''}`}
         size="lg"
         footer={
           canApprove && selected?.status === 'PENDING_CHIEF_APPROVAL' ? (
-            <>
-              <Button variant="danger" onClick={() => handleDecision(selected.id, 'REJECTED')} icon={<XCircle size={13} />}>Reject</Button>
-              <Button variant="success" onClick={() => handleDecision(selected.id, 'APPROVED')} icon={<CheckCircle size={13} />}>Approve Revision</Button>
-            </>
-          ) : <Button variant="ghost" onClick={() => { setSelected(null); setRemarks(''); }}>Close</Button>
+            <Button variant="success" disabled={!decisionsComplete} onClick={() => handleDecision(selected.id)} icon={<CheckCircle size={13} />}>Submit Decision</Button>
+          ) : <Button variant="ghost" onClick={closeModal}>Close</Button>
         }
       >
         {selected && (
@@ -184,6 +197,42 @@ export default function AppealList() {
                 )}
               </div>
             </div>
+            {canApprove && selected.status === 'PENDING_CHIEF_APPROVAL' && (
+              <div>
+                <p className="text-xs font-semibold text-text-muted uppercase mb-2">Decision per skill</p>
+                <p className="text-xs text-text-muted mb-2">Choose Approve or Reject for every skill before submitting. Only approved skills receive the proposed score.</p>
+                <div className="space-y-2">
+                  {selected.skills.map(skill => (
+                    <div key={skill} className="flex items-center justify-between gap-3 p-2.5 bg-surface-bg border border-surface-border rounded-lg">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-text-primary">{skill}</p>
+                        <p className="text-[10px] text-text-muted">
+                          {selected.originalScores[skill]?.toFixed(3)} &rarr; {selected.proposedScores[skill]?.toFixed(3)}
+                        </p>
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <Button
+                          size="xs"
+                          variant={skillDecisions[skill] === 'APPROVED' ? 'success' : 'ghost'}
+                          icon={<CheckCircle size={12} />}
+                          onClick={() => setSkillDecisions(prev => ({ ...prev, [skill]: 'APPROVED' }))}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant={skillDecisions[skill] === 'REJECTED' ? 'danger' : 'ghost'}
+                          icon={<XCircle size={12} />}
+                          onClick={() => setSkillDecisions(prev => ({ ...prev, [skill]: 'REJECTED' }))}
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {(canProcess && selected.status === 'PENDING_COMMITTEE') || (canApprove && selected.status === 'PENDING_CHIEF_APPROVAL') ? (
               <Textarea label="Decision remarks" rows={3} value={remarks} onChange={event => setRemarks(event.target.value)} placeholder="Record the review rationale..." />
             ) : null}

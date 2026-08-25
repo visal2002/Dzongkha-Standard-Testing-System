@@ -439,7 +439,6 @@ Every demonstration account shares the same password: **`LocalTestOnly!2026`**
 | Committee Member | `11107007007` | `member@dsts.bt` (Pending) |
 | Chief Executive | `11105005005` | `chief.executive@demo.com` |
 | Test Taker | `11106006006` | `test.taker@demo.com` |
-| Local acceptance test taker | `11111111111` | `local.acceptance@dzongjuk.test` |
 
 > **Note:** The sign-in field accepts either the CID or the email address for any of these accounts. When connected to a live backend (`VITE_USE_MOCK_DATA=false`) none of these accounts exist — authenticate against real identity-service records instead.
 

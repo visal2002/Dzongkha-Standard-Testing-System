@@ -81,14 +81,14 @@ export const appealService = {
   },
 
   /**
-   * Chief Executive approves or rejects a score revision.
+   * Chief Executive approves or rejects a score revision, skill by skill.
    * @param {string} id
-   * @param {'approved'|'rejected'} decision
+   * @param {Object.<string, 'APPROVED'|'REJECTED'>} skillDecisions
    * @param {string} [remarks]
    */
-  decide: async (id, decision, remarks = '') => {
+  decide: async (id, skillDecisions, remarks = '') => {
 
-    const { data } = await apiClient.post(`/appeals/${id}/decision`, { decision: decision.toUpperCase(), remarks });
+    const { data } = await apiClient.post(`/appeals/${id}/decision`, { skillDecisions, remarks });
     return data;
   },
 };

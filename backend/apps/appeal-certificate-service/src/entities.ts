@@ -56,6 +56,9 @@ export class AppealSkillEntity {
   @Column({ type: 'numeric', precision: 8, scale: 3 }) originalScore: string;
   @Column({ type: 'numeric', precision: 8, scale: 3, nullable: true }) proposedScore: string | null;
   @Column({ type: 'numeric', precision: 8, scale: 3, nullable: true }) finalScore: string | null;
+  // BRD §5.6.2 Committee BR-2: only the selected and approved skills are updated, so the
+  // Chief's decision is recorded per skill rather than once for the whole appeal.
+  @Column({ type: 'enum', enum: AppealDecision, enumName: 'appeal_decision', nullable: true }) chiefDecision: AppealDecision | null;
 }
 
 @Entity('payments')

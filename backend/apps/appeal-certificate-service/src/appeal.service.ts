@@ -198,24 +198,34 @@ export class AppealService {
       if (appeal.status !== AppealStatus.PendingChiefApproval || appeal.committeeRecommendation !== AppealRecommendation.Revise) {
         throw new DomainException('APPEAL_DECISION_STATE_INVALID', 'Only a committee revision request may receive a Chief decision.', 409);
       }
+      const skills = await manager.findBy(AppealSkillEntity, { appealId });
+      this.validateSkillDecisions(dto, skills);
+      for (const skill of skills) skill.chiefDecision = dto.skillDecisions[skill.skill]!;
+      await manager.save(AppealSkillEntity, skills);
+      const approvedSkills = skills.filter((skill) => skill.chiefDecision === AppealDecision.Approved).map((skill) => skill.skill);
+      const rejectedSkills = skills.filter((skill) => skill.chiefDecision === AppealDecision.Rejected).map((skill) => skill.skill);
+      // A request is only fully rejected when every appealed skill is rejected; any
+      // approved skill carries the appeal into the score-update stage for that skill
+      // while the rejected skills keep their published score.
+      const decision = approvedSkills.length > 0 ? AppealDecision.Approved : AppealDecision.Rejected;
       await manager.save(AppealApprovalEntity, manager.create(AppealApprovalEntity, {
         appealId,
-        decision: dto.decision,
+        decision,
         decidedByUserId: actor.sub,
         remarks: dto.remarks,
       }));
-      appeal.chiefDecision = dto.decision;
-      if (dto.decision === AppealDecision.Approved) {
+      appeal.chiefDecision = decision;
+      if (decision === AppealDecision.Approved) {
         await this.transition(manager, appeal, AppealStatus.ApprovedPendingScoreUpdate, actor.sub, 'USER', requestId, dto.remarks);
-        await this.outbox(manager, DomainEventTypes.AppealApproved, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, scoreSheetId: appeal.scoreSheetId, scoreVersionNumber: appeal.scoreVersionNumber, testTakerUserId: appeal.testTakerUserId });
+        await this.outbox(manager, DomainEventTypes.AppealApproved, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, scoreSheetId: appeal.scoreSheetId, scoreVersionNumber: appeal.scoreVersionNumber, testTakerUserId: appeal.testTakerUserId, approvedSkills, rejectedSkills });
       } else {
         await this.transition(manager, appeal, AppealStatus.Rejected, actor.sub, 'USER', requestId, dto.remarks);
         appeal.completedAt = new Date();
         await this.transition(manager, appeal, AppealStatus.Completed, actor.sub, 'USER', requestId, 'Chief rejection completed the appeal without a score change.');
-        await this.outbox(manager, DomainEventTypes.AppealRejected, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, testTakerUserId: appeal.testTakerUserId });
+        await this.outbox(manager, DomainEventTypes.AppealRejected, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, testTakerUserId: appeal.testTakerUserId, rejectedSkills });
         await this.outbox(manager, DomainEventTypes.AppealCompleted, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, testTakerUserId: appeal.testTakerUserId, outcome: AppealDecision.Rejected });
       }
-      await this.audit(manager, 'APPEAL_CHIEF_DECIDED', appeal.id, actor.sub, requestId, { decision: dto.decision });
+      await this.audit(manager, 'APPEAL_CHIEF_DECIDED', appeal.id, actor.sub, requestId, { skillDecisions: dto.skillDecisions });
       return this.detail(manager, appeal.id);
     });
   }
@@ -236,8 +246,9 @@ export class AppealService {
       throw new DomainException('APPEAL_SCORE_UPDATE_STATE_INVALID', 'Only an approved appeal awaiting score update may be applied.', 409);
     }
     const skills = await this.dataSource.manager.findBy(AppealSkillEntity, { appealId });
+    const approvedSkills = skills.filter((skill) => skill.chiefDecision === AppealDecision.Approved);
     const changes: Record<string, number> = {};
-    for (const skill of skills) {
+    for (const skill of approvedSkills) {
       if (skill.proposedScore === null) throw new DomainException('APPEAL_PROPOSED_SCORE_MISSING', `Proposed ${skill.skill} score is unavailable.`, 409);
       changes[this.scoreProperty(skill.skill)] = Number(skill.proposedScore);
     }
@@ -261,7 +272,11 @@ export class AppealService {
         throw new DomainException('APPEAL_SCORE_UPDATE_STATE_INVALID', 'Appeal state changed before score revision completion.', 409);
       }
       const lockedSkills = await manager.findBy(AppealSkillEntity, { appealId });
-      for (const skill of lockedSkills) skill.finalScore = skill.proposedScore;
+      // Rejected skills keep their published score - only skills the Chief approved
+      // receive the committee's proposed score as their final score.
+      for (const skill of lockedSkills) {
+        if (skill.chiefDecision === AppealDecision.Approved) skill.finalScore = skill.proposedScore;
+      }
       await manager.save(AppealSkillEntity, lockedSkills);
       locked.completedAt = new Date();
       await this.transition(manager, locked, AppealStatus.Completed, actor.sub, 'USER', requestId, `Approved score revision applied as version ${revision.version}.`);
@@ -387,6 +402,20 @@ export class AppealService {
       if (proposedScore !== Number(skill.originalScore)) changed = true;
     }
     if (!changed) throw new DomainException('APPEAL_REVISION_UNCHANGED', 'A revision recommendation must change at least one appealed score.');
+  }
+
+  private validateSkillDecisions(dto: ChiefDecisionDto, skills: AppealSkillEntity[]) {
+    const decisions = dto.skillDecisions ?? {};
+    const keys = Object.keys(decisions);
+    const selected = new Set(skills.map((skill) => skill.skill));
+    if (keys.length !== selected.size || keys.some((key) => !selected.has(key as Skill))) {
+      throw new DomainException('APPEAL_SKILL_DECISIONS_INVALID', 'Skill decisions must cover exactly the appealed skills.');
+    }
+    for (const key of keys) {
+      if (!Object.values(AppealDecision).includes(decisions[key as Skill] as AppealDecision)) {
+        throw new DomainException('APPEAL_SKILL_DECISION_INVALID', `Decision for ${key} must be APPROVED or REJECTED.`);
+      }
+    }
   }
 
   private async detail(manager: EntityManager, id: string) {

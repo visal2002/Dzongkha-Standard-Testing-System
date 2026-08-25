@@ -23,7 +23,10 @@ export class CommitteeReviewDto {
 }
 
 export class ChiefDecisionDto {
-  @IsEnum(AppealDecision) decision: AppealDecision;
+  // BRD §5.6.2 Committee BR-2: the Chief decides per skill, not once for the whole
+  // request, so this carries a decision for every appealed skill rather than a single
+  // top-level value.
+  @IsObject() skillDecisions: Partial<Record<Skill, AppealDecision>>;
   @IsString() @Length(3, 4000) remarks: string;
 }
 

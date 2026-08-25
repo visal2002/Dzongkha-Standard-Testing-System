@@ -437,7 +437,7 @@ async function main() {
     body: { recommendation: 'REVISE', remarks: 'Offline re-evaluation recommends a selected-skill revision.', proposedScores: { READING: revisedScore } },
   });
   const approvedAppeal = await request<{ status: string }>(`/appeals/${revisionAppeal.id}/decision`, {
-    method: 'POST', token: chiefToken, body: { decision: 'APPROVED', remarks: 'Local acceptance approves controlled score revision application.' },
+    method: 'POST', token: chiefToken, body: { skillDecisions: { READING: 'APPROVED' }, remarks: 'Local acceptance approves controlled score revision application.' },
   });
   if (approvedAppeal.status !== 'APPROVED_PENDING_SCORE_UPDATE') throw new Error('Approved appeal skipped the controlled score revision state.');
   const appealHistory = await request<Array<{ toStatus: string }>>(`/appeals/${revisionAppeal.id}/history`, { token: testTaker.accessToken });

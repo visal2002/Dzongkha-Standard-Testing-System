@@ -47,7 +47,29 @@
       "Bash(xargs grep -l -i \"candidate\")",
       "Bash(npx jest *)",
       "Bash(npx nest *)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(npx tsc *)",
+      "Bash(docker compose *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5000/)",
+      "Bash(curl -s http://localhost:5000/)",
+      "Bash(docker exec *)",
+      "Bash(npx playwright *)",
+      "Read(//c/Users/Administrator/AppData/Local/ms-playwright/**)",
+      "Bash(node \"C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Dzongkha-Standard-Testing-System\\\\d29dee94-ca23-4b4d-b65c-62316bee8743\\\\scratchpad\\\\verify-chief-decision.mjs\")",
+      "Bash(node .tmp-verify-chief-decision.mjs)",
+      "Bash(node -e \"const bcrypt=require\\('bcryptjs'\\); bcrypt.hash\\('LocalTestOnly!2026',12\\).then\\(h=>console.log\\(h\\)\\);\")",
+      "Bash(node -e ' *)",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"identifier\":\"chief.executive@dzongjuk.test\",\"password\":\"LocalTestOnly!2026\"}')",
+      "Bash(powershell -Command \"Get-Process -Id 8696 -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,Path\")",
+      "Bash(powershell -Command \"Stop-Process -Id 8696 -Force -ErrorAction SilentlyContinue\")",
+      "Bash(npm run *)",
+      "Bash(disown)",
+      "Bash(timeout 30 bash -c 'until curl -sf http://localhost:5000/ >/dev/null; do sleep 1; done')",
+      "Bash(node -e \"const bcrypt=require\\('bcryptjs'\\); bcrypt.hash\\('password',12\\).then\\(h=>console.log\\(h\\)\\);\")",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"identifier\":\"chief.executive@dzongjuk.test\",\"password\":\"password\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"identifier\":\"committee.head@dzongjuk.test\",\"password\":\"password\"}')",
+      "Bash(docker exec dzongjuk-postgres-1 psql -U dzongjuk -d dzongjuk_identity -t -A '-F|' -c ' *)",
+      "Bash(node .tmp-render-pdf.mjs)"
     ]
   }
 }
