@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 
 export default function CommitteeSetup() {
   const { data: exams, loading: loadingExams } = useApi(examService.getAll);
-  const { data: usersData } = useApi(adminService.getUsers);
+  const { data: usersData } = useApi(adminService.getCommitteeRoster);
   const [examId, setExamId] = useState('');
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);

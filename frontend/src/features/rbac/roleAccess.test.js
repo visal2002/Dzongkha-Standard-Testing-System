@@ -109,10 +109,28 @@ describe('every approved role resolves a sidebar', () => {
 
     expect(labels.slice(0, 3)).toEqual(['Dashboard', 'Question Papers', 'Sample Papers']);
     expect(examHeadNav[3]).toMatchObject({ type: 'section' });
-    expect(labels.slice(4)).toEqual(['Registration', 'Verification', 'Absentee', 'Band Scores', 'Re-evaluation', 'Certificates', 'Reports']);
+    expect(labels.slice(4)).toEqual(['Registration', 'Verification', 'Absentee', 'Score History', 'Re-evaluation', 'Certificates', 'Reports']);
 
     // Every other role keeps NAV_CONFIG's declared order untouched.
     expect(navigationFor('dcdd').some(item => item.type === 'section' && item.label === 'Read-Only')).toBe(false);
+  });
+
+  it('separates the Committee Head\'s band-score work from its read-only modules', () => {
+    // BRD §5.5-5.6 define this role's actual job as band score entry and
+    // re-evaluation processing, plus constituting the committee (§5.5.2 BR-1).
+    // Every other module it can see is "Read" in the matrix by default, not a
+    // defined day-to-day task, so it gets the same demotion Exam Head's read-only
+    // modules get above.
+    const committeeHeadNav = navigationFor('committee_head');
+    const labels = committeeHeadNav.map(item => item.label);
+
+    expect(labels.slice(0, 5)).toEqual(['Dashboard', 'Band Score Entry', 'Score History', 'Committee', 'Re-evaluation']);
+    expect(committeeHeadNav[5]).toMatchObject({ type: 'section' });
+    expect(labels.slice(6)).toEqual(['Registration', 'Question Papers', 'Sample Papers', 'Certificates', 'Reports']);
+
+    // Only the Committee Head constitutes the committee - not the rest of it.
+    expect(menuFor('committee_member')).not.toContain('Committee');
+    expect(menuFor('chief_executive')).not.toContain('Committee');
   });
 
   it('gives Exam Configuration to DCDD only, not the System Administrator', () => {

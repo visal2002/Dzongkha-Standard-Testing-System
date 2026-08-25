@@ -85,6 +85,24 @@ export const adminService = {
     return Array.isArray(value) ? value.map(normalizeUser) : value;
   },
 
+  /**
+   * Minimal staff roster for assigning committee members - id, name and role only,
+   * no email or CID. Gated by committee.manage rather than admin.user.read, so a
+   * Committee Head can populate this picker without the full user directory that
+   * permission would otherwise expose.
+   * @returns {Promise<{id: string, name: string, role: string}[]>}
+   */
+  getCommitteeRoster: async () => {
+    if (USE_MOCK_DATA) {
+      return mockUsers
+        .filter(user => !user.roles.some(role => role.code === 'test_taker'))
+        .map(user => ({ id: user.id, name: user.fullName, role: user.roles.map(role => role.name).join(', ') }));
+    }
+
+    const { data } = await apiClient.get('/admin/users/committee-roster');
+    return data?.data ?? data ?? [];
+  },
+
   /** @param {string} id */
   getUserById: async (id) => {
     if (USE_MOCK_DATA) return normalizeUser(mockUsers.find(user => user.id === id) || null);

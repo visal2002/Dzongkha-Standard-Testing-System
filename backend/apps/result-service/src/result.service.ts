@@ -154,7 +154,14 @@ export class ResultService {
         throw new DomainException('COMMITTEE_ACCESS_REQUIRED', 'Only the assigned committee may view eligible candidates.', 403);
       }
     }
-    const candidates = await this.eligibility.find({ where: { examId }, order: { updatedAt: 'ASC' } });
+    // BRD §5.3.2 BR-3: the Exam Committee shall not be able to enter, view, or submit
+    // band scores for a test taker with an Absent status. Excluded at the query
+    // itself, matching the `status: Eligible` filter every other candidate-facing
+    // read in this file already applies (eligibleCount, certificateResults), rather
+    // than left for the frontend to hide with a disabled button - a caller of this
+    // endpoint was otherwise sent the full roster including candidates it may not
+    // view at all.
+    const candidates = await this.eligibility.find({ where: { examId, status: EligibilityStatus.Eligible }, order: { updatedAt: 'ASC' } });
     const sheets = candidates.length ? await this.sheets.findBy({ applicationId: In(candidates.map(candidate => candidate.applicationId)) }) : [];
     const sheetByApplication = new Map(sheets.map(sheet => [sheet.applicationId, sheet]));
     return candidates.map(candidate => ({ ...candidate, scoreSheet: sheetByApplication.get(candidate.applicationId) ?? null }));

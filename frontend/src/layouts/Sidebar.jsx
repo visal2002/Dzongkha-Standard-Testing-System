@@ -75,9 +75,15 @@ const NAV_CONFIG = [
   { label: 'Band Score Entry', icon: ClipboardList, to: '/scores', access: ['scores', 'submit'] },
   // ViewScores only ever loads the caller's own results; every other role gets an
   // empty table. It is a personal screen, so it is offered to own-scoped roles only -
-  // the organisation-wide view is Band Scores.
+  // the organisation-wide view is Score History.
   { label: 'My Results', icon: FileText, to: '/scores/view', ownScoped: 'scores' },
-  { label: 'Band Scores', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'] },
+  // Read-only by design - declaring results lives here too, but entering a score never
+  // does. Named "Score History" (not "Band Scores") so it doesn't read as a duplicate
+  // of Band Score Entry above.
+  { label: 'Score History', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'] },
+  // BRD §5.5.2 BR-1: constituting the committee (add/remove members, designate the
+  // Head) is an out-of-matrix operation - see 'committeeSetup' in outOfMatrix.js.
+  { label: 'Committee', icon: Users, to: '/scores/committee', roles: rolesFor('committeeSetup') },
   { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'] },
   { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'] },
   { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read_all'] },
@@ -111,6 +117,17 @@ function permitted(item, role) {
 // role's actual work instead of sitting at the same visual weight as it.
 const EXAM_HEAD_PRIMARY_LABELS = ['Dashboard', 'Question Papers', 'Sample Papers'];
 
+// BRD §5.5-5.6 define this role's actual job as band score entry and re-evaluation
+// processing. Registration, Question Papers, Sample Papers, Certificates and Reports
+// are all "Read" access by RBAC default, not a stated day-to-day need, so they get the
+// same demotion Exam Head's read-only modules get above.
+const COMMITTEE_HEAD_PRIMARY_LABELS = ['Dashboard', 'Band Score Entry', 'Score History', 'Committee', 'Re-evaluation'];
+
+const READ_ONLY_SPLIT_ROLES = {
+  exam_head: EXAM_HEAD_PRIMARY_LABELS,
+  committee_head: COMMITTEE_HEAD_PRIMARY_LABELS,
+};
+
 export function navigationFor(role) {
   const items = NAV_CONFIG.filter(item => permitted(item, role)).map(item => {
     if (!item.children) return item;
@@ -118,10 +135,11 @@ export function navigationFor(role) {
     return { ...item, children };
   }).filter(item => !item.children || item.children.length > 0);
 
-  if (role !== 'exam_head') return items;
+  const primaryLabels = READ_ONLY_SPLIT_ROLES[role];
+  if (!primaryLabels) return items;
 
-  const primary = items.filter(item => EXAM_HEAD_PRIMARY_LABELS.includes(item.label));
-  const rest = items.filter(item => !EXAM_HEAD_PRIMARY_LABELS.includes(item.label));
+  const primary = items.filter(item => primaryLabels.includes(item.label));
+  const rest = items.filter(item => !primaryLabels.includes(item.label));
   return [...primary, { type: 'section', label: 'Read-Only' }, ...rest];
 }
 

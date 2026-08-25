@@ -23,6 +23,9 @@ export class AdminController {
   constructor(private readonly admin: AdminService) {}
 
   @Permissions('admin.user.read') @Get('users') listUsers() { return this.admin.listUsers(); }
+  // Declared ahead of 'users/:id' - a literal segment must win over the param route,
+  // or Nest resolves this path as getUser({ id: 'committee-roster' }) instead.
+  @Permissions('committee.manage') @Get('users/committee-roster') listCommitteeRoster() { return this.admin.listCommitteeRosterCandidates(); }
   @Permissions('admin.user.read') @Get('users/:id') getUser(@Param('id') id: string) { return this.admin.getUser(id); }
   @Permissions('admin.user.manage') @Post('users') createUser(@Body() dto: CreateUserDto, @Req() req: Request) { return this.admin.createUser(dto, req.user!.sub, req.id); }
   @Permissions('admin.user.manage') @Put('users/:id') updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req: Request) { return this.admin.updateUser(id, dto, req.user!.sub, req.id); }

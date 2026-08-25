@@ -26,6 +26,22 @@ export class AdminService {
     return this.users.find({ order: { createdAt: 'DESC' }, take: 100 });
   }
 
+  // A minimal projection - id, name and role only, no email or CID - for screens that
+  // need to pick a staff member (constituting an exam committee) but hold committee.
+  // manage rather than admin.user.read. Returning the full listUsers() shape here
+  // would hand every caller of that narrower permission the entire user directory,
+  // test takers' personal data included, just to populate a picker.
+  async listCommitteeRosterCandidates() {
+    const users = await this.users.find({ where: { status: 'ACTIVE' }, order: { fullName: 'ASC' } });
+    return users
+      .filter((user) => user.roles.some((role) => role.code !== 'test_taker'))
+      .map((user) => ({
+        id: user.id,
+        name: user.fullName,
+        role: user.roles.filter((role) => role.code !== 'test_taker').map((role) => role.name).join(', '),
+      }));
+  }
+
   async getUser(id: string) {
     const user = await this.users.findOneBy({ id });
     if (!user) throw new DomainException('USER_NOT_FOUND', 'User not found.', 404);
