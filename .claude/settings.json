@@ -30,7 +30,20 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('.claude/settings.json','utf8'\\)\\); console.log\\('valid JSON'\\)\")",
-      "Bash(git cherry-pick *)"
+      "Bash(git cherry-pick *)",
+      "Bash(powershell -Command \"Get-Process -Name node -ErrorAction SilentlyContinue | Select-Object Id,ProcessName\")",
+      "Bash(netstat -ano)",
+      "Bash(cat \"C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\bundled-skills\\\\2.1.243\\\\7fae205043f91b2fb6944602adc89ce2\\\\run/examples/playwright.md\" 2>/dev/null || find / -path \"*/run/examples/playwright.md\" 2>/dev/null | head -5)",
+      "Read(//d//**)",
+      "Bash(chromium-cli --help)",
+      "Bash(node -e \"console.log\\(require\\('playwright'\\).chromium ? 'has chromium' : 'no'\\)\")",
+      "Bash(node -e \"console.log\\(require.resolve\\('pg'\\)\\)\" --prefix /d/Dzongkha-Standard-Testing-System/backend)",
+      "Bash(node -e \"console.log\\(require.resolve\\('pg'\\)\\); console.log\\(require.resolve\\('bcryptjs'\\)\\);\")",
+      "Bash(node \"C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Dzongkha-Standard-Testing-System\\\\52e5555d-81e9-4f26-8e20-1d14b0b025b7\\\\scratchpad\\\\seed_exam_head.js\")",
+      "Bash(node _seed_exam_head_qa.js)",
+      "Bash(git -C /d/Dzongkha-Standard-Testing-System status --porcelain backend/_seed_exam_head_qa.js backend/database/migrations/)",
+      "Bash(git -C /d/Dzongkha-Standard-Testing-System status --porcelain)",
+      "Bash(git -C /d/Dzongkha-Standard-Testing-System diff --stat)"
     ]
   }
 }

@@ -674,7 +674,7 @@ export const systemRoles = [
   },
   {
     id: 'ROLE-003',
-    name: 'Chief of Examination',
+    name: 'Exam Head',
     code: 'exam_head',
     description: 'Question paper upload and exam document management',
     userCount: 1,
@@ -735,7 +735,7 @@ export const systemRoles = [
 export const systemUsers = [
   { id: 'USR-001', name: 'Sonam Dorji', email: 'system.admin@demo.com', cid: '11101001001', role: 'System Administrator', roleCode: 'admin', status: 'active', lastLogin: daysAgo(0) },
   { id: 'USR-002', name: 'Karma Wangchuk', email: 'dcdd.admin@demo.com', cid: '11102002002', role: 'DCDD Administrator', roleCode: 'dcdd', status: 'active', lastLogin: daysAgo(0) },
-  { id: 'USR-003', name: 'Tshering Pem', email: 'exam.head@demo.com', cid: '11103003003', role: 'Chief of Examination', roleCode: 'exam_head', status: 'active', lastLogin: daysAgo(2) },
+  { id: 'USR-003', name: 'Tshering Pem', email: 'exam.head@demo.com', cid: '11103003003', role: 'Exam Head', roleCode: 'exam_head', status: 'active', lastLogin: daysAgo(2) },
   { id: 'USR-004', name: 'Ugyen Tenzin', email: 'committee.head@demo.com', cid: '11104004004', role: 'Committee Head', roleCode: 'committee_head', status: 'active', lastLogin: daysAgo(1) },
   { id: 'USR-005', name: 'Dorji Wangmo', email: 'chief.executive@demo.com', cid: '11105005005', role: 'Chief Executive', roleCode: 'chief_executive', status: 'active', lastLogin: daysAgo(3) },
   { id: 'USR-006', name: 'Pema Choden', email: 'test.taker@demo.com', cid: '11106006006', role: 'Test Taker', roleCode: 'test_taker', status: 'active', lastLogin: daysAgo(0) },

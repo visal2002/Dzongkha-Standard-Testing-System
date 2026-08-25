@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Lock, FileText, Download, Eye, Upload, Trash2, LibraryBig } from 'lucide-react';
+import { BookOpen, Lock, FileText, Download, Eye, Upload, Trash2, LibraryBig, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import PageHeader from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -23,6 +23,25 @@ const SKILL_COLORS = {
   READING: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   LISTENING: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   SPEAKING: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+};
+
+const formatWindowTime = value => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+};
+
+// BRD §5.4.2 BR-3: the Exam Head may access, view and download question papers only
+// during the scheduled exam time set at upload. The server is the binding check (it
+// rejects a download outside the window with 403 QUESTION_ACCESS_WINDOW_CLOSED) - this
+// mirrors that window in the list so the buttons reflect it before a click round-trips.
+const getAccessWindow = paper => {
+  if (!paper.accessAllowedFrom || !paper.accessAllowedUntil) return { locked: false };
+  const now = new Date();
+  const from = new Date(paper.accessAllowedFrom);
+  const until = new Date(paper.accessAllowedUntil);
+  if (now < from) return { locked: true, reason: `Opens ${formatWindowTime(paper.accessAllowedFrom) ?? 'soon'}` };
+  if (now > until) return { locked: true, reason: `Closed ${formatWindowTime(paper.accessAllowedUntil) ?? ''}`.trim() };
+  return { locked: false };
 };
 
 const saveBlob = (blob, filename, preview = false) => {
@@ -110,7 +129,7 @@ export default function QuestionPapers() {
       />
 
       <Alert variant="warning" title="Classified Documents">
-        Question papers are encrypted at rest. Access is restricted to the Chief of Examination during the examination period only.
+        Question papers are encrypted at rest. Access is restricted to the Exam Head during the examination period only.
       </Alert>
 
       {/* Stats */}
@@ -139,7 +158,9 @@ export default function QuestionPapers() {
             <p className="text-xs text-text-muted mt-1">Upload the secured PDF documents for an examination window to begin.</p>
           </div>
         )}
-        {papers.map(paper => (
+        {papers.map(paper => {
+          const accessWindow = canOpenDocument ? getAccessWindow(paper) : { locked: false };
+          return (
           <div key={paper.id} className="bg-surface-card border border-surface-border rounded-xl p-5 flex items-center gap-4">
             {/* Icon */}
             <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
@@ -168,8 +189,21 @@ export default function QuestionPapers() {
             {/* Status & Actions */}
             <div className="flex items-center gap-2 shrink-0">
               <StatusBadge status={paper.status} />
-              {canOpenDocument && <Button variant="ghost" size="xs" loading={working === `preview-${paper.id}`} icon={<Eye size={12} />} onClick={() => handleDocument(paper, true)}>View</Button>}
-              {canOpenDocument && <Button variant="ghost" size="xs" loading={working === `download-${paper.id}`} icon={<Download size={12} />} onClick={() => handleDocument(paper)}>Download</Button>}
+              {canOpenDocument && (
+                accessWindow.locked ? (
+                  <span
+                    title={`Question papers can only be opened during their scheduled access window. ${accessWindow.reason}.`}
+                    className="inline-flex items-center gap-1 text-[10px] text-text-muted px-2 py-1 rounded-md border border-surface-border"
+                  >
+                    <Clock size={11} /> {accessWindow.reason}
+                  </span>
+                ) : (
+                  <>
+                    <Button variant="ghost" size="xs" loading={working === `preview-${paper.id}`} icon={<Eye size={12} />} onClick={() => handleDocument(paper, true)}>View</Button>
+                    <Button variant="ghost" size="xs" loading={working === `download-${paper.id}`} icon={<Download size={12} />} onClick={() => handleDocument(paper)}>Download</Button>
+                  </>
+                )
+              )}
               {canManage && (
                 <>
                   {paper.status === 'READY' && (
@@ -188,7 +222,8 @@ export default function QuestionPapers() {
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       </>
       )}

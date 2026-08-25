@@ -47,9 +47,14 @@ const NAV_CONFIG = [
       // this link lives in Admin Overrides below instead of here.
       { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'], excludeRoles: ['admin'] },
       { label: 'Applications', icon: ClipboardList, to: '/registration/applications', access: ['registration', 'read_all'] },
-      // System Admin has no "own" registration record - `read_own` is only incidentally
-      // granted by the `full` access level, not a real personal screen for this role.
-      { label: 'My Applications', icon: ClipboardList, to: '/my-applications', access: ['registration', 'read_own'], excludeRoles: ['admin'] },
+      // "My Applications" deliberately has no entry here. Only the Test Taker
+      // registers for exams, and it already gets its own flat section below - every
+      // other role's `read_own` on Registration is only incidental to the `full`/
+      // `read` access level it holds for organisation-wide oversight, not a real
+      // personal screen. That incidental grant kept satisfying an `access:
+      // ['registration', 'read_own']` check here, so this leaked into System Admin's
+      // menu, then a second role's, before being caught a third time on Exam Head -
+      // removing the entry instead of excluding one more role closes it for good.
     ],
   },
   // Test Taker sees a flat section instead of the collapsible group above - they only
@@ -99,12 +104,25 @@ function permitted(item, role) {
   return true;
 }
 
+// BRD §5.4.2 defines exactly one function for the Exam Head: upload question papers
+// and answer sheets. Every other module it can see is "Read" in the matrix by
+// default, granting situational awareness across the pipeline rather than a defined
+// day-to-day task, so those are demoted into a collapsed read-only section below the
+// role's actual work instead of sitting at the same visual weight as it.
+const EXAM_HEAD_PRIMARY_LABELS = ['Dashboard', 'Question Papers', 'Sample Papers'];
+
 export function navigationFor(role) {
-  return NAV_CONFIG.filter(item => permitted(item, role)).map(item => {
+  const items = NAV_CONFIG.filter(item => permitted(item, role)).map(item => {
     if (!item.children) return item;
     const children = item.children.filter(child => permitted(child, role));
     return { ...item, children };
   }).filter(item => !item.children || item.children.length > 0);
+
+  if (role !== 'exam_head') return items;
+
+  const primary = items.filter(item => EXAM_HEAD_PRIMARY_LABELS.includes(item.label));
+  const rest = items.filter(item => !EXAM_HEAD_PRIMARY_LABELS.includes(item.label));
+  return [...primary, { type: 'section', label: 'Read-Only' }, ...rest];
 }
 
 function NavItem({ item, collapsed }) {

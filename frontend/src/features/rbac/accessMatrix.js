@@ -14,6 +14,10 @@ export const ACCESS_MODULES = [
 export const ROLE_LABELS = {
   admin: 'System Administrator',
   dcdd: 'DCDD Administrator',
+  // The BRD itself is inconsistent about this role's name - §5.4.1's process-flow
+  // lane calls it "Exam Head", §5.4.2 BR-1 calls it "DCDD Chief of Examination". This
+  // is the single label the product uses everywhere (account badge, dashboard,
+  // notifications, audit trail) so that ambiguity does not carry into the UI.
   exam_head: 'Exam Head',
   committee_head: 'Committee Head',
   committee_member: 'Committee Member',

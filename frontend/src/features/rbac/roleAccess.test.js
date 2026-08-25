@@ -61,9 +61,18 @@ describe('every approved role resolves a sidebar', () => {
 
   it('offers each personal screen only to the role scoped to its own records', () => {
     expect(menuFor('test_taker')).toEqual(expect.arrayContaining(['My Records', 'My Results', 'My Applications']));
+    // `read_own` on Registration is only incidental to the `full`/`read` access level
+    // every staff role holds for organisation-wide oversight - none of them has a
+    // personal registration record of its own. Only the Test Taker registers for
+    // exams, so it is the only role with a real "My Applications" screen. This was
+    // fixed per-role (System Admin, then a second role) before being caught a third
+    // time on Exam Head; the entry was removed from the shared Registration menu
+    // entirely rather than excluding one more role, so this holds for every role
+    // covered by the matrix, present and future.
     MATRIX_ROLES.filter(role => role !== 'test_taker').forEach(role => {
       expect(menuFor(role), role).not.toContain('My Records');
       expect(menuFor(role), role).not.toContain('My Results');
+      expect(menuFor(role), role).not.toContain('My Applications');
     });
   });
 
@@ -89,10 +98,21 @@ describe('every approved role resolves a sidebar', () => {
     expect(menuFor('dcdd')).toContain('Operational Settings');
   });
 
-  it('keeps My Applications out of the System Administrator menu', () => {
-    // `read_own` on Registration is only incidental to the `full` access level admin
-    // holds - the System Administrator has no personal registration record to view.
-    expect(menuFor('admin')).not.toContain('My Applications');
+  it('separates the Exam Head\'s question-paper work from its read-only modules', () => {
+    // BRD §5.4.2 defines exactly one function for this role - uploading question
+    // papers and answer sheets. Every other module it can see is "Read" in the
+    // matrix by default, not a defined day-to-day task, so it is collapsed into one
+    // secondary section beneath the role's actual work instead of sitting at the
+    // same visual weight as it.
+    const examHeadNav = navigationFor('exam_head');
+    const labels = examHeadNav.map(item => item.label);
+
+    expect(labels.slice(0, 3)).toEqual(['Dashboard', 'Question Papers', 'Sample Papers']);
+    expect(examHeadNav[3]).toMatchObject({ type: 'section' });
+    expect(labels.slice(4)).toEqual(['Registration', 'Verification', 'Absentee', 'Band Scores', 'Re-evaluation', 'Certificates', 'Reports']);
+
+    // Every other role keeps NAV_CONFIG's declared order untouched.
+    expect(navigationFor('dcdd').some(item => item.type === 'section' && item.label === 'Read-Only')).toBe(false);
   });
 
   it('gives Exam Configuration to DCDD only, not the System Administrator', () => {

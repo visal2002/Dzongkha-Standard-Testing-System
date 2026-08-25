@@ -41,7 +41,7 @@ export default function ExamHeadDashboard() {
         className="relative overflow-hidden bg-gradient-to-r from-[#1B2A4A] to-[#2A1B3A] border border-brand-gold/20 rounded-2xl p-6"
       >
         <div className="relative">
-          <p className="text-xs text-brand-gold font-medium uppercase tracking-wider mb-1">Chief of Examination</p>
+          <p className="text-xs text-brand-gold font-medium uppercase tracking-wider mb-1">Exam Head</p>
           <h1 className="text-xl font-bold text-white mb-1">Welcome, {user?.name?.split(' ')[0]}!</h1>
           <p className="text-sm text-[#94A3C8]">Manage question papers and oversee examination documents securely.</p>
         </div>
