@@ -53,6 +53,8 @@ export class CreateCertificateTemplateDto {
   @IsString() @Length(10, 2000) declarationText: string;
   @IsString() @Length(2, 180) signatoryName: string;
   @IsString() @Length(2, 180) signatoryTitle: string;
+  @IsString() @Length(2, 180) chiefExecutiveName: string;
+  @IsString() @Length(2, 180) chiefExecutiveTitle: string;
   @IsEnum(CertificatePaperSize) paperSize: CertificatePaperSize;
   @IsEnum(CertificateOrientation) orientation: CertificateOrientation;
   @IsInt() @Min(1) @Max(240) validityMonths: number;

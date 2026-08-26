@@ -97,15 +97,15 @@ export class AssessmentService {
     return this.metadata(paper, await this.documents.findBy({ questionPaperId: id }));
   }
 
-  async download(id: string, type: DocumentType, actor: AccessClaims, requestId: string, sample = false) {
+  async download(id: string, type: DocumentType, actor: AccessClaims | undefined, requestId: string, sample = false) {
     const paper = await this.getPaper(id);
     if (sample) {
       if (paper.status !== QuestionPaperStatus.SamplePublished) throw new DomainException('SAMPLE_NOT_PUBLISHED', 'This sample paper has not been published.', 404);
     } else {
-      await this.assertAssigned(paper.examId, actor);
+      await this.assertAssigned(paper.examId, actor!);
       const now = new Date();
       if (now < paper.accessAllowedFrom || now > paper.accessAllowedUntil) {
-        await this.dataSource.transaction((manager) => this.audit(manager, id, null, actor.sub, 'DOCUMENT_ACCESS_DENIED_WINDOW', requestId, { type }));
+        await this.dataSource.transaction((manager) => this.audit(manager, id, null, actor!.sub, 'DOCUMENT_ACCESS_DENIED_WINDOW', requestId, { type }));
         throw new DomainException('QUESTION_ACCESS_WINDOW_CLOSED', 'The examination document is outside its approved access window.', 403);
       }
     }
@@ -114,7 +114,9 @@ export class AssessmentService {
     const ciphertext = await this.storage.get(document.objectKey);
     const plaintext = this.encryption.decrypt(ciphertext, document);
     const action = sample ? 'SAMPLE_DOCUMENT_DOWNLOADED' : 'CLASSIFIED_DOCUMENT_DOWNLOADED';
-    await this.dataSource.transaction((manager) => this.audit(manager, id, document.id, actor.sub, action, requestId, { type }));
+    // The public sample-paper endpoint has no authenticated actor - the audit trail
+    // records that explicitly rather than crashing on a missing user.
+    await this.dataSource.transaction((manager) => this.audit(manager, id, document.id, actor?.sub ?? null, action, requestId, { type }));
     return { buffer: plaintext, filename: document.originalName, mimeType: document.mimeType };
   }
 
@@ -218,7 +220,7 @@ export class AssessmentService {
     };
   }
 
-  private audit(manager: EntityManager, questionPaperId: string, documentId: string | null, actorUserId: string, action: string, requestId: string, safeData: Record<string, unknown>) {
+  private audit(manager: EntityManager, questionPaperId: string, documentId: string | null, actorUserId: string | null, action: string, requestId: string, safeData: Record<string, unknown>) {
     return manager.save(AccessAuditEntity, manager.create(AccessAuditEntity, { questionPaperId, documentId, actorUserId, action, requestId, safeData }));
   }
 

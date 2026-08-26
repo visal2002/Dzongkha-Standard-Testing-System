@@ -99,18 +99,22 @@ const buildService = ({
   documents = makeRepo<QuestionDocumentEntity>(),
   declarations = makeRepo<ResultDeclarationProjectionEntity>(),
   assignments = makeRepo<ExamContentAssignmentEntity>(),
+  encryption = makeEncryption(),
+  storage = makeStorage(),
 }: {
   manager?: EntityManager;
   papers?: Repository<QuestionPaperEntity>;
   documents?: Repository<QuestionDocumentEntity>;
   declarations?: Repository<ResultDeclarationProjectionEntity>;
   assignments?: Repository<ExamContentAssignmentEntity>;
+  encryption?: EncryptionService;
+  storage?: ObjectStorageService;
 } = {}): AssessmentService =>
   new AssessmentService(
     makeDataSource(manager),
-    makeEncryption(),
+    encryption,
     makeScanner(),
-    makeStorage(),
+    storage,
     new ConfigService({ MAX_ASSESSMENT_FILE_BYTES: 52_428_800 }),
     papers,
     documents,
@@ -211,6 +215,61 @@ describe('AssessmentService — Download access window enforcement (BRD §2.4)',
     const service = buildService({ papers });
     await expect(service.download(paper.id, DocumentType.QuestionPaper, actor, 'req-6'))
       .rejects.toMatchObject({ response: { code: 'QUESTION_ACCESS_WINDOW_CLOSED' } });
+  });
+
+  // Regression: the public /sample-papers/:id/:type route has no authenticated actor.
+  // download() used to read actor.sub unconditionally when writing the audit event,
+  // crashing every sample-paper download with "Cannot read properties of undefined
+  // (reading 'sub')" before this fix.
+  it('downloads a published sample with no authenticated actor', async () => {
+    const encryption = makeEncryption();
+    const plaintext = Buffer.from('%PDF-1.4 sample content');
+    const encrypted = encryption.encrypt(plaintext);
+
+    const paper = Object.assign(new QuestionPaperEntity(), {
+      id: uuid(),
+      examId: uuid(),
+      status: QuestionPaperStatus.SamplePublished,
+    });
+    const document = Object.assign(new QuestionDocumentEntity(), {
+      id: uuid(),
+      questionPaperId: paper.id,
+      documentType: DocumentType.QuestionPaper,
+      objectKey: 'classified/sample.bin',
+      originalName: 'sample.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: String(plaintext.length),
+      sha256: 'a'.repeat(64),
+      classification: 'EXAM_CLASSIFIED',
+      scanStatus: 'CLEAN',
+      cipher: 'AES-256-GCM',
+      dataIv: encrypted.dataIv,
+      dataAuthTag: encrypted.dataAuthTag,
+      wrappedKey: encrypted.wrappedKey,
+      wrapIv: encrypted.wrapIv,
+      wrapAuthTag: encrypted.wrapAuthTag,
+      keyVersion: encrypted.keyVersion,
+    });
+
+    const auditedActorIds: Array<string | null> = [];
+    const manager = makeManager({
+      save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => {
+        if ((data as { action?: string })?.action) auditedActorIds.push((data as { actorUserId: string | null }).actorUserId);
+        return { ...(data as Record<string, unknown>), id: uuid() };
+      }),
+    });
+    const storage = { get: jest.fn().mockResolvedValue(encrypted.ciphertext), put: jest.fn(), delete: jest.fn() } as unknown as ObjectStorageService;
+
+    const service = buildService({
+      manager, encryption, storage,
+      papers: makeRepo([paper]),
+      documents: makeRepo([document]),
+    });
+
+    const result = await service.download(paper.id, DocumentType.QuestionPaper, undefined, 'req-public', true);
+
+    expect(result.buffer.equals(plaintext)).toBe(true);
+    expect(auditedActorIds).toEqual([null]);
   });
 });
 

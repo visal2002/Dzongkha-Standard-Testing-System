@@ -171,6 +171,8 @@ export class CertificateTemplateEntity {
   @Column({ type: 'text' }) declarationText: string;
   @Column({ length: 180 }) signatoryName: string;
   @Column({ length: 180 }) signatoryTitle: string;
+  @Column({ length: 180 }) chiefExecutiveName: string;
+  @Column({ length: 180 }) chiefExecutiveTitle: string;
   @Column({ type: 'enum', enum: CertificatePaperSize, enumName: 'certificate_paper_size' }) paperSize: CertificatePaperSize;
   @Column({ type: 'enum', enum: CertificateOrientation, enumName: 'certificate_orientation' }) orientation: CertificateOrientation;
   @Column({ type: 'smallint' }) validityMonths: number;
@@ -214,6 +216,9 @@ export class CertificateEntity {
   @Column() templateVersionNumber: number;
   @Column({ length: 180 }) holderName: string;
   @Column({ length: 64 }) registrationNumber: string;
+  @Column({ type: 'varchar', length: 64, nullable: true }) cid: string | null;
+  @Column({ type: 'timestamptz', nullable: true }) dateOfBirth: Date | null;
+  @Column({ type: 'timestamptz', nullable: true }) examDate: Date | null;
   @Column({ type: 'jsonb' }) scoreSnapshot: Record<string, unknown>;
   @Column({ length: 80 }) bandLabel: string;
   @Column({ type: 'varchar', length: 40, nullable: true }) cefrLevel: string | null;

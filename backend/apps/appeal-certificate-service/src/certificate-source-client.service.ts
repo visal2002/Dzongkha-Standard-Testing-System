@@ -15,6 +15,10 @@ export interface CertificateResultSource {
 }
 export interface CertificateProfileSource {
   applicationId: string; examId: string; testTakerUserId: string; registrationNumber: string; fullName: string;
+  cid: string; dateOfBirth: string;
+}
+export interface CertificateExamSource {
+  id: string; examDate: string;
 }
 
 @Injectable()
@@ -35,6 +39,10 @@ export class CertificateSourceClientService {
 
   profile(applicationId: string) {
     return this.get<CertificateProfileSource>(`${this.registrationUrl}/applications/internal/${applicationId}/certificate-profile`);
+  }
+
+  exam(examId: string) {
+    return this.get<CertificateExamSource>(`${this.registrationUrl}/exams/${examId}`);
   }
 
   private async get<T>(url: string): Promise<T> {

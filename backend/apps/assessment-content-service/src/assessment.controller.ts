@@ -106,7 +106,8 @@ export class SamplePapersController {
   @Get(':id/:type')
   async download(@Param('id') id: string, @Param('type') type: string, @Req() request: Request, @Res() response: Response) {
     const documentType = type === 'answer' ? DocumentType.AnswerSheet : DocumentType.QuestionPaper;
-    const document = await this.service.download(id, documentType, request.user!, request.id, true);
+    // This route is @Public() - there is no authenticated actor to assert non-null here.
+    const document = await this.service.download(id, documentType, request.user, request.id, true);
     response.setHeader('content-type', document.mimeType);
     response.setHeader('content-disposition', `attachment; filename="${document.filename.replace(/["\r\n]/g, '_')}"`);
     response.setHeader('cache-control', 'private, max-age=300');
