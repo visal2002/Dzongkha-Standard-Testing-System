@@ -12,7 +12,8 @@ import { z } from 'zod';
 import { FileText, Plus, Calendar, MapPin, CreditCard, Download, ExternalLink, RefreshCw, XCircle, Edit2, User, Mail, Phone, Save, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import PageHeader from '@/components/ui/PageHeader';
-import Button, { Input, Select } from '@/components/ui/Button';
+import Button from '@/components/ui/Button';
+import Input, { Select } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import { StatusBadge } from '@/components/ui/Badge';
 import { applicationService } from '@/services/applications';
@@ -158,6 +159,7 @@ export default function MyApplications() {
   const [paymentBusy, setPaymentBusy] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  const [resubmittingId, setResubmittingId] = useState(null);
 
   const reloadApplications = async () => {
     const response = await applicationService.getByUser(user?.id);
