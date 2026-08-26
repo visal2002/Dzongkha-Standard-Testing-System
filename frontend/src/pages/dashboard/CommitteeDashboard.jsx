@@ -125,12 +125,19 @@ export default function CommitteeDashboard() {
         </div>
       </motion.div>
 
+      {/* Alerts */}
+      {!isHead && pendingCommitteeCount > 0 && (
+        <Alert variant="warning" title="Newly routed for committee review">
+          {pendingCommitteeCount} re-evaluation request{pendingCommitteeCount === 1 ? '' : 's'} cleared payment and now await{pendingCommitteeCount === 1 ? 's' : ''} the Committee Head's review.
+        </Alert>
+      )}
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Scores Entered" value={bandScores?.length ?? 0} icon={<ClipboardList size={18} />} color="gold" />
         <StatCard title="Published" value={bandScores?.filter(b => b.status === 'published').length ?? 0} icon={<CheckCircle size={18} />} color="success" />
         <StatCard title="Committee Members" value={committeeMembers.length} icon={<Users size={18} />} color="info" />
-        {isHead && <StatCard title="Pending Appeals" value={appeals?.filter(a => a.status === 'pending_committee').length ?? 0} icon={<Scale size={18} />} color="warning" />}
+        <StatCard title={isHead ? 'Pending Appeals' : 'Pending Committee Review'} value={pendingCommitteeCount} icon={<Scale size={18} />} color="warning" />
       </div>
 
       <div className="grid grid-cols-1 gap-4">
@@ -157,7 +164,7 @@ export default function CommitteeDashboard() {
         <div className="bg-surface-card border border-surface-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-text-primary">Recent Band Scores</h3>
-            <Link to="/scores/view" className="text-xs text-brand-gold hover:text-[#FCD34D] flex items-center gap-1">View all <ArrowRight size={12} /></Link>
+            <Link to={scoresLink} className="text-xs text-brand-gold hover:text-[#FCD34D] flex items-center gap-1">View all <ArrowRight size={12} /></Link>
           </div>
           <div className="space-y-2.5">
             {(bandScores || []).length === 0 && (
@@ -201,6 +208,36 @@ export default function CommitteeDashboard() {
                 <p className="text-xs font-medium text-text-primary">{m.name}</p>
                 <p className="text-[10px] text-text-muted">{m.role}</p>
               </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Review calendar - real exam-window dates, not a fabricated meeting schedule.
+          See the `upcomingExamDates` comment above for why. */}
+      <div className="bg-surface-card border border-surface-border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-text-primary">Upcoming Examination Dates</h3>
+          <p className="text-xs text-text-muted">Band-score review and re-evaluation activity follows these dates</p>
+        </div>
+        <div className="space-y-2.5">
+          {upcomingExamDates.length === 0 && (
+            <p className="text-xs text-text-muted py-4 text-center">No upcoming examination dates are scheduled yet.</p>
+          )}
+          {upcomingExamDates.map(window => (
+            <div key={window.id} className="flex items-center justify-between gap-3 py-2 border-b border-surface-border/40 last:border-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                  <CalendarDays size={14} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-text-primary truncate">{window.title}</p>
+                  <p className="text-[10px] text-text-muted">{window.code}</p>
+                </div>
+              </div>
+              <p className="text-xs font-semibold text-text-secondary shrink-0">
+                {new Date(window.examDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+              </p>
             </div>
           ))}
         </div>

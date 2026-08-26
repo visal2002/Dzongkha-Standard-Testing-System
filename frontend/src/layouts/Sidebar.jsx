@@ -123,19 +123,35 @@ const NAV_CONFIG = [
   // does not offer, so this gets its own dedicated screen rather than a relabel.
   { label: 'View Band Scores', icon: BarChart3, to: '/scores/band-scores', onlyRoles: ['committee_member'] },
   // BRD §5.5.2 BR-1: constituting the committee (add/remove members, designate the
-  // Head) is an out-of-matrix operation - see 'committeeSetup' in outOfMatrix.js.
-  // DCDD holds this operation too but it is left off DCDD's own six-item menu under
-  // the same v2 lean-scope decision - the grant stays real, just unsurfaced here.
-  { label: 'Committee', icon: Users, to: '/scores/committee', roles: rolesFor('committeeSetup'), excludeRoles: ['dcdd'] },
-  { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_member'] },
+  // Head) is an out-of-matrix operation - see 'committeeSetup' in outOfMatrix.js. The
+  // Committee Head held this too, until the v2 Committee Head sidebar decision
+  // withdrew it - a Committee Head assembling and designating themselves does not
+  // make organisational sense. DCDD is left holding it as an unsurfaced grant pending
+  // an explicit ownership ratification (see outOfMatrix.js); no role currently has a
+  // sidebar entry for it, so none is declared here rather than pointing at a screen
+  // nobody can reach.
+  { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_member', 'committee_head'] },
   { label: 'Revision Approvals Queue', icon: Scale, to: '/appeals', onlyRoles: ['chief_executive'] },
   // Same route as the generic 'Re-evaluation' entry above - the approved matrix
   // gives Committee Member View only (not Process), so the page renders read-only
   // for this role; see AppealList.jsx's canProcess/canApprove checks. A dedicated
   // label keeps that distinction visible in the sidebar itself, not just on the page.
   { label: 'Re-evaluation Queue', icon: Scale, to: '/appeals', onlyRoles: ['committee_member'] },
-  { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'] },
-  { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read_all'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_member'] },
+  // v2 Committee Head sidebar decision: BRD §5.6.1-5.6.2 give this role exactly two
+  // re-evaluation functions - review a committee-forwarded appeal and record a
+  // revision recommendation (this screen), and track the real approval status of
+  // requests it has already submitted (Revision Status Tracker below). The shared
+  // "Re-evaluation" list mixes in the Chief's own approve/reject queue and every
+  // other role's read-only view, so this gets the same dedicated-label treatment
+  // Chief Executive and Committee Member already get above.
+  { label: 'Re-evaluation Panel', icon: Scale, to: '/appeals', onlyRoles: ['committee_head'] },
+  // New screen, not a relabel: BRD §5.6.2 Committee BR-2 requires the Committee Head
+  // to see the real Pending/Approved/Rejected status of every revision request it has
+  // submitted, with an edit path scoped to only the specific skill the Chief actually
+  // approved. See RevisionTracker.jsx.
+  { label: 'Revision Status Tracker', icon: ClipboardCheck, to: '/appeals/revisions', onlyRoles: ['committee_head'] },
+  { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_head'] },
+  { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read_all'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_member', 'committee_head'] },
   { label: 'Executive Reports', icon: BarChart3, to: '/reports', onlyRoles: ['chief_executive'] },
   { label: 'Reports & Analytics', icon: BarChart3, to: '/reports', onlyRoles: ['dcdd'] },
   { label: 'My Records', icon: BarChart3, to: '/reports/my', ownScoped: 'reports' },
@@ -151,33 +167,23 @@ function permitted(item, role) {
 }
 
 // BRD §5.5-5.6 define this role's actual job as band score entry and re-evaluation
-// processing. Registration, Question Papers, Sample Papers, Certificates and Reports
-// are all "Read" access by RBAC default, not a stated day-to-day need, so they are
-// demoted into a collapsed read-only section below the role's actual work instead of
-// sitting at the same visual weight as it. The Exam Head used to get the same
-// treatment, but the v2 sidebar decision replaced that with a strict four-item menu
-// (Dashboard, Question Bank, Exam Day Downloads, Released Sample Papers) that drops
-// its read-only modules from the sidebar entirely instead of merely demoting them -
-// see the `excludeRoles: [..., 'exam_head']` entries above.
-const COMMITTEE_HEAD_PRIMARY_LABELS = ['Dashboard', 'Band Score Entry', 'Score History', 'Committee', 'Re-evaluation'];
-
-const READ_ONLY_SPLIT_ROLES = {
-  committee_head: COMMITTEE_HEAD_PRIMARY_LABELS,
-};
-
+// processing. Registration, Question Papers, Sample Papers, Score History,
+// Certificates and Reports are all "Read" access by RBAC default, not a stated
+// day-to-day need. This role used to get those demoted into a collapsed read-only
+// section below its actual work; the v2 Committee Head sidebar decision replaced that
+// with a strict four-item menu (Dashboard, Band Score Entry, Re-evaluation Panel,
+// Revision Status Tracker) that drops its read-only modules from the sidebar entirely
+// instead of merely demoting them - see the `excludeRoles: [..., 'committee_head']`
+// entries above, the same treatment Exam Head, Committee Member, Chief Executive,
+// DCDD and System Administrator already carry. Every role now resolves its menu from
+// flat `excludeRoles`/`onlyRoles` carve-outs, so `navigationFor` no longer needs a
+// per-role section-splitting pass.
 export function navigationFor(role) {
-  const items = NAV_CONFIG.filter(item => permitted(item, role)).map(item => {
+  return NAV_CONFIG.filter(item => permitted(item, role)).map(item => {
     if (!item.children) return item;
     const children = item.children.filter(child => permitted(child, role));
     return { ...item, children };
   }).filter(item => !item.children || item.children.length > 0);
-
-  const primaryLabels = READ_ONLY_SPLIT_ROLES[role];
-  if (!primaryLabels) return items;
-
-  const primary = items.filter(item => primaryLabels.includes(item.label));
-  const rest = items.filter(item => !primaryLabels.includes(item.label));
-  return [...primary, { type: 'section', label: 'Read-Only' }, ...rest];
 }
 
 function NavItem({ item, collapsed }) {
