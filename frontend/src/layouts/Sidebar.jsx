@@ -64,10 +64,12 @@ const NAV_CONFIG = [
       // removing the entry instead of excluding one more role closes it for good.
     ],
   },
-  // Test Taker sees a flat section instead of the collapsible group above - they only
-  // ever have the one child, so a always-visible section reads better than a toggle.
-  { type: 'section', label: 'Registration', onlyRoles: ['test_taker'] },
-  { label: 'My Applications', icon: ClipboardList, to: '/my-applications', onlyRoles: ['test_taker'], access: ['registration', 'read_own'] },
+  // v2 Test Taker sidebar decision: registration and profile editing are the same
+  // underlying record for this role (BRD §5.2.1-§5.2.2), so they get one merged
+  // screen and one sidebar entry instead of the section-plus-child treatment this
+  // used to get - the same flattening every other v2 role's menu already applies.
+  // See MyApplications.jsx for the cancel/resubmit/profile-edit implementation.
+  { label: 'Register / My Profile', icon: ClipboardList, to: '/my-applications', onlyRoles: ['test_taker'], access: ['registration', 'read_own'] },
   // DCDD sees its own day-to-day work as flat, ungrouped top-level items instead of
   // the collapsible Registration group above - v2 sidebar decision, six-item strict
   // least-privilege menu. It reuses the same routes as the entries it replaces, so
@@ -88,7 +90,7 @@ const NAV_CONFIG = [
       { label: 'Question Papers', icon: FileText, to: '/questions', access: ['questions', 'read'] },
     ],
   },
-  { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_head'] },
+  { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_head', 'test_taker'] },
   // v2 sidebar decision: BRD §5.4.2 defines exactly one function for this role -
   // uploading question papers and answer sheets (BR-1/BR-2) - so it gets a scoped
   // "Question Bank" upload workspace instead of the shared group above, which mixes
@@ -151,10 +153,17 @@ const NAV_CONFIG = [
   // approved. See RevisionTracker.jsx.
   { label: 'Revision Status Tracker', icon: ClipboardCheck, to: '/appeals/revisions', onlyRoles: ['committee_head'] },
   { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_head'] },
+  // v2 Test Taker sidebar decision: "Sample Question Papers" is the same route and
+  // grant as the shared "Sample Papers" entry above, but placed last for this role -
+  // it is the public post-results archive, not part of the exam-cycle workflow the
+  // items above it cover, so it reads better as the final item. "My Reports" is
+  // dropped entirely for this role: the six-item menu (Dashboard, Register / My
+  // Profile, My Results, Re-evaluation, Certificates, Sample Question Papers) is the
+  // complete surface for this role now, not a seventh reporting screen.
+  { label: 'Sample Question Papers', icon: FileSearch, to: '/questions/samples', onlyRoles: ['test_taker'], access: ['questions', 'sample'] },
   { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read_all'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_member', 'committee_head'] },
   { label: 'Executive Reports', icon: BarChart3, to: '/reports', onlyRoles: ['chief_executive'] },
   { label: 'Reports & Analytics', icon: BarChart3, to: '/reports', onlyRoles: ['dcdd'] },
-  { label: 'My Records', icon: BarChart3, to: '/reports/my', ownScoped: 'reports' },
 ];
 
 function permitted(item, role) {

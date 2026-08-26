@@ -67,20 +67,22 @@ describe('every approved role resolves a sidebar', () => {
   });
 
   it('offers each personal screen only to the role scoped to its own records', () => {
-    expect(menuFor('test_taker')).toEqual(expect.arrayContaining(['My Records', 'My Results', 'My Applications']));
+    expect(menuFor('test_taker')).toEqual(expect.arrayContaining(['My Results', 'Register / My Profile']));
     // `read_own` on Registration is only incidental to the `full`/`read` access level
     // every staff role holds for organisation-wide oversight - none of them has a
     // personal registration record of its own. Only the Test Taker registers for
-    // exams, so it is the only role with a real "My Applications" screen. This was
-    // fixed per-role (System Admin, then a second role) before being caught a third
-    // time on Exam Head; the entry was removed from the shared Registration menu
-    // entirely rather than excluding one more role, so this holds for every role
-    // covered by the matrix, present and future.
+    // exams, so it is the only role with a real "Register / My Profile" screen. This
+    // was fixed per-role (System Admin, then a second role) before being caught a
+    // third time on Exam Head; the entry was removed from the shared Registration
+    // menu entirely rather than excluding one more role, so this holds for every
+    // role covered by the matrix, present and future.
     MATRIX_ROLES.filter(role => role !== 'test_taker').forEach(role => {
-      expect(menuFor(role), role).not.toContain('My Records');
       expect(menuFor(role), role).not.toContain('My Results');
-      expect(menuFor(role), role).not.toContain('My Applications');
+      expect(menuFor(role), role).not.toContain('Register / My Profile');
     });
+    // "My Reports" was dropped entirely under the v2 Test Taker sidebar decision -
+    // no role sees it any more, not even the Test Taker.
+    MATRIX_ROLES.forEach(role => expect(menuFor(role), role).not.toContain('My Records'));
   });
 
   it('keeps organisation-wide Reports out of the Test Taker menu', () => {
@@ -270,6 +272,27 @@ describe('every approved role resolves a sidebar', () => {
 
   it('gives nobody Technical Settings - dropped from System Admin, not reassigned', () => {
     MATRIX_ROLES.forEach(role => expect(menuFor(role), role).not.toContain('Technical Settings'));
+  });
+
+  it('gives the Test Taker exactly six flat items and nothing else - v2 six-item sidebar decision', () => {
+    // Supersedes the earlier draft that gave this role a "Registration" section
+    // wrapping a single "My Applications" child, plus a separate "My Records"
+    // reporting screen. Registration and profile editing are the same underlying
+    // record for this role (BRD §5.2.1-§5.2.2), so they now share one sidebar entry;
+    // "My Records" is dropped entirely rather than kept as a seventh screen; and
+    // "Sample Question Papers" moves to the end of the menu as the public
+    // post-results archive, distinct from the exam-cycle workflow above it.
+    const testTakerNav = navigationFor('test_taker');
+    expect(testTakerNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
+    expect(testTakerNav.map(item => item.label)).toEqual([
+      'Dashboard', 'Register / My Profile', 'My Results', 'Re-evaluation', 'Certificates', 'Sample Question Papers',
+    ]);
+
+    [
+      'My Applications', 'Verification', 'Absentee', 'Question Papers', 'Upload Papers',
+      'Sample Papers', 'Band Score Entry', 'Score History', 'Committee', 'Reports', 'My Records',
+      'Master Configuration', 'User Management', 'Role Management',
+    ].forEach(label => expect(menuFor('test_taker'), label).not.toContain(label));
   });
 });
 

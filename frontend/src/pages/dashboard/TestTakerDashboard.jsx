@@ -6,16 +6,22 @@
 
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Award, FileText, AlertCircle, Calendar, ArrowRight, Download, CheckCircle, BarChart2, Edit3, Check, Headphones, MessageCircle, BookOpen } from 'lucide-react';
+import { Award, FileText, AlertCircle, Calendar, ArrowRight, Download, CheckCircle, BarChart2, Edit3, Check, Headphones, MessageCircle, BookOpen, MapPin } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { applicationService } from '@/services/applications';
 import { certificateService } from '@/services/certificates';
 import { examService } from '@/services/exams';
+import { appealService } from '@/services/appeals';
 import { findOpenExamWindow } from '@/utils/examWindows';
 import { StatusBadge } from '@/components/ui/Badge';
 import { scoreService } from '@/services/scores';
 import { useApi } from '@/hooks/useApi';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, PolarRadiusAxis } from 'recharts';
+
+// Statuses a re-evaluation request has already reached an outcome at - matches
+// AppealList.jsx's pipeline mapping, so "active" here means the same thing it
+// means on the Re-evaluation screen itself.
+const APPEAL_TERMINAL_STATUSES = ['NO_CHANGE', 'REJECTED', 'APPROVED_PENDING_SCORE_UPDATE', 'COMPLETED'];
 
 /**
  * Wording for a single skill band, on the same 1-9 scale the scoring rule uses, so the
@@ -62,8 +68,9 @@ export default function TestTakerDashboard() {
   const { data: certificates, loading: loadingCerts } = useApi(certificateService.getByUser, true, [user?.id]);
   const { data: examWindows, loading: loadingExams } = useApi(examService.getAll);
   const { data: bandScores, loading: loadingScores } = useApi(scoreService.getMyScores, true, [user?.id]);
+  const { data: appeals, loading: loadingAppeals } = useApi(appealService.getByUser, true, [user?.id]);
 
-  const isLoading = loadingApps || loadingCerts || loadingExams || loadingScores;
+  const isLoading = loadingApps || loadingCerts || loadingExams || loadingScores || loadingAppeals;
 
   if (isLoading) {
     return (
