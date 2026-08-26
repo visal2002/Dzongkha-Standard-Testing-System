@@ -144,4 +144,12 @@ export const applicationService = {
    * @param {string} id
    */
   cancel: async id => (await apiClient.post(`/applications/${id}/cancel`)).data,
+
+  /**
+   * Resubmit a Returned application with a corrected profile snapshot. Only allowed
+   * while the application is Returned - the backend rejects any other status.
+   * @param {string} id
+   * @param {Record<string, unknown>} profileSnapshot
+   */
+  resubmit: async (id, profileSnapshot) => (await apiClient.post(`/applications/${id}/resubmit`, { profileSnapshot })).data,
 };
