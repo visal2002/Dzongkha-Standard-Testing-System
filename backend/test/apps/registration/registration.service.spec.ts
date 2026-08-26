@@ -466,7 +466,10 @@ describe('RegistrationService — Certificate profile internal endpoint (BRD §2
 
   it('returns profile when application is verified and internal key matches', async () => {
     const correctKey = 'a'.repeat(32);
-    const app = application({ registrationNumber: 'DSTS-2026-ABCD1234' });
+    const app = application({
+      registrationNumber: 'DSTS-2026-ABCD1234',
+      profileSnapshot: { fullName: 'Test Taker', cid: 'CID-10701000001', dateOfBirth: '1998-05-01' },
+    });
     const applications = makeRepo<ApplicationEntity>([app]);
     const correctKeyConfig = new ConfigService({ INTERNAL_SERVICE_SECRET: correctKey });
     const ds = makeDataSource(makeManager());

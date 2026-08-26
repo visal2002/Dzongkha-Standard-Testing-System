@@ -135,6 +135,7 @@ const makeRenderer = (): CertificateRendererService =>
 
 const makeSources = (examId: string, applicationId: string, testTakerUserId: string): CertificateSourceClientService =>
   ({
+    exam: jest.fn().mockResolvedValue({ id: examId, examDate: new Date().toISOString() }),
     results: jest.fn().mockResolvedValue([{
       examId, applicationId, testTakerUserId,
       scoreSheetId: uuid(), scoreVersionNumber: 1,
