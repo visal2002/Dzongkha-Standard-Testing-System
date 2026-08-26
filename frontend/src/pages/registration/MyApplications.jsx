@@ -240,9 +240,9 @@ export default function MyApplications() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Applications"
-        subtitle="Track all your DSTS examination applications"
-        breadcrumbs={[{ label: 'Registration' }, { label: 'My Applications' }]}
+        title="Register / My Profile"
+        subtitle="Manage your DSTS examination applications and profile details"
+        breadcrumbs={[{ label: 'Register / My Profile' }]}
         icon={<FileText size={18} />}
         action={
           <Button icon={<Plus size={14} />} onClick={() => navigate('/registration/windows')}>
@@ -250,6 +250,8 @@ export default function MyApplications() {
           </Button>
         }
       />
+
+      <ProfileSummary />
 
       {loading ? (
         <div className="text-center py-16 text-sm text-text-muted">Loading applications...</div>
@@ -321,8 +323,23 @@ export default function MyApplications() {
                 </div>
 
                 {app.remarks && (
-                  <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-xs text-amber-400 mb-4">
-                    <span className="font-semibold">Remarks: </span>{app.remarks}
+                  <div className="mb-4">
+                    <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-xs text-amber-400">
+                      <span className="font-semibold">DCDD correction notes: </span>{app.remarks}
+                    </div>
+                    {app.status === 'returned' && (
+                      resubmittingId === app.id ? (
+                        <ResubmitForm
+                          app={app}
+                          onCancel={() => setResubmittingId(null)}
+                          onResubmitted={() => { setResubmittingId(null); reloadApplications(); }}
+                        />
+                      ) : (
+                        <Button size="xs" className="mt-2" icon={<Edit2 size={12} />} onClick={() => setResubmittingId(app.id)}>
+                          Edit &amp; Resubmit
+                        </Button>
+                      )
+                    )}
                   </div>
                 )}
 
