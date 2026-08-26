@@ -187,11 +187,11 @@ export default function TestTakerDashboard() {
           </div>
           <div>
             <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider mb-0.5">Exams Taken</p>
-            <p className="text-xl font-bold text-text-primary leading-none">1</p>
-            <p className="text-[9px] text-purple-600 font-medium flex items-center gap-0.5 mt-1"><ArrowRight size={9} className="-rotate-45" /> +1 this year</p>
+            <p className="text-xl font-bold text-text-primary leading-none">{examsTakenCount}</p>
+            <p className="text-[9px] text-text-muted font-medium mt-1">{myApps.length} application{myApps.length === 1 ? '' : 's'} total</p>
           </div>
         </div>
-        
+
         {/* Certificates */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-3.5 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
           <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
@@ -199,8 +199,8 @@ export default function TestTakerDashboard() {
           </div>
           <div>
             <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider mb-0.5">Certificates</p>
-            <p className="text-xl font-bold text-text-primary leading-none">2</p>
-            <p className="text-[9px] text-emerald-600 font-medium flex items-center gap-0.5 mt-1"><ArrowRight size={9} className="-rotate-45" /> +1 this year</p>
+            <p className="text-xl font-bold text-text-primary leading-none">{myCerts.length}</p>
+            <p className="text-[9px] text-text-muted font-medium mt-1">{myCerts.length > 0 ? 'Across all exam attempts' : 'None issued yet'}</p>
           </div>
         </div>
 
@@ -211,23 +211,27 @@ export default function TestTakerDashboard() {
           </div>
           <div>
             <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider mb-0.5">Latest Band</p>
-            <div className="flex items-baseline gap-1.5 leading-none">
-              <p className="text-xl font-bold text-text-primary">6.8</p>
-              <span className="text-[8px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded">B2 Level</span>
-            </div>
-            <p className="text-[9px] text-blue-600 font-medium flex items-center gap-0.5 mt-1"><ArrowRight size={9} className="-rotate-45" /> Improved from 6.5</p>
+            {overallBand ? (
+              <div className="flex items-baseline gap-1.5 leading-none">
+                <p className="text-xl font-bold text-text-primary">{overallBand.toFixed(1)}</p>
+                <span className="text-[8px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded">{bandDescriptor(overallBand)}</span>
+              </div>
+            ) : (
+              <p className="text-xl font-bold text-text-primary leading-none">—</p>
+            )}
+            <p className="text-[9px] text-text-muted font-medium mt-1">{overallBand ? 'Latest published result' : 'No result published yet'}</p>
           </div>
         </div>
 
-        {/* Active Appeals */}
+        {/* Active Re-evaluations */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-3.5 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
           <div className="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 shrink-0">
             <AlertCircle size={18} />
           </div>
           <div>
             <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider mb-0.5">Active Re-evaluations</p>
-            <p className="text-xl font-bold text-text-primary leading-none">0</p>
-            <p className="text-[9px] text-text-muted font-medium mt-1">No active re-evaluations</p>
+            <p className="text-xl font-bold text-text-primary leading-none">{activeAppealsCount}</p>
+            <p className="text-[9px] text-text-muted font-medium mt-1">{activeAppealsCount === 0 ? 'No active re-evaluations' : 'Awaiting outcome'}</p>
           </div>
         </div>
       </div>
