@@ -40,11 +40,15 @@ export const MATRIX_ROLES = ['admin', 'dcdd', 'exam_head', 'committee_head', 'co
 export const SUPPLEMENTARY_ROLES = [];
 
 // This is the approved access matrix, transcribed from the signed-off document.
+//
+// System Admin's row was narrowed under the v2 sidebar decision: the role is scoped to
+// technical governance - user accounts, roles and permissions - only. It previously held
+// Full or Read across every exam-workflow module; those are withdrawn entirely, not just
+// hidden from navigation, reversing that earlier, broader posture. Every other role's row
+// is unaffected. A module absent from a role's row resolves to 'none' via getAccessLevel.
 export const ACCESS_MATRIX = {
   admin: {
-    users: 'crud', roles: 'crud', registration: 'full', verification: 'full',
-    attendance: 'full', questions: 'full', scores: 'read', appeals: 'read',
-    certificates: 'full', reports: 'full',
+    users: 'crud', roles: 'crud',
   },
   dcdd: {
     users: 'read', roles: 'read', registration: 'full', verification: 'full',

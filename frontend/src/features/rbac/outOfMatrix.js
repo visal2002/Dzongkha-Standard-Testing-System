@@ -20,23 +20,25 @@ export const OUT_OF_MATRIX_OPERATIONS = [
   {
     key: 'declareResults',
     label: 'Declare examination results',
-    roles: ['admin', 'dcdd'],
+    roles: ['dcdd'],
     surface: 'Band Scores — "Declare Results"',
     reason:
       'Publishing results is an exam operation, not band score entry. The matrix gives DCDD ' +
       'Read on Band Scores and no role `manage`, so a strict reading would leave the action ' +
       'with no holder and strand the workflows it unlocks - sample papers, re-evaluation and ' +
-      'certificate generation.',
+      'certificate generation. The System Administrator held this too until the v2 sidebar ' +
+      'decision withdrew every exam-workflow operation from that role, including this one.',
   },
   {
     key: 'committeeSetup',
     label: 'Constitute the exam committee',
-    roles: ['admin', 'dcdd', 'committee_head'],
+    roles: ['dcdd', 'committee_head'],
     surface: '/scores/committee',
     reason:
       'Appointing committee members decides who may later enter scores. It is an ' +
       'administrative act over the committee, not access to the scores themselves, and the ' +
-      'matrix has no row for it.',
+      'matrix has no row for it. The System Administrator held this too until the v2 sidebar ' +
+      'decision withdrew every exam-workflow operation from that role, including this one.',
   },
   {
     key: 'examConfiguration',
@@ -60,11 +62,35 @@ export const OUT_OF_MATRIX_OPERATIONS = [
       'Administrator, consistent with the matrix giving only that role CRUD on Roles.',
   },
   {
+    key: 'roleAssignment',
+    label: 'Assign roles to users',
+    roles: ['admin'],
+    surface: '/admin/role-assignment',
+    reason:
+      'BRD §6.1 names role assignment as its own System Administrator function, distinct ' +
+      'from role creation. A user may hold more than one role concurrently (BRD §4).',
+  },
+  {
+    key: 'systemAuditLogs',
+    label: 'System audit logs',
+    roles: ['admin'],
+    surface: '/admin/audit-logs',
+    reason:
+      'Supported by §7.3\'s complete, searchable, immutable audit trail requirement and ' +
+      '§8 NFR-Security, and mitigates Risk R4 (§9). No matrix module covers it.',
+  },
+  {
     key: 'technicalSettings',
     label: 'Technical settings',
-    roles: ['admin'],
+    roles: [],
     surface: '/admin/technical',
-    reason: 'System-level configuration. No matrix module covers it.',
+    reason:
+      'System-level configuration - API keys, NDI credentials, SMS/email gateway config. ' +
+      'Dropped from the System Administrator under the v2 sidebar\'s strict least-privilege ' +
+      'model: that role is scoped to user, role and permission governance, and integration ' +
+      'credentials arguably belong to a distinct DevOps/Platform role instead. No role holds ' +
+      'this operation until that ownership question is settled; the screen stays in the ' +
+      'codebase, unreachable, rather than being deleted.',
   },
   {
     key: 'operationalSettings',
