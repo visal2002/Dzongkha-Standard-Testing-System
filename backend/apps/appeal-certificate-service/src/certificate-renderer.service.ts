@@ -57,8 +57,8 @@ export class CertificateRendererService {
 
     const helvetica = await document.embedFont(StandardFonts.Helvetica);
     const helveticaBold = await document.embedFont(StandardFonts.HelveticaBold);
-    const tibetan = await document.embedFont(readFileSync(this.assetPath('NotoSerifTibetan-Regular.ttf')), { subset: true });
-    const tibetanBold = await document.embedFont(readFileSync(this.assetPath('NotoSerifTibetan-Bold.ttf')), { subset: true });
+    const tibetan = await document.embedFont(readFileSync(this.assetPath('NotoSerifTibetan-Regular.ttf')), { subset: false });
+    const tibetanBold = await document.embedFont(readFileSync(this.assetPath('NotoSerifTibetan-Bold.ttf')), { subset: false });
     const logo = await document.embedPng(readFileSync(this.assetPath('dcdd-logo.png')));
 
     const centerText = (text: string, y: number, sizePx: number, font: PDFFont, color: RGB = INK) => {
