@@ -87,7 +87,8 @@ export class AccessAuditEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Index() @Column({ type: 'uuid' }) questionPaperId: string;
   @Column({ type: 'uuid', nullable: true }) documentId: string | null;
-  @Index() @Column({ type: 'uuid' }) actorUserId: string;
+  // Nullable because the public sample-paper download path has no authenticated actor.
+  @Index() @Column({ type: 'uuid', nullable: true }) actorUserId: string | null;
   @Column({ length: 40 }) action: string;
   @Column({ length: 64 }) requestId: string;
   @Column({ type: 'jsonb', default: {} }) safeData: Record<string, unknown>;
