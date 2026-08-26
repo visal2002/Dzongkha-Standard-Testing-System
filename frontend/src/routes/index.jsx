@@ -30,6 +30,7 @@ const CommitteeSetup = lazy(() => import('@/pages/scores/CommitteeSetup'));
 const ScoreSummary = lazy(() => import('@/pages/scores/ScoreSummary'));
 const ViewBandScores = lazy(() => import('@/pages/scores/ViewBandScores'));
 const AppealList = lazy(() => import('@/pages/appeals/AppealList'));
+const RevisionTracker = lazy(() => import('@/pages/appeals/RevisionTracker'));
 const SubmitAppeal = lazy(() => import('@/pages/appeals/SubmitAppeal'));
 const CertificateList = lazy(() => import('@/pages/certificates/CertificateList'));
 const QuestionPapers = lazy(() => import('@/pages/questions/QuestionPapers'));
@@ -147,6 +148,11 @@ export default function AppRoutes() {
           {/* Appeals & Certificates */}
           <Route path="/appeals" element={<PrivateRoute requiredAccess={{ module: 'appeals', action: 'read' }}><AppealList /></PrivateRoute>} />
           <Route path="/appeals/new" element={<PrivateRoute requiredAccess={{ module: 'appeals', action: 'submit_own' }}><SubmitAppeal /></PrivateRoute>} />
+          {/* BRD §5.6.2 Committee BR-2: only the Committee Head runs the committee
+              review step that produces a revision request, so 'process' - not the
+              broader 'read' every other appeals-facing role holds - is what actually
+              distinguishes this role here. */}
+          <Route path="/appeals/revisions" element={<PrivateRoute requiredAccess={{ module: 'appeals', action: 'process' }}><RevisionTracker /></PrivateRoute>} />
           <Route path="/certificates" element={<PrivateRoute requiredAccess={{ module: 'certificates', action: 'read' }}><CertificateList /></PrivateRoute>} />
 
           {/* Reports & Notifications */}

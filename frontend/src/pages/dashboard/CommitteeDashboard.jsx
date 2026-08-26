@@ -48,17 +48,19 @@ export default function CommitteeDashboard() {
 
   const { data: committee, loading: loadingCommittee, execute: loadCommittee } = useApi(scoreService.getCommittee, false);
   const { data: bandScores, loading: loadingScores, execute: loadScores } = useApi(scoreService.getByExam, false);
+  const { data: candidates, loading: loadingCandidates, execute: loadCandidates } = useApi(scoreService.getCandidates, false);
 
   useEffect(() => {
     if (!activeExam?.id) return;
     loadCommittee(activeExam.id).catch(() => undefined);
     loadScores(activeExam.id).catch(() => undefined);
-  }, [activeExam?.id, loadCommittee, loadScores]);
+    loadCandidates(activeExam.id).catch(() => undefined);
+  }, [activeExam?.id, loadCommittee, loadScores, loadCandidates]);
 
   // The API returns the committee record; the roster lives on `members`.
   const committeeMembers = useMemo(() => committee?.members || [], [committee]);
 
-  const isLoading = loadingAppeals || loadingExams || (Boolean(activeExam) && (loadingCommittee || loadingScores));
+  const isLoading = loadingAppeals || loadingExams || (Boolean(activeExam) && (loadingCommittee || loadingScores || loadingCandidates));
 
   // Distribution is counted from the band scores the committee has actually entered.
   const scoreDistData = useMemo(() => {
@@ -80,6 +82,26 @@ export default function CommitteeDashboard() {
     () => (appeals || []).filter(appeal => appeal.status === 'PENDING_COMMITTEE').length,
     [appeals],
   );
+
+  // "Active or upcoming" for the Committee Head covers the whole re-evaluation
+  // pipeline it still has a stake in - requests waiting on its own review, and ones
+  // it has already forwarded that are still awaiting the Chief's decision - not just
+  // the newly-routed subset committee_member's own alert cares about above.
+  const activeAppealsCount = useMemo(
+    () => (appeals || []).filter(appeal => ['PENDING_COMMITTEE', 'PENDING_CHIEF_APPROVAL'].includes(appeal.status)).length,
+    [appeals],
+  );
+
+  // Pending/complete are counted against every eligible candidate for the exam, not
+  // just the sheets that already exist - a candidate with no sheet at all is still a
+  // pending score sheet.
+  const submittedCandidateCount = useMemo(
+    () => (candidates || []).filter(candidate => ['submitted', 'published', 'revised'].includes(candidate.scoreStatus)).length,
+    [candidates],
+  );
+  const totalCandidateCount = candidates?.length ?? 0;
+  const pendingScoreSheetCount = Math.max(totalCandidateCount - submittedCandidateCount, 0);
+  const completionPercent = totalCandidateCount ? Math.round((submittedCandidateCount / totalCandidateCount) * 100) : 0;
 
   // There is no committee-meeting entity in this system - band-score review and
   // re-evaluation work runs against the examination calendar itself, so this surfaces
@@ -134,10 +156,17 @@ export default function CommitteeDashboard() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Scores Entered" value={bandScores?.length ?? 0} icon={<ClipboardList size={18} />} color="gold" />
-        <StatCard title="Published" value={bandScores?.filter(b => b.status === 'published').length ?? 0} icon={<CheckCircle size={18} />} color="success" />
+        {isHead && <StatCard title="Pending Score Sheets" value={pendingScoreSheetCount} icon={<ClipboardList size={18} />} color="gold" />}
+        {isHead && <StatCard title="Evaluations Complete" value={`${completionPercent}%`} icon={<CheckCircle size={18} />} color="success" />}
+        {!isHead && <StatCard title="Scores Entered" value={bandScores?.length ?? 0} icon={<ClipboardList size={18} />} color="gold" />}
+        {!isHead && <StatCard title="Published" value={bandScores?.filter(b => b.status === 'published').length ?? 0} icon={<CheckCircle size={18} />} color="success" />}
         <StatCard title="Committee Members" value={committeeMembers.length} icon={<Users size={18} />} color="info" />
-        <StatCard title={isHead ? 'Pending Appeals' : 'Pending Committee Review'} value={pendingCommitteeCount} icon={<Scale size={18} />} color="warning" />
+        <StatCard
+          title={isHead ? 'Active Re-evaluations' : 'Pending Committee Review'}
+          value={isHead ? activeAppealsCount : pendingCommitteeCount}
+          icon={<Scale size={18} />}
+          color="warning"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4">
@@ -189,27 +218,31 @@ export default function CommitteeDashboard() {
         </div>
       </div>
 
-      {/* Committee Members */}
+      {/* Committee Members. No "Manage" link here for the Committee Head - the v2
+          Committee Head sidebar decision withdrew committee constitution from this
+          role (a Committee Head assembling and designating themselves does not make
+          organisational sense; see outOfMatrix.js 'committeeSetup'), so /scores/committee
+          is no longer reachable by this role at all. */}
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-text-primary">Examination Committee</h3>
-          {isHead && <Link to="/scores/committee" className="text-xs text-brand-gold hover:text-[#FCD34D] flex items-center gap-1">Manage <ArrowRight size={12} /></Link>}
-        </div>
+        <h3 className="text-sm font-semibold text-text-primary mb-4">Examination Committee</h3>
         <div className="flex flex-wrap gap-3">
           {committeeMembers.length === 0 && (
             <p className="text-xs text-text-muted py-2">No committee has been assigned to this exam window yet.</p>
           )}
-          {committeeMembers.map(m => (
-            <div key={m.id} className="flex items-center gap-2.5 px-3 py-2 bg-surface-bg border border-surface-border rounded-xl">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${m.isHead ? 'bg-brand-gold/10 text-brand-gold' : 'bg-blue-500/10 text-blue-400'}`}>
-                {m.name[0]}
+          {committeeMembers.map(m => {
+            const displayName = m.name || `User ${m.userId.slice(0, 8)}`;
+            return (
+              <div key={m.id} className="flex items-center gap-2.5 px-3 py-2 bg-surface-bg border border-surface-border rounded-xl">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${m.isHead ? 'bg-brand-gold/10 text-brand-gold' : 'bg-blue-500/10 text-blue-400'}`}>
+                  {displayName[0].toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-text-primary">{displayName}</p>
+                  <p className="text-[10px] text-text-muted">{m.role}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-medium text-text-primary">{m.name}</p>
-                <p className="text-[10px] text-text-muted">{m.role}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

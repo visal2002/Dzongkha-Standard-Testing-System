@@ -46,6 +46,7 @@ const PERMS = {
   SCORE_SUBMIT: 'score.submit',
   SCORE_VIEW: 'score.view',
   APPEAL_REVIEW: 'appeal.review',
+  APPEAL_VIEW: 'appeal.view',
   APPEAL_APPROVE: 'appeal.approve',
   CERTIFICATE_MANAGE: 'certificate.manage',
   REPORT_VIEW: 'report.view',
@@ -65,7 +66,11 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     PERMS.QUESTION_SECURE_DOWNLOAD, PERMS.COMMITTEE_MANAGE,
     PERMS.SCORE_VIEW, PERMS.REPORT_VIEW,
   ],
-  committee_member: [PERMS.SCORE_VIEW, PERMS.APPEAL_REVIEW, PERMS.REPORT_VIEW],
+  // migration 0022_committee_member_appeal_view_only.sql: this role holds View, not
+  // Process, on Re-evaluation - `appeal.view` grants the organisation-wide read
+  // (POST /appeals/:id/committee-review stays on `appeal.review`, which this role no
+  // longer holds).
+  committee_member: [PERMS.SCORE_VIEW, PERMS.APPEAL_VIEW, PERMS.REPORT_VIEW],
   committee_head: [PERMS.SCORE_SUBMIT, PERMS.SCORE_VIEW, PERMS.APPEAL_REVIEW, PERMS.REPORT_VIEW],
   chief_executive: [PERMS.APPEAL_APPROVE, PERMS.REPORT_VIEW],
   admin: ['*'],

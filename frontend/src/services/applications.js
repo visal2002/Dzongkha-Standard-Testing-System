@@ -118,6 +118,13 @@ export const applicationService = {
   startReview: async id => (await apiClient.post(`/applications/${id}/start-review`)).data,
   verify: async id => (await apiClient.post(`/applications/${id}/verify`)).data,
   returnForCorrection: async (id, remarks) => (await apiClient.post(`/applications/${id}/return`, { remarks })).data,
+  /**
+   * BRD §5.2.2 item 3: re-sends the verification notification (registration number,
+   * exam time, venue) any time after verification - not only once at the moment of
+   * verifying. Rejected with 409 unless the application is currently Verified.
+   * @param {string} id
+   */
+  notify: async id => (await apiClient.post(`/applications/${id}/notify`)).data,
   recordPayment: async (id, payload) => {
     const { data } = await apiClient.post(`/applications/${id}/payment`, {
       status: String(payload.status).toUpperCase(),

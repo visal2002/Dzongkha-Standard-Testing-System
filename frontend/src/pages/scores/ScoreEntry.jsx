@@ -147,6 +147,19 @@ export default function ScoreEntry() {
             {SKILLS.map(skill => <div key={skill}><label className="text-sm font-medium text-text-secondary block mb-1.5">{SKILL_LABELS[skill]}</label><select value={scores[skill]} onChange={event => setScores(current => ({ ...current, [skill]: event.target.value }))} className="w-full h-9 px-3 rounded-lg bg-surface-bg border border-surface-border text-text-primary text-sm"><option value="">Select score</option>{SCORES.map(score => <option key={score} value={score}>{score}</option>)}</select></div>)}
           </div>
           {average && <div className="p-3 bg-[#F59E0B]/5 border border-brand-gold/20 rounded-xl flex justify-between"><span className="text-sm text-text-secondary">Overall Average</span><span className="text-xl font-bold text-brand-gold">{average}</span></div>}
+          {/* BRD §5.5.2 BR-3: committee member names appear below the test taker's own
+              score sheet, pulled from the real roster for this exam - not a static list. */}
+          <div className="pt-3 border-t border-surface-border">
+            <p className="text-[10px] text-text-muted font-medium uppercase mb-1.5">Examination Committee</p>
+            <div className="flex flex-wrap gap-1.5">
+              {committeeMembers.map(member => (
+                <span key={member.id} className={`px-2 py-1 rounded-full border text-[10px] ${member.isHead ? 'bg-brand-gold/10 border-brand-gold/20 text-brand-gold' : 'bg-surface-bg border-surface-border text-text-secondary'}`}>
+                  {member.name || `User ${member.userId.slice(0, 8)}`}{member.isHead && ' (Head)'}
+                </span>
+              ))}
+              {!committeeMembers.length && <p className="text-[10px] text-amber-400">No committee configured for this examination.</p>}
+            </div>
+          </div>
         </div>
       </Modal>
     </div>

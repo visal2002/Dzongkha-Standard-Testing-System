@@ -4,7 +4,7 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { BarChart3, Download, Filter, Calendar, TrendingUp, Users, Award, Scale } from 'lucide-react';
+import { BarChart3, Download, Filter, Calendar, TrendingUp, Users, Award, Scale, ScrollText } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -18,6 +18,7 @@ import { reportService } from '@/services/reports';
 import { examService } from '@/services/exams';
 import { applicationService } from '@/services/applications';
 import { appealService } from '@/services/appeals';
+import { auditService } from '@/services/audit';
 import { useApi } from '@/hooks/useApi';
 import {
   monthlyCounts, monthlyAverages, toPieSlices, hasChartData, CEFR_BAND_COLORS,
@@ -45,6 +46,10 @@ const PREDEFINED_REPORTS = [
   { id: 'appeal-track', label: 'Appeal Tracking Report', icon: Scale, description: 'Status of all re-evaluation requests and decisions' },
   { id: 'cert-validity', label: 'Certificate Validity Report', icon: Award, description: 'Active, expiring, and expired certificate inventory' },
   { id: 'exam-schedule', label: 'Examination Schedule', icon: Calendar, description: 'All exam windows with registration and capacity data' },
+  // Reads the same immutable audit-event projection the System Administrator's
+  // dedicated Audit Logs screen uses (BRD §7.3); this tile just exports it as CSV, it
+  // does not add the dedicated screen itself to any role that doesn't already have it.
+  { id: 'audit-logs', label: 'System Audit Logs', icon: ScrollText, description: 'Immutable audit trail of role, permission, and workflow events', kind: 'audit' },
 ];
 
 export default function Reports() {
@@ -78,6 +83,29 @@ export default function Reports() {
       }, 1500);
     } catch (err) {
       toast.error(`Export failed: ${err.message}`, { id: 'export-job' });
+      setExporting(false);
+    }
+  };
+
+  // Audit export is a direct, synchronous CSV download (reporting-service's
+  // /audit/export), not the async report-job pipeline the other predefined reports
+  // use - a real file with real data either way, just a different backend shape.
+  const handleAuditExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await auditService.exportCsv({});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `dzongjuk-audit-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success('System Audit Logs exported successfully!');
+    } catch (err) {
+      toast.error(`Export failed: ${err.message}`);
+    } finally {
       setExporting(false);
     }
   };
@@ -300,7 +328,7 @@ export default function Reports() {
               {PREDEFINED_REPORTS.map(r => (
                 <button
                   key={r.id}
-                  onClick={() => handleExport('pdf', r.id, r.label)}
+                  onClick={() => (r.kind === 'audit' ? handleAuditExport() : handleExport('pdf', r.id, r.label))}
                   disabled={!canGenerate || exporting}
                   className="text-left p-4 bg-surface-card border border-surface-border rounded-xl hover:border-brand-gold/30 hover:bg-[var(--color-surface-card-hover)] transition-all group"
                 >

@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createColumnHelper } from '@tanstack/react-table';
-import { CheckCircle, Eye, Plus, Scale, XCircle } from 'lucide-react';
+import { CheckCircle, Eye, Plus, RotateCcw, Scale, Send, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccess } from '@/features/rbac/accessMatrix';
 import PageHeader from '@/components/ui/PageHeader';
@@ -22,6 +22,7 @@ import { appealService } from '@/services/appeals';
 import toast from 'react-hot-toast';
 
 const columnHelper = createColumnHelper();
+const SCORE_OPTIONS = Array.from({ length: 19 }, (_, index) => (index * 0.5 + 1).toFixed(1));
 
 // Re-evaluation pipeline, mirrored from the AppealStatus states the backend can return
 // (backend/libs/contracts/src/index.ts). Purely presentational - the request's real
@@ -53,6 +54,10 @@ export default function AppealList() {
   // Keyed by skill (e.g. 'WRITING') rather than one value for the whole request - BRD
   // §5.6.2 Committee BR-2 requires only the selected and approved skills to be updated.
   const [skillDecisions, setSkillDecisions] = useState({});
+  // Committee Head's proposed score per appealed skill, for a REVISE recommendation.
+  // Pre-filled with the published score on open, so "unchanged" is the visible default
+  // and submitting requires deliberately adjusting at least one skill.
+  const [proposedScores, setProposedScores] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   // Derived from the approved matrix, never from a role name. `approve` is the
@@ -63,6 +68,7 @@ export default function AppealList() {
   const canProcess = canAccess(user?.role, 'appeals', 'process');
   const canSubmit = canAccess(user?.role, 'appeals', 'submit_own');
   const decisionsComplete = selected?.skills?.every(skill => skillDecisions[skill]) ?? false;
+  const reviseChanged = selected?.skills?.some(skill => proposedScores[skill] !== undefined && Number(proposedScores[skill]) !== selected.originalScores[skill]) ?? false;
   const isCommitteeMember = user?.role === 'committee_member';
   const pendingCommitteeCount = data.filter(appeal => appeal.status === 'PENDING_COMMITTEE').length;
 
@@ -89,12 +95,16 @@ export default function AppealList() {
     // No default decision - the Chief must explicitly choose approve or reject for
     // every appealed skill before a decision can be submitted.
     setSkillDecisions({});
+    // Pre-filled with the published score for every appealed skill, so a revision
+    // request always starts from "unchanged" and requires a deliberate edit.
+    setProposedScores(Object.fromEntries(appeal.skills.map(skill => [skill, String(appeal.originalScores[skill] ?? '')])));
   };
 
   const closeModal = () => {
     setSelected(null);
     setRemarks('');
     setSkillDecisions({});
+    setProposedScores({});
   };
 
   const handleDecision = async id => {
@@ -118,6 +128,33 @@ export default function AppealList() {
       await load();
     } catch (requestError) {
       toast.error(requestError.message || 'Unable to complete committee review.');
+    }
+  };
+
+  const handleReviseSubmit = async id => {
+    if (remarks.length < 3 || !reviseChanged) return;
+    try {
+      const numericScores = Object.fromEntries(Object.entries(proposedScores).map(([skill, value]) => [skill, Number(value)]));
+      await appealService.submitRevision(id, { recommendation: 'REVISE', remarks, proposedScores: numericScores });
+      toast.success('Revision request submitted for Chief of Examiner approval. The published score stays locked until then.');
+      closeModal();
+      await load();
+    } catch (requestError) {
+      toast.error(requestError.message || 'Unable to submit the revision request.');
+    }
+  };
+
+  // The backend already auto-applies an approved revision right after decide()
+  // succeeds; this only covers the rare case that step failed (e.g. a transient
+  // result-service outage), leaving the appeal at ApprovedPendingScoreUpdate.
+  const handleRetryApply = async id => {
+    try {
+      await appealService.applyRevision(id);
+      toast.success('Approved revision applied.');
+      closeModal();
+      await load();
+    } catch (requestError) {
+      toast.error(requestError.message || 'Unable to apply the approved revision yet.');
     }
   };
 
@@ -185,6 +222,8 @@ export default function AppealList() {
         footer={
           canApprove && selected?.status === 'PENDING_CHIEF_APPROVAL' ? (
             <Button variant="success" disabled={!decisionsComplete} onClick={() => handleDecision(selected.id)} icon={<CheckCircle size={13} />}>Submit Decision</Button>
+          ) : canApprove && selected?.status === 'APPROVED_PENDING_SCORE_UPDATE' ? (
+            <Button variant="outline" onClick={() => handleRetryApply(selected.id)} icon={<RotateCcw size={13} />}>Retry Applying Revision</Button>
           ) : <Button variant="ghost" onClick={closeModal}>Close</Button>
         }
       >
@@ -256,13 +295,39 @@ export default function AppealList() {
                 </div>
               </div>
             )}
+            {canProcess && selected.status === 'PENDING_COMMITTEE' && (
+              <div>
+                <p className="text-xs font-semibold text-text-muted uppercase mb-2">Propose a revised score per skill</p>
+                <p className="text-xs text-text-muted mb-2">
+                  Adjust at least one appealed skill to submit a revision recommendation. The published score stays
+                  locked - it only changes once the Chief of Examiner approves.
+                </p>
+                <div className="space-y-2">
+                  {selected.skills.map(skill => (
+                    <div key={skill} className="flex items-center justify-between gap-3 p-2.5 bg-surface-bg border border-surface-border rounded-lg">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-text-primary">{skill}</p>
+                        <p className="text-[10px] text-text-muted">Published: {selected.originalScores[skill]?.toFixed(1)}</p>
+                      </div>
+                      <select
+                        value={proposedScores[skill] ?? ''}
+                        onChange={event => setProposedScores(prev => ({ ...prev, [skill]: event.target.value }))}
+                        className="h-8 px-2 rounded-lg bg-surface-card border border-surface-border text-text-primary text-xs shrink-0"
+                      >
+                        {SCORE_OPTIONS.map(score => <option key={score} value={score}>{score}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {(canProcess && selected.status === 'PENDING_COMMITTEE') || (canApprove && selected.status === 'PENDING_CHIEF_APPROVAL') ? (
               <Textarea label="Decision remarks" rows={3} value={remarks} onChange={event => setRemarks(event.target.value)} placeholder="Record the review rationale..." />
             ) : null}
             {canProcess && selected.status === 'PENDING_COMMITTEE' && (
-              <div className="space-y-2">
-                <Button disabled={remarks.length < 3} onClick={() => handleNoChange(selected.id)}>Complete as No Change</Button>
-                <p className="text-xs text-text-muted">Selected-skill revision entry remains available through the secured API until the committee score-entry UI is completed.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="ghost" disabled={remarks.length < 3} onClick={() => handleNoChange(selected.id)}>Complete as No Change</Button>
+                <Button disabled={remarks.length < 3 || !reviseChanged} onClick={() => handleReviseSubmit(selected.id)} icon={<Send size={13} />}>Submit Revision Request</Button>
               </div>
             )}
           </div>

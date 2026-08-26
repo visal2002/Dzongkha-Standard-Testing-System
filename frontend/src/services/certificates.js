@@ -71,11 +71,32 @@ export const certificateService = {
   recordDownload: async (id) => certificateService.download(id),
 
   /**
-   * Get the master certificate template configuration.
+   * Master Configuration — every certificate template version (Draft/Approved/Retired),
+   * newest version first per code. Image fields (leftLogo/rightLogo/borderImage/
+   * signatureImage/sealImage) come back as data: URIs, ready for an <img src>.
+   * @returns {Promise<{data: Array}>}
    */
-  getTemplateConfig: async () => {
+  listTemplates: async () => {
 
-    const { data } = await apiClient.get('/certificates/template');
+    const { data } = await apiClient.get('/certificate-templates');
+    return data;
+  },
+
+  /**
+   * Create a new draft template version. Takes effect only once approved via
+   * approveTemplate - certificate generation always reads the active Approved version.
+   * @param {Object} payload
+   */
+  createTemplate: async (payload) => {
+
+    const { data } = await apiClient.post('/certificate-templates', payload);
+    return data;
+  },
+
+  /** @param {string} id */
+  approveTemplate: async (id) => {
+
+    const { data } = await apiClient.post(`/certificate-templates/${id}/approve`);
     return data;
   },
 };

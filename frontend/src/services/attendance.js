@@ -54,14 +54,4 @@ export const attendanceService = {
     present: false,
     absentSkills,
   }),
-
-  /**
-   * Bulk mark attendance for multiple applicants.
-   * @param {Array<{ applicationId: string, present: boolean, absentSkills: string[] }>} records
-   */
-  bulkMarkAttendance: async (records) => {
-
-    const { data } = await apiClient.post('/attendance/bulk', { records });
-    return data;
-  },
 };

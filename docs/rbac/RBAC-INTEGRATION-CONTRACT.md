@@ -16,6 +16,17 @@ side, or it is not enforced at all.
 
 ## 1. The approved matrix
 
+> **Stale against the v2 sidebar decisions - batch update pending.** System Admin's
+> row below no longer matches `accessMatrix.js`, which withdrew every exam-workflow
+> grant from that role entirely (it now holds only User Management and Role
+> Management CRUD). DCDD's and Exam Head's rows are still accurate as *matrix*
+> grants, but neither role's v2 sidebar (DCDD's six flat items; Exam Head's four -
+> Dashboard, Question Bank, Exam Day Downloads, Released Sample Papers) surfaces
+> the full row any more - the rest stays real and reachable by direct URL as an
+> unsurfaced entitlement. This table, `access-matrix.json` and the rows below it
+> need a single batch update once every role's v2 sidebar is finalised, rather than
+> being chased one role at a time.
+
 | Module | System Admin | DCDD Admin | Exam Head | Committee Head | Committee Member | Chief of Examiner | Test Taker |
 |---|---|---|---|---|---|---|---|
 | User Management | CRUD | Read | No | No | No | No | No |
@@ -165,7 +176,8 @@ marks **No**.
 |---|---|
 | `GET /questions`, `GET /questions/:id`, `GET /questions/:id/metadata` | `questions:read_all` - metadata only |
 | `GET /questions/:id/question-document`, `GET /questions/:id/answer-document` | **`questions:secure_read`** - the encrypted files, Exam Head only, inside the exam window |
-| `POST /questions` | `questions:create` |
+| `POST /questions` | `questions:create` - both the question paper and the answer sheet are required; the server rejects a submission missing either (`QUESTION_DOCUMENT_REQUIRED` / `ANSWER_DOCUMENT_REQUIRED`), not only the upload form |
+| `GET /questions/assignments/mine` | `questions:create` (backend: `question.secure.upload`) - the caller's own assignments, split into skills already uploaded and skills still pending, per exam. Powers the Exam Head dashboard's live pending-upload status |
 | `PATCH /questions/:id/publish`, `POST /questions/:id/publish-sample` | `questions:manage` |
 | `DELETE /questions/:id` | `questions:delete` |
 | `GET /sample-papers`, `GET /sample-papers/:id/:type` | `questions:sample` - the only questions route a Test Taker may reach |
@@ -292,13 +304,28 @@ both. Until it is split, those roles will 403 on the listing itself. Resolving i
 `question.metadata.read` permission on `GET /questions`, `GET /questions/:id` and
 `GET /questions/:id/metadata`.
 
-### 5.4 Committee Member still holds `appeal.review` server-side
+### 5.4 Committee Member still holds `appeal.review` server-side — resolved
 
-Migration `0001_initial.sql` grants `appeal.review` to `committee_member`, so a member can
+Migration `0001_initial.sql` granted `appeal.review` to `committee_member`, so a member could
 call `POST /appeals/:id/committee-review` directly. The approved matrix gives Committee
-Member **View** only on Re-evaluation, and the frontend now hides every decision control
-from that role - but hiding a button is not enforcement. Resolving it means revoking
-`appeal.review` from `committee_member`.
+Member **View** only on Re-evaluation, and the frontend already hid every decision control
+from that role - but hiding a button is not enforcement.
+
+Revoking `appeal.review` outright was not a safe fix on its own: `AppealService.listAll`,
+`getOne` and `getHistory` gate every organisation-wide read (`GET /appeals` and friends) on
+that same permission internally (`assertElevated()`), because nothing before this
+distinguished "may read every appeal" from "may run the committee review step". Revoking it
+alone would have 403'd the Committee Member out of `GET /appeals` entirely, breaking the
+`appeals:read_all` read access §3 above requires.
+
+Migration `0022_committee_member_appeal_view_only.sql` introduces `appeal.view` - the
+read-only counterpart - grants it to `committee_member` and revokes `appeal.review` from
+that role in the same migration, so it is never left without both at once.
+`appeal.service.ts`'s `assertElevated()` now accepts `appeal.view` alongside
+`appeal.review`/`appeal.approve` for the three read paths, while `POST
+/appeals/:id/committee-review` stays gated on `appeal.review` alone (via its
+`@Permissions('appeal.review')` controller decorator), which Committee Member no longer
+holds.
 
 ### 5.5 System Administrator wildcard — accepted, documented
 
@@ -307,3 +334,24 @@ The `admin` role holds `*`, which satisfies `score.submit`, `result.declare` and
 Re-evaluation. This is retained deliberately as break-glass access and is **not** treated
 as a defect. The frontend does not mirror it: `PrivateRoute` no longer admits `admin` to a
 role-listed route just for being `admin`, and admin's screens follow the matrix.
+
+### 5.6 Exam Head has no backend permission for its Registration Read at all — blocking
+
+The matrix gives Exam Head **Read** on Registration, Verification and Absentee. Server
+side, `exam_head` holds none of `registration.application.verify`, `attendance.mark`, or
+any other registration/verification permission - only `question.secure.upload`,
+`question.secure.download`, `question.secure.publish` (migrations `0001`/`0002`) and
+`report.run` (migration `0006`). This is the same shape of gap as §5.2 (Registration
+Read cannot be separated from Verification), now blocking a concrete screen rather than
+a hypothetical one: the Exam Head dashboard's "verified applicants for upcoming
+sessions" summary (BRD §5.4.2) cannot call `GET /applications` - it 403s, because that
+route requires `registration.application.verify`, and granting Exam Head that permission
+would also grant it `/start-review`, `/verify` and `/return`, which this role should not
+have.
+
+The frontend does not paper over this with a client call that would 403 in production;
+the dashboard tile is shown disabled with this reason instead (see
+`ExamHeadDashboard.jsx`). Resolving it needs the same `registration.application.read`
+permission split §5.2 already calls for, extended to whichever roles the matrix gives
+Registration Read without Verification - Exam Head, Committee Head, Committee Member and
+Chief of Examiner.

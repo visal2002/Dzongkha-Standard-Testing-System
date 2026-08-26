@@ -36,7 +36,7 @@ const roleRoutes = [
   {
     role: 'Committee Member',
     email: 'member@dsts.bt',
-    routes: ['/dashboard', '/scores/view', '/scores/summary', '/appeals'],
+    routes: ['/dashboard', '/scores/view', '/scores/band-scores', '/scores/summary', '/appeals'],
   },
   {
     // Chief of Examiner. The approved matrix gives this role Read across
@@ -282,6 +282,27 @@ test('a committee member sees the appeal queue read-only, with no decision contr
   // Process and Approve are separate matrix actions; a Committee Member holds neither.
   await expect(page.getByRole('button', { name: 'Approve Revision' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Complete as No Change' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Submit New' })).toHaveCount(0);
+});
+
+test('the sidebar gives a committee member exactly three items, no write surfaces', async ({ page }) => {
+  await login(page, 'member@dsts.bt');
+
+  const sidebar = page.locator('aside');
+  await expect(sidebar.getByRole('link', { name: 'View Band Scores' })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'Re-evaluation Queue' })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'Score History' })).toHaveCount(0);
+  await expect(sidebar.getByRole('link', { name: 'Reports', exact: true })).toHaveCount(0);
+  await expect(sidebar.getByRole('link', { name: 'Registration' })).toHaveCount(0);
+  await expect(sidebar.getByRole('link', { name: 'Band Score Entry' })).toHaveCount(0);
+
+  await page.goto('/scores/band-scores');
+  await expect(page).toHaveURL(/\/scores\/band-scores$/);
+  await page.waitForTimeout(800);
+  // The screen renders plain read-only table cells, not disabled form controls
+  // hinting at a write path that does not exist.
+  await expect(page.locator('main input[type="number"]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /submit/i })).toHaveCount(0);
 });
 
 test('the encrypted question document controls are withheld from metadata-only roles', async ({ page }) => {

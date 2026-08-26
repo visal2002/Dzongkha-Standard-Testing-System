@@ -33,6 +33,7 @@ const ROUTES = [
   { path: '/scores', access: ['scores', 'submit'] },
   { path: '/scores/view', access: ['scores', 'read'] },
   { path: '/scores/summary', access: ['scores', 'read_all'] },
+  { path: '/scores/band-scores', access: ['scores', 'read'] },
   { path: '/appeals', access: ['appeals', 'read'] },
   { path: '/appeals/new', access: ['appeals', 'submit_own'] },
   { path: '/certificates', access: ['certificates', 'read'] },
@@ -41,6 +42,10 @@ const ROUTES = [
   { path: '/admin/users', access: ['users', 'read'] },
   { path: '/admin/roles', access: ['roles', 'read'] },
   { path: '/scores/committee', operation: 'committeeSetup' },
+  // BRD §5.6.2 Committee BR-2: only the Committee Head runs the committee review
+  // step that produces a revision request, so 'process' is what actually
+  // distinguishes this route from the broader 'read' every appeals-facing role holds.
+  { path: '/appeals/revisions', access: ['appeals', 'process'] },
   { path: '/admin/permissions', operation: 'permissionManagement' },
   { path: '/admin/role-assignment', operation: 'roleAssignment' },
   { path: '/admin/audit-logs', operation: 'systemAuditLogs' },
@@ -82,15 +87,19 @@ describe('every approved role resolves a sidebar', () => {
     expect(menuFor('test_taker')).not.toContain('Reports');
     // System Administrator held Reports too until the v2 sidebar decision withdrew
     // every exam-workflow module from that role. DCDD sees its own flattened
-    // "Reports & Analytics" entry instead of the generic "Reports" label, and Exam
-    // Head's v2 four-item menu drops Reports from the sidebar entirely (the matrix
-    // grant stays real, just unsurfaced) - see the six-item and four-item menu
-    // tests below.
-    ['committee_head', 'committee_member', 'chief_executive']
-      .forEach(role => expect(menuFor(role), role).toContain('Reports'));
+    // "Reports & Analytics" entry and Chief Executive its own "Executive Reports"
+    // instead of the generic "Reports" label, and Exam Head's, Committee Member's
+    // and Committee Head's own v2 strict-least-privilege menus drop Reports from
+    // the sidebar entirely (the matrix grant stays real and reachable by direct URL
+    // in every case, just unsurfaced) - see the six-item, four-item and three-item
+    // menu tests below.
+    expect(menuFor('chief_executive')).toContain('Executive Reports');
+    expect(menuFor('chief_executive')).not.toContain('Reports');
     expect(menuFor('dcdd')).not.toContain('Reports');
     expect(menuFor('admin')).not.toContain('Reports');
     expect(menuFor('exam_head')).not.toContain('Reports');
+    expect(menuFor('committee_member')).not.toContain('Reports');
+    expect(menuFor('committee_head')).not.toContain('Reports');
   });
 
   it('hides administration from every role but the System Administrator', () => {
@@ -139,22 +148,55 @@ describe('every approved role resolves a sidebar', () => {
     expect(navigationFor('dcdd').some(item => item.type === 'section' && item.label === 'Read-Only')).toBe(false);
   });
 
-  it('separates the Committee Head\'s band-score work from its read-only modules', () => {
-    // BRD §5.5-5.6 define this role's actual job as band score entry and
-    // re-evaluation processing, plus constituting the committee (§5.5.2 BR-1).
-    // Every other module it can see is "Read" in the matrix by default, not a
-    // defined day-to-day task, so it gets the same demotion Exam Head's read-only
-    // modules get above.
+  it('gives the Committee Head exactly four flat items and nothing else - v2 strict least-privilege', () => {
+    // Supersedes the earlier draft that kept Registration/Question Papers/Sample
+    // Papers/Score History/Certificates/Reports visible under a demoted "Read-Only"
+    // section. BRD §5.5-5.6 define this role's actual job as band score entry
+    // (§5.5.2 BR-1/BR-2) and re-evaluation processing (§5.6.1-5.6.2 Committee
+    // BR-1/BR-2) - nothing else is a stated day-to-day task, so v2 drops every
+    // other module from the sidebar rather than demoting it into a secondary
+    // section, the same treatment Exam Head and Committee Member already carry.
+    // Constituting the committee (§5.5.2 BR-1) is dropped too - a Committee Head
+    // assembling and designating themselves does not make organisational sense;
+    // see the 'committeeSetup' entry in outOfMatrix.js, now DCDD-only.
     const committeeHeadNav = navigationFor('committee_head');
-    const labels = committeeHeadNav.map(item => item.label);
+    expect(committeeHeadNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
+    expect(committeeHeadNav.map(item => item.label)).toEqual([
+      'Dashboard', 'Band Score Entry', 'Re-evaluation Panel', 'Revision Status Tracker',
+    ]);
 
-    expect(labels.slice(0, 5)).toEqual(['Dashboard', 'Band Score Entry', 'Score History', 'Committee', 'Re-evaluation']);
-    expect(committeeHeadNav[5]).toMatchObject({ type: 'section' });
-    expect(labels.slice(6)).toEqual(['Registration', 'Question Papers', 'Sample Papers', 'Certificates', 'Reports']);
+    [
+      'Registration', 'Exam Windows', 'Applications', 'Verification', 'Absentee',
+      'Question Papers', 'Upload Papers', 'Sample Papers', 'My Results', 'Score History',
+      'Committee', 'Re-evaluation', 'Certificates', 'Reports', 'My Records', 'Master Configuration',
+    ].forEach(label => expect(menuFor('committee_head'), label).not.toContain(label));
 
-    // Only the Committee Head constitutes the committee - not the rest of it.
+    // Only the Committee Head ever held committee constitution among the roles that
+    // still see a Re-evaluation-shaped screen - it is gone from all of them now.
     expect(menuFor('committee_member')).not.toContain('Committee');
     expect(menuFor('chief_executive')).not.toContain('Committee');
+  });
+
+  it('gives the Committee Member exactly three flat items and nothing else - v2 strict least-privilege', () => {
+    // BRD §5.5.2/§5.6.1 define this role's whole job as viewing submitted band
+    // scores and tracking re-evaluation requests after they clear payment - a pure
+    // read surface, not a defined day-to-day task beyond looking. Registration and
+    // Reports are "Read" in the matrix by default, the same situational-awareness
+    // grant every other v2-reduced role holds, so v2 drops them from the sidebar
+    // entirely rather than demoting them into a secondary section - the matrix
+    // grant stays real and reachable by direct URL (see the route-guard test
+    // below), the same unsurfaced-entitlement treatment DCDD's and Exam Head's own
+    // situational-awareness grants get.
+    const memberNav = navigationFor('committee_member');
+    expect(memberNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
+    expect(memberNav.map(item => item.label)).toEqual(['Dashboard', 'View Band Scores', 'Re-evaluation Queue']);
+
+    [
+      'Registration', 'Exam Windows', 'Applications', 'My Applications', 'Verification', 'Absentee',
+      'Question Papers', 'Upload Papers', 'Sample Papers', 'Band Score Entry', 'My Results',
+      'Score History', 'Committee', 'Re-evaluation', 'Certificates', 'Reports', 'My Records',
+      'Master Configuration', 'User Management', 'Role Management',
+    ].forEach(label => expect(menuFor('committee_member'), label).not.toContain(label));
   });
 
   it('gives Master Configuration to DCDD only, not the System Administrator', () => {
@@ -256,16 +298,21 @@ describe('route guards admit exactly the roles the matrix allows', () => {
 
   it('keeps the Committee Member out of every write surface', () => {
     const reachable = routesFor('committee_member');
-    expect(reachable).toEqual(expect.arrayContaining(['/appeals', '/scores/summary', '/reports']));
+    expect(reachable).toEqual(expect.arrayContaining(['/appeals', '/scores/summary', '/scores/band-scores', '/reports']));
     ['/scores', '/scores/committee', '/verification', '/attendance', '/questions',
       '/certificates', '/admin/users', '/admin/roles',
     ].forEach(path => expect(reachable, path).not.toContain(path));
   });
 
-  it('gives the Committee Head score entry and the committee, but not verification', () => {
+  it('gives the Committee Head score entry and re-evaluation processing, but not committee constitution', () => {
+    // The underlying matrix row is unchanged (registration/questions/certificates/
+    // reports stay Read, scores stays Submit, appeals stays Process) - only
+    // 'committeeSetup' was actually withdrawn (see outOfMatrix.js) and the v2
+    // four-item sidebar no longer links to the rest, so those routes stay reachable
+    // by direct URL, the same unsurfaced-entitlement treatment used everywhere else.
     const reachable = routesFor('committee_head');
-    expect(reachable).toEqual(expect.arrayContaining(['/scores', '/scores/committee', '/appeals', '/questions']));
-    ['/verification', '/attendance', '/questions/upload', '/admin/users', '/admin/roles']
+    expect(reachable).toEqual(expect.arrayContaining(['/scores', '/appeals', '/appeals/revisions', '/questions']));
+    ['/scores/committee', '/verification', '/attendance', '/questions/upload', '/questions/downloads', '/admin/users', '/admin/roles']
       .forEach(path => expect(reachable, path).not.toContain(path));
   });
 
@@ -370,9 +417,15 @@ describe('out-of-matrix operations are registered rather than hard-coded', () =>
     MATRIX_ROLES.forEach(role => expect(canPerform('operationalSettings', role), role).toBe(false));
   });
 
-  it('withdraws committee setup from the System Administrator, keeping DCDD and the Committee Head', () => {
+  it('leaves committee setup with DCDD only - withdrawn from both the System Administrator and the Committee Head', () => {
+    // System Admin lost this under the v2 sidebar decision that withdrew every
+    // exam-workflow operation from that role. The Committee Head held it too, until
+    // the v2 Committee Head sidebar decision withdrew it as well - a Committee Head
+    // assembling and designating themselves does not make organisational sense.
+    // DCDD is left holding it as an unsurfaced grant pending an explicit ownership
+    // ratification (see outOfMatrix.js).
     expect(canPerform('committeeSetup', 'dcdd')).toBe(true);
-    expect(canPerform('committeeSetup', 'committee_head')).toBe(true);
+    expect(canPerform('committeeSetup', 'committee_head')).toBe(false);
     expect(canPerform('committeeSetup', 'admin')).toBe(false);
   });
 });

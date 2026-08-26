@@ -468,8 +468,13 @@ export class AppealService {
   }
 
   private assertElevated(actor: AccessClaims) {
-    if (actor.permissions.includes('*') || actor.permissions.includes('appeal.review') || actor.permissions.includes('appeal.approve')) return;
-    throw new DomainException('APPEAL_ACCESS_DENIED', 'Appeal review or approval permission is required.', 403);
+    // `appeal.review` and `appeal.approve` carry write authority (the committee-review
+    // and Chief decision steps) as well as this organisation-wide read. `appeal.view`
+    // is the read-only counterpart, held by a role - Committee Member - authorised to
+    // see every re-evaluation request but neither of those decisions. See
+    // docs/rbac/RBAC-INTEGRATION-CONTRACT.md §5.4.
+    if (actor.permissions.includes('*') || actor.permissions.includes('appeal.review') || actor.permissions.includes('appeal.approve') || actor.permissions.includes('appeal.view')) return;
+    throw new DomainException('APPEAL_ACCESS_DENIED', 'Appeal review, approval, or view permission is required.', 403);
   }
 
   private assertPrivileged(actor: AccessClaims) {

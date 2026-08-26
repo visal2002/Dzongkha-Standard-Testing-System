@@ -12,7 +12,6 @@ import { StatCard } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
 import { questionService } from '@/services/questions';
 import { examService } from '@/services/exams';
-import { applicationService } from '@/services/applications';
 import { useApi } from '@/hooks/useApi';
 
 // Exam windows the Exam Head still needs to think about - not yet archived, not
@@ -24,11 +23,8 @@ export default function ExamHeadDashboard() {
   const { data: questionPapers, loading: loadingQP } = useApi(questionService.getAll);
   const { data: assignments, loading: loadingAssignments } = useApi(questionService.getMyAssignments);
   const { data: examWindows, loading: loadingExams } = useApi(examService.getAll);
-  // BRD §5.4.2: a read-only count for situational awareness, not a link into the
-  // Verification workflow - this role has no Verification screen of its own.
-  const { data: applications, loading: loadingApplications } = useApi(applicationService.getAll);
 
-  const isLoading = loadingQP || loadingAssignments || loadingExams || loadingApplications;
+  const isLoading = loadingQP || loadingAssignments || loadingExams;
 
   if (isLoading) {
     return (
@@ -45,14 +41,9 @@ export default function ExamHeadDashboard() {
   const upcomingExams = (examWindows || [])
     .filter(exam => UPCOMING_STATUSES.includes(exam.status))
     .sort((a, b) => new Date(a.examDate) - new Date(b.examDate));
-  const upcomingExamIds = new Set(upcomingExams.map(exam => exam.id));
 
   const pendingAssignments = (assignments || []).filter(item => item.skillsPending?.length);
   const totalPendingSkills = pendingAssignments.reduce((sum, item) => sum + item.skillsPending.length, 0);
-
-  const verifiedApplicantCount = (applications || [])
-    .filter(app => app.status === 'verified' && upcomingExamIds.has(app.examId))
-    .length;
 
   const formatDate = value => {
     const date = new Date(value);
@@ -77,7 +68,21 @@ export default function ExamHeadDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Papers Uploaded" value={(questionPapers || []).length} icon={<BookOpen size={18} />} color="gold" />
         <StatCard title="Pending Uploads" value={totalPendingSkills} icon={<AlertTriangle size={18} />} color={totalPendingSkills ? 'warning' : 'success'} />
-        <StatCard title="Verified Applicants" value={verifiedApplicantCount} icon={<UserCheck size={18} />} color="info" />
+        {/* BRD §5.4.2 asks for a verified-applicant count for upcoming sessions, but
+            GET /applications requires the `registration.application.verify`
+            permission server-side and the Exam Head does not hold it (only
+            question.secure.* and report.run - see migrations 0001/0002/0006).
+            Granting it would also grant the verify/start-review/return actions that
+            permission guards, which this role should not have. Shown disabled with
+            the reason instead of calling an endpoint that would 403 - see
+            RBAC-INTEGRATION-CONTRACT.md §5.6. */}
+        <StatCard
+          title="Verified Applicants"
+          value="—"
+          subtitle="Needs a read-only registration permission not yet split from Verify"
+          icon={<UserCheck size={18} />}
+          color="purple"
+        />
         <StatCard title="Upcoming Exams" value={upcomingExams.length} icon={<CalendarClock size={18} />} color="success" />
       </div>
 

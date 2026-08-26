@@ -7,7 +7,7 @@
 import { useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { createColumnHelper } from '@tanstack/react-table';
-import { CheckCircle, CreditCard, Eye, RotateCcw } from 'lucide-react';
+import { CheckCircle, CreditCard, Eye, RotateCcw, Send } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -39,6 +39,19 @@ export default function VerificationList() {
   const [paymentApplication, setPaymentApplication] = useState(null);
   const [paymentForm, setPaymentForm] = useState({ status: 'paid', method: 'Bank Transfer', reference: '' });
   const [savingPayment, setSavingPayment] = useState(false);
+  const [notifyingId, setNotifyingId] = useState(null);
+
+  const handleNotify = async (app) => {
+    setNotifyingId(app.id);
+    try {
+      await applicationService.notify(app.id);
+      toast.success(`Notification sent to ${app.testTakerName} (registration number, exam time and venue)`);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to send notification');
+    } finally {
+      setNotifyingId(null);
+    }
+  };
 
   const handleAction = async (action, app) => {
     const statusMap = { review: 'under_review', verify: 'verified', return: 'returned' };
@@ -128,11 +141,14 @@ export default function VerificationList() {
                 <Button variant="warning" size="xs" icon={<RotateCcw size={12} />} onClick={() => { setSelected(app); setConfirmAction('return'); }}>Return</Button>
               </>
             )}
+            {canManage && app.status === 'verified' && (
+              <Button variant="outline" size="xs" icon={<Send size={12} />} loading={notifyingId === app.id} onClick={() => handleNotify(app)}>Notify</Button>
+            )}
           </div>
         );
       }
     }),
-  ], [canManage]);
+  ], [canManage, notifyingId]);
 
   return (
     <div className="space-y-6">
@@ -210,6 +226,14 @@ export default function VerificationList() {
               <div className="flex gap-2 pt-2 border-t border-surface-border">
                 <Button variant="success" size="sm" onClick={() => setConfirmAction('verify')} icon={<CheckCircle size={13} />}>Verify Application</Button>
                 <Button variant="warning" size="sm" onClick={() => setConfirmAction('return')} icon={<RotateCcw size={13} />}>Return for Correction</Button>
+              </div>
+            )}
+            {canManage && selected.status === 'verified' && (
+              <div className="flex gap-2 pt-2 border-t border-surface-border">
+                <Button variant="outline" size="sm" loading={notifyingId === selected.id} onClick={() => handleNotify(selected)} icon={<Send size={13} />}>
+                  Send Notification
+                </Button>
+                <p className="text-xs text-text-muted self-center">Registration number, exam time and venue — SMS and email</p>
               </div>
             )}
           </div>
