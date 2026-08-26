@@ -27,7 +27,12 @@
       "Bash(export MSYS_NO_PATHCONV=1)",
       "Bash(timeout 30 bash -c 'until curl -sf http://localhost:5000/ >/dev/null; do sleep 1; done')",
       "Read(//c/Users/Administrator/AppData/Local/ms-playwright/**)",
-      "Bash(docker info *)"
+      "Bash(docker info *)",
+      "Bash(node -e \"console.log\\(require\\('axios/package.json'\\).version\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node .tmp-verify-upload-fix.mjs)",
+      "Bash(node .tmp-verify-upload-bug.mjs)",
+      "Bash(rm -f .tmp-verify-upload-fix.mjs .tmp-verify-upload-bug.mjs)"
     ]
   }
 }

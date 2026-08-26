@@ -61,6 +61,15 @@ apiClient.interceptors.request.use(
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
+    if (config.data instanceof FormData) {
+      // This instance's default Content-Type is application/json. Left in place,
+      // axios JSON-stringifies FormData bodies instead of sending them as multipart
+      // (see axios's transformRequest: isFormData + hasJSONContentType branch), which
+      // silently turns every file upload into a plain JSON field the backend DTO
+      // doesn't declare - the file never reaches Multer. Clearing it here lets the
+      // browser set the correct multipart boundary.
+      config.headers.delete('Content-Type');
+    }
     if (DEBUG) {
       console.info(`[API] → ${config.method?.toUpperCase()} ${config.url}`, config.data || '');
     }
