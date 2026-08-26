@@ -10,7 +10,7 @@ import {
   Calendar, DollarSign, Award, Bell, LayoutDashboard, BarChart3,
   GitBranch, Save, Upload, Image, AlignLeft, ToggleLeft, ChevronRight,
   Clock, Users, FileText, CheckCircle, AlertTriangle, Palette,
-  ClipboardList, Settings, Megaphone, PenLine
+  ClipboardList, Settings, Megaphone, PenLine, Lock, QrCode
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -238,6 +238,52 @@ function CertificateSection() {
   );
 }
 
+function QPaperSection() {
+  const KEY = 'ops_qpaper';
+  const [cfg, setCfg] = useState(() => load(KEY, {
+    enforceEncryption: true, restrictUntilExam: true, allowDownloadOnly: true,
+    watermarkDownloads: true, enableAccessLog: true,
+  }));
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setCfg(p => ({ ...p, [k]: v }));
+  const onSave = () => { setSaving(true); setTimeout(() => { persist(KEY, cfg); setSaving(false); toast.success('Question paper security saved.'); }, 400); };
+
+  return (
+    <div className="p-5">
+      <div className="divide-y divide-surface-border border border-surface-border rounded-lg overflow-hidden">
+        <ToggleRow id="ops-enforce-enc" label="Enforce Encryption on Upload" description="All question papers must be encrypted before storage" checked={cfg.enforceEncryption} onChange={v => set('enforceEncryption', v)} />
+        <ToggleRow id="ops-restrict-exam" label="Restrict Access Until Exam Time" description="Papers are inaccessible outside scheduled windows" checked={cfg.restrictUntilExam} onChange={v => set('restrictUntilExam', v)} />
+        <ToggleRow id="ops-download-only" label="Allow Download Only During Exam Window" checked={cfg.allowDownloadOnly} onChange={v => set('allowDownloadOnly', v)} />
+        <ToggleRow id="ops-watermark" label="Watermark Downloads" description="Embed user ID on downloaded papers" checked={cfg.watermarkDownloads} onChange={v => set('watermarkDownloads', v)} />
+        <ToggleRow id="ops-access-log" label="Access Log for Question Papers" checked={cfg.enableAccessLog} onChange={v => set('enableAccessLog', v)} />
+      </div>
+      <SaveBtn onClick={onSave} loading={saving} />
+    </div>
+  );
+}
+
+function QRSection() {
+  const KEY = 'ops_qr';
+  const [cfg, setCfg] = useState(() => load(KEY, { verifyUrl: '', signingKey: '', publicPage: true, verifyAPI: true }));
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setCfg(p => ({ ...p, [k]: v }));
+  const onSave = () => { setSaving(true); setTimeout(() => { persist(KEY, cfg); setSaving(false); toast.success('QR settings saved.'); }, 400); };
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="QR Verification URL"><input className={inputCls} value={cfg.verifyUrl} onChange={e => set('verifyUrl', e.target.value)} placeholder="https://verify.dsts.bt" /></Field>
+        <Field label="QR Signing Key"><input className={inputCls} type="password" value={cfg.signingKey} onChange={e => set('signingKey', e.target.value)} /></Field>
+      </div>
+      <div className="divide-y divide-surface-border border border-surface-border rounded-lg overflow-hidden">
+        <ToggleRow id="ops-qr-public" label="Enable Public Verification Page" checked={cfg.publicPage} onChange={v => set('publicPage', v)} />
+        <ToggleRow id="ops-qr-api" label="Enable Certificate Verification API" checked={cfg.verifyAPI} onChange={v => set('verifyAPI', v)} />
+      </div>
+      <SaveBtn onClick={onSave} loading={saving} />
+    </div>
+  );
+}
+
 function NotificationTemplatesSection() {
   const KEY = 'ops_notif';
   const TEMPLATES = [
@@ -416,6 +462,8 @@ const SECTIONS = [
   { id: 'exam',       label: 'Examination Master Settings', icon: Calendar },
   { id: 'fees',       label: 'Fee Settings',                icon: DollarSign },
   { id: 'cert',       label: 'Certificate Settings',        icon: Award },
+  { id: 'qpaper',     label: 'Question Paper Security',     icon: Lock },
+  { id: 'qr',         label: 'QR Verification',             icon: QrCode },
   { id: 'notif',      label: 'Notification Templates',      icon: Bell },
   { id: 'dashboard',  label: 'Dashboard Configuration',     icon: LayoutDashboard },
   { id: 'reporting',  label: 'Reporting Configuration',     icon: BarChart3 },
@@ -426,6 +474,8 @@ const SECTION_COMPONENTS = {
   exam:      ExamMasterSection,
   fees:      FeeSection,
   cert:      CertificateSection,
+  qpaper:    QPaperSection,
+  qr:        QRSection,
   notif:     NotificationTemplatesSection,
   dashboard: DashboardConfigSection,
   reporting: ReportingConfigSection,

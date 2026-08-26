@@ -47,8 +47,8 @@ The application presents a complete internal workflow for exam administration. I
 - 🎓 **Certificates:** Automated certificate generation with embedded QR codes and PDF export.
 - 📈 **Analytics & Reporting:** Interactive charts (Recharts) for real-time system metrics.
 - 🌓 **Theming:** Full dark/light mode support using custom Tailwind CSS v4 design tokens.
-- 🖥️ **Technical Settings:** Full IT/infrastructure configuration module for System Administrator (16 sections).
-- ⚙️ **Operational Settings:** Exam business rules, fees, certificates, notifications & workflow for DCDD Admin (7 sections).
+- 🖥️ **Technical Settings:** Full IT/infrastructure configuration module for System Administrator (14 sections).
+- ⚙️ **Operational Settings:** Exam business rules, fees, certificates, question paper security, QR verification, notifications & workflow for DCDD Admin (9 sections).
 - 👤 **Profile & Settings:** Profile picture upload, password change, and system contact info management for all roles.
 
 ---
