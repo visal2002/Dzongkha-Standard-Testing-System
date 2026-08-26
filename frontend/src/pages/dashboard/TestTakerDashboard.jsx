@@ -358,6 +358,13 @@ export default function TestTakerDashboard() {
                       <Calendar size={10} /> Submitted on {latestAppSubmittedAt.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                     </p>
                   )}
+                  {/* Exam schedule only once verified - before that there is nothing real to show. */}
+                  {currentStepIndex >= 1 && latestAppExam && (
+                    <div className="text-[10px] text-text-muted mt-1 space-y-0.5">
+                      <p className="flex items-center gap-1"><Calendar size={10} /> {new Date(latestAppExam.examDate).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="flex items-center gap-1"><MapPin size={10} /> {latestAppExam.venue}</p>
+                    </div>
+                  )}
                </div>
                <StatusBadge status={latestApp.status} />
             </div>
