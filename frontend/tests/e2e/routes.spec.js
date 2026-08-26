@@ -20,7 +20,7 @@ const roleRoutes = [
     routes: [
       '/dashboard', '/admin/users', '/admin/roles', '/registration/windows', '/registration/applications', '/verification',
       '/attendance', '/masters', '/scores/summary', '/questions', '/questions/samples',
-      '/certificates', '/reports', '/notifications', '/dcdd/operational',
+      '/certificates', '/reports', '/notifications',
     ],
   },
   {
@@ -29,9 +29,12 @@ const roleRoutes = [
     routes: ['/dashboard', '/registration/windows', '/registration/applications', '/verification', '/attendance', '/questions/upload', '/questions', '/questions/samples', '/scores/summary', '/certificates', '/reports'],
   },
   {
+    // committeeSetup ('/scores/committee') was narrowed to DCDD only - Committee Head
+    // assembling and designating itself did not make organisational sense. See
+    // outOfMatrix.js's 'committeeSetup' entry for the full reasoning.
     role: 'Committee Head',
     email: 'committee.head@demo.com',
-    routes: ['/dashboard', '/scores/committee', '/scores', '/scores/summary', '/appeals', '/reports'],
+    routes: ['/dashboard', '/scores', '/scores/summary', '/appeals', '/reports'],
   },
   {
     role: 'Committee Member',
@@ -205,7 +208,7 @@ const deniedRoutes = [
     routes: [
       '/admin/users', '/admin/roles', '/verification', '/attendance',
       '/questions/upload', '/scores', '/scores/committee', '/masters',
-      '/dcdd/operational', '/appeals/new',
+      '/appeals/new',
     ],
   },
   {
@@ -221,7 +224,7 @@ const deniedRoutes = [
       '/verification', '/attendance', '/questions', '/questions/upload', '/questions/samples',
       '/scores', '/scores/view', '/scores/summary', '/scores/committee',
       '/appeals', '/certificates', '/reports', '/reports/my',
-      '/dcdd/operational', '/masters', '/admin/technical',
+      '/masters', '/admin/technical',
     ],
   },
 ];
