@@ -7,6 +7,10 @@
 import { Injectable } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+// @pdf-lib/fontkit's complex-script shaping (needed for Tibetan) relies on
+// generator functions compiled against the regenerator runtime, which Node
+// does not provide globally on its own.
+import 'regenerator-runtime/runtime';
 import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, PDFFont, RGB, StandardFonts, rgb } from 'pdf-lib';
 import QRCode from 'qrcode';
