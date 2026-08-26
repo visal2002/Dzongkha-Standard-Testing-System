@@ -8,7 +8,7 @@ import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Req } from '
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions, Public } from '@dzongjuk/security';
-import { CancelBirmsPaymentDto, CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto, UpdateExamStatusDto } from './dtos';
+import { CancelBirmsPaymentDto, CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ResubmitApplicationDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto, UpdateExamStatusDto } from './dtos';
 import { RegistrationService } from './registration.service';
 import { BirmsPaymentService } from './birms-payment.service';
 
@@ -42,7 +42,7 @@ export class ApplicationsController {
     return this.service.getApplication(id, req.user!.sub, elevated);
   }
   @Permissions('registration.application.submit') @Post(':id/cancel') cancel(@Param('id') id: string, @Req() req: Request) { return this.service.cancel(id, req.user!.sub, req.id); }
-  @Permissions('registration.application.submit') @Post(':id/resubmit') resubmit(@Param('id') id: string, @Req() req: Request) { return this.service.resubmit(id, req.user!.sub, req.id); }
+  @Permissions('registration.application.submit') @Post(':id/resubmit') resubmit(@Param('id') id: string, @Body() dto: ResubmitApplicationDto, @Req() req: Request) { return this.service.resubmit(id, dto, req.user!.sub, req.id); }
   @Permissions('registration.application.verify') @Post(':id/start-review') startReview(@Param('id') id: string, @Req() req: Request) { return this.service.startReview(id, req.user!.sub, req.id); }
   @Permissions('registration.application.verify') @Post(':id/return') returnForCorrection(@Param('id') id: string, @Body() dto: ReturnApplicationDto, @Req() req: Request) { return this.service.returnForCorrection(id, dto, req.user!.sub, req.id); }
   @Permissions('registration.application.verify') @Post(':id/verify') verify(@Param('id') id: string, @Req() req: Request) { return this.service.verify(id, req.user!.sub, req.id); }

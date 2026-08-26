@@ -29,6 +29,13 @@ export class SubmitApplicationDto {
   @IsObject() profileSnapshot: Record<string, unknown>;
 }
 
+// `identityKey` is deliberately absent - it is the immutable identifier the
+// examId+identityKey uniqueness constraint is built on, so a resubmission edits
+// the profile details DCDD asked to be corrected, never the identity itself.
+export class ResubmitApplicationDto {
+  @IsObject() profileSnapshot: Record<string, unknown>;
+}
+
 export class ReturnApplicationDto { @IsString() @Length(3, 2000) remarks: string; }
 export class RecordRegistrationPaymentDto {
   @IsIn([RegistrationPaymentStatus.Paid, RegistrationPaymentStatus.Waived]) status: RegistrationPaymentStatus.Paid | RegistrationPaymentStatus.Waived;

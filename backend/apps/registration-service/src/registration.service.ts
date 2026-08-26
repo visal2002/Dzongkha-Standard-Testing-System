@@ -10,7 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { ApplicationStatus, DomainEventTypes, ExamStatus } from '@dzongjuk/contracts';
 import { assertInternalService, DomainException } from '@dzongjuk/common';
-import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto } from './dtos';
+import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ResubmitApplicationDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto } from './dtos';
 import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEntity, IdempotencyRecordEntity, OutboxEventEntity, RegistrationPaymentStatus, WaitlistEntryEntity } from './entities';
 
 @Injectable()
@@ -212,9 +212,12 @@ export class RegistrationService {
     return this.transition(id, [ApplicationStatus.UnderReview], ApplicationStatus.Returned, actorId, requestId, dto.remarks, (application) => { application.reviewRemarks = dto.remarks; }, DomainEventTypes.ApplicationReturned);
   }
 
-  async resubmit(id: string, userId: string, requestId: string) {
+  async resubmit(id: string, dto: ResubmitApplicationDto, userId: string, requestId: string) {
     const application = await this.getApplication(id, userId, false);
-    return this.transition(application.id, [ApplicationStatus.Returned], ApplicationStatus.Submitted, userId, requestId, null, (record) => { record.reviewRemarks = null; });
+    return this.transition(application.id, [ApplicationStatus.Returned], ApplicationStatus.Submitted, userId, requestId, null, (record) => {
+      record.reviewRemarks = null;
+      record.profileSnapshot = dto.profileSnapshot;
+    });
   }
 
   async verify(id: string, actorId: string, requestId: string) {
