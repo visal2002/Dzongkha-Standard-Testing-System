@@ -26,7 +26,8 @@
       "Bash(disown)",
       "Bash(export MSYS_NO_PATHCONV=1)",
       "Bash(timeout 30 bash -c 'until curl -sf http://localhost:5000/ >/dev/null; do sleep 1; done')",
-      "Read(//c/Users/Administrator/AppData/Local/ms-playwright/**)"
+      "Read(//c/Users/Administrator/AppData/Local/ms-playwright/**)",
+      "Bash(docker info *)"
     ]
   }
 }
