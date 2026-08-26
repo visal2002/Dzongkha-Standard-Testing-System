@@ -242,6 +242,7 @@ async function activeOrLocalCertificateTemplate() {
         title: 'Dzongjuk Local Acceptance Certificate',
         declarationText: 'This local test artifact confirms the published DSTS result shown below.',
         signatoryName: 'Local Acceptance Signatory', signatoryTitle: 'Test Environment Only',
+        chiefExecutiveName: 'Local Acceptance Executive', chiefExecutiveTitle: 'Chief Executive, DSTS',
         paperSize: 'A4', orientation: 'LANDSCAPE', validityMonths: 24, testOnly: true,
         effectiveFrom: new Date(now - 86_400_000).toISOString(),
       },
