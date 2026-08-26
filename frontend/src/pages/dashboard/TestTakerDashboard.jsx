@@ -244,10 +244,17 @@ export default function TestTakerDashboard() {
             <div className="w-7 h-7 rounded-md bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center text-purple-600 shrink-0"><Calendar size={13} /></div>
             <span className="truncate">Register for Exam</span>
           </Link>
-          <Link to="/certificates" className="flex items-center gap-2 p-2 rounded-lg bg-surface-bg/60 border border-surface-border/60 hover:border-emerald-500/40 hover:bg-emerald-500/5 text-[11px] font-semibold text-text-primary transition-all">
-            <div className="w-7 h-7 rounded-md bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 shrink-0"><Download size={13} /></div>
-            <span className="truncate">Download Certificate</span>
-          </Link>
+          {myCerts.length > 0 ? (
+            <Link to="/certificates" className="flex items-center gap-2 p-2 rounded-lg bg-surface-bg/60 border border-surface-border/60 hover:border-emerald-500/40 hover:bg-emerald-500/5 text-[11px] font-semibold text-text-primary transition-all">
+              <div className="w-7 h-7 rounded-md bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 shrink-0"><Download size={13} /></div>
+              <span className="truncate">Download Certificate</span>
+            </Link>
+          ) : (
+            <div title="No certificate has been issued yet" className="flex items-center gap-2 p-2 rounded-lg bg-surface-bg/30 border border-surface-border/40 text-[11px] font-semibold text-text-muted cursor-not-allowed">
+              <div className="w-7 h-7 rounded-md bg-surface-border/40 flex items-center justify-center text-text-muted shrink-0"><Download size={13} /></div>
+              <span className="truncate">No Certificate Yet</span>
+            </div>
+          )}
           <Link to="/scores/view" className="flex items-center gap-2 p-2 rounded-lg bg-surface-bg/60 border border-surface-border/60 hover:border-blue-500/40 hover:bg-blue-500/5 text-[11px] font-semibold text-text-primary transition-all">
             <div className="w-7 h-7 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 shrink-0"><BarChart2 size={13} /></div>
             <span className="truncate">View Result</span>
@@ -258,7 +265,7 @@ export default function TestTakerDashboard() {
           </Link>
           <Link to="/questions/samples" className="flex items-center gap-2 p-2 rounded-lg bg-surface-bg/60 border border-surface-border/60 hover:border-teal-500/40 hover:bg-teal-500/5 text-[11px] font-semibold text-text-primary transition-all">
             <div className="w-7 h-7 rounded-md bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center text-teal-600 shrink-0"><FileText size={13} /></div>
-            <span className="truncate">Sample Papers</span>
+            <span className="truncate">Sample Question Papers</span>
           </Link>
         </div>
       </div>
