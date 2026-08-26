@@ -332,7 +332,7 @@ export default function MyApplications() {
                         <ResubmitForm
                           app={app}
                           onCancel={() => setResubmittingId(null)}
-                          onResubmitted={() => { setResubmittingId(null); reloadApplications(); }}
+                          onResubmitted={async () => { setResubmittingId(null); await reloadApplications().catch(() => {}); }}
                         />
                       ) : (
                         <Button size="xs" className="mt-2" icon={<Edit2 size={12} />} onClick={() => setResubmittingId(app.id)}>
