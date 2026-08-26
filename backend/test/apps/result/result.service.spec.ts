@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource, EntityManager, ObjectLiteral, Repository } from 'typeorm';
 import { AccessClaims, DomainEventTypes, ScoreSheetStatus } from '@dzongjuk/contracts';
 import { ResultService } from '../../../apps/result-service/src/result.service';
+import { IdentityClientService } from '../../../apps/result-service/src/identity-client.service';
 import { ScoringService } from '../../../apps/result-service/src/scoring.service';
 import {
   CandidateEligibilityEntity,
@@ -106,6 +107,14 @@ const makeScoring = (): ScoringService =>
     config,
   );
 
+// Name resolution is a best-effort display concern (see IdentityClientService); tests
+// exercise the score/committee domain logic, not cross-service name lookup, so this
+// stays a no-op stub throughout.
+const identityClient = {
+  nameFor: jest.fn().mockResolvedValue(null),
+  namesFor: jest.fn().mockResolvedValue(new Map()),
+} as unknown as IdentityClientService;
+
 const buildService = (
   manager = makeManager(),
   {
@@ -124,7 +133,7 @@ const buildService = (
 ): ResultService => {
   const ds = makeDataSource(manager);
   const scoring = makeScoring();
-  return new ResultService(ds, scoring, config, committees, members, eligibility, sheets, versions);
+  return new ResultService(ds, scoring, config, identityClient, committees, members, eligibility, sheets, versions);
 };
 
 // ─── committee tests ──────────────────────────────────────────────────────────
@@ -311,7 +320,7 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     const ds = makeDataSource(manager);
     const scoring = makeScoring();
     jest.spyOn(scoring, 'activeRule').mockResolvedValue(approvedRule);
-    const service = new ResultService(ds, scoring, config, makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo());
+    const service = new ResultService(ds, scoring, config, identityClient, makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo());
     const result = await service.submit(sheetId, mfaActor({ sub: headActor.sub }), 'req-1', 'idem-submit-1');
     expect(result.status).toBe(ScoreSheetStatus.Submitted);
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.ScoreSubmitted)).toBe(true);
@@ -368,7 +377,7 @@ describe('ResultService — Result declaration (BRD §2.5)', () => {
     const ds = makeDataSource(manager);
     const scoring = makeScoring();
     jest.spyOn(scoring, 'activeRule').mockResolvedValue(approvedRule);
-    const service = new ResultService(ds, scoring, config, makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo());
+    const service = new ResultService(ds, scoring, config, identityClient, makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo());
     await service.declareResults(examId, mfaActor(), 'req-1');
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.ResultsDeclared)).toBe(true);
     expect(sheet1.status).toBe(ScoreSheetStatus.Published);

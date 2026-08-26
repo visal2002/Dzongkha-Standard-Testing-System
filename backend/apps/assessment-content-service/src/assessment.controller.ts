@@ -77,6 +77,14 @@ export class AssessmentController {
     return this.service.retire(id, request.user!, request.id);
   }
 
+  // Two path segments, so this never collides with the single-segment `:id` route
+  // above regardless of declaration order.
+  @Permissions('question.secure.upload')
+  @Get('assignments/mine')
+  myAssignments(@Req() request: Request) {
+    return this.service.myAssignments(request.user!);
+  }
+
   @Permissions('question.assignment.manage')
   @Post('assignments')
   assign(@Body() dto: AssignExamContentDto, @Req() request: Request) {

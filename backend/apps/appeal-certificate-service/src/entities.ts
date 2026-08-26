@@ -177,6 +177,23 @@ export class CertificateTemplateEntity {
   @Column({ type: 'enum', enum: CertificateOrientation, enumName: 'certificate_orientation' }) orientation: CertificateOrientation;
   @Column({ type: 'smallint' }) validityMonths: number;
   @Column({ default: false }) testOnly: boolean;
+  // Certificate template assets (§5.1/§5.7.2 master-configuration fields). The
+  // approved DSTS certificate layout is one fixed, hand-measured bilingual artwork
+  // (see certificate-renderer.service.ts) with its own baked-in logos, border and
+  // title already printed - only signatureImage/sealImage land on genuinely blank
+  // space on that artwork and are actually drawn by the renderer. The rest are
+  // stored here (so this is a real master table, not a form with nowhere to save to)
+  // but are not yet composited onto the printed certificate; see the renderer for why.
+  @Column({ type: 'bytea', nullable: true }) leftLogoData: Buffer | null;
+  @Column({ type: 'varchar', length: 80, nullable: true }) leftLogoMimeType: string | null;
+  @Column({ type: 'bytea', nullable: true }) rightLogoData: Buffer | null;
+  @Column({ type: 'varchar', length: 80, nullable: true }) rightLogoMimeType: string | null;
+  @Column({ type: 'bytea', nullable: true }) borderImageData: Buffer | null;
+  @Column({ type: 'varchar', length: 80, nullable: true }) borderImageMimeType: string | null;
+  @Column({ type: 'bytea', nullable: true }) signatureImageData: Buffer | null;
+  @Column({ type: 'varchar', length: 80, nullable: true }) signatureImageMimeType: string | null;
+  @Column({ type: 'bytea', nullable: true }) sealImageData: Buffer | null;
+  @Column({ type: 'varchar', length: 80, nullable: true }) sealImageMimeType: string | null;
   @Column({ type: 'enum', enum: CertificateTemplateStatus, enumName: 'certificate_template_status', default: CertificateTemplateStatus.Draft }) status: CertificateTemplateStatus;
   @Column({ type: 'timestamptz' }) effectiveFrom: Date;
   @Column({ type: 'timestamptz', nullable: true }) effectiveTo: Date | null;

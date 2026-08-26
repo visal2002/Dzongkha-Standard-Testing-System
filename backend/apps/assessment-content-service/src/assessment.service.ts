@@ -8,8 +8,8 @@ import { createHash, randomUUID } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
-import { AccessClaims, DomainEventTypes, QuestionPaperStatus } from '@dzongjuk/contracts';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
+import { AccessClaims, DomainEventTypes, QuestionPaperStatus, Skill } from '@dzongjuk/contracts';
 import { DomainException } from '@dzongjuk/common';
 import { AssignExamContentDto, UploadQuestionPaperDto } from './dtos';
 import { AccessAuditEntity, AssessmentOutboxEntity, DocumentType, ExamContentAssignmentEntity, QuestionDocumentEntity, QuestionPaperEntity, ResultDeclarationProjectionEntity, SamplePublicationEntity } from './entities';
@@ -45,19 +45,24 @@ export class AssessmentService {
     await this.assertAssigned(dto.examId, actor);
     const questionFile = files.questionPaper?.[0] ?? files.file?.[0];
     if (!questionFile) throw new DomainException('QUESTION_DOCUMENT_REQUIRED', 'A question-paper PDF is required.');
+    // BRD §5.4.2 BR-1: the question paper and the answer sheet are uploaded as two
+    // separate documents, both required - a paper is not complete with only one of
+    // them. Enforced here, not only in the upload form, because the form is a
+    // usability layer and this is the binding check.
     const answerFile = files.answerSheet?.[0];
+    if (!answerFile) throw new DomainException('ANSWER_DOCUMENT_REQUIRED', 'An answer-sheet PDF is required.');
     const allowedFrom = new Date(dto.accessAllowedFrom);
     const allowedUntil = new Date(dto.accessAllowedUntil);
     if (allowedUntil <= allowedFrom) throw new DomainException('ACCESS_WINDOW_INVALID', 'Access end must be after access start.');
     this.validatePdf(questionFile);
-    if (answerFile) this.validatePdf(answerFile);
+    this.validatePdf(answerFile);
 
     const paperId = randomUUID();
     const uploadedKeys: string[] = [];
     try {
       const prepared = await Promise.all([
         this.prepareDocument(paperId, DocumentType.QuestionPaper, questionFile),
-        answerFile ? this.prepareDocument(paperId, DocumentType.AnswerSheet, answerFile) : Promise.resolve(null),
+        this.prepareDocument(paperId, DocumentType.AnswerSheet, answerFile),
       ]);
       for (const item of prepared) if (item) uploadedKeys.push(item.document.objectKey);
 
@@ -163,6 +168,22 @@ export class AssessmentService {
   async listSamples() {
     const papers = await this.papers.find({ where: { status: QuestionPaperStatus.SamplePublished }, order: { updatedAt: 'DESC' } });
     return Promise.all(papers.map(async (paper) => this.metadata(paper, await this.documents.findBy({ questionPaperId: paper.id }))));
+  }
+
+  // Dashboard support for BR-1/BR-2: which exams the caller is assigned to manage
+  // classified content for, and which skills within each still have no uploaded
+  // paper. `list()` only ever surfaces exams that already have a paper, so an
+  // assignment with nothing uploaded yet is otherwise invisible to the caller.
+  async myAssignments(actor: AccessClaims) {
+    const assignments = await this.assignments.findBy({ userId: actor.sub, active: true });
+    const examIds = assignments.map((assignment) => assignment.examId);
+    if (!examIds.length) return [];
+    const papers = await this.papers.find({ where: { examId: In(examIds), status: Not(QuestionPaperStatus.Retired) } });
+    const allSkills = Object.values(Skill);
+    return examIds.map((examId) => {
+      const skillsUploaded = papers.filter((paper) => paper.examId === examId).map((paper) => paper.skill);
+      return { examId, skillsUploaded, skillsPending: allSkills.filter((skill) => !skillsUploaded.includes(skill)) };
+    });
   }
 
   async assignExam(dto: AssignExamContentDto, actor: AccessClaims, requestId: string) {

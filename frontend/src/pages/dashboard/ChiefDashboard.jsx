@@ -6,18 +6,25 @@
 
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Scale, CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
+import { Scale, CheckCircle, XCircle, Clock, ArrowRight, Users, Award, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatCard } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
 import { appealService } from '@/services/appeals';
+import { reportService } from '@/services/reports';
 import { useApi } from '@/hooks/useApi';
 import Button from '@/components/ui/Button';
 
 export default function ChiefDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: appealsData, loading } = useApi(appealService.getAll);
+  
+  const { data: appealsData, loading: appealsLoading } = useApi(appealService.getAll);
+  const { data: summary, loading: summaryLoading } = useApi(reportService.getSummary);
+  const { data: scoreReport, loading: scoreLoading } = useApi(reportService.getScoreDistribution);
+
+  const loading = appealsLoading || summaryLoading || scoreLoading;
+
   // Normalises the raw skill rows into names, matching how AppealList.jsx reads the
   // same /appeals response.
   const appealData = (appealsData || []).map(appeal => ({
@@ -25,8 +32,12 @@ export default function ChiefDashboard() {
     skillNames: (appeal.skills || []).map(skill => skill.skill),
   }));
   const pending = appealData.filter(a => a.status === 'PENDING_CHIEF_APPROVAL');
-  const approved = appealData.filter(a => a.chiefDecision === 'APPROVED');
-  const rejected = appealData.filter(a => a.chiefDecision === 'REJECTED');
+
+  const throughput = summary?.totalApplications > 0 
+    ? Math.round((summary.totalCertificates / summary.totalApplications) * 100)
+    : 0;
+    
+  const bands = scoreReport?.bands || [];
 
   if (loading) {
     return (
@@ -58,63 +69,69 @@ export default function ChiefDashboard() {
       </motion.div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Appeals" value={appealData.length} icon={<Scale size={18} />} color="gold" />
-        <StatCard title="Pending Approval" value={pending.length} icon={<Clock size={18} />} color="warning" />
-        <StatCard title="Approved" value={approved.length} icon={<CheckCircle size={18} />} color="success" />
-        <StatCard title="Rejected" value={rejected.length} icon={<XCircle size={18} />} color="error" />
+        <StatCard title="Total Registrations" value={summary?.totalApplications ?? 0} icon={<Users size={18} />} color="blue" />
+        <StatCard title="Active Appeals" value={summary?.activeAppeals ?? 0} icon={<Scale size={18} />} color="warning" />
+        <StatCard title="Resolved Appeals" value={appealData.filter(a => a.status === 'COMPLETED').length} icon={<CheckCircle size={18} />} color="success" />
+        <StatCard title="Cert. Throughput" value={`${throughput}%`} icon={<Award size={18} />} color="teal" />
       </div>
 
-      {/* Pending Approvals */}
-      <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-text-primary">Pending Score Revisions</h3>
-          <Button variant="ghost" size="xs" iconRight={<ArrowRight size={12} />} onClick={() => navigate('/appeals')}>All appeals</Button>
-        </div>
-          {pending.length === 0 ? (
-            <div className="text-center py-10 text-text-muted">
-              <CheckCircle size={32} className="mx-auto mb-2 text-emerald-400 opacity-60" />
-              <p className="text-sm font-medium text-text-primary">All caught up!</p>
-              <p className="text-xs mt-1">No revision requests pending your approval.</p>
-            </div>
-          ) : pending.map(appeal => (
-            <div key={appeal.id} className="p-4 bg-surface-bg border border-amber-500/20 rounded-xl mb-3">
-              <div className="flex items-start justify-between gap-4 mb-3">
-                <div>
-                  <p className="text-sm font-semibold text-text-primary font-mono">{appeal.id}</p>
-                  <p className="text-xs text-text-muted">Application {appeal.applicationId}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Pending Approvals */}
+        <div className="lg:col-span-2 bg-surface-card border border-surface-border rounded-xl p-5 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-text-primary">Pending Score Revisions</h3>
+            <Button variant="ghost" size="xs" iconRight={<ArrowRight size={12} />} onClick={() => navigate('/appeals')}>All appeals</Button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {pending.length === 0 ? (
+              <div className="text-center py-10 text-text-muted">
+                <CheckCircle size={32} className="mx-auto mb-2 text-emerald-400 opacity-60" />
+                <p className="text-sm font-medium text-text-primary">All caught up!</p>
+                <p className="text-xs mt-1">No revision requests pending your approval.</p>
+              </div>
+            ) : pending.map(appeal => (
+              <div key={appeal.id} className="p-4 bg-surface-bg border border-amber-500/20 rounded-xl mb-3">
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <div>
+                    <p className="text-sm font-semibold text-text-primary font-mono">{appeal.id}</p>
+                    <p className="text-xs text-text-muted">Application {appeal.applicationId}</p>
+                  </div>
+                  <StatusBadge status={appeal.status} />
                 </div>
-                <StatusBadge status={appeal.status} />
+                <div className="flex items-center justify-between gap-4 text-xs text-text-secondary">
+                  <span>Skills: {appeal.skillNames.join(', ')}</span>
+                  <Button variant="success" size="xs" icon={<CheckCircle size={12} />} onClick={() => navigate('/appeals')}>
+                    Review &amp; Decide
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center justify-between gap-4 text-xs text-text-secondary">
-                <span>Skills: {appeal.skillNames.join(', ')}</span>
-                {/* Each skill's approve/reject decision is made on the Re-evaluation
-                    screen, which has the score detail this compact card doesn't. */}
-                <Button variant="success" size="xs" icon={<CheckCircle size={12} />} onClick={() => navigate('/appeals')}>
-                  Review &amp; Decide
-                </Button>
-              </div>
-            </div>
-          ))}
-      </div>
+            ))}
+          </div>
+        </div>
 
-      {/* All Appeals */}
-      <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-text-primary mb-4">All Appeals History</h3>
-        <div className="space-y-3">
-          {appealData.map(appeal => (
-            <div key={appeal.id} className="flex items-center justify-between gap-3 p-3 bg-surface-bg rounded-xl border border-surface-border">
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-text-primary truncate font-mono">{appeal.id}</p>
-                <p className="text-[10px] text-text-muted">Skills: {appeal.skillNames.join(', ')} · Application {appeal.applicationId}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs text-text-muted">{appeal.payment?.currency || 'BTN'} {Number(appeal.payment?.amount || 0).toFixed(2)}</span>
-                <StatusBadge status={appeal.status} />
-              </div>
+        {/* Band Score Distribution */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-5 flex flex-col">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 size={16} className="text-text-muted" />
+            <h3 className="text-sm font-semibold text-text-primary">Band Distribution</h3>
+          </div>
+          {bands.length === 0 ? (
+            <div className="flex flex-col items-center justify-center flex-1 py-10 text-text-muted">
+              <p className="text-sm font-medium">No published band scores yet.</p>
             </div>
-          ))}
+          ) : (
+            <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+              {bands.map((b, i) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-surface-bg rounded-lg border border-surface-border">
+                  <span className="text-sm font-semibold text-text-primary">Level {b.band}</span>
+                  <span className="text-xs font-medium text-brand-gold bg-brand-gold/10 px-2 py-0.5 rounded-full">{b.count} candidates</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
+

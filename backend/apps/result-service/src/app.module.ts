@@ -12,6 +12,7 @@ import { SecurityModule } from '@dzongjuk/security';
 import { CommitteeController, ScoresController, ScoringRulesController } from './result.controller';
 import { CandidateEligibilityEntity, CommitteeEntity, CommitteeMemberEntity, ProcessedEventEntity, ResultAuditEntity, ResultDeclarationEntity, ResultIdempotencyEntity, ResultOutboxEntity, ScoreSheetEntity, ScoreVersionEntity, ScoringRuleEntity } from './entities';
 import { ResultService } from './result.service';
+import { IdentityClientService } from './identity-client.service';
 import { ScoringService } from './scoring.service';
 import { ResultOutboxPublisher } from './outbox-publisher.service';
 import { RegistrationEventConsumer } from './event-consumer.service';
@@ -25,6 +26,6 @@ import { RegistrationEventConsumer } from './event-consumer.service';
     PlatformModule,
   ],
   controllers: [CommitteeController, ScoresController, ScoringRulesController],
-  providers: [ResultService, ScoringService, ResultOutboxPublisher, RegistrationEventConsumer],
+  providers: [ResultService, IdentityClientService, ScoringService, ResultOutboxPublisher, RegistrationEventConsumer],
 })
 export class AppModule {}

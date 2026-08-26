@@ -42,15 +42,21 @@ export const OUT_OF_MATRIX_OPERATIONS = [
   },
   {
     key: 'examConfiguration',
-    label: 'Exam configuration and master data',
+    label: 'Master configuration — certificate templates and re-evaluation fee',
     roles: ['dcdd'],
     surface: '/masters',
     reason:
-      'Registration timeline, certificate validity and payment amount are business and ' +
-      'policy settings, not technical configuration. §5.1 sits directly ahead of the ' +
-      'Registration section, which the BRD treats as DCDD\'s domain throughout, and DCDD ' +
-      'confirmed ownership over the System Administrator, whose matrix remit is users, roles ' +
-      'and permissions.',
+      'Certificate validity, the certificate template (paper size, orientation, logos, ' +
+      'declaration text, signatory) and the re-evaluation fee are business and policy ' +
+      'settings, not technical configuration. §5.1 sits directly ahead of the Registration ' +
+      'section, which the BRD treats as DCDD\'s domain throughout, and DCDD confirmed ' +
+      'ownership over the System Administrator, whose matrix remit is users, roles and ' +
+      'permissions. Registration timeline and capacity are configured per exam window on the ' +
+      'Registration Windows screen instead, not here - this surface only owns the settings ' +
+      'that apply globally rather than per window. Under the v2 six-item sidebar decision, ' +
+      'this single entry (labelled "Master Configuration") also absorbs what the former ' +
+      '"Operational Settings" screen at /dcdd/operational covered for certificates and fees; ' +
+      'see the retired \'operationalSettings\' entry below for what did not carry over.',
   },
   {
     key: 'permissionManagement',
@@ -95,11 +101,20 @@ export const OUT_OF_MATRIX_OPERATIONS = [
   {
     key: 'operationalSettings',
     label: 'Operational settings',
-    roles: ['dcdd'],
+    roles: [],
     surface: '/dcdd/operational',
     reason:
-      'DCDD-specific operational configuration. Deliberately excludes the System ' +
-      'Administrator, whose matrix remit is users, roles and permissions.',
+      'Retired under the v2 six-item sidebar decision. Of its nine sections, certificate ' +
+      'settings and fee settings were real business configuration and were absorbed into the ' +
+      '\'examConfiguration\' entry above (now surfaced as "Master Configuration"). Exam ' +
+      'master settings (dates/capacity/venue) duplicated what the Registration Windows screen ' +
+      'already configures per exam window for real. The remaining five (question-paper ' +
+      'security toggles, QR signing key, notification-template text, dashboard widget ' +
+      'visibility, reporting defaults, workflow/approval-hierarchy steps) had no backend ' +
+      'behind them at all - editing them persisted to localStorage and nothing downstream ever ' +
+      'read the result. No role holds this operation until a real backend for those remaining ' +
+      'sections is scoped and built; the screen stays in the codebase, unreachable, rather ' +
+      'than being deleted - the same treatment \'technicalSettings\' already gets below.',
   },
 ];
 

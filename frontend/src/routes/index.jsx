@@ -33,6 +33,7 @@ const SubmitAppeal = lazy(() => import('@/pages/appeals/SubmitAppeal'));
 const CertificateList = lazy(() => import('@/pages/certificates/CertificateList'));
 const QuestionPapers = lazy(() => import('@/pages/questions/QuestionPapers'));
 const UploadQuestionPaper = lazy(() => import('@/pages/questions/UploadQuestionPaper'));
+const ExamDayDownloads = lazy(() => import('@/pages/questions/ExamDayDownloads'));
 const SamplePapers = lazy(() => import('@/pages/questions/SamplePapers'));
 const Reports = lazy(() => import('@/pages/reports/Reports'));
 const MyReports = lazy(() => import('@/pages/reports/MyReports'));
@@ -46,7 +47,6 @@ const MasterConfiguration = lazy(() => import('@/pages/admin/MasterConfiguration
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const TechnicalSettings = lazy(() => import('@/pages/admin/TechnicalSettings'));
-const OperationalSettings = lazy(() => import('@/pages/dcdd/OperationalSettings'));
 
 // Page loader
 export function PageLoader() {
@@ -123,6 +123,12 @@ export default function AppRoutes() {
           {/* Questions */}
           <Route path="/questions" element={<PrivateRoute requiredAccess={{ module: 'questions', action: 'read' }}><QuestionPapers /></PrivateRoute>} />
           <Route path="/questions/upload" element={<PrivateRoute requiredAccess={{ module: 'questions', action: 'create' }}><UploadQuestionPaper /></PrivateRoute>} />
+          {/* BRD §5.4.2 BR-3: view/download is a separate, scheduled-window-only screen
+              from the upload workspace above. The route guard only confirms the role
+              holds Full access; the exam window itself is enforced server-side on the
+              document endpoints this screen calls, so a direct request outside the
+              window 403s no matter how it was reached. */}
+          <Route path="/questions/downloads" element={<PrivateRoute requiredAccess={{ module: 'questions', action: 'secure_read' }}><ExamDayDownloads /></PrivateRoute>} />
           <Route path="/questions/samples" element={<PrivateRoute requiredAccess={{ module: 'questions', action: 'sample' }}><SamplePapers /></PrivateRoute>} />
 
           {/* Scores */}
@@ -152,7 +158,6 @@ export default function AppRoutes() {
           <Route path="/admin/audit-logs" element={<PrivateRoute requiredRoles={rolesFor('systemAuditLogs')}><AuditLogs /></PrivateRoute>} />
           <Route path="/admin/technical" element={<PrivateRoute requiredRoles={rolesFor('technicalSettings')}><TechnicalSettings /></PrivateRoute>} />
           <Route path="/masters" element={<PrivateRoute requiredRoles={rolesFor('examConfiguration')}><MasterConfiguration /></PrivateRoute>} />
-          <Route path="/dcdd/operational" element={<PrivateRoute requiredRoles={rolesFor('operationalSettings')}><OperationalSettings /></PrivateRoute>} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Route>

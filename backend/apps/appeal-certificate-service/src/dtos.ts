@@ -4,10 +4,18 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { ArrayMinSize, IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ArrayMinSize, IsArray, IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
 import { Skill } from '@dzongjuk/contracts';
 import { AppealDecision, AppealRecommendation } from './entities';
 import { CertificateOrientation, CertificatePaperSize } from './entities';
+
+// Certificate template image slots (logos, border, signature, seal) - a data URI's
+// mime-type prefix, base64-decoded and size-checked in CertificateService.createTemplate.
+export class CertificateTemplateAssetDto {
+  @IsIn(['image/png', 'image/jpeg']) mimeType: 'image/png' | 'image/jpeg';
+  @IsString() @Length(1, 3_000_000) dataBase64: string;
+}
 
 export class CreateAppealDto {
   @IsUUID() applicationId: string;
@@ -61,6 +69,11 @@ export class CreateCertificateTemplateDto {
   @IsOptional() @IsBoolean() testOnly?: boolean;
   @IsDateString() effectiveFrom: string;
   @IsOptional() @IsDateString() effectiveTo?: string;
+  @IsOptional() @ValidateNested() @Type(() => CertificateTemplateAssetDto) leftLogo?: CertificateTemplateAssetDto;
+  @IsOptional() @ValidateNested() @Type(() => CertificateTemplateAssetDto) rightLogo?: CertificateTemplateAssetDto;
+  @IsOptional() @ValidateNested() @Type(() => CertificateTemplateAssetDto) borderImage?: CertificateTemplateAssetDto;
+  @IsOptional() @ValidateNested() @Type(() => CertificateTemplateAssetDto) signatureImage?: CertificateTemplateAssetDto;
+  @IsOptional() @ValidateNested() @Type(() => CertificateTemplateAssetDto) sealImage?: CertificateTemplateAssetDto;
 }
 
 export class GenerateCertificatesDto {

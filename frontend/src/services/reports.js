@@ -72,4 +72,25 @@ export const reportService = {
     const { data } = await apiClient.get(`/reports/jobs/${jobId}`);
     return data;
   },
+
+  /** Download a completed report artifact */
+  downloadExport: async (jobId, filename = 'export') => {
+    const response = await apiClient.get(`/reports/jobs/${jobId}/download`, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    const contentDisposition = response.headers['content-disposition'];
+    let downloadName = filename;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (match && match[1]) {
+        downloadName = match[1];
+      }
+    }
+    link.setAttribute('download', downloadName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };

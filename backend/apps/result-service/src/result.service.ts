@@ -12,6 +12,7 @@ import { AccessClaims, DomainEventTypes, ScoreSheetStatus } from '@dzongjuk/cont
 import { assertInternalService, DomainException } from '@dzongjuk/common';
 import { AppealScoreChangesDto, ApplyAppealRevisionDto, CreateCommitteeDto, ScoreValuesDto } from './dtos';
 import { CandidateEligibilityEntity, CommitteeEntity, CommitteeMemberEntity, CommitteeRole, EligibilityStatus, ResultAuditEntity, ResultDeclarationEntity, ResultIdempotencyEntity, ResultOutboxEntity, ScoreSheetEntity, ScoreValues, ScoreVersionEntity } from './entities';
+import { IdentityClientService } from './identity-client.service';
 import { ScoringService } from './scoring.service';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class ResultService {
     private readonly dataSource: DataSource,
     private readonly scoring: ScoringService,
     private readonly config: ConfigService,
+    private readonly identityClient: IdentityClientService,
     @InjectRepository(CommitteeEntity) private readonly committees: Repository<CommitteeEntity>,
     @InjectRepository(CommitteeMemberEntity) private readonly members: Repository<CommitteeMemberEntity>,
     @InjectRepository(CandidateEligibilityEntity) private readonly eligibility: Repository<CandidateEligibilityEntity>,
@@ -54,7 +56,12 @@ export class ResultService {
     if (!actor.permissions.includes('*') && !actor.permissions.includes('committee.manage') && !await this.members.existsBy({ committeeId: committee.id, userId: actor.sub, removedAt: IsNull() })) {
       throw new DomainException('COMMITTEE_ACCESS_REQUIRED', 'Only the assigned committee may view this committee.', 403);
     }
-    return { ...committee, members: await this.members.find({ where: { committeeId: committee.id, removedAt: IsNull() } }) };
+    const members = await this.members.find({ where: { committeeId: committee.id, removedAt: IsNull() } });
+    // BRD §5.5.2 BR-3: committee member names must display, not just a user id. Names
+    // live in identity-service, so this is a best-effort cross-service lookup - a
+    // failed lookup leaves `name` null and the caller falls back to a truncated id.
+    const names = await this.identityClient.namesFor(members.map((member) => member.userId));
+    return { ...committee, members: members.map((member) => ({ ...member, name: names.get(member.userId) ?? null })) };
   }
 
   async saveDraft(applicationId: string, dto: ScoreValuesDto, actor: AccessClaims, requestId: string) {

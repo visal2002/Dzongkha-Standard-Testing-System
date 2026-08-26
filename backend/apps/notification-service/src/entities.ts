@@ -8,7 +8,10 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Unique
 
 export enum NotificationChannel { InApp = 'IN_APP', Email = 'EMAIL', Sms = 'SMS' }
 export enum NotificationTemplateStatus { Draft = 'DRAFT', Approved = 'APPROVED', Retired = 'RETIRED' }
-export enum NotificationDeliveryStatus { Delivered = 'DELIVERED', PendingProvider = 'PENDING_PROVIDER', Failed = 'FAILED' }
+// 'SENDING' is claimed-and-in-flight, distinct from PendingProvider so a concurrent
+// dispatch-worker instance's SKIP LOCKED poll excludes this row once the claiming
+// transaction commits and the row lock releases, even before the send finishes.
+export enum NotificationDeliveryStatus { Delivered = 'DELIVERED', PendingProvider = 'PENDING_PROVIDER', Sending = 'SENDING', Failed = 'FAILED' }
 
 @Entity('notification_templates')
 @Unique('uq_notification_template_version', ['eventType', 'channel', 'versionNumber'])

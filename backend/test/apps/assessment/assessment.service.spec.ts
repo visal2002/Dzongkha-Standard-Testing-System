@@ -139,7 +139,7 @@ describe('AssessmentService — Question paper upload (BRD §2.4)', () => {
     await expect(
       service.upload(
         { ...validDto, accessAllowedFrom: '2026-10-10T09:00:00Z', accessAllowedUntil: '2026-10-09T08:00:00Z' },
-        { questionPaper: [makePdf()] },
+        { questionPaper: [makePdf()], answerSheet: [makePdf()] },
         actor,
         'req-1',
       ),
@@ -154,6 +154,16 @@ describe('AssessmentService — Question paper upload (BRD §2.4)', () => {
     ).rejects.toMatchObject({ response: { code: 'QUESTION_DOCUMENT_REQUIRED' } });
   });
 
+  it('rejects upload when the answer sheet file is missing', async () => {
+    // BRD §5.4.2 BR-1: the question paper and the answer sheet are uploaded as two
+    // separate, both-required documents - a paper is not complete with only one.
+    const actor = examHeadActor();
+    const service = buildService();
+    await expect(
+      service.upload(validDto, { questionPaper: [makePdf()] }, actor, 'req-2b'),
+    ).rejects.toMatchObject({ response: { code: 'ANSWER_DOCUMENT_REQUIRED' } });
+  });
+
   it('rejects non-PDF file type', async () => {
     const actor = examHeadActor();
     const service = buildService();
@@ -163,7 +173,7 @@ describe('AssessmentService — Question paper upload (BRD §2.4)', () => {
       buffer: Buffer.from('JPEG data'),
     };
     await expect(
-      service.upload(validDto, { questionPaper: [badFile] }, actor, 'req-3'),
+      service.upload(validDto, { questionPaper: [badFile], answerSheet: [makePdf()] }, actor, 'req-3'),
     ).rejects.toMatchObject({ response: { code: 'QUESTION_FILE_TYPE_INVALID' } });
   });
 
@@ -178,7 +188,8 @@ describe('AssessmentService — Question paper upload (BRD §2.4)', () => {
       create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     });
     const service = buildService({ manager });
-    const result = await service.upload(validDto, { questionPaper: [makePdf()] }, actor, 'req-4');
+    const result = await service.upload(validDto, { questionPaper: [makePdf()], answerSheet: [makePdf()] }, actor, 'req-4');
+    expect(result.documents).toHaveLength(2);
     expect(result.documents[0].encrypted).toBe(true);
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.QuestionPaperUploaded)).toBe(true);
   });
@@ -346,5 +357,37 @@ describe('AssessmentService — Sample publication (BRD §2.4)', () => {
     const service = buildService({ manager, papers });
     await expect(service.publishSample(paper.id, actor, 'req-9'))
       .rejects.toMatchObject({ response: { code: 'SAMPLE_PUBLICATION_INVALID' } });
+  });
+});
+
+// ─── dashboard pending-upload support ─────────────────────────────────────────
+
+describe('AssessmentService — Exam Head assignments and pending uploads (BRD §5.4.2 BR-1/BR-2)', () => {
+  it('reports no assignments as an empty list, not every exam', async () => {
+    const service = buildService({ assignments: makeRepo<ExamContentAssignmentEntity>([]) });
+    await expect(service.myAssignments(examHeadActor())).resolves.toEqual([]);
+  });
+
+  it('splits an assigned exam into uploaded and pending skills', async () => {
+    const examId = uuid();
+    const actor = examHeadActor();
+    const assignments = makeRepo([
+      Object.assign(new ExamContentAssignmentEntity(), { examId, userId: actor.sub, active: true }),
+    ]);
+    const papers = makeRepo([
+      Object.assign(new QuestionPaperEntity(), { examId, skill: Skill.Writing, status: QuestionPaperStatus.Ready }),
+      Object.assign(new QuestionPaperEntity(), { examId, skill: Skill.Reading, status: QuestionPaperStatus.SamplePublished }),
+    ]);
+    const service = buildService({ assignments, papers });
+
+    const result = await service.myAssignments(actor);
+
+    expect(result).toEqual([{
+      examId,
+      skillsUploaded: expect.arrayContaining([Skill.Writing, Skill.Reading]),
+      skillsPending: expect.arrayContaining([Skill.Listening, Skill.Speaking]),
+    }]);
+    expect(result[0].skillsUploaded).toHaveLength(2);
+    expect(result[0].skillsPending).toHaveLength(2);
   });
 });

@@ -46,6 +46,11 @@ export class ApplicationsController {
   @Permissions('registration.application.verify') @Post(':id/start-review') startReview(@Param('id') id: string, @Req() req: Request) { return this.service.startReview(id, req.user!.sub, req.id); }
   @Permissions('registration.application.verify') @Post(':id/return') returnForCorrection(@Param('id') id: string, @Body() dto: ReturnApplicationDto, @Req() req: Request) { return this.service.returnForCorrection(id, dto, req.user!.sub, req.id); }
   @Permissions('registration.application.verify') @Post(':id/verify') verify(@Param('id') id: string, @Req() req: Request) { return this.service.verify(id, req.user!.sub, req.id); }
+  // BRD §5.2.2 item 3: the verification notification (registration number, exam time,
+  // venue) must be sendable again any time after verification, not only once at the
+  // moment of verifying - e.g. if a message was missed or the applicant needs a
+  // reminder closer to the exam date.
+  @Permissions('registration.application.verify') @Post(':id/notify') notify(@Param('id') id: string, @Req() req: Request) { return this.service.resendVerificationNotification(id, req.user!.sub, req.id); }
   @Permissions('registration.application.verify') @Post(':id/payment') payment(@Param('id') id: string, @Body() dto: RecordRegistrationPaymentDto, @Req() req: Request) {
     return this.service.recordPayment(id, dto, req.user!.sub, req.id);
   }
@@ -62,6 +67,11 @@ export class ApplicationsController {
   @Public() @Get('internal/:id/certificate-profile')
   certificateProfile(@Param('id') id: string, @Headers('x-internal-service-key') key: string | undefined) {
     return this.service.certificateProfile(id, key);
+  }
+
+  @Public() @Get('internal/:id/contact')
+  contact(@Param('id') id: string, @Headers('x-internal-service-key') key: string | undefined) {
+    return this.service.applicationContact(id, key);
   }
 }
 

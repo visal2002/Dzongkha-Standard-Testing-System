@@ -69,8 +69,8 @@ services:
     env_file:
       - path: .env
         required: false
-    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${RESULT_DATABASE_NAME:-dzongjuk_result}", RESULT_PORT: 8004, RABBITMQ_URL: "amqp://dzongjuk:${RABBITMQ_PASSWORD:-development-only}@rabbitmq:5672" }
-    depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${RESULT_DATABASE_NAME:-dzongjuk_result}", RESULT_PORT: 8004, IDENTITY_SERVICE_URL: "http://identity-service:8001/api/v1", RABBITMQ_URL: "amqp://dzongjuk:${RABBITMQ_PASSWORD:-development-only}@rabbitmq:5672" }
+    depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy }, identity-service: { condition: service_started } }
   appeal-certificate-service:
     build: { context: ., args: { SERVICE: appeal-certificate-service } }
     env_file:

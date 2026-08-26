@@ -221,7 +221,37 @@ export class RegistrationService {
     return this.transition(id, [ApplicationStatus.UnderReview], ApplicationStatus.Verified, actorId, requestId, null, (application) => {
       application.verifiedAt = new Date();
       application.registrationNumber = `DSTS-${new Date().getUTCFullYear()}-${application.id.slice(0, 8).toUpperCase()}`;
-    }, DomainEventTypes.ApplicationVerified);
+    }, DomainEventTypes.ApplicationVerified, (manager, application) => this.verificationNotificationPayload(manager, application));
+  }
+
+  // BRD §5.2.2 item 3: sendable any time after verification, not only once at the
+  // moment of verifying. Re-publishes the same ApplicationVerified event the initial
+  // verification fires, reusing the whole existing template-render -> notification ->
+  // delivery pipeline rather than a second one.
+  async resendVerificationNotification(id: string, actorId: string, requestId: string) {
+    return this.dataSource.transaction(async (manager) => {
+      const application = await manager.findOneBy(ApplicationEntity, { id });
+      if (!application) throw new DomainException('APPLICATION_NOT_FOUND', 'Application not found.', 404);
+      if (application.status !== ApplicationStatus.Verified) {
+        throw new DomainException('APPLICATION_NOT_VERIFIED', 'Only a verified application can be notified.', 409);
+      }
+      const extra = await this.verificationNotificationPayload(manager, application);
+      await this.outbox(manager, DomainEventTypes.ApplicationVerified, id, requestId, {
+        applicationId: id, examId: application.examId, testTakerUserId: application.testTakerUserId, ...extra,
+      });
+      await this.transitionLog(manager, id, application.status, application.status, actorId, requestId, 'Verification notification resent.');
+      return { sent: true };
+    });
+  }
+
+  // Cross-service contact resolution for the notification dispatch worker (SMS
+  // delivery). The applicant's phone number lives on the registration profile
+  // captured at submission time, not on the identity account.
+  async applicationContact(id: string, internalKey: string | undefined) {
+    assertInternalService(this.config, internalKey);
+    const application = await this.applications.findOneBy({ id });
+    if (!application) throw new DomainException('APPLICATION_NOT_FOUND', 'Application not found.', 404);
+    return { phone: this.profileString(application.profileSnapshot, ['phone', 'contactNo', 'mobileNo']) };
   }
 
   async recordPayment(id: string, dto: RecordRegistrationPaymentDto, actorId: string, requestId: string) {
@@ -263,7 +293,11 @@ export class RegistrationService {
         application.status = ApplicationStatus.Absent;
         await manager.save(application);
         await this.transitionLog(manager, id, previous, application.status, actorId, requestId, `Absent skills: ${absentSkills.join(', ')}`);
-        await this.outbox(manager, DomainEventTypes.CandidateMarkedAbsent, id, requestId, { applicationId: id, examId: application.examId, testTakerUserId: application.testTakerUserId, absentSkills });
+        const exam = await manager.findOneBy(ExamEntity, { id: application.examId });
+        await this.outbox(manager, DomainEventTypes.CandidateMarkedAbsent, id, requestId, {
+          applicationId: id, examId: application.examId, testTakerUserId: application.testTakerUserId, absentSkills,
+          examDate: exam?.examDate ? exam.examDate.toISOString().slice(0, 10) : '', venue: exam?.venue ?? '',
+        });
       }
       return attendance;
     });
@@ -287,7 +321,7 @@ export class RegistrationService {
     };
   }
 
-  private async transition(id: string, allowed: ApplicationStatus[], target: ApplicationStatus, actorId: string, requestId: string, remarks: string | null, mutate?: (application: ApplicationEntity) => void, eventType?: string) {
+  private async transition(id: string, allowed: ApplicationStatus[], target: ApplicationStatus, actorId: string, requestId: string, remarks: string | null, mutate?: (application: ApplicationEntity) => void, eventType?: string, extraPayload?: (manager: EntityManager, application: ApplicationEntity) => Promise<Record<string, unknown>>) {
     return this.dataSource.transaction(async (manager) => {
       const application = await manager.findOne(ApplicationEntity, { where: { id }, lock: { mode: 'pessimistic_write' } });
       if (!application) throw new DomainException('APPLICATION_NOT_FOUND', 'Application not found.', 404);
@@ -297,9 +331,29 @@ export class RegistrationService {
       mutate?.(application);
       await manager.save(application);
       await this.transitionLog(manager, id, previous, target, actorId, requestId, remarks);
-      if (eventType) await this.outbox(manager, eventType, id, requestId, { applicationId: id, examId: application.examId, testTakerUserId: application.testTakerUserId });
+      if (eventType) {
+        const extra = extraPayload ? await extraPayload(manager, application) : {};
+        await this.outbox(manager, eventType, id, requestId, { applicationId: id, examId: application.examId, testTakerUserId: application.testTakerUserId, ...extra });
+      }
       return application;
     });
+  }
+
+  private async verificationNotificationPayload(manager: EntityManager, application: ApplicationEntity) {
+    const exam = await manager.findOneBy(ExamEntity, { id: application.examId });
+    return {
+      registrationNumber: application.registrationNumber,
+      examDate: exam?.examDate ? exam.examDate.toISOString().slice(0, 10) : '',
+      venue: exam?.venue ?? '',
+    };
+  }
+
+  private profileString(profile: Record<string, unknown>, keys: string[]) {
+    for (const key of keys) {
+      const value = profile[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+    return null;
   }
 
   private async promoteNext(manager: EntityManager, examId: string, requestId: string) {

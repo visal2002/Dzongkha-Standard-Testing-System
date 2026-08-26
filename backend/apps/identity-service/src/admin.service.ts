@@ -5,10 +5,11 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { In, Repository } from 'typeorm';
-import { DomainException } from '@dzongjuk/common';
+import { assertInternalService, DomainException } from '@dzongjuk/common';
 import { AuditService } from './audit.service';
 import { CreateRoleDto, CreateUserDto, UpdateRolePermissionsDto, UpdateUserDto, UpdateUserRolesDto } from './dtos';
 import { PermissionEntity, RoleEntity, UserEntity } from './entities';
@@ -20,7 +21,20 @@ export class AdminService {
     @InjectRepository(RoleEntity) private readonly roles: Repository<RoleEntity>,
     @InjectRepository(PermissionEntity) private readonly permissions: Repository<PermissionEntity>,
     private readonly audit: AuditService,
+    private readonly config: ConfigService,
   ) {}
+
+  // Cross-service contact resolution. The notification dispatch worker uses this for
+  // email delivery (phone numbers live on the applicant's registration profile, not
+  // the identity account, and are resolved from registration-service instead);
+  // result-service uses the same lookup to resolve a committee member's display name
+  // for score-sheet attribution (BRD §5.5.2 BR-3).
+  async internalContactEmail(id: string, internalKey: string | undefined) {
+    assertInternalService(this.config, internalKey);
+    const user = await this.users.findOneBy({ id });
+    if (!user) throw new DomainException('USER_NOT_FOUND', 'User not found.', 404);
+    return { email: user.email, name: user.fullName };
+  }
 
   listUsers() {
     return this.users.find({ order: { createdAt: 'DESC' }, take: 100 });

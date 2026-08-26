@@ -23,7 +23,7 @@ import {
   monthlyCounts, monthlyAverages, toPieSlices, hasChartData, CEFR_BAND_COLORS,
 } from '@/utils/analytics';
 import ChartEmpty from '@/components/ui/ChartEmpty';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccess } from '@/features/rbac/accessMatrix';
@@ -56,6 +56,31 @@ export default function Reports() {
   const { data: appeals } = useApi(appealService.getAll);
   const { data: scoreReport } = useApi(reportService.getScoreDistribution);
   const examWindows = examWindowsData || [];
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async (format, dataset = 'summary', label = 'report') => {
+    try {
+      setExporting(true);
+      toast.loading(`Generating ${label} (${format.toUpperCase()})...`, { id: 'export-job' });
+      // In this system, we use createExport and then download it.
+      const job = await reportService.createExport(format, { dataset, fields: [] });
+      
+      // If the backend has a worker, we'd poll here. We will attempt a slight delay then download.
+      setTimeout(async () => {
+        try {
+          await reportService.downloadExport(job.id, `${label.replace(/\s+/g, '_').toLowerCase()}.${format}`);
+          toast.success(`${label} downloaded successfully!`, { id: 'export-job' });
+        } catch (downloadErr) {
+          toast.error(`Export failed: ${downloadErr.message}`, { id: 'export-job' });
+        } finally {
+          setExporting(false);
+        }
+      }, 1500);
+    } catch (err) {
+      toast.error(`Export failed: ${err.message}`, { id: 'export-job' });
+      setExporting(false);
+    }
+  };
 
   // Every chart below is aggregated from records the API returned. When an environment
   // has no data the chart says so rather than drawing a representative curve.
@@ -104,7 +129,7 @@ export default function Reports() {
         breadcrumbs={[{ label: 'Reports' }]}
         icon={<BarChart3 size={18} />}
         action={canGenerate ?
-          <Button variant="secondary" icon={<Download size={14} />} onClick={() => toast.success('Generating report...')}>
+          <Button variant="secondary" icon={<Download size={14} />} disabled={exporting} onClick={() => handleExport('pdf', 'summary', 'Overview Report')}>
             Export PDF
           </Button>
           : null}
@@ -196,7 +221,7 @@ export default function Reports() {
                 <h3 className="text-sm font-semibold text-text-primary">Application Status Breakdown</h3>
                 <div className="flex gap-2">
                   <Select style={{ width: 140, height: 32 }}><option>All Windows</option>{examWindows.map(e => <option key={e.id}>{e.title}</option>)}</Select>
-                  {canGenerate && <Button variant="secondary" size="sm" icon={<Download size={13} />} onClick={() => toast.success('Exporting...')}>CSV</Button>}
+                  {canGenerate && <Button variant="secondary" size="sm" disabled={exporting} icon={<Download size={13} />} onClick={() => handleExport('csv', 'registration', 'Registration Status')}>CSV</Button>}
                 </div>
               </div>
               {!hasRegistrationTrend ? (
@@ -275,8 +300,8 @@ export default function Reports() {
               {PREDEFINED_REPORTS.map(r => (
                 <button
                   key={r.id}
-                  onClick={() => toast.success(`Generating "${r.label}"...`)}
-                  disabled={!canGenerate}
+                  onClick={() => handleExport('pdf', r.id, r.label)}
+                  disabled={!canGenerate || exporting}
                   className="text-left p-4 bg-surface-card border border-surface-border rounded-xl hover:border-brand-gold/30 hover:bg-[var(--color-surface-card-hover)] transition-all group"
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">

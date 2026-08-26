@@ -157,14 +157,39 @@ export class CertificateRendererService {
     // Validity date — 8 cell grid
     digitCells(VALIDITY_CELLS, VALIDITY_Y, VALIDITY_H, asDdMmYyyy(certificate.validUntil), TAN, INK);
 
-    // Signatory names, printed above the artwork's own blank signature rules
-    const drawSignatory = (name: string, ruleX: number, ruleWidth: number) => {
+    // Signatory names, printed above the artwork's own blank signature rules. The
+    // authorized signature image (if the template carries one) is drawn into the
+    // narrow blank band directly above that same rule - the only genuinely empty
+    // space on this fixed artwork near the signature, between the printed name and
+    // the QR/issuance text above it.
+    const drawSignatory = async (name: string, ruleX: number, ruleWidth: number, signatureImage?: { data: Buffer; mimeType: string } | null) => {
       page.drawLine({ start: { x: ruleX, y: 68 }, end: { x: ruleX + ruleWidth, y: 68 }, thickness: 0.75, color: INK });
       const textWidth = helveticaBold.widthOfTextAtSize(name, 9);
       page.drawText(name, { x: ruleX + (ruleWidth - textWidth) / 2, y: 72, size: 9, font: helveticaBold, color: INK });
+      if (!signatureImage) return;
+      const embedded = signatureImage.mimeType === 'image/png' ? await document.embedPng(signatureImage.data) : await document.embedJpg(signatureImage.data);
+      const height = 15;
+      const width = Math.min(ruleWidth - 10, (embedded.width / embedded.height) * height);
+      page.drawImage(embedded, { x: ruleX + (ruleWidth - width) / 2, y: 82, width, height });
     };
-    drawSignatory(template.signatoryName, 60, 130);
-    drawSignatory(template.chiefExecutiveName, 335, 140);
+    // The template's one authorized-signature image is the DCDD/Chief Executive
+    // signatory - "authorized signature" in the master-configuration sense (§5.7.2)
+    // reads as the DCDD-side signer, not the committee-side Chief of Examination.
+    await drawSignatory(template.signatoryName, 60, 130, null);
+    await drawSignatory(
+      template.chiefExecutiveName, 335, 140,
+      template.signatureImageData && template.signatureImageMimeType ? { data: template.signatureImageData, mimeType: template.signatureImageMimeType } : null,
+    );
+
+    // Official seal - the only other genuinely blank area on this fixed artwork is
+    // the gap between the two signature blocks, below the validity grid and above
+    // both printed job-title captions.
+    if (template.sealImageData && template.sealImageMimeType) {
+      const seal = template.sealImageMimeType === 'image/png' ? await document.embedPng(template.sealImageData) : await document.embedJpg(template.sealImageData);
+      const sealHeight = 46;
+      const sealWidth = (seal.width / seal.height) * sealHeight;
+      page.drawImage(seal, { x: 262 - sealWidth / 2, y: 58, width: sealWidth, height: sealHeight, opacity: 0.9 });
+    }
 
     // Verification QR + issuance dates, placed in the artwork's empty band above the signatures
     page.drawText(`Issued ${certificate.issuedAt.toISOString().slice(0, 10)}`, { x: 60, y: 112, size: 7.5, font: helvetica, color: INK });

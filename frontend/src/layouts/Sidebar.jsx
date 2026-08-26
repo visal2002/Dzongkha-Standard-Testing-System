@@ -11,7 +11,7 @@ import {
   LayoutDashboard, FileText, CheckSquare, Users, Upload, ClipboardList,
   Award, BarChart3, Settings, ChevronDown,
   ChevronRight, Bookmark, BookOpen, UserCog, Home, FileSearch,
-  GraduationCap, Scale, Server, SlidersHorizontal, FileCog,
+  GraduationCap, Scale, Server, FileCog, Download,
   ClipboardCheck, FlaskConical, ScrollText
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,8 +37,12 @@ const NAV_CONFIG = [
   // same flattening pattern used for Test Taker's "My Applications" further down.
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard', excludeRoles: ['admin'] },
   { label: 'Admin Dashboard', icon: LayoutDashboard, to: '/dashboard', onlyRoles: ['admin'] },
-  { label: 'User Management', icon: Users, to: '/admin/users', access: ['users', 'read'] },
-  { label: 'Role Management', icon: UserCog, to: '/admin/roles', access: ['roles', 'read'] },
+  // DCDD holds `users`/`roles` Read in the matrix (situational awareness, not a
+  // stated day-to-day task) but that stays an unsurfaced backend entitlement under
+  // the v2 six-item menu, the same treatment given its other matrix-only Read grants
+  // (Question Papers, Band Scores, Re-evaluation) - see outOfMatrix.js 'examConfiguration'.
+  { label: 'User Management', icon: Users, to: '/admin/users', access: ['users', 'read'], excludeRoles: ['dcdd'] },
+  { label: 'Role Management', icon: UserCog, to: '/admin/roles', access: ['roles', 'read'], excludeRoles: ['dcdd'] },
   // v2 sidebar decision: System Admin is scoped to technical governance - users, roles
   // and permissions - only. These three are its complete remaining scope; every
   // exam-workflow module below is withdrawn from the role entirely (see
@@ -47,7 +51,7 @@ const NAV_CONFIG = [
   { label: 'Role Assignment', icon: UserCog, to: '/admin/role-assignment', roles: rolesFor('roleAssignment') },
   { label: 'System Audit Logs', icon: ScrollText, to: '/admin/audit-logs', roles: rolesFor('systemAuditLogs') },
   {
-    label: 'Registration', icon: FileText, access: ['registration', 'read'], excludeRoles: ['test_taker'], children: [
+    label: 'Registration', icon: FileText, access: ['registration', 'read'], excludeRoles: ['test_taker', 'dcdd', 'exam_head', 'chief_executive'], children: [
       { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'] },
       { label: 'Applications', icon: ClipboardList, to: '/registration/applications', access: ['registration', 'read_all'] },
       // "My Applications" deliberately has no entry here. Only the Test Taker
@@ -64,15 +68,43 @@ const NAV_CONFIG = [
   // ever have the one child, so a always-visible section reads better than a toggle.
   { type: 'section', label: 'Registration', onlyRoles: ['test_taker'] },
   { label: 'My Applications', icon: ClipboardList, to: '/my-applications', onlyRoles: ['test_taker'], access: ['registration', 'read_own'] },
-  { label: 'Verification', icon: CheckSquare, to: '/verification', access: ['verification', 'read'] },
-  { label: 'Absentee', icon: Users, to: '/attendance', access: ['attendance', 'read'] },
+  // DCDD sees its own day-to-day work as flat, ungrouped top-level items instead of
+  // the collapsible Registration group above - v2 sidebar decision, six-item strict
+  // least-privilege menu. It reuses the same routes as the entries it replaces, so
+  // the route guards below need no change, only the sidebar presentation does.
+  { label: 'Registration Windows', icon: Bookmark, to: '/registration/windows', onlyRoles: ['dcdd'] },
+  { label: 'Verification', icon: CheckSquare, to: '/verification', access: ['verification', 'read'], excludeRoles: ['dcdd', 'exam_head'] },
+  { label: 'Application Verification', icon: CheckSquare, to: '/verification', onlyRoles: ['dcdd'] },
+  { label: 'Absentee', icon: Users, to: '/attendance', access: ['attendance', 'read'], excludeRoles: ['dcdd', 'exam_head'] },
+  { label: 'Absentee Management', icon: Users, to: '/attendance', onlyRoles: ['dcdd'] },
+  // v2 sidebar decision: the two former DCDD settings screens (Exam Configuration at
+  // /masters, Operational Settings at /dcdd/operational) are consolidated into one
+  // Master Configuration screen - certificate templates and the re-evaluation fee,
+  // both real backend-driven, versioned, approval-gated data. See outOfMatrix.js.
+  { label: 'Master Configuration', icon: Settings, to: '/masters', roles: rolesFor('examConfiguration') },
   {
-    label: 'Question Papers', icon: BookOpen, access: ['questions', 'read'], children: [
+    label: 'Question Papers', icon: BookOpen, access: ['questions', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'], children: [
       { label: 'Upload Papers', icon: Upload, to: '/questions/upload', access: ['questions', 'create'] },
       { label: 'Question Papers', icon: FileText, to: '/questions', access: ['questions', 'read'] },
     ],
   },
-  { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'] },
+  { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'] },
+  // v2 sidebar decision: BRD §5.4.2 defines exactly one function for this role -
+  // uploading question papers and answer sheets (BR-1/BR-2) - so it gets a scoped
+  // "Question Bank" upload workspace instead of the shared group above, which mixes
+  // in listing/manage actions this role's screen keeps separate. BR-3 splits access
+  // to the uploaded papers into its own time-gated screen, "Exam Day Downloads" -
+  // reusing the shared "Question Papers" list/manage screen would not let a
+  // scheduled-window-only control sit apart from the always-available upload
+  // workspace. Every other v2-excluded module (Registration, Verification,
+  // Absentee, Band Scores, Re-evaluation, Certificates, Reports) is dropped from
+  // this role's sidebar entirely, not relabelled - the matrix's Read grant on each
+  // stays real and reachable by direct URL, the same unsurfaced-entitlement
+  // treatment DCDD's own situational-awareness grants get, but none of it is a
+  // stated day-to-day task for this role so none of it is surfaced here.
+  { label: 'Question Bank', icon: Upload, to: '/questions/upload', onlyRoles: ['exam_head'], access: ['questions', 'create'] },
+  { label: 'Exam Day Downloads', icon: Download, to: '/questions/downloads', onlyRoles: ['exam_head'], access: ['questions', 'secure_read'] },
+  { label: 'Released Sample Papers', icon: FileSearch, to: '/questions/samples', onlyRoles: ['exam_head'], access: ['questions', 'sample'] },
   { label: 'Band Score Entry', icon: ClipboardList, to: '/scores', access: ['scores', 'submit'] },
   // ViewScores only ever loads the caller's own results; every other role gets an
   // empty table. It is a personal screen, so it is offered to own-scoped roles only -
@@ -81,16 +113,19 @@ const NAV_CONFIG = [
   // Read-only by design - declaring results lives here too, but entering a score never
   // does. Named "Score History" (not "Band Scores") so it doesn't read as a duplicate
   // of Band Score Entry above.
-  { label: 'Score History', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'] },
+  { label: 'Score History', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'] },
   // BRD §5.5.2 BR-1: constituting the committee (add/remove members, designate the
   // Head) is an out-of-matrix operation - see 'committeeSetup' in outOfMatrix.js.
-  { label: 'Committee', icon: Users, to: '/scores/committee', roles: rolesFor('committeeSetup') },
-  { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'] },
-  { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'] },
-  { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read_all'] },
+  // DCDD holds this operation too but it is left off DCDD's own six-item menu under
+  // the same v2 lean-scope decision - the grant stays real, just unsurfaced here.
+  { label: 'Committee', icon: Users, to: '/scores/committee', roles: rolesFor('committeeSetup'), excludeRoles: ['dcdd'] },
+  { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'] },
+  { label: 'Revision Approvals Queue', icon: Scale, to: '/appeals', onlyRoles: ['chief_executive'] },
+  { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'] },
+  { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read_all'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'] },
+  { label: 'Executive Reports', icon: BarChart3, to: '/reports', onlyRoles: ['chief_executive'] },
+  { label: 'Reports & Analytics', icon: BarChart3, to: '/reports', onlyRoles: ['dcdd'] },
   { label: 'My Records', icon: BarChart3, to: '/reports/my', ownScoped: 'reports' },
-  { label: 'Exam Configuration', icon: Settings, to: '/masters', roles: rolesFor('examConfiguration') },
-  { label: 'Operational Settings', icon: SlidersHorizontal, to: '/dcdd/operational', roles: rolesFor('operationalSettings') },
 ];
 
 function permitted(item, role) {
@@ -102,21 +137,18 @@ function permitted(item, role) {
   return true;
 }
 
-// BRD §5.4.2 defines exactly one function for the Exam Head: upload question papers
-// and answer sheets. Every other module it can see is "Read" in the matrix by
-// default, granting situational awareness across the pipeline rather than a defined
-// day-to-day task, so those are demoted into a collapsed read-only section below the
-// role's actual work instead of sitting at the same visual weight as it.
-const EXAM_HEAD_PRIMARY_LABELS = ['Dashboard', 'Question Papers', 'Sample Papers'];
-
 // BRD §5.5-5.6 define this role's actual job as band score entry and re-evaluation
 // processing. Registration, Question Papers, Sample Papers, Certificates and Reports
-// are all "Read" access by RBAC default, not a stated day-to-day need, so they get the
-// same demotion Exam Head's read-only modules get above.
+// are all "Read" access by RBAC default, not a stated day-to-day need, so they are
+// demoted into a collapsed read-only section below the role's actual work instead of
+// sitting at the same visual weight as it. The Exam Head used to get the same
+// treatment, but the v2 sidebar decision replaced that with a strict four-item menu
+// (Dashboard, Question Bank, Exam Day Downloads, Released Sample Papers) that drops
+// its read-only modules from the sidebar entirely instead of merely demoting them -
+// see the `excludeRoles: [..., 'exam_head']` entries above.
 const COMMITTEE_HEAD_PRIMARY_LABELS = ['Dashboard', 'Band Score Entry', 'Score History', 'Committee', 'Re-evaluation'];
 
 const READ_ONLY_SPLIT_ROLES = {
-  exam_head: EXAM_HEAD_PRIMARY_LABELS,
   committee_head: COMMITTEE_HEAD_PRIMARY_LABELS,
 };
 

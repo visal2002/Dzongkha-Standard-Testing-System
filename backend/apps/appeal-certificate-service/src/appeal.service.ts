@@ -192,7 +192,7 @@ export class AppealService {
 
   async decide(appealId: string, dto: ChiefDecisionDto, actor: AccessClaims, requestId: string) {
     this.assertPrivileged(actor);
-    return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+    const decided = await this.dataSource.transaction('SERIALIZABLE', async (manager) => {
       const appeal = await manager.findOne(AppealEntity, { where: { id: appealId }, lock: { mode: 'pessimistic_write' } });
       if (!appeal) throw new DomainException('APPEAL_NOT_FOUND', 'Appeal not found.', 404);
       if (appeal.status !== AppealStatus.PendingChiefApproval || appeal.committeeRecommendation !== AppealRecommendation.Revise) {
@@ -228,6 +228,24 @@ export class AppealService {
       await this.audit(manager, 'APPEAL_CHIEF_DECIDED', appeal.id, actor.sub, requestId, { skillDecisions: dto.skillDecisions });
       return this.detail(manager, appeal.id);
     });
+
+    // BRD §5.6.1-5.6.2: the actual score field stays locked until the Chief approves;
+    // once approved, the committee's already-recorded proposed score becomes final
+    // automatically - nobody, Committee Head included, manually re-enters or unlocks
+    // it afterward. Applying the revision calls out to result-service and certificate
+    // supersession, so it runs after this transaction commits rather than inside it.
+    // A failure here does not undo the recorded decision - the appeal simply stays at
+    // ApprovedPendingScoreUpdate, and POST :id/apply-revision (also Chief-only) stays
+    // available to retry it.
+    if (decided.chiefDecision !== AppealDecision.Approved) return decided;
+    try {
+      return await this.applyApprovedRevision(appealId, actor, requestId, `auto-apply:${requestId}`);
+    } catch (error) {
+      await this.audit(this.dataSource.manager, 'APPEAL_AUTO_APPLY_FAILED', appealId, actor.sub, requestId, {
+        message: error instanceof Error ? error.message : 'Unknown error applying the approved revision.',
+      });
+      return decided;
+    }
   }
 
   async applyApprovedRevision(appealId: string, actor: AccessClaims, requestId: string, idempotencyKey: string) {

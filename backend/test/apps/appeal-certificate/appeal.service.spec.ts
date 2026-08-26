@@ -516,4 +516,86 @@ describe('AppealService — Chief Executive decision (BRD §2.6)', () => {
     expect(skills.find((s) => s.skill === Skill.Writing)!.chiefDecision).toBe(AppealDecision.Approved);
     expect(skills.find((s) => s.skill === Skill.Speaking)!.chiefDecision).toBe(AppealDecision.Rejected);
   });
+
+  it('auto-applies the approved revision immediately - nobody manually unlocks the score afterward', async () => {
+    // BRD §5.6.1-5.6.2: the score field stays locked until the Chief approves; once
+    // approved, the committee's already-recorded proposed score becomes final on its
+    // own. This exercises the full chain decide() -> applyApprovedRevision() rather
+    // than just the Chief's own decision transaction.
+    const appealId = uuid();
+    const examId = uuid();
+    const applicationId = uuid();
+    const testTakerUserId = uuid();
+    const pendingAppeal = Object.assign(new AppealEntity(), {
+      id: appealId, examId, scoreSheetId: uuid(), scoreVersionNumber: 1,
+      applicationId, testTakerUserId,
+      status: AppealStatus.PendingChiefApproval,
+      committeeRecommendation: AppealRecommendation.Revise,
+      chiefDecision: null, paymentId: uuid(), submittedAt: new Date(), completedAt: null,
+    });
+    const skills = [
+      Object.assign(new AppealSkillEntity(), { skill: Skill.Writing, originalScore: '7', proposedScore: '8', finalScore: null, chiefDecision: null }),
+    ];
+    const outboxEvents: AppealOutboxEntity[] = [];
+    const manager = makeManager({
+      findOne: jest.fn().mockResolvedValue(pendingAppeal),
+      findOneBy: jest.fn().mockImplementation(async (entity: unknown) => (entity === AppealEntity ? pendingAppeal : null)),
+      findBy: jest.fn().mockResolvedValue(skills),
+      find: jest.fn().mockResolvedValue([]),
+      save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => {
+        if ((data as AppealOutboxEntity)?.eventType) outboxEvents.push(data as AppealOutboxEntity);
+        return { ...(data as Record<string, unknown>), id: uuid() };
+      }),
+      create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
+    });
+    const resultClient = makeResultClient({
+      applyAppealRevision: jest.fn().mockResolvedValue({
+        scoreSheetId: pendingAppeal.scoreSheetId, examId, applicationId, testTakerUserId, version: 2,
+      }),
+    });
+    const service = buildService({ manager, resultClient, appeals: makeRepo<AppealEntity>([pendingAppeal]) });
+    const response = await service.decide(appealId, { skillDecisions: { WRITING: AppealDecision.Approved }, remarks: 'Approved.' }, mfaActor(), 'req-16');
+
+    expect(response).toMatchObject({ status: AppealStatus.Completed });
+    expect(pendingAppeal.status).toBe(AppealStatus.Completed);
+    expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealCompleted)).toBe(true);
+    expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealAutoApplyFailed)).toBeFalsy();
+  });
+
+  it('keeps the Chief\'s decision recorded even when applying the revision fails', async () => {
+    const appealId = uuid();
+    const pendingAppeal = Object.assign(new AppealEntity(), {
+      id: appealId, examId: uuid(), scoreSheetId: uuid(), scoreVersionNumber: 1,
+      applicationId: uuid(), testTakerUserId: uuid(),
+      status: AppealStatus.PendingChiefApproval,
+      committeeRecommendation: AppealRecommendation.Revise,
+      chiefDecision: null, paymentId: uuid(), submittedAt: new Date(), completedAt: null,
+    });
+    const skills = [
+      Object.assign(new AppealSkillEntity(), { skill: Skill.Writing, originalScore: '7', proposedScore: '8', finalScore: null, chiefDecision: null }),
+    ];
+    const outboxEvents: AppealOutboxEntity[] = [];
+    const auditedActions: string[] = [];
+    const manager = makeManager({
+      findOne: jest.fn().mockResolvedValue(pendingAppeal),
+      findOneBy: jest.fn().mockImplementation(async (entity: unknown) => (entity === AppealEntity ? pendingAppeal : null)),
+      findBy: jest.fn().mockResolvedValue(skills),
+      find: jest.fn().mockResolvedValue([]),
+      save: jest.fn().mockImplementation(async (_entity: unknown, data: unknown) => {
+        if ((data as AppealOutboxEntity)?.eventType) outboxEvents.push(data as AppealOutboxEntity);
+        if ((data as { action?: string })?.action) auditedActions.push((data as { action: string }).action);
+        return { ...(data as Record<string, unknown>), id: uuid() };
+      }),
+      create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
+    });
+    const resultClient = makeResultClient({
+      applyAppealRevision: jest.fn().mockRejectedValue(new DomainException('RESULT_SERVICE_UNAVAILABLE', 'Result service is currently unavailable.', 503)),
+    });
+    const service = buildService({ manager, resultClient, appeals: makeRepo<AppealEntity>([pendingAppeal]) });
+    const response = await service.decide(appealId, { skillDecisions: { WRITING: AppealDecision.Approved }, remarks: 'Approved.' }, mfaActor(), 'req-17');
+
+    expect(response).toMatchObject({ status: AppealStatus.ApprovedPendingScoreUpdate, chiefDecision: AppealDecision.Approved });
+    expect(pendingAppeal.status).toBe(AppealStatus.ApprovedPendingScoreUpdate);
+    expect(auditedActions).toContain('APPEAL_AUTO_APPLY_FAILED');
+  });
 });

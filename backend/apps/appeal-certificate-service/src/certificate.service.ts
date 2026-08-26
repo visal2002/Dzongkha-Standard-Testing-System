@@ -11,7 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { AccessClaims, CertificateStatus, DomainEventTypes } from '@dzongjuk/contracts';
 import { DomainException } from '@dzongjuk/common';
-import { CreateCertificateTemplateDto } from './dtos';
+import { CertificateTemplateAssetDto, CreateCertificateTemplateDto } from './dtos';
 import {
   AppealAuditEntity, AppealIdempotencyEntity, AppealOutboxEntity, CertificateAccessEventEntity, CertificateAccessType,
   CertificateEntity, CertificateFileEntity, CertificateTemplateEntity, CertificateTemplateStatus,
@@ -45,7 +45,40 @@ export class CertificateService {
     this.privilegedAssurance = new Set(config.get<string>('PRIVILEGED_ASSURANCE_LEVELS', 'MFA,NDI').split(',').map(value => value.trim()));
   }
 
-  listTemplates() { return this.templates.find({ order: { code: 'ASC', versionNumber: 'DESC' } }); }
+  // Templates carry small logo/border/signature/seal images (§5.1/§5.7.2) but this is
+  // not general-purpose file storage - a decoded ~2MB cap keeps a template row a
+  // reasonable size for a document that is versioned indefinitely.
+  private static readonly MAX_ASSET_BYTES = 2 * 1024 * 1024;
+
+  private decodeAsset(asset: CertificateTemplateAssetDto | undefined, field: string) {
+    if (!asset) return null;
+    const data = Buffer.from(asset.dataBase64, 'base64');
+    if (data.length === 0 || data.length > CertificateService.MAX_ASSET_BYTES) {
+      throw new DomainException('CERTIFICATE_TEMPLATE_ASSET_INVALID', `${field} must be a non-empty image under 2MB.`, 400);
+    }
+    return { data, mimeType: asset.mimeType };
+  }
+
+  // Templates are a low-traffic admin config surface, not a file-download endpoint -
+  // asset bytes are returned as data URIs the frontend can drop straight into an
+  // <img src>, rather than a raw byte array or a separate download route.
+  private serializeTemplate(template: CertificateTemplateEntity) {
+    const asDataUri = (data: Buffer | null, mimeType: string | null) => (data && mimeType ? `data:${mimeType};base64,${data.toString('base64')}` : null);
+    const { leftLogoData, leftLogoMimeType, rightLogoData, rightLogoMimeType, borderImageData, borderImageMimeType, signatureImageData, signatureImageMimeType, sealImageData, sealImageMimeType, ...fields } = template;
+    return {
+      ...fields,
+      leftLogo: asDataUri(leftLogoData, leftLogoMimeType),
+      rightLogo: asDataUri(rightLogoData, rightLogoMimeType),
+      borderImage: asDataUri(borderImageData, borderImageMimeType),
+      signatureImage: asDataUri(signatureImageData, signatureImageMimeType),
+      sealImage: asDataUri(sealImageData, sealImageMimeType),
+    };
+  }
+
+  async listTemplates() {
+    const templates = await this.templates.find({ order: { code: 'ASC', versionNumber: 'DESC' } });
+    return templates.map((template) => this.serializeTemplate(template));
+  }
 
   async createTemplate(dto: CreateCertificateTemplateDto, actor: AccessClaims, requestId: string) {
     this.assertPrivileged(actor);
@@ -53,13 +86,24 @@ export class CertificateService {
     const from = new Date(dto.effectiveFrom);
     const to = dto.effectiveTo ? new Date(dto.effectiveTo) : null;
     if (to && to <= from) throw new DomainException('CERTIFICATE_TEMPLATE_PERIOD_INVALID', 'Template effectiveTo must be after effectiveFrom.');
+    const { leftLogo, rightLogo, borderImage, signatureImage, sealImage, ...fields } = dto;
+    const leftLogoAsset = this.decodeAsset(leftLogo, 'leftLogo');
+    const rightLogoAsset = this.decodeAsset(rightLogo, 'rightLogo');
+    const borderImageAsset = this.decodeAsset(borderImage, 'borderImage');
+    const signatureImageAsset = this.decodeAsset(signatureImage, 'signatureImage');
+    const sealImageAsset = this.decodeAsset(sealImage, 'sealImage');
     return this.dataSource.transaction(async (manager) => {
       const template = await manager.save(CertificateTemplateEntity, manager.create(CertificateTemplateEntity, {
-        ...dto, effectiveFrom: from, effectiveTo: to, testOnly: dto.testOnly ?? false,
+        ...fields, effectiveFrom: from, effectiveTo: to, testOnly: dto.testOnly ?? false,
         status: CertificateTemplateStatus.Draft, createdByUserId: actor.sub,
+        leftLogoData: leftLogoAsset?.data ?? null, leftLogoMimeType: leftLogoAsset?.mimeType ?? null,
+        rightLogoData: rightLogoAsset?.data ?? null, rightLogoMimeType: rightLogoAsset?.mimeType ?? null,
+        borderImageData: borderImageAsset?.data ?? null, borderImageMimeType: borderImageAsset?.mimeType ?? null,
+        signatureImageData: signatureImageAsset?.data ?? null, signatureImageMimeType: signatureImageAsset?.mimeType ?? null,
+        sealImageData: sealImageAsset?.data ?? null, sealImageMimeType: sealImageAsset?.mimeType ?? null,
       }));
       await this.audit(manager, 'CERTIFICATE_TEMPLATE_CREATED', template.id, actor.sub, requestId, { code: template.code, versionNumber: template.versionNumber, testOnly: template.testOnly }, 'CertificateTemplate');
-      return template;
+      return this.serializeTemplate(template);
     });
   }
 
@@ -76,7 +120,7 @@ export class CertificateService {
       template.approvedAt = new Date();
       await manager.save(template);
       await this.audit(manager, 'CERTIFICATE_TEMPLATE_APPROVED', template.id, actor.sub, requestId, { code: template.code, versionNumber: template.versionNumber, testOnly: template.testOnly }, 'CertificateTemplate');
-      return template;
+      return this.serializeTemplate(template);
     });
   }
 

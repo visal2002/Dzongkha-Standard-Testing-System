@@ -119,6 +119,19 @@ export const questionService = {
   getPapers: async () => questionService.getAll(),
 
   /**
+   * The Exam Head's own assignments, split into skills already uploaded and
+   * skills still pending, per assigned exam. Powers the dashboard's live
+   * pending-upload status - `getAll()` only ever returns exams that already have
+   * a paper, so an assignment with nothing uploaded yet is otherwise invisible.
+   * @returns {Promise<{data: Array<{examId: string, skillsUploaded: string[], skillsPending: string[]}>>}
+   */
+  getMyAssignments: async () => {
+
+    const { data } = await apiClient.get('/questions/assignments/mine');
+    return { data: unwrapList(data) };
+  },
+
+  /**
    * Upload a new question paper.
    * @param {FormData|object} payload
    */
