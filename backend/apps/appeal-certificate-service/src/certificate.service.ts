@@ -87,9 +87,10 @@ export class CertificateService {
     const replay = await this.dataSource.getRepository(AppealIdempotencyEntity).findOneBy({ scope, key: idempotencyKey });
     if (replay) return replay.response;
     const template = await this.activeTemplate();
+    const exam = await this.sources.exam(examId);
     const results = await this.sources.results(examId);
     const issued: Array<Record<string, unknown>> = [];
-    for (const result of results) issued.push(await this.issueOne(result, template, actor, requestId));
+    for (const result of results) issued.push(await this.issueOne(result, template, new Date(exam.examDate), actor, requestId));
     const response = { examId, templateId: template.id, issuedCount: issued.filter((item) => !item.alreadyIssued).length, certificates: issued };
     await this.dataSource.getRepository(AppealIdempotencyEntity).save({ scope, key: idempotencyKey, response });
     return response;
@@ -177,7 +178,7 @@ export class CertificateService {
     });
   }
 
-  private async issueOne(result: CertificateResultSource, template: CertificateTemplateEntity, actor: AccessClaims, requestId: string) {
+  private async issueOne(result: CertificateResultSource, template: CertificateTemplateEntity, examDate: Date, actor: AccessClaims, requestId: string) {
     const existing = await this.certificates.findOneBy({ scoreSheetId: result.scoreSheetId, scoreVersionNumber: result.scoreVersionNumber });
     if (existing) return { ...this.ownerView(existing), alreadyIssued: true };
     const profile = await this.sources.profile(result.applicationId);
@@ -190,8 +191,10 @@ export class CertificateService {
     validUntil.setUTCMonth(validUntil.getUTCMonth() + template.validityMonths);
     const priorCount = await this.certificates.countBy({ applicationId: result.applicationId });
     const certificateNumber = `DSTS-${issuedAt.getUTCFullYear()}-${randomBytes(6).toString('hex').toUpperCase()}`;
+    const dateOfBirth = new Date(profile.dateOfBirth);
     const pdf = await this.renderer.render(template, {
       certificateNumber, holderName: profile.fullName, registrationNumber: profile.registrationNumber,
+      cid: profile.cid, dateOfBirth, examDate,
       issuedAt, validUntil, scores: result.scores, overallScore: result.overallScore,
       bandLabel: result.bandLabel, cefrLevel: result.cefrLevel,
       verificationUrl: `${this.publicApiBaseUrl}/public/certificates/verify/${token}`,
@@ -208,7 +211,8 @@ export class CertificateService {
         id, certificateNumber, examId: result.examId, applicationId: result.applicationId, testTakerUserId: result.testTakerUserId,
         scoreSheetId: result.scoreSheetId, scoreVersionNumber: result.scoreVersionNumber, versionNumber: priorCount + 1,
         templateId: template.id, templateVersionNumber: template.versionNumber, holderName: profile.fullName,
-        registrationNumber: profile.registrationNumber, scoreSnapshot: { scores: result.scores, overallScore: result.overallScore },
+        registrationNumber: profile.registrationNumber, cid: profile.cid, dateOfBirth, examDate,
+        scoreSnapshot: { scores: result.scores, overallScore: result.overallScore },
         bandLabel: result.bandLabel, cefrLevel: result.cefrLevel, verificationTokenHash: createHash('sha256').update(token).digest('hex'),
         fileId, status: CertificateStatus.Active, issuedAt, validUntil,
       }));

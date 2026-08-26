@@ -277,9 +277,13 @@ export class RegistrationService {
     if (!application || !application.registrationNumber) throw new DomainException('CERTIFICATE_PROFILE_UNAVAILABLE', 'A verified registration profile is unavailable.', 409);
     const fullName = application.profileSnapshot.fullName;
     if (typeof fullName !== 'string' || !fullName.trim()) throw new DomainException('CERTIFICATE_PROFILE_INCOMPLETE', 'The verified profile has no holder name.', 409);
+    const cid = application.profileSnapshot.cid;
+    const dateOfBirth = application.profileSnapshot.dateOfBirth;
+    if (typeof cid !== 'string' || !cid.trim()) throw new DomainException('CERTIFICATE_PROFILE_INCOMPLETE', 'The verified profile has no CID.', 409);
+    if (typeof dateOfBirth !== 'string' || !dateOfBirth.trim()) throw new DomainException('CERTIFICATE_PROFILE_INCOMPLETE', 'The verified profile has no date of birth.', 409);
     return {
       applicationId: application.id, examId: application.examId, testTakerUserId: application.testTakerUserId,
-      registrationNumber: application.registrationNumber, fullName: fullName.trim(),
+      registrationNumber: application.registrationNumber, fullName: fullName.trim(), cid: cid.trim(), dateOfBirth: dateOfBirth.trim(),
     };
   }
 
