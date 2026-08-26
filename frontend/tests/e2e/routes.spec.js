@@ -268,7 +268,7 @@ test('the sidebar offers a test taker the personal screens and no organisation-w
   await login(page, 'test.taker@demo.com');
 
   const sidebar = page.locator('aside');
-  await expect(sidebar.getByRole('link', { name: 'My Records' })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'Register / My Profile' })).toBeVisible();
   await expect(sidebar.getByRole('link', { name: 'My Results' })).toBeVisible();
   await expect(sidebar.getByRole('link', { name: 'Reports', exact: true })).toHaveCount(0);
   await expect(sidebar.getByRole('link', { name: 'User Management' })).toHaveCount(0);
