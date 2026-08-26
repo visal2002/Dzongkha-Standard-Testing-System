@@ -6,10 +6,13 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Plus, Calendar, MapPin, CreditCard, Download, ExternalLink, RefreshCw, XCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { FileText, Plus, Calendar, MapPin, CreditCard, Download, ExternalLink, RefreshCw, XCircle, Edit2, User, Mail, Phone, Save, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import PageHeader from '@/components/ui/PageHeader';
-import Button from '@/components/ui/Button';
+import Button, { Input, Select } from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { StatusBadge } from '@/components/ui/Badge';
 import { applicationService } from '@/services/applications';
@@ -20,6 +23,131 @@ import toast from 'react-hot-toast';
 // enforces the same cutoff (409 once review has started), this just avoids offering
 // the button for a status where it would always fail.
 const CANCELLABLE_STATUSES = ['submitted', 'waitlisted'];
+
+const dzongkhags = ['Bumthang', 'Chhukha', 'Dagana', 'Gasa', 'Haa', 'Lhuentse', 'Mongar', 'Paro', 'Pemagatshel', 'Punakha', 'Samdrup Jongkhar', 'Samtse', 'Sarpang', 'Thimphu', 'Trashigang', 'Trashiyangtse', 'Trongsa', 'Tsirang', 'Wangdue Phodrang', 'Zhemgang'];
+const educationLevels = ['Below Class X', 'Class X', 'Class XII', 'Certificate', 'Diploma', 'Bachelor\'s Degree', 'Master\'s Degree', 'Doctorate', 'Other'];
+
+// Matches ApplicationForm.jsx's submission schema exactly, minus `cid` - the identity
+// key is immutable once an application exists, so resubmission never carries it.
+const resubmitSchema = z.object({
+  fullName: z.string().trim().min(2, 'Full name is required.'),
+  dateOfBirth: z.string().min(1, 'Date of birth is required.'),
+  gender: z.string().min(1, 'Gender is required.'),
+  email: z.string().email('Enter a valid email address.'),
+  phone: z.string().trim().min(8, 'Contact number is required.'),
+  dzongkhag: z.string().min(1, 'Dzongkhag is required.'),
+  gewog: z.string().trim().min(2, 'Gewog is required.'),
+  education: z.string().trim().min(2, 'Education level is required.'),
+  institution: z.string().trim().min(2, 'Institution is required.'),
+  employmentStatus: z.string().min(1, 'Employment status is required.'),
+  organization: z.string().trim().optional(),
+});
+
+function ResubmitForm({ app, onCancel, onResubmitted }) {
+  const [submitting, setSubmitting] = useState(false);
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(resubmitSchema),
+    defaultValues: {
+      fullName: app.testTakerName || '', dateOfBirth: app.dob || '', gender: app.gender || '',
+      email: app.email || '', phone: app.phone || '', dzongkhag: app.dzongkhag || '', gewog: app.gewog || '',
+      education: app.education || '', institution: app.institution || '', employmentStatus: app.employmentStatus || '',
+      organization: app.organization || '',
+    },
+  });
+
+  const submit = async data => {
+    setSubmitting(true);
+    try {
+      await applicationService.resubmit(app.id, { ...data, cid: app.cid });
+      toast.success('Application resubmitted for review.');
+      onResubmitted();
+    } catch (error) {
+      toast.error(error.message || 'Unable to resubmit the application.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(submit)} className="mt-3 p-4 bg-surface-bg border border-surface-border rounded-xl space-y-4">
+      <p className="text-xs font-semibold text-text-primary">Correct the flagged details and resubmit</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Input label="Full Name" required {...register('fullName')} error={errors.fullName?.message} />
+        <Input label="Date of Birth" type="date" required {...register('dateOfBirth')} error={errors.dateOfBirth?.message} />
+        <Select label="Gender" required {...register('gender')} error={errors.gender?.message}><option value="">Select gender</option><option>Male</option><option>Female</option><option>Other</option></Select>
+        <Input label="Email" type="email" required {...register('email')} error={errors.email?.message} />
+        <Input label="Contact Number" required {...register('phone')} error={errors.phone?.message} />
+        <Select label="Dzongkhag" required {...register('dzongkhag')} error={errors.dzongkhag?.message}><option value="">Select dzongkhag</option>{dzongkhags.map(item => <option key={item}>{item}</option>)}</Select>
+        <Input label="Gewog" required {...register('gewog')} error={errors.gewog?.message} />
+        <Select label="Highest Education Level" required {...register('education')} error={errors.education?.message}><option value="">Select education level</option>{educationLevels.map(level => <option key={level} value={level}>{level}</option>)}</Select>
+        <Input label="Institution" required {...register('institution')} error={errors.institution?.message} />
+        <Select label="Employment Status" required {...register('employmentStatus')} error={errors.employmentStatus?.message}><option value="">Select status</option><option>Employed</option><option>Unemployed</option><option>Student</option><option>Self-employed</option></Select>
+        <Input label="Organization" {...register('organization')} error={errors.organization?.message} />
+      </div>
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" size="sm" loading={submitting} icon={<Save size={13} />}>Resubmit Application</Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+    </form>
+  );
+}
+
+function ProfileSummary() {
+  const { user, updateProfile } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+
+  const startEdit = () => {
+    setName(user?.name || ''); setEmail(user?.email || ''); setPhone(user?.phone || '');
+    setEditing(true);
+  };
+
+  const save = async e => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim()) return toast.error('Name and email are required.');
+    setSaving(true);
+    try {
+      await updateProfile({ name: name.trim(), email: email.trim(), phone: phone.trim() });
+      toast.success('Profile updated successfully.');
+      setEditing(false);
+    } catch (error) {
+      toast.error(error.message || 'Unable to save profile changes.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputCls = "w-full h-9 px-3 rounded-lg border border-surface-border bg-surface-bg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold transition-colors";
+
+  return (
+    <div className="bg-surface-card border border-surface-border rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-text-primary">My Profile</h2>
+        {!editing && <button onClick={startEdit} className="flex items-center gap-1.5 text-xs text-brand-gold hover:text-brand-gold-light transition-colors font-medium"><Edit2 size={12} /> Edit</button>}
+      </div>
+      {editing ? (
+        <form onSubmit={save} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div><label className="block text-xs text-text-muted mb-1">Full Name</label><input className={inputCls} value={name} onChange={e => setName(e.target.value)} required /></div>
+          <div><label className="block text-xs text-text-muted mb-1">Email</label><input type="email" className={inputCls} value={email} onChange={e => setEmail(e.target.value)} required /></div>
+          <div><label className="block text-xs text-text-muted mb-1">Contact Number</label><input className={inputCls} value={phone} onChange={e => setPhone(e.target.value)} placeholder="+975-17XXXXXX" /></div>
+          <div className="md:col-span-3 flex gap-2 pt-1">
+            <Button type="submit" size="sm" loading={saving} icon={<Save size={13} />}>Save Changes</Button>
+            <Button type="button" size="sm" variant="ghost" icon={<X size={13} />} onClick={() => setEditing(false)}>Cancel</Button>
+          </div>
+        </form>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+          <div className="flex items-center gap-2"><User size={14} className="text-text-muted shrink-0" /><span className="text-text-primary font-medium">{user?.name}</span></div>
+          <div className="flex items-center gap-2"><Mail size={14} className="text-text-muted shrink-0" /><span className="text-text-primary">{user?.email}</span></div>
+          <div className="flex items-center gap-2"><Phone size={14} className="text-text-muted shrink-0" /><span className="text-text-primary">{user?.phone || '—'}</span></div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function MyApplications() {
   const { user } = useAuth();
