@@ -66,14 +66,22 @@ const GREEN_BORDER = rgb(0, 176 / 255, 80 / 255);
 
 @Injectable()
 export class CertificateRendererService {
-  private assetPath(name: string) { return join(__dirname, '..', 'assets', name); }
+  private assetCache = new Map<string, Buffer>();
+
+  private asset(name: string) {
+    const cached = this.assetCache.get(name);
+    if (cached) return cached;
+    const bytes = readFileSync(join(__dirname, '..', 'assets', name));
+    this.assetCache.set(name, bytes);
+    return bytes;
+  }
 
   async render(template: CertificateTemplateEntity, certificate: RenderCertificate) {
     const document = await PDFDocument.create();
     document.registerFontkit(fontkit);
     const page = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
 
-    const background = await PDFDocument.load(readFileSync(this.assetPath('certificate-background.pdf')));
+    const background = await PDFDocument.load(this.asset('certificate-background.pdf'));
     const [backgroundPage] = await document.embedPdf(background, [0]);
     page.drawPage(backgroundPage, { x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT });
 
@@ -83,8 +91,8 @@ export class CertificateRendererService {
     // GSUB substitution, which silently blanked out several Tibetan digits
     // (0, 1, 3, 5) when subsetting was enabled. The full font is ~1.4MB heavier
     // per certificate but renders every digit correctly.
-    const tibetan = await document.embedFont(readFileSync(this.assetPath('NotoSerifTibetan-Regular.ttf')), { subset: false });
-    const tibetanBold = await document.embedFont(readFileSync(this.assetPath('NotoSerifTibetan-Bold.ttf')), { subset: false });
+    const tibetan = await document.embedFont(this.asset('NotoSerifTibetan-Regular.ttf'), { subset: false });
+    const tibetanBold = await document.embedFont(this.asset('NotoSerifTibetan-Bold.ttf'), { subset: false });
 
     const box = (x: number, y: number, w: number, h: number, fill: RGB, border: RGB, lineWidth = 1) => {
       page.drawRectangle({ x, y, width: w, height: h, color: fill, borderColor: border, borderWidth: lineWidth });
