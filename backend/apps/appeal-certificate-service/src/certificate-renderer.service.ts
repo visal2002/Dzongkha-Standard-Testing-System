@@ -103,9 +103,19 @@ export class CertificateRendererService {
       });
     };
 
-    // Name / ID No — plain bordered value boxes over the background
+    // Name — the background also carries a Dzongkha transliteration of the sample
+    // holder's name directly above the value box; we cannot generate that for an
+    // arbitrary Latin name, so it is blanked out rather than left showing the
+    // sample person's name on every certificate.
+    page.drawRectangle({ x: 95, y: 566, width: 200, height: 22, color: WHITE });
     box(NAME_BOX.x, NAME_BOX.y, NAME_BOX.w, NAME_BOX.h, WHITE, BLUE_BORDER);
     textIn(certificate.holderName, NAME_BOX.x, NAME_BOX.y, NAME_BOX.w, NAME_BOX.h, helveticaBold, 13);
+
+    // ID No. (CID) — the background shows the sample CID once as Tibetan numerals
+    // and once as Arabic numerals; unlike the name this is pure digits, so both
+    // representations can be regenerated correctly for the real CID.
+    page.drawRectangle({ x: 100, y: 500, width: 200, height: 22, color: WHITE });
+    page.drawText(toTibetanDigits(certificate.cid), { x: 106.91, y: 503.95, size: 13, font: tibetan, color: INK });
     box(CID_BOX.x, CID_BOX.y, CID_BOX.w, CID_BOX.h, WHITE, BLUE_BORDER);
     textIn(certificate.cid, CID_BOX.x, CID_BOX.y, CID_BOX.w, CID_BOX.h, helvetica, 12);
 
