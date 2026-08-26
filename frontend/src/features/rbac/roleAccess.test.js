@@ -41,6 +41,8 @@ const ROUTES = [
   { path: '/admin/roles', access: ['roles', 'read'] },
   { path: '/scores/committee', operation: 'committeeSetup' },
   { path: '/admin/permissions', operation: 'permissionManagement' },
+  { path: '/admin/role-assignment', operation: 'roleAssignment' },
+  { path: '/admin/audit-logs', operation: 'systemAuditLogs' },
   { path: '/admin/technical', operation: 'technicalSettings' },
   { path: '/masters', operation: 'examConfiguration' },
   { path: '/dcdd/operational', operation: 'operationalSettings' },
@@ -78,8 +80,11 @@ describe('every approved role resolves a sidebar', () => {
 
   it('keeps organisation-wide Reports out of the Test Taker menu', () => {
     expect(menuFor('test_taker')).not.toContain('Reports');
-    ['admin', 'dcdd', 'exam_head', 'committee_head', 'committee_member', 'chief_executive']
+    // System Administrator held Reports too until the v2 sidebar decision withdrew
+    // every exam-workflow module from that role.
+    ['dcdd', 'exam_head', 'committee_head', 'committee_member', 'chief_executive']
       .forEach(role => expect(menuFor(role), role).toContain('Reports'));
+    expect(menuFor('admin')).not.toContain('Reports');
   });
 
   it('hides administration from every role but the System Administrator and DCDD', () => {
@@ -141,23 +146,40 @@ describe('every approved role resolves a sidebar', () => {
     expect(menuFor('dcdd')).toContain('Exam Configuration');
   });
 
-  it('collapses the System Administrator\'s DCDD-oversight screens into Admin Overrides', () => {
-    // BRD §5.2.1/§5.3.1 assign window configuration, verification and absentee
-    // marking to DCDD. The matrix still gives System Admin "Full" access, but that is
-    // break-glass oversight, not a day-to-day task, so its copies are collapsed into
-    // one group instead of sitting at the same level as core admin work.
+  it('gives the System Administrator exactly six flat items and nothing else - v2 strict least-privilege', () => {
+    // v2 sidebar decision: this supersedes an earlier draft that collapsed DCDD's
+    // day-to-day screens (Exam Windows, Verification, Absentee) into a de-emphasised
+    // "Admin Overrides" group for System Admin. This version removes them from the
+    // role entirely instead - no sub-menus, no secondary section, no operational
+    // exam-workflow module, not even read-only oversight.
     const adminNav = navigationFor('admin');
-    const registration = adminNav.find(item => item.label === 'Registration');
-    const overrides = adminNav.find(item => item.label === 'Admin Overrides');
+    expect(adminNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
+    expect(adminNav.map(item => item.label)).toEqual([
+      'Admin Dashboard',
+      'User Management',
+      'Role Management',
+      'Permission & Association Management',
+      'Role Assignment',
+      'System Audit Logs',
+    ]);
 
-    expect(registration.children.map(child => child.label)).not.toContain('Exam Windows');
-    expect(overrides).toBeDefined();
-    expect(overrides.children.map(child => child.label)).toEqual(['Exam Windows', 'Verification', 'Absentee']);
+    // Every exam-workflow module is gone, not merely hidden - the underlying matrix
+    // grant is withdrawn (see accessMatrix.contract.test.js), so this holds even if
+    // a future nav change tried to surface it again through a different entry.
+    [
+      'Dashboard', 'Registration', 'Exam Windows', 'Applications', 'My Applications',
+      'Verification', 'Absentee', 'Question Papers', 'Upload Papers', 'Sample Papers',
+      'Band Score Entry', 'My Results', 'Score History', 'Committee', 'Re-evaluation',
+      'Certificates', 'Reports', 'My Records', 'Exam Configuration', 'Operational Settings',
+      'Technical Settings', 'Admin Overrides',
+    ].forEach(label => expect(menuFor('admin'), label).not.toContain(label));
 
-    // DCDD keeps these as ordinary, top-level day-to-day screens.
+    // DCDD is unaffected - it keeps these as ordinary, top-level day-to-day screens.
     expect(menuFor('dcdd')).toEqual(expect.arrayContaining(['Exam Windows', 'Verification', 'Absentee']));
-    const dcddNav = navigationFor('dcdd');
-    expect(dcddNav.find(item => item.label === 'Admin Overrides')).toBeUndefined();
+  });
+
+  it('gives nobody Technical Settings - dropped from System Admin, not reassigned', () => {
+    MATRIX_ROLES.forEach(role => expect(menuFor(role), role).not.toContain('Technical Settings'));
   });
 });
 
@@ -199,14 +221,33 @@ describe('route guards admit exactly the roles the matrix allows', () => {
       .forEach(path => expect(reachable, path).not.toContain(path));
   });
 
-  it('confines the System Administrator to the matrix, not the backend wildcard', () => {
+  it('confines the System Administrator to technical governance under v2 strict least-privilege', () => {
+    // Supersedes the earlier, broader posture: the matrix used to give this role
+    // Full/Read across every exam-workflow module, reachable directly by URL even
+    // where the sidebar didn't show it. That backend-style `*` wildcard reasoning is
+    // exactly what the frontend has always refused to mirror (see the old comment
+    // this replaces) - the v2 decision applies the same discipline to System Admin's
+    // own former grants, not just DCDD's.
     const reachable = routesFor('admin');
-    expect(reachable).toEqual(expect.arrayContaining(['/admin/users', '/admin/roles', '/admin/permissions', '/admin/technical']));
-    // `*` server-side would satisfy score submission; the matrix gives admin Read.
-    expect(reachable).not.toContain('/scores');
-    expect(reachable).not.toContain('/dcdd/operational');
-    // §5.1 Masters is DCDD's business/policy configuration, not System Admin's remit.
-    expect(reachable).not.toContain('/masters');
+    expect(reachable).toEqual([
+      '/admin/users', '/admin/roles', '/admin/permissions', '/admin/role-assignment', '/admin/audit-logs',
+    ]);
+    [
+      '/registration/windows', '/my-applications', '/registration/apply/:examId', '/registration/applications',
+      '/verification', '/attendance', '/questions', '/questions/upload', '/questions/samples',
+      '/scores', '/scores/view', '/scores/summary', '/scores/committee',
+      '/appeals', '/appeals/new', '/certificates', '/reports', '/reports/my',
+      '/admin/technical', '/masters', '/dcdd/operational',
+    ].forEach(path => expect(reachable, path).not.toContain(path));
+  });
+
+  it('gives Role Assignment and System Audit Logs to the System Administrator only', () => {
+    MATRIX_ROLES.filter(role => role !== 'admin').forEach(role => {
+      expect(canPerform('roleAssignment', role), role).toBe(false);
+      expect(canPerform('systemAuditLogs', role), role).toBe(false);
+    });
+    expect(canPerform('roleAssignment', 'admin')).toBe(true);
+    expect(canPerform('systemAuditLogs', 'admin')).toBe(true);
   });
 
   it('gives the Exam Head the question repository but no administration', () => {
@@ -217,10 +258,11 @@ describe('route guards admit exactly the roles the matrix allows', () => {
 });
 
 describe('encrypted question documents stay with the roles that hold Full access', () => {
-  it('opens the document controls to the Exam Head and System Administrator only', () => {
-    ['admin', 'exam_head'].forEach(role =>
-      expect(canAccess(role, 'questions', 'secure_read'), role).toBe(true));
-    ['dcdd', 'committee_head', 'chief_executive', 'committee_member', 'test_taker'].forEach(role =>
+  it('opens the document controls to the Exam Head only', () => {
+    // System Administrator held this too until the v2 sidebar decision withdrew
+    // question-paper access from the role entirely.
+    expect(canAccess('exam_head', 'questions', 'secure_read')).toBe(true);
+    ['admin', 'dcdd', 'committee_head', 'chief_executive', 'committee_member', 'test_taker'].forEach(role =>
       expect(canAccess(role, 'questions', 'secure_read'), role).toBe(false));
   });
 });
@@ -237,9 +279,9 @@ describe('dashboards deny by default', () => {
 });
 
 describe('out-of-matrix operations are registered rather than hard-coded', () => {
-  it('names a surface, a reason, and at least one role for every entry', () => {
+  it('names a surface and a reason for every entry', () => {
     OUT_OF_MATRIX_OPERATIONS.forEach(operation => {
-      expect(operation.roles.length, operation.key).toBeGreaterThan(0);
+      expect(Array.isArray(operation.roles), operation.key).toBe(true);
       expect(operation.reason, operation.key).toBeTruthy();
       expect(operation.surface, operation.key).toBeTruthy();
     });
@@ -252,8 +294,23 @@ describe('out-of-matrix operations are registered rather than hard-coded', () =>
     expect(canPerform('declareResults', 'committee_head')).toBe(false);
   });
 
-  it('keeps result declaration with DCDD and the System Administrator', () => {
+  it('keeps result declaration with DCDD only, not the System Administrator', () => {
+    // System Administrator held this too until the v2 sidebar decision withdrew
+    // every exam-workflow operation from the role, declaring results included.
     expect(canPerform('declareResults', 'dcdd')).toBe(true);
-    expect(canPerform('declareResults', 'admin')).toBe(true);
+    expect(canPerform('declareResults', 'admin')).toBe(false);
+  });
+
+  it('leaves Technical Settings unassigned pending a DevOps/Platform ownership decision', () => {
+    // Dropped from System Admin under the v2 sidebar's strict least-privilege model;
+    // the page stays in the codebase, reachable by nobody, rather than being deleted.
+    expect(rolesFor('technicalSettings')).toEqual([]);
+    MATRIX_ROLES.forEach(role => expect(canPerform('technicalSettings', role), role).toBe(false));
+  });
+
+  it('withdraws committee setup from the System Administrator, keeping DCDD and the Committee Head', () => {
+    expect(canPerform('committeeSetup', 'dcdd')).toBe(true);
+    expect(canPerform('committeeSetup', 'committee_head')).toBe(true);
+    expect(canPerform('committeeSetup', 'admin')).toBe(false);
   });
 });

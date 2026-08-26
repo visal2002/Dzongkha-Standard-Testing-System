@@ -6,11 +6,12 @@
 
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Users, Shield, Activity, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
+import { Users, Shield, Activity, ArrowRight, CheckCircle, AlertCircle, CalendarClock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatCard } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
 import { adminService } from '@/services/admin';
+import { examService } from '@/services/exams';
 import { useApi } from '@/hooks/useApi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -27,8 +28,12 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const { data: systemUsers, loading: loadingUsers, error: usersError } = useApi(adminService.getUsers);
   const { data: systemRoles, loading: loadingRoles } = useApi(adminService.getRoles);
+  const { data: examWindows, loading: loadingExams } = useApi(examService.getAll);
 
   const isLoading = loadingUsers || loadingRoles;
+  // Status only, per the v2 sidebar decision - System Admin has no registration
+  // access, so this is a rollup count, not a link into registration configuration.
+  const pendingWindows = (examWindows || []).filter(exam => ['draft', 'upcoming'].includes(exam.status)).length;
   const roleData = Object.entries((systemUsers || []).reduce((counts, currentUser) => {
     const role = currentUser.role || 'Unassigned';
     counts[role] = (counts[role] || 0) + 1;
@@ -73,9 +78,10 @@ export default function AdminDashboard() {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard title="Total Users" value={isLoading ? '...' : systemUsers?.length || 0} icon={<Users size={18} />} color="purple" />
         <StatCard title="System Roles" value={isLoading ? '...' : systemRoles?.length || 0} icon={<Shield size={18} />} color="info" />
+        <StatCard title="Pending Windows" value={loadingExams ? '...' : pendingWindows} icon={<CalendarClock size={18} />} color="warning" subtitle="Registration" />
         <StatCard title="System Status" value="100%" icon={<Activity size={18} />} color="success" subtitle="Uptime" />
         <StatCard title="Security Rating" value="A+" icon={<CheckCircle size={18} />} color="gold" subtitle="Hardened" />
       </div>
@@ -117,11 +123,6 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
-          </div>
-          <div className="pt-4 border-t border-surface-border mt-4 flex justify-end">
-            <Link to="/admin/technical" className="text-xs font-semibold text-brand-gold hover:underline flex items-center gap-1">
-              Technical Settings <ArrowRight size={12} />
-            </Link>
           </div>
         </div>
       </div>

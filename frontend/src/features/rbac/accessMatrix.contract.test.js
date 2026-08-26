@@ -4,18 +4,23 @@ import { ACCESS_MODULES, MATRIX_ROLES, canAccess, getAccessLevel, isOwnScoped } 
 // Transcribed cell by cell from the signed-off access matrix document. Rows follow
 // the document's module order, columns its role order. If a grant is ever changed
 // in accessMatrix.js without the document being reissued, this table fails.
+//
+// The admin column is the exception: the v2 sidebar decision withdrew System Admin's
+// grant on every exam-workflow module (registration through reports), scoping the role
+// to users and roles only. That is a deliberate, confirmed reversal of the document's
+// original broader grant, transcribed here to match.
 const APPROVED = {
   //                 admin    dcdd     exam_head  committee_head  committee_member  chief_executive  test_taker
   users:        ['crud',  'read',  'none',    'none',         'none',           'none',          'none'],
   roles:        ['crud',  'read',  'none',    'none',         'none',           'none',          'none'],
-  registration: ['full',  'full',  'read',    'read',         'read',           'read',          'create_own'],
-  verification: ['full',  'full',  'read',    'none',         'none',           'none',          'none'],
-  attendance:   ['full',  'full',  'read',    'none',         'none',           'none',          'none'],
-  questions:    ['full',  'read',  'full',    'read',         'none',           'read',          'sample'],
-  scores:       ['read',  'read',  'read',    'submit',       'read',           'read',          'read_own'],
-  appeals:      ['read',  'read',  'read',    'process',      'read',           'approve',       'submit_own'],
-  certificates: ['full',  'full',  'read',    'read',         'none',           'read',          'read_own'],
-  reports:      ['full',  'full',  'read',    'read',         'read',           'read',          'read_own'],
+  registration: ['none',  'full',  'read',    'read',         'read',           'read',          'create_own'],
+  verification: ['none',  'full',  'read',    'none',         'none',           'none',          'none'],
+  attendance:   ['none',  'full',  'read',    'none',         'none',           'none',          'none'],
+  questions:    ['none',  'read',  'full',    'read',         'none',           'read',          'sample'],
+  scores:       ['none',  'read',  'read',    'submit',       'read',           'read',          'read_own'],
+  appeals:      ['none',  'read',  'read',    'process',      'read',           'approve',       'submit_own'],
+  certificates: ['none',  'full',  'read',    'read',         'none',           'read',          'read_own'],
+  reports:      ['none',  'full',  'read',    'read',         'read',           'read',          'read_own'],
 };
 
 describe('approved access matrix', () => {
@@ -95,12 +100,13 @@ describe('approve and process are distinct steps in the re-evaluation workflow',
 describe('question paper metadata is separate from the encrypted document', () => {
   // Question Upload "Read" is permission to see that a paper exists, not to open it.
   it('grants secure_read only to roles with Full access', () => {
-    ['admin', 'exam_head'].forEach(role =>
-      expect(canAccess(role, 'questions', 'secure_read'), role).toBe(true));
+    expect(canAccess('exam_head', 'questions', 'secure_read')).toBe(true);
   });
 
-  it('refuses secure_read to every role holding only Read or sample access', () => {
-    ['dcdd', 'committee_head', 'chief_executive', 'committee_member', 'test_taker']
+  it('refuses secure_read to every role holding only Read, sample, or no access', () => {
+    // System Admin held Full here too until the v2 sidebar decision withdrew every
+    // exam-workflow module from the role, questions included.
+    ['admin', 'dcdd', 'committee_head', 'chief_executive', 'committee_member', 'test_taker']
       .forEach(role => expect(canAccess(role, 'questions', 'secure_read'), role).toBe(false));
   });
 
@@ -149,8 +155,11 @@ describe('own-scoped access cannot read other people\'s records', () => {
   });
 
   it('grants read_all to every role the document gives a non-owned read', () => {
-    ['admin', 'dcdd', 'exam_head', 'committee_head', 'committee_member', 'chief_executive']
+    // System Admin held this too until the v2 sidebar decision withdrew registration
+    // access from the role entirely.
+    ['dcdd', 'exam_head', 'committee_head', 'committee_member', 'chief_executive']
       .forEach(role => expect(canAccess(role, 'registration', 'read_all'), role).toBe(true));
+    expect(canAccess('admin', 'registration', 'read_all')).toBe(false);
   });
 
   it('keeps verification closed to roles the document marks No', () => {

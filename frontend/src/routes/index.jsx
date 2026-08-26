@@ -40,6 +40,8 @@ const Notifications = lazy(() => import('@/pages/notifications/Notifications'));
 const UserManagement = lazy(() => import('@/pages/admin/UserManagement'));
 const RoleManagement = lazy(() => import('@/pages/admin/RoleManagement'));
 const PermissionManagement = lazy(() => import('@/pages/admin/permissions/PermissionManagement'));
+const RoleAssignment = lazy(() => import('@/pages/admin/RoleAssignment'));
+const AuditLogs = lazy(() => import('@/pages/admin/AuditLogs'));
 const MasterConfiguration = lazy(() => import('@/pages/admin/MasterConfiguration'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
@@ -146,6 +148,8 @@ export default function AppRoutes() {
           <Route path="/admin/users" element={<PrivateRoute requiredAccess={{ module: 'users', action: 'read' }}><UserManagement /></PrivateRoute>} />
           <Route path="/admin/roles" element={<PrivateRoute requiredAccess={{ module: 'roles', action: 'read' }}><RoleManagement /></PrivateRoute>} />
           <Route path="/admin/permissions" element={<PrivateRoute requiredRoles={rolesFor('permissionManagement')}><PermissionManagement /></PrivateRoute>} />
+          <Route path="/admin/role-assignment" element={<PrivateRoute requiredRoles={rolesFor('roleAssignment')}><RoleAssignment /></PrivateRoute>} />
+          <Route path="/admin/audit-logs" element={<PrivateRoute requiredRoles={rolesFor('systemAuditLogs')}><AuditLogs /></PrivateRoute>} />
           <Route path="/admin/technical" element={<PrivateRoute requiredRoles={rolesFor('technicalSettings')}><TechnicalSettings /></PrivateRoute>} />
           <Route path="/masters" element={<PrivateRoute requiredRoles={rolesFor('examConfiguration')}><MasterConfiguration /></PrivateRoute>} />
           <Route path="/dcdd/operational" element={<PrivateRoute requiredRoles={rolesFor('operationalSettings')}><OperationalSettings /></PrivateRoute>} />

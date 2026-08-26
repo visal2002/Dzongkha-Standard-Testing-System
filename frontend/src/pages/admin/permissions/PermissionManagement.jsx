@@ -53,7 +53,7 @@ export default function PermissionManagement() {
 
   const loading = loadingRoles || loadingPermissions;
   return <div className="space-y-6">
-    <PageHeader title="Permission Management" subtitle="Assign the exact backend permissions enforced by DSTS services" breadcrumbs={[{ label: 'Administration' }, { label: 'Permissions' }]} icon={<ShieldCheck size={18} />} />
+    <PageHeader title="Permission & Association Management" subtitle="Assign permissions per role and associate each role with one or more of them" breadcrumbs={[{ label: 'Administration' }, { label: 'Permissions' }]} icon={<ShieldCheck size={18} />} />
     <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
       <div className="rounded-xl border border-surface-border bg-surface-card p-4 space-y-2">
         <h3 className="mb-3 text-sm font-semibold text-text-primary">Select Role</h3>

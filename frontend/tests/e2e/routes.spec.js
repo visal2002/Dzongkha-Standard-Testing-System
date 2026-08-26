@@ -10,7 +10,9 @@ const roleRoutes = [
   {
     role: 'System Admin',
     email: 'system.admin@demo.com',
-    routes: ['/dashboard', '/admin/users', '/admin/roles', '/admin/technical'],
+    // v2 sidebar decision: scoped to technical governance only - users, roles and
+    // permissions. Technical Settings is no longer reachable by this role at all.
+    routes: ['/dashboard', '/admin/users', '/admin/roles', '/admin/permissions', '/admin/role-assignment', '/admin/audit-logs'],
   },
   {
     role: 'DCDD Admin',
@@ -207,14 +209,20 @@ const deniedRoutes = [
     ],
   },
   {
-    // The matrix confines the System Administrator to users, roles and permissions.
-    // The backend keeps a `*` wildcard as documented break-glass; the frontend must
-    // not mirror it, so score entry and DCDD operational settings stay closed.
-    // Exam configuration (masters) is DCDD's business/policy config, not System
-    // Admin's technical remit, so it stays closed too.
+    // v2 sidebar decision: System Admin is scoped to technical governance - users,
+    // roles and permissions - only. Every exam-workflow module is withdrawn entirely,
+    // not merely hidden from the sidebar, so each one is denied here too, plus
+    // Technical Settings, which is dropped for this role under strict least-privilege
+    // and reassigned to nobody until a DevOps/Platform ownership decision is made.
     role: 'System Admin',
     email: 'system.admin@demo.com',
-    routes: ['/scores', '/dcdd/operational', '/masters'],
+    routes: [
+      '/registration/windows', '/registration/applications', '/my-applications',
+      '/verification', '/attendance', '/questions', '/questions/upload', '/questions/samples',
+      '/scores', '/scores/view', '/scores/summary', '/scores/committee',
+      '/appeals', '/certificates', '/reports', '/reports/my',
+      '/dcdd/operational', '/masters', '/admin/technical',
+    ],
   },
 ];
 
