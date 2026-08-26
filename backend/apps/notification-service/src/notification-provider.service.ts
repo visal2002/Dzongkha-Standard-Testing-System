@@ -30,9 +30,9 @@ export abstract class NotificationProviderService {
 export class LoggingNotificationProvider implements NotificationProviderService {
   private readonly logger = new Logger(LoggingNotificationProvider.name);
 
-  async send(channel: NotificationChannel.Email | NotificationChannel.Sms, address: string, title: string, body: string): Promise<NotificationSendResult> {
+  send(channel: NotificationChannel.Email | NotificationChannel.Sms, address: string, title: string, body: string): Promise<NotificationSendResult> {
     const providerMessageId = `log_${channel.toLowerCase()}_${randomUUID()}`;
     this.logger.warn(`[NON-PRODUCTION LOGGING PROVIDER] ${channel} to ${address} :: ${title} :: ${body} (id=${providerMessageId})`);
-    return { providerMessageId };
+    return Promise.resolve({ providerMessageId });
   }
 }

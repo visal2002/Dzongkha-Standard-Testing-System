@@ -55,14 +55,14 @@ export class AssessmentController {
   @RawResponse()
   @Get(':id/question-document')
   async questionDocument(@Param('id') id: string, @Req() request: Request, @Res() response: Response) {
-    return this.sendDocument(await this.service.download(id, DocumentType.QuestionPaper, request.user!, request.id), response, true);
+    return this.sendDocument(await this.service.download(id, DocumentType.QuestionPaper, request.user, request.id), response, true);
   }
 
   @Permissions('question.secure.download')
   @RawResponse()
   @Get(':id/answer-document')
   async answerDocument(@Param('id') id: string, @Req() request: Request, @Res() response: Response) {
-    return this.sendDocument(await this.service.download(id, DocumentType.AnswerSheet, request.user!, request.id), response, true);
+    return this.sendDocument(await this.service.download(id, DocumentType.AnswerSheet, request.user, request.id), response, true);
   }
 
   @Permissions('question.secure.publish')
