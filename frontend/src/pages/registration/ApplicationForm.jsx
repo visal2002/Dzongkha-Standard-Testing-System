@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { ArrowLeft, ArrowRight, CheckCircle2, Send } from 'lucide-react';
 import { Button, Card, CardBody, Input, Select, Stepper } from '@/components/ui';
 import PageHeader from '@/components/ui/PageHeader';
+import Alert from '@/components/ui/Alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { applicationService } from '@/services/applications';
 import { examService } from '@/services/exams';
@@ -104,6 +105,11 @@ export default function ApplicationForm() {
 
   return <div className="space-y-6">
     <PageHeader title="Exam Registration" subtitle={`${exam.title} · ${exam.code} · Fee Nu. ${exam.paymentAmount}`} breadcrumbs={[{ label: 'Registration' }, { label: 'Apply' }]} />
+    <Alert variant="warning" title="Identity verification integration pending">
+      Details below are accepted as entered. Automatic verification against Bhutan NDI and
+      DCRC census records is not yet connected - DCDD staff verify submissions manually
+      during review until that integration is built.
+    </Alert>
     <Stepper steps={steps} currentStep={step} />
     <Card><CardBody><form onSubmit={handleSubmit(submit)}>
       {step === 0 && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
