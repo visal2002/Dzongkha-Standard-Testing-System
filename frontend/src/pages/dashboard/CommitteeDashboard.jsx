@@ -6,10 +6,11 @@
 
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ClipboardList, Users, Scale, BarChart3, ArrowRight, CheckCircle } from 'lucide-react';
+import { ClipboardList, Users, Scale, CalendarDays, ArrowRight, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatCard } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
+import Alert from '@/components/ui/Alert';
 import { scoreService } from '@/services/scores';
 import { appealService } from '@/services/appeals';
 import { useApi } from '@/hooks/useApi';
@@ -70,6 +71,29 @@ export default function CommitteeDashboard() {
   }, [bandScores]);
 
   const hasScoreDist = hasChartData(scoreDistData, ['count']);
+
+  // Re-evaluation requests that have cleared payment and are awaiting the Committee
+  // Head's review - the moment they become the committee's concern. Status casing
+  // ('PENDING_COMMITTEE') mirrors AppealList.jsx and the real AppealStatus values the
+  // backend returns.
+  const pendingCommitteeCount = useMemo(
+    () => (appeals || []).filter(appeal => appeal.status === 'PENDING_COMMITTEE').length,
+    [appeals],
+  );
+
+  // There is no committee-meeting entity in this system - band-score review and
+  // re-evaluation work runs against the examination calendar itself, so this surfaces
+  // real upcoming exam dates from the exam windows already loaded above rather than
+  // inventing a meeting schedule with no backend behind it.
+  const upcomingExamDates = useMemo(() => {
+    const now = Date.now();
+    return (examWindows || [])
+      .filter(window => window.examDate && new Date(window.examDate).getTime() >= now)
+      .sort((a, b) => new Date(a.examDate) - new Date(b.examDate))
+      .slice(0, 5);
+  }, [examWindows]);
+
+  const scoresLink = isHead ? '/scores/summary' : '/scores/band-scores';
 
   if (isLoading) {
     return (

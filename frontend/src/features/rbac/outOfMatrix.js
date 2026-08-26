@@ -32,13 +32,20 @@ export const OUT_OF_MATRIX_OPERATIONS = [
   {
     key: 'committeeSetup',
     label: 'Constitute the exam committee',
-    roles: ['dcdd', 'committee_head'],
+    roles: ['dcdd'],
     surface: '/scores/committee',
     reason:
       'Appointing committee members decides who may later enter scores. It is an ' +
       'administrative act over the committee, not access to the scores themselves, and the ' +
       'matrix has no row for it. The System Administrator held this too until the v2 sidebar ' +
-      'decision withdrew every exam-workflow operation from that role, including this one.',
+      'decision withdrew every exam-workflow operation from that role, including this one. ' +
+      'The Committee Head held it too, but a Committee Head assembling and designating ' +
+      'themselves does not make organisational sense - the v2 Committee Head sidebar decision ' +
+      'withdrew it from the role. DCDD already owns exam windows and registration, making it ' +
+      'the most likely home, but this has not been ratified as its own row in the approved ' +
+      'matrix or added to DCDD\'s six-item sidebar - flagged as an open item pending an ' +
+      'explicit ownership decision, the same way \'technicalSettings\' and ' +
+      '\'operationalSettings\' stay unassigned below rather than guessed at.',
   },
   {
     key: 'examConfiguration',

@@ -28,6 +28,7 @@ const ScoreEntry = lazy(() => import('@/pages/scores/ScoreEntry'));
 const ViewScores = lazy(() => import('@/pages/scores/ViewScores'));
 const CommitteeSetup = lazy(() => import('@/pages/scores/CommitteeSetup'));
 const ScoreSummary = lazy(() => import('@/pages/scores/ScoreSummary'));
+const ViewBandScores = lazy(() => import('@/pages/scores/ViewBandScores'));
 const AppealList = lazy(() => import('@/pages/appeals/AppealList'));
 const SubmitAppeal = lazy(() => import('@/pages/appeals/SubmitAppeal'));
 const CertificateList = lazy(() => import('@/pages/certificates/CertificateList'));
@@ -136,6 +137,12 @@ export default function AppRoutes() {
           <Route path="/scores/view" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read' }}><ViewScores /></PrivateRoute>} />
           <Route path="/scores/committee" element={<PrivateRoute requiredRoles={rolesFor('committeeSetup')}><CommitteeSetup /></PrivateRoute>} />
           <Route path="/scores/summary" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read_all' }}><ScoreSummary /></PrivateRoute>} />
+          {/* Committee Member's dedicated read-only screen (BRD §5.5.2 BR-2/BR-3):
+              search by Exam ID or candidate Registration Number, plus the reviewing
+              committee's names. Guarded the same as /scores/view - any role holding
+              at least Band Scores Read may reach it - but only Committee Member's
+              sidebar links here. */}
+          <Route path="/scores/band-scores" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read' }}><ViewBandScores /></PrivateRoute>} />
 
           {/* Appeals & Certificates */}
           <Route path="/appeals" element={<PrivateRoute requiredAccess={{ module: 'appeals', action: 'read' }}><AppealList /></PrivateRoute>} />

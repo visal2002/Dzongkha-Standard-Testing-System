@@ -51,7 +51,7 @@ const NAV_CONFIG = [
   { label: 'Role Assignment', icon: UserCog, to: '/admin/role-assignment', roles: rolesFor('roleAssignment') },
   { label: 'System Audit Logs', icon: ScrollText, to: '/admin/audit-logs', roles: rolesFor('systemAuditLogs') },
   {
-    label: 'Registration', icon: FileText, access: ['registration', 'read'], excludeRoles: ['test_taker', 'dcdd', 'exam_head', 'chief_executive'], children: [
+    label: 'Registration', icon: FileText, access: ['registration', 'read'], excludeRoles: ['test_taker', 'dcdd', 'exam_head', 'chief_executive', 'committee_member', 'committee_head'], children: [
       { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'] },
       { label: 'Applications', icon: ClipboardList, to: '/registration/applications', access: ['registration', 'read_all'] },
       // "My Applications" deliberately has no entry here. Only the Test Taker
@@ -83,12 +83,12 @@ const NAV_CONFIG = [
   // both real backend-driven, versioned, approval-gated data. See outOfMatrix.js.
   { label: 'Master Configuration', icon: Settings, to: '/masters', roles: rolesFor('examConfiguration') },
   {
-    label: 'Question Papers', icon: BookOpen, access: ['questions', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'], children: [
+    label: 'Question Papers', icon: BookOpen, access: ['questions', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_head'], children: [
       { label: 'Upload Papers', icon: Upload, to: '/questions/upload', access: ['questions', 'create'] },
       { label: 'Question Papers', icon: FileText, to: '/questions', access: ['questions', 'read'] },
     ],
   },
-  { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'] },
+  { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_head'] },
   // v2 sidebar decision: BRD §5.4.2 defines exactly one function for this role -
   // uploading question papers and answer sheets (BR-1/BR-2) - so it gets a scoped
   // "Question Bank" upload workspace instead of the shared group above, which mixes
@@ -113,16 +113,29 @@ const NAV_CONFIG = [
   // Read-only by design - declaring results lives here too, but entering a score never
   // does. Named "Score History" (not "Band Scores") so it doesn't read as a duplicate
   // of Band Score Entry above.
-  { label: 'Score History', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'] },
+  { label: 'Score History', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_member', 'committee_head'] },
+  // Committee Member's own three-item strict least-privilege menu (Dashboard, View
+  // Band Scores, Re-evaluation Queue) - BRD §5.5.2/§5.6.1 define this role's whole
+  // job as viewing submitted band scores and tracking re-evaluation requests after
+  // they clear payment. It is genuinely read-only: BR-2/BR-3 require searching by
+  // Exam ID or Registration Number and the reviewing committee's names, which the
+  // shared Score History screen (built for the roles that also declare results)
+  // does not offer, so this gets its own dedicated screen rather than a relabel.
+  { label: 'View Band Scores', icon: BarChart3, to: '/scores/band-scores', onlyRoles: ['committee_member'] },
   // BRD §5.5.2 BR-1: constituting the committee (add/remove members, designate the
   // Head) is an out-of-matrix operation - see 'committeeSetup' in outOfMatrix.js.
   // DCDD holds this operation too but it is left off DCDD's own six-item menu under
   // the same v2 lean-scope decision - the grant stays real, just unsurfaced here.
   { label: 'Committee', icon: Users, to: '/scores/committee', roles: rolesFor('committeeSetup'), excludeRoles: ['dcdd'] },
-  { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'] },
+  { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_member'] },
   { label: 'Revision Approvals Queue', icon: Scale, to: '/appeals', onlyRoles: ['chief_executive'] },
+  // Same route as the generic 'Re-evaluation' entry above - the approved matrix
+  // gives Committee Member View only (not Process), so the page renders read-only
+  // for this role; see AppealList.jsx's canProcess/canApprove checks. A dedicated
+  // label keeps that distinction visible in the sidebar itself, not just on the page.
+  { label: 'Re-evaluation Queue', icon: Scale, to: '/appeals', onlyRoles: ['committee_member'] },
   { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'] },
-  { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read_all'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive'] },
+  { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read_all'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_member'] },
   { label: 'Executive Reports', icon: BarChart3, to: '/reports', onlyRoles: ['chief_executive'] },
   { label: 'Reports & Analytics', icon: BarChart3, to: '/reports', onlyRoles: ['dcdd'] },
   { label: 'My Records', icon: BarChart3, to: '/reports/my', ownScoped: 'reports' },

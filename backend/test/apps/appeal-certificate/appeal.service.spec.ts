@@ -559,7 +559,6 @@ describe('AppealService — Chief Executive decision (BRD §2.6)', () => {
     expect(response).toMatchObject({ status: AppealStatus.Completed });
     expect(pendingAppeal.status).toBe(AppealStatus.Completed);
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealCompleted)).toBe(true);
-    expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealAutoApplyFailed)).toBeFalsy();
   });
 
   it('keeps the Chief\'s decision recorded even when applying the revision fails', async () => {

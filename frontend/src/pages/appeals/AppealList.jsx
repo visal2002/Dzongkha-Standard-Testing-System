@@ -63,6 +63,8 @@ export default function AppealList() {
   const canProcess = canAccess(user?.role, 'appeals', 'process');
   const canSubmit = canAccess(user?.role, 'appeals', 'submit_own');
   const decisionsComplete = selected?.skills?.every(skill => skillDecisions[skill]) ?? false;
+  const isCommitteeMember = user?.role === 'committee_member';
+  const pendingCommitteeCount = data.filter(appeal => appeal.status === 'PENDING_COMMITTEE').length;
 
   const load = async () => {
     setLoading(true);
@@ -123,6 +125,18 @@ export default function AppealList() {
     columnHelper.accessor('id', { header: 'Request ID', cell: info => <span className="font-mono text-xs text-text-muted">{info.getValue()}</span> }),
     columnHelper.accessor('applicationId', { header: 'Application', cell: info => <span className="font-mono text-xs text-brand-gold">{info.getValue()}</span> }),
     columnHelper.accessor('skills', { header: 'Skills', cell: info => <span className="text-xs text-text-secondary">{info.getValue().join(', ')}</span> }),
+    // BRD §5.6.1: the Committee Member's queue must show the candidate's original
+    // score alongside the flagged skill(s) and submission date without opening the
+    // detail modal - the other two already have their own columns above/below.
+    columnHelper.display({
+      id: 'originalScore',
+      header: 'Original Score',
+      cell: ({ row }) => (
+        <span className="text-xs text-text-secondary">
+          {Object.entries(row.original.originalScores).map(([skill, value]) => `${skill} ${value.toFixed(1)}`).join(' · ')}
+        </span>
+      ),
+    }),
     columnHelper.accessor('paymentAmount', { header: 'Fee', cell: info => <span className="text-xs font-medium text-text-primary">{info.row.original.paymentCurrency} {Number(info.getValue()).toFixed(2)}</span> }),
     columnHelper.accessor('paymentStatus', { header: 'Payment', cell: info => <StatusBadge status={info.getValue()} /> }),
     columnHelper.accessor('status', { header: 'Status', cell: info => <StatusBadge status={info.getValue()} /> }),
@@ -136,9 +150,13 @@ export default function AppealList() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Re-evaluation"
-        subtitle={canApprove ? 'Review privileged score-revision requests' : 'Track payment, committee review, and final outcomes'}
-        breadcrumbs={[{ label: 'Re-evaluation' }]}
+        title={isCommitteeMember ? 'Re-evaluation Queue' : 'Re-evaluation'}
+        subtitle={
+          canApprove ? 'Review privileged score-revision requests'
+          : isCommitteeMember ? 'View only - track payment, committee review, and outcome status for every request'
+          : 'Track payment, committee review, and final outcomes'
+        }
+        breadcrumbs={[{ label: isCommitteeMember ? 'Re-evaluation Queue' : 'Re-evaluation' }]}
         icon={<Scale size={18} />}
         action={canSubmit && (
           <Button icon={<Plus size={14} />} onClick={() => navigate('/appeals/new')}>Submit New</Button>
@@ -148,6 +166,11 @@ export default function AppealList() {
       {error && <Alert variant="error" title="Re-evaluation unavailable">{error}</Alert>}
       {canApprove && data.some(appeal => appeal.status === 'PENDING_CHIEF_APPROVAL') && (
         <Alert variant="warning" title="Approval Required">One or more committee revision requests require a privileged decision.</Alert>
+      )}
+      {isCommitteeMember && pendingCommitteeCount > 0 && (
+        <Alert variant="warning" title="Newly routed for committee review">
+          {pendingCommitteeCount} re-evaluation request{pendingCommitteeCount === 1 ? '' : 's'} cleared payment and now await{pendingCommitteeCount === 1 ? 's' : ''} the Committee Head's review.
+        </Alert>
       )}
 
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
