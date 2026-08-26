@@ -86,7 +86,8 @@ export default function TestTakerDashboard() {
   // `/applications/my` is already scoped to the signed-in user; the filter is a guard,
   // not a lookup, so it must never widen to a fixed account id.
   const myApps = (applications || []).filter(a => !a.testTakerId || a.testTakerId === user?.id);
-  const myCerts = (certificates || []).slice(0, 2);
+  const myCerts = certificates || [];
+  const myAppeals = appeals || [];
   const myScore = (bandScores || [])[0];
   const normalizedScore = myScore ? {
     writing: myScore.writing ?? myScore.score?.scores?.WRITING ?? 0,
@@ -94,6 +95,9 @@ export default function TestTakerDashboard() {
     listening: myScore.listening ?? myScore.score?.scores?.LISTENING ?? 0,
     speaking: myScore.speaking ?? myScore.score?.scores?.SPEAKING ?? 0,
   } : null;
+  const overallBand = normalizedScore
+    ? (normalizedScore.writing + normalizedScore.reading + normalizedScore.listening + normalizedScore.speaking) / 4
+    : null;
   const openExam = findOpenExamWindow(examWindows);
 
   // The banner advertises the window that is genuinely open, and counts down to its own
@@ -104,7 +108,14 @@ export default function TestTakerDashboard() {
   const latestAppSubmittedAt = latestApp?.submittedAt || latestApp?.createdAt
     ? new Date(latestApp.submittedAt || latestApp.createdAt)
     : null;
+  const latestAppExam = latestApp ? (examWindows || []).find(exam => exam.id === latestApp.examId) : null;
   const currentStepIndex = stepIndexFor(latestApp);
+
+  // Exams Taken counts applications that actually reached the exam stage, whether or
+  // not the candidate sat it - "Taken" here means "the exam sitting happened", the
+  // same completed/absent statuses the stepper itself treats as the final step.
+  const examsTakenCount = myApps.filter(a => ['completed', 'absent'].includes(String(a.status || '').toLowerCase())).length;
+  const activeAppealsCount = myAppeals.filter(a => !APPEAL_TERMINAL_STATUSES.includes(a.status)).length;
 
   const registrationClosesAt = openExam?.registrationEnd ? new Date(openExam.registrationEnd) : null;
   const daysToClose = registrationClosesAt
