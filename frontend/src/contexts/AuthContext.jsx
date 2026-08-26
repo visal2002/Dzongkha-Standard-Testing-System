@@ -183,7 +183,11 @@ export function AuthProvider({ children }) {
     };
   }, [user, logout]);
 
+  // The API call runs first and its failure propagates to the caller - local state
+  // and the session are only rewritten once the backend has actually persisted the
+  // change, so a rejected save never reports success to the user.
   const updateProfile = useCallback(async (updatedFields) => {
+    await authService.updateProfile(updatedFields);
     setUser(prevUser => {
       if (!prevUser) return null;
       const updated = normalizeUserSession({ ...prevUser, ...updatedFields });
@@ -191,12 +195,6 @@ export function AuthProvider({ children }) {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...session, user: updated, expiresAt: Date.now() + 60 * 60 * 1000 }));
       return updated;
     });
-
-    try {
-      await authService.updateProfile(updatedFields);
-    } catch {
-      // profile update is best-effort for UI state
-    }
   }, []);
 
   const hasRole = useCallback((role) => {
