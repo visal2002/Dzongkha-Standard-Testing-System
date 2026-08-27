@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
-import { IsNull, MoreThan, Repository } from 'typeorm';
+import { IsNull, MoreThan, Not, Repository } from 'typeorm';
 import { AccessClaims, CanonicalRole } from '@dzongjuk/contracts';
 import { DomainException } from '@dzongjuk/common';
 import { AuditService } from './audit.service';
@@ -43,11 +43,28 @@ export class AuthService {
     if (duplicate) throw new DomainException('USER_DUPLICATE', 'An account already exists for this email or CID.', 409);
     const role = await this.roles.findOneByOrFail({ code: CanonicalRole.TestTaker, active: true });
     const user = await this.users.save(this.users.create({
-      email: dto.email.toLowerCase(), cid: dto.cid, fullName: dto.fullName,
+      email: dto.email.toLowerCase(), cid: dto.cid, fullName: dto.fullName, userId: await this.allocateUserId(),
       passwordHash: await bcrypt.hash(dto.password, 12), roles: [role], status: 'ACTIVE',
     }));
     await this.audit.record({ action: 'USER_REGISTERED', resourceType: 'User', resourceId: user.id, actorUserId: user.id, requestId: context.requestId });
     return this.publicUser(user);
+  }
+
+  /**
+   * Allocates the next 4-digit login handle in sequence: one past the highest
+   * currently in use (seed accounts start at 1001). The inner loop only advances if
+   * a concurrent insert already claimed the computed number.
+   */
+  private async allocateUserId(): Promise<string> {
+    const [highest] = await this.users.find({
+      where: { userId: Not(IsNull()) }, select: ['userId'], order: { userId: 'DESC' }, take: 1,
+    });
+    let next = (Number(highest?.userId) || 1000) + 1;
+    for (let attempt = 0; attempt < 25; attempt += 1, next += 1) {
+      const candidate = String(next).padStart(4, '0');
+      if (!(await this.users.findOne({ where: { userId: candidate } }))) return candidate;
+    }
+    throw new DomainException('USER_ID_ALLOCATION_FAILED', 'Could not allocate a unique User ID. Please try again.', 503);
   }
 
   async login(dto: LoginDto, context: RequestContext) {
@@ -56,7 +73,7 @@ export class AuthService {
       .addSelect('user.passwordHash')
       .leftJoinAndSelect('user.roles', 'role')
       .leftJoinAndSelect('role.permissions', 'permission')
-      .where('LOWER(user.email) = :identifier OR user.cid = :identifier', { identifier })
+      .where('LOWER(user.email) = :identifier OR user.cid = :identifier OR user.userId = :identifier', { identifier })
       .getOne();
     if (!user) return this.failedLogin(identifier, null, context, 'INVALID_CREDENTIALS');
     if (user.status === 'DISABLED') throw new DomainException('ACCOUNT_DISABLED', 'This account is disabled.', 403);
@@ -200,7 +217,7 @@ export class AuthService {
     if (!user && this.config.get('NDI_ALLOW_TEST_TAKER_PROVISIONING', 'false') === 'true') {
       const role = await this.roles.findOneByOrFail({ code: CanonicalRole.TestTaker, active: true });
       user = await this.users.save(this.users.create({
-        email: `ndi-${this.hash(cid).slice(0, 24)}@users.dzongjuk.bt`, cid, fullName,
+        email: `ndi-${this.hash(cid).slice(0, 24)}@users.dzongjuk.bt`, cid, fullName, userId: await this.allocateUserId(),
         passwordHash: null, roles: [role], status: 'ACTIVE', ndiLinkedAt: new Date(),
       }));
     }
@@ -282,5 +299,5 @@ export class AuthService {
   }
 
   private hash(value: string) { return createHash('sha256').update(value).digest('hex'); }
-  private publicUser(user: UserEntity) { return { id: user.id, email: user.email, cid: user.cid, fullName: user.fullName, status: user.status, roles: user.roles.map((role) => role.code) }; }
+  private publicUser(user: UserEntity) { return { id: user.id, userId: user.userId, email: user.email, cid: user.cid, fullName: user.fullName, status: user.status, roles: user.roles.map((role) => role.code) }; }
 }

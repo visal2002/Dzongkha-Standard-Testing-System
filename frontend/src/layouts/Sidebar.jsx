@@ -43,13 +43,17 @@ const NAV_CONFIG = [
   // (Question Papers, Band Scores, Re-evaluation) - see outOfMatrix.js 'examConfiguration'.
   { label: 'User Management', icon: Users, to: '/admin/users', access: ['users', 'read'], excludeRoles: ['dcdd'] },
   { label: 'Role Management', icon: UserCog, to: '/admin/roles', access: ['roles', 'read'], excludeRoles: ['dcdd'] },
-  // v2 sidebar decision: System Admin is scoped to technical governance - users, roles
-  // and permissions - only. These three are its complete remaining scope; every
-  // exam-workflow module below is withdrawn from the role entirely (see
-  // accessMatrix.js), not merely hidden, so none of it can leak back in here.
+  // v2 sidebar decision: System Admin is scoped to technical governance - users, roles,
+  // permissions and system-level technical settings. Every exam-workflow module below
+  // is withdrawn from the role entirely (see accessMatrix.js), not merely hidden, so
+  // none of it can leak back in here.
   { label: 'Permission & Association Management', icon: ClipboardCheck, to: '/admin/permissions', roles: rolesFor('permissionManagement') },
   { label: 'Role Assignment', icon: UserCog, to: '/admin/role-assignment', roles: rolesFor('roleAssignment') },
   { label: 'System Audit Logs', icon: ScrollText, to: '/admin/audit-logs', roles: rolesFor('systemAuditLogs') },
+  // System-level integration configuration (API keys, NDI credentials, SMS/email
+  // gateways). Out of the matrix because no module describes infrastructure, but
+  // owned by the System Administrator - see 'technicalSettings' in outOfMatrix.js.
+  { label: 'Technical Settings', icon: Server, to: '/admin/technical', roles: rolesFor('technicalSettings') },
   {
     label: 'Registration', icon: FileText, access: ['registration', 'read'], excludeRoles: ['test_taker', 'dcdd', 'exam_head', 'chief_executive', 'committee_member', 'committee_head'], children: [
       { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'] },

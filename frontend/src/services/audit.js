@@ -28,6 +28,64 @@ const normalizeEvent = event => ({
   status: event.safeData?.status ?? null,
 });
 
+// ─── Client-recorded events (mock mode only) ──────────────────────────────────
+// A real deployment records audit events server-side in the reporting service. In
+// mock mode there is no such service, so actions performed locally — sign-ins in
+// particular — are captured here and merged with the seeded fixtures, otherwise the
+// screen only ever shows the five sample rows.
+const MOCK_STORE_KEY = 'dsts_mock_audit_events';
+const MOCK_STORE_LIMIT = 200;
+
+const readStoredEvents = () => {
+  if (!USE_MOCK_DATA || typeof localStorage === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MOCK_STORE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeStoredEvents = (events) => {
+  try {
+    localStorage.setItem(MOCK_STORE_KEY, JSON.stringify(events.slice(-MOCK_STORE_LIMIT)));
+  } catch {
+    // storage unavailable or over quota — the current session's list still updates
+  }
+};
+
+/**
+ * Append a client-side audit entry. No-ops outside mock mode.
+ * @param {{action: string, actorUserId?: string|null, resourceId?: string|null,
+ *          source?: string, role?: string|null, status?: string, ipAddress?: string|null}} entry
+ */
+export const recordAuditEvent = ({
+  action,
+  actorUserId = null,
+  resourceId = null,
+  source = 'identity-service',
+  role = null,
+  status = 'Success',
+  ipAddress = 'local',
+}) => {
+  if (!USE_MOCK_DATA) return null;
+  const stamp = Date.now();
+  const suffix = Math.random().toString(36).slice(2, 8);
+  const event = {
+    id: `AUD-LOCAL-${stamp}-${suffix}`,
+    eventId: `evt-local-${stamp}-${suffix}`,
+    action,
+    source,
+    resourceId: resourceId ?? actorUserId,
+    actorUserId,
+    correlationId: `corr-local-${stamp}-${suffix}`,
+    occurredAt: new Date(stamp).toISOString(),
+    safeData: { role, ipAddress, status },
+  };
+  writeStoredEvents([...readStoredEvents(), event]);
+  return event;
+};
+
 export const auditService = {
   /**
    * @param {{action?: string, actorUserId?: string, from?: string, to?: string, page?: number, pageSize?: number}} query
@@ -37,7 +95,9 @@ export const auditService = {
     if (USE_MOCK_DATA) {
       const page = query.page ?? 1;
       const pageSize = query.pageSize ?? 50;
-      const filtered = MOCK_EVENTS.filter(event =>
+      const all = [...readStoredEvents(), ...MOCK_EVENTS]
+        .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : a.occurredAt > b.occurredAt ? -1 : 0));
+      const filtered = all.filter(event =>
         (!query.action || event.action.toLowerCase().includes(query.action.toLowerCase())) &&
         (!query.actorUserId || event.actorUserId === query.actorUserId) &&
         (!query.from || event.occurredAt >= query.from) &&

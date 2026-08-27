@@ -5,10 +5,16 @@
  */
 
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccess } from '@/features/rbac/accessMatrix';
 import { rolesFor } from '@/features/rbac/outOfMatrix';
+
+// The "finish your profile first" gate is part of the mock onboarding flow (email,
+// password and photo are all collected post-registration there). A real backend
+// mandates email + password at registration, so the gate is scoped to mock builds.
+const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test';
+const PROFILE_GATE_ACTIVE = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 // Layout
 import AppLayout from '@/layouts/AppLayout';
@@ -78,8 +84,21 @@ const NotFoundPage = () => (
 // Route Guard
 function PrivateRoute({ children, requiredRoles, requiredAccess }) {
   const { isAuthenticated, user, isLoading } = useAuth();
+  const location = useLocation();
   if (isLoading) return <PageLoader />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  // A Test Taker is sent straight to their profile after signing in and cannot leave
+  // it until their email, password and passport-size photo are all on file - none of
+  // the three is collected at registration, so all three are completed on that page.
+  if (
+    PROFILE_GATE_ACTIVE
+    && user?.role === 'test_taker'
+    && (!user?.photo || !user?.passwordSet || !user?.emailSet)
+    && location.pathname !== '/profile'
+  ) {
+    return <Navigate to="/profile" replace />;
+  }
 
   // A System Administrator is not admitted to a route just for being one. The
   // backend keeps a `*` wildcard as documented break-glass, but the frontend follows

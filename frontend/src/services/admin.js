@@ -9,7 +9,8 @@
  * System administration — users and roles.
  */
 import apiClient from './api';
-import { registerMockAccount } from './auth';
+import { registerMockAccount, removeMockAccount, listRuntimeMockAccounts } from './auth';
+import { recordAuditEvent } from './audit';
 import { ACCESS_MODULES, ROLE_LABELS } from '@/features/rbac/accessMatrix';
 
 // Fixture-backed responses exist for the automated suites only. `DEV` is false in every
@@ -79,7 +80,26 @@ export const adminService = {
 
   /** @returns {Promise<{data: import('@/constants/domain').SystemUser[]}>} */
   getUsers: async () => {
-    if (USE_MOCK_DATA) return mockUsers.map(normalizeUser);
+    if (USE_MOCK_DATA) {
+      // Self-registered test takers and admin-created accounts live in the auth
+      // service's account store, not in `mockUsers`. Surface them here so they show
+      // in the directory and can be removed from this screen.
+      const seededEmails = new Set(mockUsers.map(entry => entry.email.toLowerCase()));
+      const runtimeUsers = listRuntimeMockAccounts()
+        .filter(account => !seededEmails.has(String(account.email).toLowerCase()))
+        .map(account => ({
+          id: account.id,
+          userId: account.userId,
+          fullName: account.fullName || account.name,
+          email: account.email,
+          cid: account.cid,
+          roles: (Array.isArray(account.roles) && account.roles.length ? account.roles : ['test_taker'])
+            .map(role => (typeof role === 'string' ? mockRole(role) : role)),
+          status: 'ACTIVE',
+          lastLogin: null,
+        }));
+      return [...runtimeUsers, ...mockUsers].map(normalizeUser);
+    }
 
     const { data } = await apiClient.get('/admin/users');
     const value = data?.data || data;
@@ -127,7 +147,9 @@ export const adminService = {
       };
       mockUsers = [created, ...mockUsers];
       // Let the new account sign in for the rest of the session.
-      registerMockAccount({ ...created, roles: roleCodes, password: payload.password });
+      const account = registerMockAccount({ ...created, roles: roleCodes, password: payload.password });
+      if (account) created.userId = account.userId;
+      recordAuditEvent({ action: 'User Created', actorUserId: account?.userId || created.id, role: roleCodes.map(code => ROLE_LABELS[code] || code).join(', '), status: 'Success' });
       return normalizeUser(created);
     }
 
@@ -148,6 +170,7 @@ export const adminService = {
         updated = { ...user, ...payload, roles: roleCodes ? roleCodes.map(mockRole) : user.roles };
         return updated;
       });
+      recordAuditEvent({ action: 'User Updated', actorUserId: updated?.userId || id, status: 'Success' });
       return normalizeUser(updated);
     }
 
@@ -162,6 +185,7 @@ export const adminService = {
   setUserStatus: async (id, status) => {
     if (USE_MOCK_DATA) {
       mockUsers = mockUsers.map(user => user.id === id ? { ...user, status: status === 'active' ? 'ACTIVE' : 'DISABLED' } : user);
+      recordAuditEvent({ action: status === 'active' ? 'User Activated' : 'User Deactivated', actorUserId: id, status: 'Success' });
       return { success: true };
     }
 
@@ -172,7 +196,18 @@ export const adminService = {
   /** @param {string} id */
   deleteUser: async (id) => {
     if (USE_MOCK_DATA) {
+      const target = mockUsers.find(user => user.id === id)
+        || listRuntimeMockAccounts().find(account => account.id === id);
       mockUsers = mockUsers.filter(user => user.id !== id);
+      // Also drop the sign-in credentials / stored account so the CID and User ID
+      // are free to register again.
+      removeMockAccount(id);
+      recordAuditEvent({
+        action: 'User Deleted',
+        actorUserId: target?.userId || target?.cid || id,
+        role: target ? (Array.isArray(target.roles) ? target.roles.map(r => (typeof r === 'string' ? r : r.name)).join(', ') : null) : null,
+        status: 'Success',
+      });
       return { success: true };
     }
 

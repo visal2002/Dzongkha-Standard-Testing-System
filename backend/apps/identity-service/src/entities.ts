@@ -40,6 +40,10 @@ export class UserEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Index({ unique: true }) @Column({ length: 254 }) email: string;
   @Index({ unique: true }) @Column({ type: 'varchar', length: 32, nullable: true }) cid: string | null;
+  // System-assigned 4-digit login handle. Users register with their 11-digit CID and
+  // sign in with this shorter id (or their email). Populated on registration and on
+  // NDI/admin provisioning; nullable so legacy rows created before this column remain valid.
+  @Index({ unique: true }) @Column({ type: 'varchar', length: 4, nullable: true }) userId: string | null;
   @Column({ length: 160 }) fullName: string;
   @Column({ type: 'varchar', select: false, nullable: true }) passwordHash: string | null;
   @Column({ default: 'ACTIVE' }) status: 'ACTIVE' | 'DISABLED' | 'LOCKED';

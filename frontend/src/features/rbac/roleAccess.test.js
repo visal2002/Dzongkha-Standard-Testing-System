@@ -237,12 +237,14 @@ describe('every approved role resolves a sidebar', () => {
     ].forEach(label => expect(menuFor('dcdd'), label).not.toContain(label));
   });
 
-  it('gives the System Administrator exactly six flat items and nothing else - v2 strict least-privilege', () => {
+  it('gives the System Administrator exactly seven flat items and nothing else - v2 strict least-privilege', () => {
     // v2 sidebar decision: this supersedes an earlier draft that collapsed DCDD's
     // day-to-day screens (Exam Windows, Verification, Absentee) into a de-emphasised
     // "Admin Overrides" group for System Admin. This version removes them from the
     // role entirely instead - no sub-menus, no secondary section, no operational
-    // exam-workflow module, not even read-only oversight.
+    // exam-workflow module, not even read-only oversight. The role's scope is
+    // technical governance: user/role/permission administration plus system-level
+    // technical settings.
     const adminNav = navigationFor('admin');
     expect(adminNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
     expect(adminNav.map(item => item.label)).toEqual([
@@ -252,6 +254,7 @@ describe('every approved role resolves a sidebar', () => {
       'Permission & Association Management',
       'Role Assignment',
       'System Audit Logs',
+      'Technical Settings',
     ]);
 
     // Every exam-workflow module is gone, not merely hidden - the underlying matrix
@@ -262,7 +265,7 @@ describe('every approved role resolves a sidebar', () => {
       'Verification', 'Absentee', 'Question Papers', 'Upload Papers', 'Sample Papers',
       'Band Score Entry', 'My Results', 'Score History', 'Committee', 'Re-evaluation',
       'Certificates', 'Reports', 'My Records', 'Master Configuration',
-      'Exam Configuration', 'Operational Settings', 'Technical Settings', 'Admin Overrides',
+      'Exam Configuration', 'Operational Settings', 'Admin Overrides',
     ].forEach(label => expect(menuFor('admin'), label).not.toContain(label));
 
     // DCDD's own six-item menu (Registration Windows, Application Verification,
@@ -270,8 +273,10 @@ describe('every approved role resolves a sidebar', () => {
     // in full by the 'gives DCDD exactly six flat items' test above.
   });
 
-  it('gives nobody Technical Settings - dropped from System Admin, not reassigned', () => {
-    MATRIX_ROLES.forEach(role => expect(menuFor(role), role).not.toContain('Technical Settings'));
+  it('gives Technical Settings to the System Administrator only', () => {
+    expect(menuFor('admin')).toContain('Technical Settings');
+    MATRIX_ROLES.filter(role => role !== 'admin').forEach(role =>
+      expect(menuFor(role), role).not.toContain('Technical Settings'));
   });
 
   it('gives the Test Taker exactly six flat items and nothing else - v2 six-item sidebar decision', () => {
@@ -349,13 +354,14 @@ describe('route guards admit exactly the roles the matrix allows', () => {
     const reachable = routesFor('admin');
     expect(reachable).toEqual([
       '/admin/users', '/admin/roles', '/admin/permissions', '/admin/role-assignment', '/admin/audit-logs',
+      '/admin/technical',
     ]);
     [
       '/registration/windows', '/my-applications', '/registration/apply/:examId', '/registration/applications',
       '/verification', '/attendance', '/questions', '/questions/upload', '/questions/samples',
       '/scores', '/scores/view', '/scores/summary', '/scores/committee',
       '/appeals', '/appeals/new', '/certificates', '/reports', '/reports/my',
-      '/admin/technical', '/masters',
+      '/masters',
     ].forEach(path => expect(reachable, path).not.toContain(path));
   });
 
@@ -424,18 +430,21 @@ describe('out-of-matrix operations are registered rather than hard-coded', () =>
     expect(canPerform('declareResults', 'admin')).toBe(false);
   });
 
-  it('leaves Technical Settings unassigned pending a DevOps/Platform ownership decision', () => {
-    // Dropped from System Admin under the v2 sidebar's strict least-privilege model;
-    // the page stays in the codebase, reachable by nobody, rather than being deleted.
-    expect(rolesFor('technicalSettings')).toEqual([]);
-    MATRIX_ROLES.forEach(role => expect(canPerform('technicalSettings', role), role).toBe(false));
+  it('gives Technical Settings to the System Administrator only', () => {
+    // System-level integration configuration (API keys, NDI credentials, SMS/email
+    // gateways). Out of the matrix because no module describes infrastructure, but
+    // owned by the role that already holds technical governance.
+    expect(rolesFor('technicalSettings')).toEqual(['admin']);
+    expect(canPerform('technicalSettings', 'admin')).toBe(true);
+    MATRIX_ROLES.filter(role => role !== 'admin').forEach(role =>
+      expect(canPerform('technicalSettings', role), role).toBe(false));
   });
 
   it('leaves Operational Settings unassigned - consolidated into Master Configuration', () => {
     // Retired under the v2 six-item sidebar decision: its real sections (certificate
     // settings, fee settings) were absorbed into 'examConfiguration', and the rest
     // never had a backend behind them. The page stays in the codebase, reachable by
-    // nobody, the same treatment 'technicalSettings' gets above.
+    // nobody, rather than being deleted.
     expect(rolesFor('operationalSettings')).toEqual([]);
     MATRIX_ROLES.forEach(role => expect(canPerform('operationalSettings', role), role).toBe(false));
   });

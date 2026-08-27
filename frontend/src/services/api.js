@@ -28,6 +28,14 @@ export const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
 const DEBUG = import.meta.env.VITE_API_DEBUG === 'true';
 const SESSION_KEY = 'dsts_session';
 
+// In mock-data mode the app runs without a real auth backend. Only a subset of
+// services have mock branches; any endpoint that still reaches the API is sent the
+// fixture bearer token and answers 401. That 401 must not tear down the mock
+// session, so the automatic logout below is skipped whenever mock data is active.
+// A real build folds these to `false` and the logout behaves as before.
+const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test';
+const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
+
 const clearClientSession = () => {
   try {
     sessionStorage.removeItem(SESSION_KEY);
@@ -95,7 +103,7 @@ apiClient.interceptors.response.use(
       error?.message ||
       'Network error. Please check your connection.';
 
-    if (status === 401) {
+    if (status === 401 && !USE_MOCK_DATA) {
       clearClientSession();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';

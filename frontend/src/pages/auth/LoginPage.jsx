@@ -342,6 +342,9 @@ function NdiProofModal({ login, status, error, onClose, onRetry }) {
   );
 }
 
+// Highest education level — same list the exam application form (ApplicationForm.jsx) uses.
+const EDUCATION_LEVELS = ['Below Class X', 'Class X', 'Class XII', 'Certificate', 'Diploma', "Bachelor's Degree", "Master's Degree", 'Doctorate', 'Other'];
+
 // ─── Shared input style ───────────────────────────────────────────────────────
 const INPUT_CLS = 'w-full h-12 px-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors';
 const INPUT_ICON_CLS = 'w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors';
@@ -364,12 +367,14 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Register form state
+  // Register form state. Email and password are deliberately NOT collected here -
+  // the new Test Taker sets both from their profile after signing in.
   const [regCid, setRegCid]         = useState('');
   const [regName, setRegName]       = useState('');
   const [regDob, setRegDob]         = useState('');
   const [regGender, setRegGender]   = useState('');
   const [regContact, setRegContact] = useState('');
+  const [regEducation, setRegEducation] = useState('');
 
   const { login, register, loginWithNDI, checkNDILogin, cancelNDILogin, isLoading } = useAuth();
   const navigate  = useNavigate();
@@ -403,15 +408,23 @@ export default function LoginPage() {
       dateOfBirth:      regDob,
       gender:           regGender,
       contactNumber:    regContact,
+      education:        regEducation,
     });
     if (!result.success) {
       toast.error(result.error || 'Registration failed. Please try again.');
       return;
     }
+    const assignedUserId = result.user?.userId;
     setRegCid(''); setRegName(''); setRegDob('');
-    setRegGender(''); setRegContact('');
-    setActiveTab('signin');
-    toast.success('Registration submitted successfully!');
+    setRegGender(''); setRegContact(''); setRegEducation('');
+    if (assignedUserId) {
+      toast.success(`Welcome! Your User ID is ${assignedUserId} — use it to sign in next time.`, { duration: 8000 });
+    } else {
+      toast.success('Registration successful!');
+    }
+    // Registration signs the account in; go straight into the app rather than back
+    // to the sign-in tab. New Test Takers are routed to their profile by the photo gate.
+    navigate('/dashboard');
   };
 
   // ── NDI login handler ──
@@ -723,20 +736,21 @@ export default function LoginPage() {
                       </div>
 
                       <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-5">
-                        {/* User ID */}
+                        {/* CID */}
                         <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">User ID</label>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">CID</label>
                           <div className="relative">
                             <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
                               type="text"
                               value={regCid}
-                              onChange={e => setRegCid(e.target.value)}
-                              placeholder="4-digit User ID"
+                              onChange={e => setRegCid(e.target.value.replace(/\D/g, ''))}
+                              placeholder="11-digit Citizenship ID (CID)"
                               inputMode="numeric"
-                              pattern="[0-9]{4}"
-                              minLength={4}
-                              maxLength={4}
+                              pattern="[0-9]{11}"
+                              minLength={11}
+                              maxLength={11}
+                              title="Enter your 11-digit Citizenship ID number"
                               required
                               className={INPUT_ICON_CLS}
                             />
@@ -809,6 +823,24 @@ export default function LoginPage() {
                             />
                           </div>
                         </div>
+
+                        {/* Qualification */}
+                        <div>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">Qualification</label>
+                          <select
+                            value={regEducation}
+                            onChange={e => setRegEducation(e.target.value)}
+                            required
+                            className={INPUT_CLS}
+                          >
+                            <option value="">Select highest qualification</option>
+                            {EDUCATION_LEVELS.map(level => <option key={level} value={level}>{level}</option>)}
+                          </select>
+                        </div>
+
+                        <p className="md:col-span-2 xl:col-span-3 -mt-1 text-xs text-slate-500">
+                          You'll set your email address and password from your profile right after signing in.
+                        </p>
 
                         <Button
                           type="submit"

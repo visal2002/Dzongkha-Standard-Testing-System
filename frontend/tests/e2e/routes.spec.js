@@ -10,9 +10,9 @@ const roleRoutes = [
   {
     role: 'System Admin',
     email: 'system.admin@demo.com',
-    // v2 sidebar decision: scoped to technical governance only - users, roles and
-    // permissions. Technical Settings is no longer reachable by this role at all.
-    routes: ['/dashboard', '/admin/users', '/admin/roles', '/admin/permissions', '/admin/role-assignment', '/admin/audit-logs'],
+    // v2 sidebar decision: scoped to technical governance only - users, roles,
+    // permissions, and system-level technical settings.
+    routes: ['/dashboard', '/admin/users', '/admin/roles', '/admin/permissions', '/admin/role-assignment', '/admin/audit-logs', '/admin/technical'],
   },
   {
     role: 'DCDD Admin',
@@ -213,10 +213,9 @@ const deniedRoutes = [
   },
   {
     // v2 sidebar decision: System Admin is scoped to technical governance - users,
-    // roles and permissions - only. Every exam-workflow module is withdrawn entirely,
-    // not merely hidden from the sidebar, so each one is denied here too, plus
-    // Technical Settings, which is dropped for this role under strict least-privilege
-    // and reassigned to nobody until a DevOps/Platform ownership decision is made.
+    // roles, permissions and technical settings. Every exam-workflow module is
+    // withdrawn entirely, not merely hidden from the sidebar, so each one is denied
+    // here too.
     role: 'System Admin',
     email: 'system.admin@demo.com',
     routes: [
@@ -224,7 +223,7 @@ const deniedRoutes = [
       '/verification', '/attendance', '/questions', '/questions/upload', '/questions/samples',
       '/scores', '/scores/view', '/scores/summary', '/scores/committee',
       '/appeals', '/certificates', '/reports', '/reports/my',
-      '/masters', '/admin/technical',
+      '/masters',
     ],
   },
 ];

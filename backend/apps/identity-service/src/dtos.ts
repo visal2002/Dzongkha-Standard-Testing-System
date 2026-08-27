@@ -11,6 +11,10 @@ export class RegisterDto {
   @IsString() @Length(5, 32) cid: string;
   @IsString() @Length(2, 160) fullName: string;
   @IsString() @MinLength(12) password: string;
+  // Captured on the non-NDI registration form. Optional so existing callers and the
+  // NDI path (which has no such fields) still validate.
+  @IsOptional() @IsString() @Length(0, 64) education?: string;
+  @IsOptional() @IsString() @Length(0, 32) contactNumber?: string;
 }
 
 export class LoginDto {

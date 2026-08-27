@@ -7,6 +7,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { authService } from '@/services/auth';
+import { recordAuditEvent } from '@/services/audit';
 
 const AuthContext = createContext(null);
 const SESSION_KEY = 'dsts_session';
@@ -93,9 +94,20 @@ export function AuthProvider({ children }) {
       if (result.success) {
         const normalizedUser = saveSession(result.user, result.token, result.expiresIn);
         setUser(normalizedUser);
+        recordAuditEvent({
+          action: 'Login',
+          actorUserId: normalizedUser.id,
+          role: normalizedUser.roleName,
+          status: 'Success',
+        });
         return { success: true, user: normalizedUser };
       }
       setUser(null);
+      recordAuditEvent({
+        action: 'Login Failed',
+        actorUserId: String(identifier || '').trim() || null,
+        status: 'Failure',
+      });
       return { success: false, error: result.error || 'Login failed.' };
     } finally {
       setIsLoading(false);
@@ -105,7 +117,29 @@ export function AuthProvider({ children }) {
   const register = useCallback(async (registration) => {
     setIsLoading(true);
     try {
-      return await authService.register(registration);
+      const result = await authService.register(registration);
+      if (result.success && result.user) {
+        recordAuditEvent({
+          action: 'User Registered',
+          actorUserId: result.user.userId || result.user.id,
+          role: result.user.roleName || 'Test Taker',
+          status: 'Success',
+        });
+      }
+      // When the service hands back a session token, sign the new account in
+      // immediately so the caller can go straight into the app.
+      if (result.success && result.token) {
+        const normalizedUser = saveSession(result.user, result.token, result.expiresIn);
+        setUser(normalizedUser);
+        recordAuditEvent({
+          action: 'Login',
+          actorUserId: normalizedUser.id,
+          role: normalizedUser.roleName,
+          status: 'Success',
+        });
+        return { ...result, user: normalizedUser };
+      }
+      return result;
     } finally {
       setIsLoading(false);
     }
@@ -125,6 +159,13 @@ export function AuthProvider({ children }) {
     if (result.status === 'VALIDATED' && result.user) {
       const normalizedUser = saveSession(result.user, result.token, result.expiresIn);
       setUser(normalizedUser);
+      recordAuditEvent({
+        action: 'Login',
+        actorUserId: normalizedUser.id,
+        role: normalizedUser.roleName,
+        source: 'identity-service',
+        status: 'Success',
+      });
     }
     return result;
   }, []);
@@ -132,6 +173,7 @@ export function AuthProvider({ children }) {
   const cancelNDILogin = useCallback((pollToken) => authService.cancelNDILogin(pollToken), []);
 
   const logout = useCallback(async () => {
+    const departing = readSession()?.user ?? null;
     try {
       await authService.logout();
     } catch {
@@ -139,6 +181,14 @@ export function AuthProvider({ children }) {
     }
     clearSession();
     setUser(null);
+    if (departing) {
+      recordAuditEvent({
+        action: 'Logout',
+        actorUserId: departing.id,
+        role: departing.roleName,
+        status: 'Success',
+      });
+    }
   }, []);
 
   // Session auto-expiry & inactivity tracker (15 minutes)
@@ -187,15 +237,36 @@ export function AuthProvider({ children }) {
   // and the session are only rewritten once the backend has actually persisted the
   // change, so a rejected save never reports success to the user.
   const updateProfile = useCallback(async (updatedFields) => {
-    await authService.updateProfile(updatedFields);
+    const response = await authService.updateProfile(updatedFields);
+    // The service may return extra derived fields (e.g. `emailSet: true` once a valid
+    // address is entered) - merge those in too, not just what the caller passed.
+    const applied = { ...updatedFields, ...(response?.data && typeof response.data === 'object' ? response.data : {}) };
     setUser(prevUser => {
       if (!prevUser) return null;
-      const updated = normalizeUserSession({ ...prevUser, ...updatedFields });
+      const updated = normalizeUserSession({ ...prevUser, ...applied });
       const session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
       sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...session, user: updated, expiresAt: Date.now() + 60 * 60 * 1000 }));
       return updated;
     });
   }, []);
+
+  // Set an initial password (no current password required). On success the local
+  // session is marked `passwordSet` so the profile gate releases.
+  const setPassword = useCallback(async (newPassword) => {
+    const result = await authService.setPassword(newPassword);
+    if (result && result.success === false) {
+      throw new Error(result.error || 'Failed to set the password.');
+    }
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      const updated = normalizeUserSession({ ...prevUser, passwordSet: true });
+      const session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...session, user: updated, expiresAt: Date.now() + 60 * 60 * 1000 }));
+      return updated;
+    });
+    recordAuditEvent({ action: 'Password Created', actorUserId: user?.userId || user?.id, role: user?.roleName, status: 'Success' });
+    return result;
+  }, [user]);
 
   const hasRole = useCallback((role) => {
     if (!user) return false;
@@ -232,6 +303,7 @@ export function AuthProvider({ children }) {
     cancelNDILogin,
     logout,
     updateProfile,
+    setPassword,
     hasRole,
     hasAnyRole,
     hasPermission,

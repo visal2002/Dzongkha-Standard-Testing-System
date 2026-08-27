@@ -19,25 +19,108 @@ const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA ==
 const MOCK_NDI_DELAY_MS = 5000;
 const MOCK_NDI_USER = {
   id: 'USR-LOCAL-ACCEPTANCE',
+  userId: '1000',
   email: 'local.acceptance@dzongjuk.test',
   cid: '11111111111',
   fullName: 'Local Acceptance User',
   roles: ['test_taker'],
   permissions: ['registration'],
+  passwordSet: true,
+  emailSet: true,
 };
 const MOCK_NDI_TOKEN = 'mock-local-acceptance-token';
 const MOCK_PASSWORD = 'LocalTestOnly!2026';
 const mockAccounts = new Map([
   [MOCK_NDI_USER.email, { user: MOCK_NDI_USER, password: MOCK_PASSWORD }],
-  // Demo accounts for E2E tests
-  ['system.admin@demo.com',     { user: { id: 'USR-001', email: 'system.admin@demo.com',     cid: '1001', fullName: 'Sonam Dorji',    roles: ['admin'],            permissions: [] }, password: MOCK_PASSWORD }],
-  ['dcdd.admin@demo.com',       { user: { id: 'USR-002', email: 'dcdd.admin@demo.com',       cid: '1002', fullName: 'Karma Wangchuk', roles: ['dcdd'],             permissions: [] }, password: MOCK_PASSWORD }],
-  ['exam.head@demo.com',        { user: { id: 'USR-003', email: 'exam.head@demo.com',        cid: '1003', fullName: 'Tshering Pem',   roles: ['exam_head'],        permissions: [] }, password: MOCK_PASSWORD }],
-  ['committee.head@demo.com',   { user: { id: 'USR-004', email: 'committee.head@demo.com',   cid: '1004', fullName: 'Ugyen Tenzin',   roles: ['committee_head'],   permissions: [] }, password: MOCK_PASSWORD }],
-  ['chief.executive@demo.com',  { user: { id: 'USR-005', email: 'chief.executive@demo.com',  cid: '1005', fullName: 'Dorji Wangmo',   roles: ['chief_executive'],  permissions: [] }, password: MOCK_PASSWORD }],
-  ['test.taker@demo.com',       { user: { id: 'USR-006', email: 'test.taker@demo.com',       cid: '1006', fullName: 'Pema Choden',    roles: ['test_taker'],       permissions: ['registration'] }, password: MOCK_PASSWORD }],
-  ['member@dsts.bt',            { user: { id: 'USR-007', email: 'member@dsts.bt',            cid: '1007', fullName: 'Kinley Dorji',   roles: ['committee_member'], permissions: [] }, password: MOCK_PASSWORD }],
+  // Demo accounts for E2E tests. `userId` is the 4-digit login handle the account
+  // signs in with; a real registration also supplies an 11-digit `cid`.
+  ['system.admin@demo.com',     { user: { id: 'USR-001', userId: '1001', email: 'system.admin@demo.com',     cid: '1001', fullName: 'Sonam Dorji',    roles: ['admin'],            permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  ['dcdd.admin@demo.com',       { user: { id: 'USR-002', userId: '1002', email: 'dcdd.admin@demo.com',       cid: '1002', fullName: 'Karma Wangchuk', roles: ['dcdd'],             permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  ['exam.head@demo.com',        { user: { id: 'USR-003', userId: '1003', email: 'exam.head@demo.com',        cid: '1003', fullName: 'Tshering Pem',   roles: ['exam_head'],        permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  ['committee.head@demo.com',   { user: { id: 'USR-004', userId: '1004', email: 'committee.head@demo.com',   cid: '1004', fullName: 'Ugyen Tenzin',   roles: ['committee_head'],   permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  ['chief.executive@demo.com',  { user: { id: 'USR-005', userId: '1005', email: 'chief.executive@demo.com',  cid: '1005', fullName: 'Dorji Wangmo',   roles: ['chief_executive'],  permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  ['test.taker@demo.com',       { user: { id: 'USR-006', userId: '1006', email: 'test.taker@demo.com',       cid: '1006', fullName: 'Pema Choden',    roles: ['test_taker'],       permissions: ['registration'], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  ['member@dsts.bt',            { user: { id: 'USR-007', userId: '1007', email: 'member@dsts.bt',            cid: '1007', fullName: 'Kinley Dorji',   roles: ['committee_member'], permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
 ]);
+
+// Emails seeded above — lets us tell built-in demo accounts apart from ones created
+// at runtime (self-registration, or the admin "Add User" form).
+const SEEDED_ACCOUNT_EMAILS = new Set([...mockAccounts.keys()]);
+
+// Runtime-created accounts are mirrored to localStorage so they survive a page
+// refresh — and so removing one from the System Admin screen genuinely frees its
+// CID/User ID for re-registration, instead of the change lasting only until reload.
+const MOCK_ACCOUNTS_STORE_KEY = 'dsts_mock_registered_accounts';
+
+const readStoredAccounts = () => {
+  if (!USE_MOCK_DATA || typeof localStorage === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MOCK_ACCOUNTS_STORE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeStoredAccounts = (entries) => {
+  try {
+    localStorage.setItem(MOCK_ACCOUNTS_STORE_KEY, JSON.stringify(entries));
+  } catch {
+    // storage unavailable - the account still lives for this session
+  }
+};
+
+const persistAccount = (entry) => {
+  // De-dupe on the stable account id, not the email (which the user can change later).
+  const id = entry.user.id;
+  writeStoredAccounts([...readStoredAccounts().filter(a => a.user?.id !== id), entry]);
+};
+
+// Re-hydrate accounts created in earlier sessions.
+for (const entry of readStoredAccounts()) {
+  const key = entry?.user?.email?.toLowerCase() || entry?.user?.id;
+  if (key && !mockAccounts.has(key)) mockAccounts.set(key, entry);
+}
+
+// System-assigned 4-digit login handle, allocated in sequence: the next number after
+// the highest one already in use (seed accounts run 1000-1007, so the first new
+// account is 1008). Both self-registration and the admin "Add User" form draw from
+// this same running counter. A real backend does the equivalent MAX(userId)+1
+// (see identity-service AuthService.allocateUserId).
+const generateUserId = () => {
+  const used = [...mockAccounts.values()]
+    .map(({ user }) => parseInt(user.userId, 10))
+    .filter(value => Number.isInteger(value) && value >= 1000 && value <= 9999);
+  const next = (used.length ? Math.max(...used) : 1000) + 1;
+  return String(next);
+};
+
+/**
+ * Remove a runtime-created account by id, email, CID, or 4-digit User ID. Frees the
+ * identifiers for re-registration. Used by adminService.deleteUser.
+ * @returns {boolean} whether anything was removed
+ */
+export const removeMockAccount = (identifier) => {
+  const norm = String(identifier || '').trim().toLowerCase();
+  const matches = (user = {}) => (
+    user.id === identifier ||
+    String(user.email || '').toLowerCase() === norm ||
+    String(user.cid || '') === norm ||
+    String(user.userId || '') === norm
+  );
+  let removed = false;
+  for (const [key, entry] of mockAccounts) {
+    if (matches(entry.user)) { mockAccounts.delete(key); removed = true; }
+  }
+  writeStoredAccounts(readStoredAccounts().filter(entry => !matches(entry.user)));
+  return removed;
+};
+
+/** Accounts created at runtime (self-registration or admin "Add User"), not the seed set. */
+export const listRuntimeMockAccounts = () =>
+  [...mockAccounts.values()]
+    .filter(({ user }) => !SEEDED_ACCOUNT_EMAILS.has(String(user.email).toLowerCase()))
+    .map(({ user }) => ({ ...user }));
 
 const createMockNdiLogin = () => {
   const pollToken = `mock_ndi_${Date.now()}`;
@@ -60,8 +143,34 @@ const createMockSession = (user) => ({
 const findMockAccount = (identifier) => {
   const normalized = String(identifier || '').trim().toLowerCase();
   return [...mockAccounts.values()].find(({ user }) => (
-    user.email.toLowerCase() === normalized || user.cid === normalized
+    user.email.toLowerCase() === normalized ||
+    user.cid === normalized ||
+    String(user.userId || '') === normalized
   ));
+};
+
+/**
+ * The mockAccounts entry for whoever is currently signed in, or null. Matched on the
+ * stable account id first, so it still resolves after the user changes their email.
+ */
+const currentMockAccountEntry = () => {
+  try {
+    const raw = sessionStorage.getItem('dsts_session');
+    const sessionUser = raw ? JSON.parse(raw)?.user : null;
+    if (!sessionUser) return null;
+    for (const entry of mockAccounts.values()) {
+      const account = entry.user;
+      if (account.id === sessionUser.id
+        || String(account.email).toLowerCase() === String(sessionUser.email || '').toLowerCase()
+        || (sessionUser.cid && account.cid === sessionUser.cid)
+        || (sessionUser.userId && account.userId === sessionUser.userId)) {
+        return entry;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
 };
 
 /**
@@ -76,13 +185,18 @@ export const registerMockAccount = ({ email, cid, fullName, roles = ['test_taker
   if (!normalizedEmail) return null;
   const user = {
     id: `USR-MOCK-${mockAccounts.size + 1}`,
+    userId: generateUserId(),
     email: normalizedEmail,
     cid: String(cid || '').trim(),
     fullName: String(fullName || '').trim(),
     roles: roles.length ? roles : ['test_taker'],
     permissions,
+    passwordSet: true,
+    emailSet: true,
   };
-  mockAccounts.set(normalizedEmail, { user, password });
+  const entry = { user, password };
+  mockAccounts.set(normalizedEmail, entry);
+  persistAccount(entry);
   return user;
 };
 
@@ -139,15 +253,23 @@ export const authService = {
   },
 
     /** Register a test taker without Bhutan NDI. */
-  register: async ({ fullName, cid, dateOfBirth, gender, contactNumber, email, password }) => {
-    const derivedEmail = (email && email.trim()) || `${String(cid).trim()}@dsts.bt`;
+  register: async ({ fullName, cid, dateOfBirth, gender, contactNumber, education, email, password }) => {
+    // The registration form no longer collects an email or a password - the new Test
+    // Taker sets both from their profile after signing in. `emailSet` / `passwordSet`
+    // stay false until they do, and the profile gate holds them there. A CID-derived
+    // address is used internally only as an account key and login fallback; it is
+    // never shown as the user's email while `emailSet` is false.
+    const chosenEmail = String(email || '').trim().toLowerCase();
+    const emailChosen = /.+@.+\..+/.test(chosenEmail);
+    const passwordChosen = Boolean(password && String(password).length >= 8);
     const normalized = {
       fullName: fullName.trim(),
       cid: cid.trim(),
       dateOfBirth,
       gender: (gender || '').trim(),
       contactNumber: (contactNumber || '').trim(),
-      email: derivedEmail.toLowerCase(),
+      education: (education || '').trim(),
+      email: emailChosen ? chosenEmail : `${cid.trim()}@dsts.bt`,
       password: password || 'Password!123',
     };
 
@@ -163,14 +285,26 @@ export const authService = {
 
       const user = {
         id: `USR-MOCK-${mockAccounts.size + 1}`,
+        userId: generateUserId(),
         email: normalized.email,
+        emailSet: emailChosen,
         cid: normalized.cid,
         fullName: normalized.fullName,
+        dateOfBirth: normalized.dateOfBirth,
+        gender: normalized.gender,
+        contactNumber: normalized.contactNumber,
+        phone: normalized.contactNumber,
+        education: normalized.education,
+        passwordSet: passwordChosen,
         roles: ['test_taker'],
         permissions: ['registration'],
       };
-      mockAccounts.set(user.email.toLowerCase(), { user, password: normalized.password });
-      return { success: true, user: normalizeUser(user, MOCK_NDI_TOKEN) };
+      const entry = { user, password: normalized.password };
+      mockAccounts.set(user.email.toLowerCase(), entry);
+      persistAccount(entry);
+      // Return a token/expiry too, so the caller can sign the new account straight in
+      // instead of bouncing back to the login screen.
+      return { success: true, user: normalizeUser(user, MOCK_NDI_TOKEN), token: MOCK_NDI_TOKEN, expiresIn: 900 };
     }
 
     try {
@@ -178,6 +312,8 @@ export const authService = {
         fullName: normalized.fullName,
         cid: normalized.cid,
         email: normalized.email,
+        education: normalized.education,
+        contactNumber: normalized.contactNumber,
         password: normalized.password,
       });
       return { success: true, user: envelope.data };
@@ -290,19 +426,50 @@ export const authService = {
    * @param {string} dataUrl - Base64 image string.
    */
   uploadProfilePicture: async (dataUrl) => {
+    if (USE_MOCK_DATA) return { data: { avatar: dataUrl } };
 
     const { data } = await apiClient.put('/auth/avatar', { avatar: dataUrl });
     return data;
   },
 
   /**
-   * Change the current user's password.
+   * Change the current user's password (requires the current one).
    * @param {string} currentPassword
    * @param {string} newPassword
    */
   changePassword: async (currentPassword, newPassword) => {
+    if (USE_MOCK_DATA) {
+      const entry = currentMockAccountEntry();
+      if (!entry) return { success: false, error: 'No active session.' };
+      if (entry.password && entry.password !== currentPassword) {
+        return { success: false, error: 'The current password is incorrect.' };
+      }
+      entry.password = newPassword;
+      entry.user = { ...entry.user, passwordSet: true };
+      if (!SEEDED_ACCOUNT_EMAILS.has(String(entry.user.email).toLowerCase())) persistAccount(entry);
+      return { success: true, data: { passwordSet: true } };
+    }
 
     const { data } = await apiClient.put('/auth/password', { currentPassword, newPassword });
+    return data;
+  },
+
+  /**
+   * Set an initial password for an account that never chose one (no current password
+   * required). Used by the "Create Password" step on the profile screen.
+   * @param {string} newPassword
+   */
+  setPassword: async (newPassword) => {
+    if (USE_MOCK_DATA) {
+      const entry = currentMockAccountEntry();
+      if (!entry) return { success: false, error: 'No active session.' };
+      entry.password = newPassword;
+      entry.user = { ...entry.user, passwordSet: true };
+      if (!SEEDED_ACCOUNT_EMAILS.has(String(entry.user.email).toLowerCase())) persistAccount(entry);
+      return { success: true, data: { passwordSet: true } };
+    }
+
+    const { data } = await apiClient.put('/auth/password', { newPassword });
     return data;
   },
 
@@ -311,6 +478,24 @@ export const authService = {
    * @param {Partial<import('@/constants/domain').AuthUser>} fields
    */
   updateProfile: async (fields) => {
+    if (USE_MOCK_DATA) {
+      // Fold the change back into the account store so it also survives a re-login
+      // and a page refresh, not just the current session's storage.
+      const patch = { ...fields };
+      // A valid email typed on the profile counts as the mandatory "set your email" step.
+      if (typeof patch.email === 'string' && /.+@.+\..+/.test(patch.email.trim())) {
+        patch.email = patch.email.trim().toLowerCase();
+        patch.emailSet = true;
+      }
+      try {
+        const entry = currentMockAccountEntry();
+        if (entry) {
+          entry.user = { ...entry.user, ...patch };
+          if (!SEEDED_ACCOUNT_EMAILS.has(String(entry.user.email).toLowerCase())) persistAccount(entry);
+        }
+      } catch { /* storage unavailable - session update still applies */ }
+      return { data: patch };
+    }
 
     const { data } = await apiClient.put('/auth/profile', fields);
     return data;

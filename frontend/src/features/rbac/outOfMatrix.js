@@ -95,15 +95,14 @@ export const OUT_OF_MATRIX_OPERATIONS = [
   {
     key: 'technicalSettings',
     label: 'Technical settings',
-    roles: [],
+    roles: ['admin'],
     surface: '/admin/technical',
     reason:
       'System-level configuration - API keys, NDI credentials, SMS/email gateway config. ' +
-      'Dropped from the System Administrator under the v2 sidebar\'s strict least-privilege ' +
-      'model: that role is scoped to user, role and permission governance, and integration ' +
-      'credentials arguably belong to a distinct DevOps/Platform role instead. No role holds ' +
-      'this operation until that ownership question is settled; the screen stays in the ' +
-      'codebase, unreachable, rather than being deleted.',
+      'Held by the System Administrator: the role owns technical governance (users, roles ' +
+      'and permissions), and integration credentials are the same kind of platform-level ' +
+      'concern. It is out of the matrix only because no matrix module describes ' +
+      'infrastructure configuration, not because the grant is in doubt.',
   },
   {
     key: 'operationalSettings',
@@ -121,7 +120,7 @@ export const OUT_OF_MATRIX_OPERATIONS = [
       'behind them at all - editing them persisted to localStorage and nothing downstream ever ' +
       'read the result. No role holds this operation until a real backend for those remaining ' +
       'sections is scoped and built; the screen stays in the codebase, unreachable, rather ' +
-      'than being deleted - the same treatment \'technicalSettings\' already gets below.',
+      'than being deleted.',
   },
 ];
 

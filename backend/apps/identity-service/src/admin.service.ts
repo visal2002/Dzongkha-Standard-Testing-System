@@ -8,7 +8,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { assertInternalService, DomainException } from '@dzongjuk/common';
 import { AuditService } from './audit.service';
 import { CreateRoleDto, CreateUserDto, UpdateRolePermissionsDto, UpdateUserDto, UpdateUserRolesDto } from './dtos';
@@ -69,11 +69,27 @@ export class AdminService {
     const roles = await this.roles.findBy({ code: In(dto.roleCodes), active: true });
     if (roles.length !== new Set(dto.roleCodes).size) throw new DomainException('ROLE_INVALID', 'One or more roles are invalid.');
     const user = await this.users.save(this.users.create({
-      email: dto.email.toLowerCase(), cid: dto.cid, fullName: dto.fullName,
+      email: dto.email.toLowerCase(), cid: dto.cid, fullName: dto.fullName, userId: await this.allocateUserId(),
       passwordHash: await bcrypt.hash(dto.password, 12), roles, status: 'ACTIVE',
     }));
     await this.audit.record({ action: 'USER_CREATED', resourceType: 'User', resourceId: user.id, actorUserId: actorId, requestId, safeData: { roles: dto.roleCodes } });
     return user;
+  }
+
+  /**
+   * Allocates the next 4-digit login handle in sequence: one past the highest
+   * currently in use. Shares the same running counter as self-registration.
+   */
+  private async allocateUserId(): Promise<string> {
+    const [highest] = await this.users.find({
+      where: { userId: Not(IsNull()) }, select: ['userId'], order: { userId: 'DESC' }, take: 1,
+    });
+    let next = (Number(highest?.userId) || 1000) + 1;
+    for (let attempt = 0; attempt < 25; attempt += 1, next += 1) {
+      const candidate = String(next).padStart(4, '0');
+      if (!(await this.users.exists({ where: { userId: candidate } }))) return candidate;
+    }
+    throw new DomainException('USER_ID_ALLOCATION_FAILED', 'Could not allocate a unique User ID. Please try again.', 503);
   }
 
   async setStatus(id: string, status: 'ACTIVE' | 'DISABLED', actorId: string, requestId: string) {
