@@ -191,7 +191,7 @@ export default function VerificationList() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               {[
                 ['Full Name', selected.testTakerName],
-                ['CID', selected.cid],
+                ['User ID', selected.cid],
                 ['Email', selected.email],
                 ['Phone', selected.phone],
                 ['DOB', new Date(selected.dob).toLocaleDateString()],

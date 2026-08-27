@@ -140,7 +140,7 @@ export default function AdminDashboard() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-surface-border">
-                  {['User', 'Role', 'CID', 'Status', 'Last Login'].map(h => (
+                  {['User', 'Role', 'User ID', 'Status', 'Last Login'].map(h => (
                     <th key={h} className="pb-2 text-left font-medium text-text-muted pr-4">{h}</th>
                   ))}
                 </tr>

@@ -430,7 +430,7 @@ These accounts exist only when the frontend runs with `VITE_USE_MOCK_DATA=true` 
 
 Every demonstration account shares the same password: **`LocalTestOnly!2026`**
 
-| Role | USER ID l CID | Email |
+| Role | User ID (4 digits) | Email |
 | --- | --- | --- |
 | System Admin | `1001` | `system.admin@demo.com` |
 | DCDD Admin | `1002` | `dcdd.admin@demo.com` |
@@ -440,7 +440,7 @@ Every demonstration account shares the same password: **`LocalTestOnly!2026`**
 | Chief Executive | `1005` | `chief.executive@demo.com` |
 | Test Taker | `1006` | `test.taker@demo.com` |
 
-> **Note:** The sign-in field accepts either the CID or the email address for any of these accounts. When connected to a live backend (`VITE_USE_MOCK_DATA=false`) none of these accounts exist — authenticate against real identity-service records instead.
+> **Note:** The sign-in field accepts either the 4-digit User ID or the email address for any of these accounts. When connected to a live backend (`VITE_USE_MOCK_DATA=false`) none of these accounts exist — authenticate against real identity-service records instead.
 
 ---
 

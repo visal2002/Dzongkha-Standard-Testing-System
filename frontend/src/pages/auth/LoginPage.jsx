@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Eye, EyeOff, ChevronLeft, User, CreditCard, Calendar,
+  Eye, EyeOff, ChevronLeft, User, Calendar,
   ArrowLeft, AlertTriangle, X, Lock, Phone,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -592,7 +592,7 @@ export default function LoginPage() {
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <label className="text-sm font-medium text-slate-700 block mb-1.5">
-                        CID / Email / User ID
+                        User ID / Email
                       </label>
                       <div className="relative">
                         <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -600,7 +600,7 @@ export default function LoginPage() {
                           type="text"
                           value={userId}
                           onChange={e => setUserId(e.target.value)}
-                          placeholder="Enter your CID, email, or User ID"
+                          placeholder="Enter your 4-digit User ID or email"
                           required
                           className={INPUT_ICON_CLS}
                         />
@@ -723,20 +723,20 @@ export default function LoginPage() {
                       </div>
 
                       <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-5">
-                        {/* CID */}
+                        {/* User ID */}
                         <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">CID No.</label>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">User ID</label>
                           <div className="relative">
-                            <CreditCard size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
                               type="text"
                               value={regCid}
                               onChange={e => setRegCid(e.target.value)}
-                              placeholder="11-digit CID number"
+                              placeholder="4-digit User ID"
                               inputMode="numeric"
-                              pattern="[0-9]{11}"
-                              minLength={11}
-                              maxLength={11}
+                              pattern="[0-9]{4}"
+                              minLength={4}
+                              maxLength={4}
                               required
                               className={INPUT_ICON_CLS}
                             />

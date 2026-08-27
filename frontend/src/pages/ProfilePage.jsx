@@ -244,7 +244,7 @@ export default function ProfilePage() {
             <>
               <InfoRow icon={User}       label="Full Name"    value={user?.name} />
               <InfoRow icon={Mail}       label="Email"        value={user?.email} />
-              <InfoRow icon={CreditCard} label="CID Number"   value={user?.cid} />
+              <InfoRow icon={CreditCard} label="User ID"        value={user?.cid} />
               <InfoRow icon={Phone}      label="Contact"      value={user?.phone} placeholder="Not set" />
               <InfoRow icon={Building2}  label="Department"   value={user?.department} placeholder="Not assigned" />
               <InfoRow icon={Shield}     label="Role"         value={user?.roleName} />

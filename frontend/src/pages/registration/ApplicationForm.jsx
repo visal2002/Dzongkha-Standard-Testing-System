@@ -18,7 +18,7 @@ const educationLevels = ['Below Class X', 'Class X', 'Class XII', 'Certificate',
 
 const schema = z.object({
   fullName: z.string().trim().min(2, 'Full name is required.'),
-  cid: z.string().trim().min(5, 'CID or identity number is required.').max(64),
+  cid: z.string().trim().min(4, 'User ID is required.').max(64),
   dateOfBirth: z.string().min(1, 'Date of birth is required.'),
   gender: z.string().min(1, 'Gender is required.'),
   email: z.string().email('Enter a valid email address.'),
@@ -114,7 +114,7 @@ export default function ApplicationForm() {
     <Card><CardBody><form onSubmit={handleSubmit(submit)}>
       {step === 0 && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input label="Full Name" required {...register('fullName')} error={errors.fullName?.message} />
-        <Input label="CID / Identity Number" required {...register('cid')} error={errors.cid?.message} hint="This identity is used to prevent duplicate applications." />
+        <Input label="User ID" required {...register('cid')} error={errors.cid?.message} hint="This User ID is used to prevent duplicate applications." />
         <Input label="Date of Birth" type="date" required {...register('dateOfBirth')} error={errors.dateOfBirth?.message} />
         <Select label="Gender" required {...register('gender')} error={errors.gender?.message}><option value="">Select gender</option><option>Male</option><option>Female</option><option>Other</option></Select>
         <Input label="Email" type="email" required {...register('email')} error={errors.email?.message} />
@@ -131,7 +131,7 @@ export default function ApplicationForm() {
         <Select label="Employment Status" required {...register('employmentStatus')} error={errors.employmentStatus?.message}><option value="">Select status</option><option>Employed</option><option>Unemployed</option><option>Student</option><option>Self-employed</option></Select>
         <Input label="Organization" {...register('organization')} error={errors.organization?.message} />
       </div>}
-      {step === 2 && <div className="space-y-5"><div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl text-sm text-amber-300">Review the information carefully. The submitted profile becomes the official registration snapshot.</div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{Object.entries({ 'Full Name': values.fullName, 'CID / Identity': values.cid, 'Date of Birth': values.dateOfBirth, 'Gender': values.gender, 'Email': values.email, 'Contact': values.phone, 'Dzongkhag': values.dzongkhag, 'Gewog': values.gewog, 'Education': values.education, 'Institution': values.institution, 'Employment': values.employmentStatus, 'Organization': values.organization || '—' }).map(([label, value]) => <div key={label}><p className="text-xs text-text-muted">{label}</p><p className="text-sm font-medium text-text-primary mt-0.5">{value}</p></div>)}</div></div>}
+      {step === 2 && <div className="space-y-5"><div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl text-sm text-amber-300">Review the information carefully. The submitted profile becomes the official registration snapshot.</div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{Object.entries({ 'Full Name': values.fullName, 'User ID': values.cid, 'Date of Birth': values.dateOfBirth, 'Gender': values.gender, 'Email': values.email, 'Contact': values.phone, 'Dzongkhag': values.dzongkhag, 'Gewog': values.gewog, 'Education': values.education, 'Institution': values.institution, 'Employment': values.employmentStatus, 'Organization': values.organization || '—' }).map(([label, value]) => <div key={label}><p className="text-xs text-text-muted">{label}</p><p className="text-sm font-medium text-text-primary mt-0.5">{value}</p></div>)}</div></div>}
       <div className="flex justify-between mt-8 pt-4 border-t border-surface-border"><Button type="button" variant="secondary" icon={<ArrowLeft size={14} />} onClick={() => step ? setStep(step - 1) : navigate('/registration/windows')}>{step ? 'Previous' : 'Cancel'}</Button>{step < 2 ? <Button type="button" icon={<ArrowRight size={14} />} onClick={next}>Next</Button> : <Button type="submit" loading={submitting} icon={<Send size={14} />}>Submit Application</Button>}</div>
     </form></CardBody></Card>
   </div>;

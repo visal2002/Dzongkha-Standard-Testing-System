@@ -115,8 +115,8 @@ const normalizeUser = (user, token) => {
 
 export const authService = {
   /**
-   * Login with CID and password.
-   * @param {string} identifier - CID or email
+   * Login with User ID or email and password.
+   * @param {string} identifier - 4-digit User ID or email
    * @param {string} password
    * @returns {Promise<{success: boolean, user?: import('@/constants/domain').AuthUser, token?: string, error?: string}>}
    */
@@ -158,7 +158,7 @@ export const authService = {
         user.email.toLowerCase() === normalized.email || user.cid === normalized.cid
       ));
       if (duplicate) {
-        return { success: false, error: 'An account already exists for this email or CID.' };
+        return { success: false, error: 'An account already exists for this email or User ID.' };
       }
 
       const user = {
