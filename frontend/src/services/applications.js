@@ -9,8 +9,61 @@
  * Manages exam registration applications.
  */
 import apiClient from './api';
-
 import { createUuid } from '@/utils/uuid';
+import { applications as mockApplications, examWindows as mockExamWindows } from '@/mocks/mockData';
+import { recordAuditEvent } from './audit';
+
+// Fixture-backed responses for the mock/CI build only - a real bundle folds this to
+// false and the fixtures drop out entirely.
+const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test';
+const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
+
+// Applications submitted at runtime are mirrored to localStorage so they survive a
+// refresh (and so the admit card stays downloadable afterwards).
+const MOCK_STORE_KEY = 'dsts_mock_applications';
+
+const readMockStore = () => {
+  if (!USE_MOCK_DATA || typeof localStorage === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MOCK_STORE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeMockStore = (list) => {
+  try {
+    localStorage.setItem(MOCK_STORE_KEY, JSON.stringify(list));
+  } catch {
+    // storage unavailable - the application still lives for this session
+  }
+};
+
+const sessionUser = () => {
+  try {
+    const raw = sessionStorage.getItem('dsts_session');
+    return raw ? JSON.parse(raw)?.user ?? null : null;
+  } catch {
+    return null;
+  }
+};
+
+/** Fixtures + runtime-created applications. */
+const allMockApplications = () => [...readMockStore(), ...mockApplications];
+
+/** Next registration number for an exam, continuing the existing series. */
+const nextRegistrationNumber = (examId) => {
+  const exam = mockExamWindows.find(e => e.id === examId);
+  const series = (exam?.examDate ? new Date(exam.examDate) : new Date());
+  const prefix = `DSTS-${series.getFullYear()}-${String(series.getMonth() + 1).padStart(2, '0')}`;
+  const taken = allMockApplications()
+    .filter(a => a.examId === examId && typeof a.registrationNumber === 'string' && a.registrationNumber.startsWith(prefix))
+    .map(a => Number(a.registrationNumber.split('-').pop()))
+    .filter(Number.isFinite);
+  const next = (taken.length ? Math.max(...taken) : 0) + 1;
+  return `${prefix}-${String(next).padStart(4, '0')}`;
+};
 
 export const normalizeApplication = application => {
   const profile = application.profileSnapshot || {};
@@ -54,6 +107,7 @@ const normalizeEnvelope = payload => ({
 export const applicationService = {
   /** @returns {Promise<{data: import('@/constants/domain').Application[]}>} */
   getAll: async () => {
+    if (USE_MOCK_DATA) return normalizeEnvelope({ data: allMockApplications() });
 
     const { data } = await apiClient.get('/applications');
     return normalizeEnvelope(data);
@@ -64,6 +118,16 @@ export const applicationService = {
    * @param {string} userId
    */
   getByUser: async (userId) => {
+    if (USE_MOCK_DATA) {
+      const me = sessionUser();
+      const id = userId || me?.id;
+      const cid = me?.cid;
+      const mine = allMockApplications().filter(a =>
+        (id && (a.testTakerId === id || a.testTakerUserId === id))
+        || (cid && (a.cid === cid || a.identityKey === cid)),
+      );
+      return normalizeEnvelope({ data: mine });
+    }
 
     const { data } = await apiClient.get('/applications/my');
     return normalizeEnvelope(data);
@@ -74,6 +138,7 @@ export const applicationService = {
    * @param {string} examId
    */
   getByExam: async (examId) => {
+    if (USE_MOCK_DATA) return normalizeEnvelope({ data: allMockApplications().filter(a => a.examId === examId) });
 
     const { data } = await apiClient.get(`/applications?examId=${examId}`);
     return normalizeEnvelope(data);
@@ -81,6 +146,10 @@ export const applicationService = {
 
   /** @param {string} id */
   getById: async (id) => {
+    if (USE_MOCK_DATA) {
+      const found = allMockApplications().find(a => a.id === id);
+      return { data: found ? normalizeApplication(found) : null };
+    }
 
     const { data } = await apiClient.get(`/applications/${id}`);
     return data;
@@ -91,6 +160,52 @@ export const applicationService = {
    * @param {FormData} formData
    */
   create: async (examId, payload) => {
+    if (USE_MOCK_DATA) {
+      const me = sessionUser();
+      const profile = payload?.profileSnapshot || {};
+      const exam = mockExamWindows.find(e => e.id === examId);
+      const fee = Number(exam?.paymentAmount ?? exam?.registrationFee ?? 0);
+      const now = new Date().toISOString();
+      // Demo convenience: a mock application is auto-verified and its fee treated as
+      // settled, so the admit card is immediately downloadable. A real deployment
+      // gates the admit card on actual DCDD verification plus a confirmed BIRMS payment.
+      const application = {
+        id: `APP-MOCK-${Date.now()}`,
+        examId,
+        testTakerId: me?.id ?? null,
+        testTakerUserId: me?.id ?? null,
+        testTakerName: profile.fullName || me?.name || 'Applicant',
+        identityKey: payload?.identityKey || profile.cid || me?.cid || '',
+        cid: payload?.identityKey || profile.cid || me?.cid || '',
+        email: profile.email || me?.email || '',
+        phone: profile.phone || me?.phone || me?.contactNumber || '',
+        profileSnapshot: profile,
+        registrationNumber: nextRegistrationNumber(examId),
+        status: 'verified',
+        paymentStatus: fee > 0 ? 'paid' : 'waived',
+        paymentAmount: fee,
+        paymentCurrency: 'BTN',
+        paidAt: fee > 0 ? now : null,
+        submittedAt: now,
+        verifiedAt: now,
+        remarks: '',
+        documents: [],
+        statusHistory: [
+          { status: 'submitted', timestamp: now, by: profile.fullName || me?.name || 'Applicant' },
+          { status: 'verified', timestamp: now, by: 'DCDD (auto — demo)' },
+        ],
+      };
+      writeMockStore([application, ...readMockStore()]);
+      recordAuditEvent({
+        action: 'Exam Registration',
+        source: 'registration-service',
+        resourceId: application.id,
+        actorUserId: me?.userId || me?.id || application.cid,
+        role: me?.roleName || 'Test Taker',
+        status: 'Success',
+      });
+      return { data: { applicationId: application.id, status: application.status, registrationNumber: application.registrationNumber } };
+    }
 
     const { data } = await apiClient.post(`/applications/exam/${examId}`, payload, {
       headers: { 'Idempotency-Key': createUuid() },
@@ -143,7 +258,13 @@ export const applicationService = {
    * the backend rejects with 409 once DCDD review has started.
    * @param {string} id
    */
-  cancel: async id => (await apiClient.post(`/applications/${id}/cancel`)).data,
+  cancel: async id => {
+    if (USE_MOCK_DATA) {
+      writeMockStore(readMockStore().map(a => a.id === id ? { ...a, status: 'cancelled' } : a));
+      return { data: { id, status: 'cancelled' } };
+    }
+    return (await apiClient.post(`/applications/${id}/cancel`)).data;
+  },
 
   /**
    * Resubmit a Returned application with a corrected profile snapshot. Only allowed
