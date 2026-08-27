@@ -19,7 +19,7 @@ const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test'
 const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 // Applications submitted at runtime are mirrored to localStorage so they survive a
-// refresh (and so the admit card stays downloadable afterwards).
+// page refresh.
 const MOCK_STORE_KEY = 'dsts_mock_applications';
 
 const readMockStore = () => {
@@ -166,9 +166,6 @@ export const applicationService = {
       const exam = mockExamWindows.find(e => e.id === examId);
       const fee = Number(exam?.paymentAmount ?? exam?.registrationFee ?? 0);
       const now = new Date().toISOString();
-      // Demo convenience: a mock application is auto-verified and its fee treated as
-      // settled, so the admit card is immediately downloadable. A real deployment
-      // gates the admit card on actual DCDD verification plus a confirmed BIRMS payment.
       const application = {
         id: `APP-MOCK-${Date.now()}`,
         examId,
@@ -181,18 +178,15 @@ export const applicationService = {
         phone: profile.phone || me?.phone || me?.contactNumber || '',
         profileSnapshot: profile,
         registrationNumber: nextRegistrationNumber(examId),
-        status: 'verified',
-        paymentStatus: fee > 0 ? 'paid' : 'waived',
+        status: 'submitted',
+        paymentStatus: fee > 0 ? 'initiated' : 'waived',
         paymentAmount: fee,
         paymentCurrency: 'BTN',
-        paidAt: fee > 0 ? now : null,
         submittedAt: now,
-        verifiedAt: now,
         remarks: '',
         documents: [],
         statusHistory: [
           { status: 'submitted', timestamp: now, by: profile.fullName || me?.name || 'Applicant' },
-          { status: 'verified', timestamp: now, by: 'DCDD (auto — demo)' },
         ],
       };
       writeMockStore([application, ...readMockStore()]);

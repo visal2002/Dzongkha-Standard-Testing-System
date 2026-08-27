@@ -9,8 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FileText, Plus, Calendar, MapPin, CreditCard, Download, ExternalLink, RefreshCw, XCircle, Edit2, User, Mail, Phone, Save, X, Ticket } from 'lucide-react';
-import { pdf } from '@react-pdf/renderer';
+import { FileText, Plus, Calendar, MapPin, CreditCard, Download, ExternalLink, RefreshCw, XCircle, Edit2, User, Mail, Phone, Save, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
@@ -19,29 +18,7 @@ import Modal from '@/components/ui/Modal';
 import { StatusBadge } from '@/components/ui/Badge';
 import { applicationService } from '@/services/applications';
 import { examService } from '@/services/exams';
-import AdmitCardDocument from './AdmitCardPdf';
 import toast from 'react-hot-toast';
-
-// The admit card is proof of admission to the hall - only released once the
-// application is verified/approved and the fee is settled (or not required).
-const ADMIT_CARD_STATUSES = ['verified', 'approved'];
-const SETTLED_PAYMENTS = ['paid', 'waived', 'exempt', 'not_required'];
-const REPORTING_TIME = '08:30 AM';
-
-const canDownloadAdmitCard = app =>
-  ADMIT_CARD_STATUSES.includes(app.status)
-  && (Number(app.paymentAmount) === 0 || SETTLED_PAYMENTS.includes(app.paymentStatus));
-
-const triggerDownload = (blob, filename) => {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-};
 
 // Cancellation is only meaningful before DCDD verification begins - the backend
 // enforces the same cutoff (409 once review has started), this just avoids offering
@@ -183,40 +160,6 @@ export default function MyApplications() {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [resubmittingId, setResubmittingId] = useState(null);
-  const [admitBusyId, setAdmitBusyId] = useState(null);
-
-  const downloadAdmitCard = async (app, exam) => {
-    setAdmitBusyId(app.id);
-    try {
-      const blob = await pdf(
-        <AdmitCardDocument
-          candidate={{
-            name: app.testTakerName || user?.name,
-            cid: app.cid || user?.cid,
-            dob: app.dob,
-            gender: app.gender,
-            registrationNumber: app.registrationNumber,
-            photo: user?.photo || null,
-          }}
-          exam={{
-            title: exam?.title || app.examId,
-            code: exam?.code || exam?.id || app.examId,
-            examDate: exam?.examDate,
-            venue: exam?.venue,
-          }}
-          reportingTime={REPORTING_TIME}
-          issuedAt={new Date().toISOString()}
-          applicationId={app.id}
-        />,
-      ).toBlob();
-      triggerDownload(blob, `admit-card-${app.registrationNumber || app.id}.pdf`);
-      toast.success('Admit card downloaded.');
-    } catch (error) {
-      toast.error(error?.message || 'Unable to generate the admit card.');
-    } finally {
-      setAdmitBusyId(null);
-    }
-  };
 
   const reloadApplications = async () => {
     const response = await applicationService.getByUser(user?.id);
@@ -332,16 +275,6 @@ export default function MyApplications() {
                   </div>
                   <div className="flex items-center gap-2">
                     <StatusBadge status={app.status} />
-                    {canDownloadAdmitCard(app) && (
-                      <Button
-                        size="xs"
-                        icon={<Ticket size={12} />}
-                        loading={admitBusyId === app.id}
-                        onClick={() => downloadAdmitCard(app, exam)}
-                      >
-                        Admit Card
-                      </Button>
-                    )}
                     {CANCELLABLE_STATUSES.includes(app.status) && (
                       <Button size="xs" variant="outline" icon={<XCircle size={12} />} onClick={() => setCancelTarget(app)}>
                         Cancel
@@ -349,13 +282,6 @@ export default function MyApplications() {
                     )}
                   </div>
                 </div>
-
-                {!canDownloadAdmitCard(app) && app.status !== 'cancelled' && (
-                  <div className="mb-4 flex items-center gap-2 rounded-xl border border-surface-border bg-surface-bg px-3 py-2 text-[11px] text-text-muted">
-                    <Ticket size={13} className="shrink-0 text-brand-gold" />
-                    Your admit card will be available here once the application is verified and the fee is settled.
-                  </div>
-                )}
 
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs mb-4">
                   <div>
