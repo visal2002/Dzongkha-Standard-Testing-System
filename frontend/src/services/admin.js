@@ -19,15 +19,16 @@ import { ACCESS_MODULES, ROLE_LABELS } from '@/features/rbac/accessMatrix';
 const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test';
 const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
-// The admin screens are the only place a role list is offered for selection,
-// so without these fixtures every mock/CI run renders an empty role picker.
-const MOCK_ROLES = Object.entries(ROLE_LABELS).map(([code, name], index) => ({
-  id: `ROLE-${String(index + 1).padStart(3, '0')}`,
-  code,
-  name,
-  description: `${name} access as defined by the approved DSTS access matrix.`,
-  permissions: [],
-}));
+// Test Takers self-register — they must not appear in the admin role picker.
+const MOCK_ROLES = Object.entries(ROLE_LABELS)
+  .filter(([code]) => code !== 'test_taker')
+  .map(([code, name], index) => ({
+    id: `ROLE-${String(index + 1).padStart(3, '0')}`,
+    code,
+    name,
+    description: `${name} access as defined by the approved DSTS access matrix.`,
+    permissions: [],
+  }));
 
 const MOCK_PERMISSIONS = ACCESS_MODULES.map(({ key, label }, index) => ({
   id: `PERM-${String(index + 1).padStart(3, '0')}`,
@@ -192,7 +193,9 @@ export const adminService = {
 
     const { data } = await apiClient.get('/admin/roles');
     const value = data?.data || data;
-    return Array.isArray(value) ? value.map(normalizeRole) : value;
+    const roles = Array.isArray(value) ? value.map(normalizeRole) : value;
+    // Test Takers self-register — exclude this role from the admin picker.
+    return Array.isArray(roles) ? roles.filter(r => r.code !== 'test_taker') : roles;
   },
 
   /** @returns {Promise<Array<{id:string,name:string,description:string}>>} */
