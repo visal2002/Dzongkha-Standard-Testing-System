@@ -39,6 +39,7 @@ const AppealList = lazy(() => import('@/pages/appeals/AppealList'));
 const RevisionTracker = lazy(() => import('@/pages/appeals/RevisionTracker'));
 const SubmitAppeal = lazy(() => import('@/pages/appeals/SubmitAppeal'));
 const CertificateList = lazy(() => import('@/pages/certificates/CertificateList'));
+const CertificatePrint = lazy(() => import('@/pages/certificates/CertificatePrint'));
 const QuestionPapers = lazy(() => import('@/pages/questions/QuestionPapers'));
 const UploadQuestionPaper = lazy(() => import('@/pages/questions/UploadQuestionPaper'));
 const ExamDayDownloads = lazy(() => import('@/pages/questions/ExamDayDownloads'));
@@ -125,6 +126,9 @@ export default function AppRoutes() {
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
         <Route path="/ndi-login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <NdiLoginPage />} />
         <Route path="/ndi-register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <NdiRegistrationPage />} />
+
+        {/* Full-page, print-ready certificate - rendered outside the app shell. */}
+        <Route path="/certificates/print/:id" element={<PrivateRoute><CertificatePrint /></PrivateRoute>} />
 
         <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />

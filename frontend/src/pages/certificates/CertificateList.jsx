@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Award, Download, Plus, QrCode, Search, Shield } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import PageHeader from '@/components/ui/PageHeader';
@@ -23,28 +24,18 @@ import toast from 'react-hot-toast';
 const skillOrder = ['WRITING', 'READING', 'LISTENING', 'SPEAKING'];
 
 function CertificateCard({ cert }) {
+  const navigate = useNavigate();
   const [showQR, setShowQR] = useState(false);
-  const [downloading, setDownloading] = useState(false);
   const scores = cert.scoreSnapshot?.scores ?? {};
   const status = String(cert.status || 'UNKNOWN').toUpperCase();
   const active = status === 'ACTIVE' && new Date(cert.validUntil) > new Date();
   const verificationUrl = `${API_BASE_URL}/public/certificates/verify/${encodeURIComponent(cert.verificationToken || '')}`;
 
-  const download = async () => {
-    try {
-      setDownloading(true);
-      const response = await certificateService.download(cert.id);
-      const url = URL.createObjectURL(response.data);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${cert.certificateNumber}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      toast.success('Certificate downloaded securely.');
-    } catch (error) { toast.error(error.message || 'Certificate download failed.'); }
-    finally { setDownloading(false); }
+  // Opens the official-template certificate on its own print-ready page (same tab, so
+  // the session is kept); the holder saves it as a PDF from the browser's print dialog.
+  const openCertificate = () => {
+    certificateService.recordDownload(cert.id).catch(() => undefined);
+    navigate(`/certificates/print/${cert.id}`);
   };
 
   return (
@@ -92,8 +83,8 @@ function CertificateCard({ cert }) {
           </div>
 
           <div className="flex gap-2 pt-2 border-t border-surface-border">
-            <Button variant="primary" size="sm" icon={<Download size={13} />} className="flex-1" disabled={!active || downloading} onClick={download}>
-              {downloading ? 'Downloading...' : 'Download PDF'}
+            <Button variant="primary" size="sm" icon={<Download size={13} />} className="flex-1" disabled={!active} onClick={openCertificate}>
+              Download PDF
             </Button>
             <Button variant="secondary" size="sm" icon={<QrCode size={13} />} onClick={() => setShowQR(true)}>QR</Button>
           </div>
