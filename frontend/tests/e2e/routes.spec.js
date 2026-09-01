@@ -68,7 +68,9 @@ const MOCK_PASSWORD = 'LocalTestOnly!2026';
 
 const login = async (page, email) => {
   await page.goto('/login');
-  await page.getByPlaceholder('Enter your CID, email, or User ID').fill(email);
+  // The credential form labels the identifier field "User ID / Email" with the
+  // placeholder below — the old "Enter your CID, email, or User ID" copy no longer exists.
+  await page.getByPlaceholder('Enter your 4-digit User ID or email').fill(email);
   await page.getByPlaceholder('Enter your password').fill(MOCK_PASSWORD);
   await page.getByRole('button', { name: 'Sign in to DSTS' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
@@ -79,17 +81,46 @@ test('a test taker can register without NDI and sign in', async ({ page }) => {
   await page.getByRole('button', { name: 'Register', exact: true }).click();
   await page.getByRole('button', { name: 'Register without NDI' }).click();
 
-  await page.getByPlaceholder('11-digit CID number').fill('10701000001');
+  await page.getByPlaceholder('11-digit Citizenship ID (CID)').fill('10701000001');
   await page.getByPlaceholder('Enter your full name').fill('Chimi Dema');
   await page.locator('input[type="date"]').fill('2000-01-01');
-  await page.getByRole('combobox').selectOption('Female');
+  // Gender and Qualification are both <select> elements; target the one with the
+  // "Female" option rather than a bare combobox locator (strict-mode violation).
+  await page.getByRole('combobox').filter({ has: page.getByRole('option', { name: 'Female' }) }).selectOption('Female');
   await page.getByPlaceholder('8-digit mobile number').fill('17123456');
   await page.getByRole('button', { name: 'Submit Registration' }).click();
 
-  await page.getByPlaceholder('Enter your CID, email, or User ID').fill('10701000001@dsts.bt');
+  // Mock registration signs the account in immediately, then the profile gate holds
+  // the new Test Taker on /profile until email, password and passport photo are set.
+  await expect(page).toHaveURL(/\/profile$/);
+
+  // 1. Email — the edit form is open automatically while an email is still required.
+  await page.getByPlaceholder('you@example.com').fill('chimi.dema@example.com');
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+
+  // 2. Create a password (no current password is needed for a brand-new account).
+  await page.getByPlaceholder('At least 8 characters').fill('Password!123');
+  await page.locator('input[type="password"]').nth(1).fill('Password!123');
+  await page.getByRole('button', { name: 'Create Password' }).click();
+
+  // 3. Passport-size photo releases the gate; /dashboard is now reachable.
+  await page.locator('label:has-text("Upload passport-size photo") input[type="file"]').setInputFiles({
+    name: 'passport.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
+  });
+  await page.goto('/dashboard');
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByText('Kuzuzangpo la, Chimi!')).toBeVisible();
+
+  // Sign out, then verify the new account signs back in with the credentials it set.
+  await page.getByRole('button', { name: 'Open account menu' }).click();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+
+  await page.getByPlaceholder('Enter your 4-digit User ID or email').fill('chimi.dema@example.com');
   await page.getByPlaceholder('Enter your password').fill('Password!123');
   await page.getByRole('button', { name: 'Sign in to DSTS' }).click();
-
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText('Kuzuzangpo la, Chimi!')).toBeVisible();
 });
@@ -109,7 +140,7 @@ test('a user created by the administrator can sign in', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Open account menu' }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await page.getByPlaceholder('Enter your CID, email, or User ID').fill('dechen.created@example.com');
+  await page.getByPlaceholder('Enter your 4-digit User ID or email').fill('dechen.created@example.com');
   await page.getByPlaceholder('Enter your password').fill('CreatedUser!2026');
   await page.getByRole('button', { name: 'Sign in to DSTS' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);

@@ -12,7 +12,9 @@ const MOCK_PASSWORD = 'LocalTestOnly!2026';
 
 const login = async (page, email) => {
   await page.goto('/login');
-  await page.getByPlaceholder('Enter your CID, email, or User ID').fill(email);
+  // The credential form labels the identifier field "User ID / Email" with the
+  // placeholder below — the old "Enter your CID, email, or User ID" copy no longer exists.
+  await page.getByPlaceholder('Enter your 4-digit User ID or email').fill(email);
   await page.getByPlaceholder('Enter your password').fill(MOCK_PASSWORD);
   await page.getByRole('button', { name: 'Sign in to DSTS' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
