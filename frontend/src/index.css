@@ -500,10 +500,11 @@ html {
 }
 
 /* Dzongkha (Tibetan) glyphs render smaller than Latin at the same pixel size,
-   so while the Dzongkha locale is active the root size is bumped ~6%. Every
-   rem-based Tailwind size (text, spacing) scales up from here for readability. */
+   so while the Dzongkha locale is active the root size is bumped ~12.5% over the
+   default 16px. Every rem-based Tailwind text size scales up from here; English
+   is untouched because the class is only present when lang="dz". */
 html.lang-dz {
-  font-size: 17px;
+  font-size: 18px;
 }
 
 body {
