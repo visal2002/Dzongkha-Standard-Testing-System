@@ -7,6 +7,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
   PanelLeft, Bell, Sun, Moon, Search, ChevronDown, LogOut,
   User, Settings
@@ -15,8 +16,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import Badge from '@/components/ui/Badge';
+import LanguageToggle from '@/components/LanguageToggle';
 
 function NotificationPanel({ notifications: items = [], onClose }) {
+  const { t } = useTranslation();
   const unread = items.filter(n => !n.read);
 
   return (
@@ -28,12 +31,12 @@ function NotificationPanel({ notifications: items = [], onClose }) {
       className="absolute right-0 top-full mt-2 w-[min(calc(100vw-1.5rem),20rem)] bg-surface-card border border-surface-border rounded-xl shadow-2xl shadow-black/30 z-50"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">
-        <p className="text-sm font-semibold text-text-primary">Notifications</p>
-        {unread.length > 0 && <Badge variant="gold" size="sm">{unread.length} new</Badge>}
+        <p className="text-sm font-semibold text-text-primary">{t('header.notifications_title')}</p>
+        {unread.length > 0 && <Badge variant="gold" size="sm">{t('header.new_badge', { count: unread.length })}</Badge>}
       </div>
       <div className="max-h-72 overflow-y-auto">
         {items.length === 0 ? (
-          <div className="px-4 py-8 text-center text-xs text-text-muted">No notifications</div>
+          <div className="px-4 py-8 text-center text-xs text-text-muted">{t('header.no_notifications')}</div>
         ) : items.map(n => (
           <div key={n.id} className={`px-4 py-3 border-b border-surface-border/50 flex gap-3 ${!n.read ? 'bg-brand-gold/5' : ''}`}>
             <div className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${!n.read ? 'bg-brand-gold' : 'bg-surface-border'}`} />
@@ -46,7 +49,7 @@ function NotificationPanel({ notifications: items = [], onClose }) {
       </div>
       <div className="px-4 py-2">
         <button className="text-xs text-brand-gold hover:text-brand-gold-light transition-colors" onClick={onClose}>
-          View all notifications →
+          {t('header.view_all_notifications')}
         </button>
       </div>
     </motion.div>
@@ -54,6 +57,7 @@ function NotificationPanel({ notifications: items = [], onClose }) {
 }
 
 function UserMenu({ onClose }) {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
