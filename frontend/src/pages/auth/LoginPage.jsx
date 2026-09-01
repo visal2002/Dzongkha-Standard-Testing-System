@@ -527,11 +527,13 @@ export default function LoginPage() {
 
             {/* Logo + title */}
             <div className="flex flex-col items-center gap-3 pt-7 px-6 pb-4">
-              <img
-                src="/images/Dzongjuk logo.png"
-                alt="Dzongjuk Logo"
-                className="h-14 w-auto object-contain rounded-2xl shadow-lg shadow-slate-800/40"
-              />
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#124143] shadow-lg shadow-[#124143]/30 ring-4 ring-[#124143]/10">
+                <img
+                  src="/images/Dzongjuk logo.png"
+                  alt="Dzongjuk Logo"
+                  className="h-14 w-14 object-contain [filter:brightness(0)_invert(1)]"
+                />
+              </div>
               <div className="text-center">
                 <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
                   Dzongkha Standard Testing System
