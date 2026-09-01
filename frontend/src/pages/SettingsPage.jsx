@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 // ... (rest of imports unchanged)
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { Sun, Moon, Globe, Bell, BellOff, LogOut, ChevronRight, Palette, Mail, Phone, Building2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -63,6 +64,7 @@ export default function SettingsPage() {
   const { theme, toggleTheme, isDark } = useTheme();
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const { i18n } = useTranslation();
 
   // Existing state hooks
   const [emailNotifs, setEmailNotifs] = useState(true);
@@ -96,8 +98,9 @@ export default function SettingsPage() {
     localStorage.setItem('system_contact_info', JSON.stringify(payload));
     toast.success('System contact information saved.');
   };
-  // Language (UI only — i18n integration)
-  const [language, setLanguage] = useState('en');
+  // Language — writes through i18next, which persists to localStorage
+  // ('dsts_language') so the whole app follows the choice.
+  const language = (i18n.resolvedLanguage || i18n.language || 'en').startsWith('dz') ? 'dz' : 'en';
 
   const handleLogout = async () => {
     await logout();
@@ -106,7 +109,8 @@ export default function SettingsPage() {
   };
 
   const handleLanguageChange = (code) => {
-    setLanguage(code);
+    if (code === language) return;
+    i18n.changeLanguage(code);
     toast(`Language set to ${LANGUAGES.find(l => l.code === code)?.label}`, { icon: '🌐' });
   };
 

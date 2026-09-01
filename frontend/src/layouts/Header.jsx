@@ -97,13 +97,13 @@ function UserMenu({ onClose }) {
           onClick={() => { navigate('/profile'); onClose(); }}
           className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:bg-surface-border/60 transition-colors"
         >
-          <User size={14} /> Profile
+          <User size={14} /> {t('header.profile')}
         </button>
         <button
           onClick={() => { navigate('/settings'); onClose(); }}
           className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:bg-surface-border/60 transition-colors"
         >
-          <Settings size={14} /> Settings
+          <Settings size={14} /> {t('header.settings')}
         </button>
       </div>
       <div className="border-t border-surface-border py-1.5">
@@ -111,7 +111,7 @@ function UserMenu({ onClose }) {
           onClick={handleLogout}
           className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
         >
-          <LogOut size={14} /> Sign out
+          <LogOut size={14} /> {t('header.sign_out')}
         </button>
       </div>
     </motion.div>
@@ -119,6 +119,7 @@ function UserMenu({ onClose }) {
 }
 
 export default function Header({ collapsed, setCollapsed, isDesktop, onOpenMobileSidebar }) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { notifications: userNotifs, unreadCount } = useNotifications();
@@ -163,15 +164,18 @@ export default function Header({ collapsed, setCollapsed, isDesktop, onOpenMobil
         <div className="flex items-center gap-2 h-8 px-3 bg-surface-bg border border-surface-border rounded-lg">
           <Search size={13} className="text-text-muted shrink-0" />
           <input
-            aria-label={user?.role === 'test_taker' ? 'Search my applications, results, certificates' : 'Search applicants, certificates, exams'}
-            placeholder={user?.role === 'test_taker' ? 'Search my applications, results, certificates...' : 'Search applicants, certificates, exams...'}
+            aria-label={user?.role === 'test_taker' ? t('header.search_placeholder_test_taker') : t('header.search_placeholder_staff')}
+            placeholder={user?.role === 'test_taker' ? t('header.search_placeholder_test_taker') : t('header.search_placeholder_staff')}
             className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-muted outline-none"
           />
           <kbd className="text-[10px] text-text-muted bg-surface-border px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
         </div>
       </div>
 
-      <div className="ml-auto flex items-center gap-1" ref={ref}>
+      <div className="ml-auto flex items-center gap-1.5" ref={ref}>
+        {/* Language toggle */}
+        <LanguageToggle tone="surface" />
+
         {/* Theme toggle */}
         <button
           type="button"
@@ -187,7 +191,7 @@ export default function Header({ collapsed, setCollapsed, isDesktop, onOpenMobil
           <button
             type="button"
             onClick={() => { setShowNotifs(s => !s); setShowUser(false); }}
-            aria-label="Open notifications"
+            aria-label={t('header.open_notifications')}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-border transition-colors relative"
           >
             <Bell size={15} />
@@ -205,7 +209,7 @@ export default function Header({ collapsed, setCollapsed, isDesktop, onOpenMobil
           <button
             type="button"
             onClick={() => { setShowUser(s => !s); setShowNotifs(false); }}
-            aria-label="Open account menu"
+            aria-label={t('header.open_account_menu')}
             className="flex items-center gap-2 pl-2 pr-1 h-8 rounded-lg hover:bg-surface-border transition-colors"
           >
             {user?.avatar ? (

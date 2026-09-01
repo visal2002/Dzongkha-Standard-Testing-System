@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard, FileText, CheckSquare, Users, Upload, ClipboardList,
   Award, BarChart3, Settings, ChevronDown,
@@ -170,6 +171,55 @@ const NAV_CONFIG = [
   { label: 'Reports & Analytics', icon: BarChart3, to: '/reports', onlyRoles: ['dcdd'] },
 ];
 
+// Maps each NAV_CONFIG English `label` to its i18n key. The `label` itself stays
+// the canonical English string (the RBAC test suite asserts on it); this lookup is
+// only for what the sidebar renders. Anything missing here falls back to `label`.
+const NAV_LABEL_KEYS = {
+  'Dashboard': 'nav.dashboard',
+  'Admin Dashboard': 'nav.admin_dashboard',
+  'User Management': 'nav.user_management',
+  'Role Management': 'nav.role_management',
+  'Permission & Association Management': 'nav.permission_management',
+  'Role Assignment': 'nav.role_assignment',
+  'System Audit Logs': 'nav.system_audit_logs',
+  'Technical Settings': 'nav.technical_settings',
+  'Registration': 'nav.registration',
+  'Exam Windows': 'nav.exam_windows',
+  'Applications': 'nav.applications',
+  'Register / My Profile': 'nav.register_my_profile',
+  'Registration Windows': 'nav.registration_windows',
+  'Verification': 'nav.verification',
+  'Application Verification': 'nav.application_verification',
+  'Absentee': 'nav.absentee',
+  'Absentee Management': 'nav.absentee_management',
+  'Master Configuration': 'nav.master_configuration',
+  'Question Papers': 'nav.question_papers',
+  'Upload Papers': 'nav.upload_papers',
+  'Sample Papers': 'nav.sample_papers',
+  'Question Bank': 'nav.question_bank',
+  'Exam Day Downloads': 'nav.exam_day_downloads',
+  'Released Sample Papers': 'nav.released_sample_papers',
+  'Band Score Entry': 'nav.band_score_entry',
+  'My Results': 'nav.my_results',
+  'Score History': 'nav.score_history',
+  'View Band Scores': 'nav.view_band_scores',
+  'Re-evaluation': 'nav.reevaluation',
+  'Revision Approvals Queue': 'nav.revision_approvals_queue',
+  'Re-evaluation Queue': 'nav.reevaluation_queue',
+  'Re-evaluation Panel': 'nav.reevaluation_panel',
+  'Revision Status Tracker': 'nav.revision_status_tracker',
+  'Certificates': 'nav.certificates',
+  'Sample Question Papers': 'nav.sample_question_papers',
+  'Reports': 'nav.reports',
+  'Executive Reports': 'nav.executive_reports',
+  'Reports & Analytics': 'nav.reports_analytics',
+};
+
+function useNavLabel() {
+  const { t } = useTranslation();
+  return (label) => t(NAV_LABEL_KEYS[label] ?? '', { defaultValue: label });
+}
+
 function permitted(item, role) {
   if (item.onlyRoles && !item.onlyRoles.includes(role)) return false;
   if (item.excludeRoles && item.excludeRoles.includes(role)) return false;
@@ -201,6 +251,7 @@ export function navigationFor(role) {
 
 function NavItem({ item, collapsed }) {
   const location = useLocation();
+  const navLabel = useNavLabel();
   const [open, setOpen] = useState(() => item.children?.some(c => location.pathname.startsWith(c.to)));
 
   if (item.children) {
@@ -219,7 +270,7 @@ function NavItem({ item, collapsed }) {
           <item.icon size={16} className="shrink-0" />
           {!collapsed && (
             <>
-              <span className="flex-1 text-left truncate">{item.label}</span>
+              <span className="flex-1 text-left truncate">{navLabel(item.label)}</span>
               <ChevronDown size={13} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
             </>
           )}
@@ -246,7 +297,7 @@ function NavItem({ item, collapsed }) {
                     ].join(' ')}
                   >
                     <child.icon size={13} className="shrink-0" />
-                    <span className="truncate">{child.label}</span>
+                    <span className="truncate">{navLabel(child.label)}</span>
                   </NavLink>
                 ))}
               </div>
@@ -260,7 +311,7 @@ function NavItem({ item, collapsed }) {
   return (
     <NavLink
       to={item.to}
-      title={collapsed ? item.label : undefined}
+      title={collapsed ? navLabel(item.label) : undefined}
       className={({ isActive }) => [
         'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
         isActive
@@ -269,7 +320,7 @@ function NavItem({ item, collapsed }) {
       ].join(' ')}
     >
       <item.icon size={16} className="shrink-0" />
-      {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+      {!collapsed && <span className="flex-1 truncate">{navLabel(item.label)}</span>}
     </NavLink>
   );
 }
