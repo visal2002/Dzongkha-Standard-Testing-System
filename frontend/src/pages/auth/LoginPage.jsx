@@ -981,7 +981,7 @@ export function NdiLoginPage() {
     void poll();
     const timer = window.setInterval(poll, 2000);
     return () => { stopped = true; window.clearInterval(timer); };
-  }, [ndiLogin, ndiLoginStatus, checkNDILogin, navigate]);
+  }, [ndiLogin, ndiLoginStatus, checkNDILogin, navigate, t]);
 
   const returnToLogin = () => {
     if (ndiLogin?.pollToken && ndiLoginStatus === 'PENDING') void cancelNDILogin(ndiLogin.pollToken);
@@ -992,7 +992,7 @@ export function NdiLoginPage() {
     <main className="ndi-scanner-page">
       <button type="button" onClick={returnToLogin} className="ndi-scanner-back">
         <ChevronLeft size={18} />
-        Back to Login
+        {t('auth.back_to_login')}
       </button>
       <NdiScannerPanel
         qrUrl={ndiLogin?.proofRequestUrl}
@@ -1014,6 +1014,7 @@ export function NdiRegistrationPage() {
   const pollInFlight = useRef(false);
 
   const { loginWithNDI, checkNDILogin, cancelNDILogin } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const startNdiRegistration = useCallback(async () => {
@@ -1051,7 +1052,7 @@ export function NdiRegistrationPage() {
         if (stopped) return;
         if (result.status === 'VALIDATED') {
           setNdiRegStatus('VALIDATED');
-          toast.success(`Account created. Welcome, ${result.user.name}!`);
+          toast.success(t('auth.account_created', { name: result.user.name }));
           navigate('/dashboard');
         } else if (result.status !== 'PENDING') {
           setNdiRegStatus(result.status);
@@ -1075,7 +1076,7 @@ export function NdiRegistrationPage() {
     void poll();
     const timer = window.setInterval(poll, 2000);
     return () => { stopped = true; window.clearInterval(timer); };
-  }, [ndiRegistration, ndiRegistrationStatus, checkNDILogin, navigate]);
+  }, [ndiRegistration, ndiRegistrationStatus, checkNDILogin, navigate, t]);
 
   const returnToLogin = () => {
     if (ndiRegistration?.pollToken && ndiRegistrationStatus === 'PENDING')
@@ -1087,7 +1088,7 @@ export function NdiRegistrationPage() {
     <main className="ndi-scanner-page">
       <button type="button" onClick={returnToLogin} className="ndi-scanner-back">
         <ChevronLeft size={18} />
-        Back to Login
+        {t('auth.back_to_login')}
       </button>
       <NdiScannerPanel
         qrUrl={ndiRegistration?.proofRequestUrl}
