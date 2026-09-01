@@ -528,8 +528,8 @@ export default function LoginPage() {
             {/* Logo + title */}
             <div className="flex flex-col items-center gap-3 pt-7 px-6 pb-4">
               <img
-                src="/images/logo of DCDD.png"
-                alt="DCDD Logo"
+                src="/images/Dzongjuk logo.png"
+                alt="Dzongjuk Logo"
                 className="h-14 w-auto object-contain rounded-2xl shadow-lg shadow-slate-800/40"
               />
               <div className="text-center">

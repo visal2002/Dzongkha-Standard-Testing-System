@@ -289,8 +289,8 @@ export default function Sidebar({ collapsed, isDesktop, mobileOpen }) {
       <div className="flex items-center gap-2.5 px-4 h-13 border-b border-surface-border shrink-0">
         <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 shadow-sm bg-white flex items-center justify-center">
           <img
-            src="/images/logo of DCDD.jpg"
-            alt="DCDD Logo"
+            src="/images/Dzongjuk logo.png"
+            alt="Dzongjuk Logo"
             className="w-full h-full object-cover"
           />
         </div>

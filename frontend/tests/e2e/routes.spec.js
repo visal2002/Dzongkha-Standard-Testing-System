@@ -84,9 +84,10 @@ test('a test taker can register without NDI and sign in', async ({ page }) => {
   await page.getByPlaceholder('11-digit Citizenship ID (CID)').fill('10701000001');
   await page.getByPlaceholder('Enter your full name').fill('Chimi Dema');
   await page.locator('input[type="date"]').fill('2000-01-01');
-  // Gender and Qualification are both <select> elements; target the one with the
-  // "Female" option rather than a bare combobox locator (strict-mode violation).
+  // Gender and Qualification are both <select> elements; target each by the option
+  // it contains rather than a bare combobox locator (strict-mode violation).
   await page.getByRole('combobox').filter({ has: page.getByRole('option', { name: 'Female' }) }).selectOption('Female');
+  await page.getByRole('combobox').filter({ has: page.getByRole('option', { name: "Bachelor's Degree" }) }).selectOption("Bachelor's Degree");
   await page.getByPlaceholder('8-digit mobile number').fill('17123456');
   await page.getByRole('button', { name: 'Submit Registration' }).click();
 

@@ -22,8 +22,8 @@ export default function HomePage() {
         <div className="flex items-center gap-4">
           {/* Logo */}
           <img 
-            src="/images/logo of DCDD.png" 
-            alt="DCDD Logo" 
+            src="/images/Dzongjuk logo.png"
+            alt="Dzongjuk Logo"
             className="h-12 w-auto object-contain rounded-lg shadow-lg shadow-[#F59E0B]/20"
           />
           <div>
