@@ -841,20 +841,20 @@ export default function LoginPage() {
 
                         {/* Qualification */}
                         <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">Qualification</label>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">{t('auth.label_qualification')}</label>
                           <select
                             value={regEducation}
                             onChange={e => setRegEducation(e.target.value)}
                             required
                             className={INPUT_CLS}
                           >
-                            <option value="">Select highest qualification</option>
+                            <option value="">{t('auth.select_qualification')}</option>
                             {EDUCATION_LEVELS.map(level => <option key={level} value={level}>{level}</option>)}
                           </select>
                         </div>
 
                         <p className="md:col-span-2 xl:col-span-3 -mt-1 text-xs text-slate-500">
-                          You'll set your email address and password from your profile right after signing in.
+                          {t('auth.profile_note')}
                         </p>
 
                         <Button
@@ -865,17 +865,17 @@ export default function LoginPage() {
                           className="md:col-span-2 xl:col-span-3 mt-2 sm:max-w-sm sm:mx-auto rounded-full h-12 tracking-wide text-white hover:opacity-90 transition-opacity"
                           style={{ backgroundColor: '#124143' }}
                         >
-                          Submit Registration
+                          {t('auth.submit_registration')}
                         </Button>
 
                         <p className="md:col-span-2 xl:col-span-3 text-center text-xs text-slate-500">
-                          Already have an account?{' '}
+                          {t('auth.already_have_account')}{' '}
                           <button
                             type="button"
                             onClick={() => setActiveTab('signin')}
                             className="text-teal-600 hover:text-teal-500 font-medium transition-colors"
                           >
-                            Sign In
+                            {t('auth.tab_signin')}
                           </button>
                         </p>
                       </form>
@@ -888,8 +888,8 @@ export default function LoginPage() {
 
           {/* Footer */}
           <div className="mt-5 text-center text-xs text-slate-500 leading-relaxed space-y-0.5">
-            <p>© {new Date().getFullYear()} Department of Culture and Dzongkha Development</p>
-            <p>Ministry of Home Affairs · Powered by GovTech Bhutan</p>
+            <p>{t('auth.footer_dept', { year: new Date().getFullYear() })}</p>
+            <p>{t('auth.footer_ministry')}</p>
           </div>
         </motion.div>
       </div>
@@ -919,6 +919,7 @@ export function NdiLoginPage() {
   const pollInFlight = useRef(false);
 
   const { loginWithNDI, checkNDILogin, cancelNDILogin } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const startNdiLogin = useCallback(async () => {
@@ -956,7 +957,7 @@ export function NdiLoginPage() {
         if (stopped) return;
         if (result.status === 'VALIDATED') {
           setNdiLoginStatus('VALIDATED');
-          toast.success(`Welcome, ${result.user.name}!`);
+          toast.success(t('auth.welcome', { name: result.user.name }));
           navigate('/dashboard');
         } else if (result.status !== 'PENDING') {
           setNdiLoginStatus(result.status);
