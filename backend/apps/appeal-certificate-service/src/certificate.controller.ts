@@ -30,6 +30,18 @@ export class CertificatesController {
   @Permissions('certificate.issue') @Post('generate') generate(@Body() dto: GenerateCertificatesDto, @Headers('idempotency-key') key: string, @Req() request: Request) { return this.certificates.generate(dto.examId, request.user!, request.id, key); }
   @Permissions('certificate.manage') @Get() list() { return this.certificates.listAll(); }
   @Permissions('certificate.view_own') @Get('my') my(@Req() request: Request) { return this.certificates.listMine(request.user!.sub); }
+  // Test Taker self-service download: no id in the path (the client just wants
+  // "my certificate"), so this must be declared before @Get(':id') or Express
+  // routes "download" into the id param. Streams a freshly rendered PDF of the
+  // caller's most recently issued certificate.
+  @RawResponse() @Permissions('certificate.view_own') @Get('download') async download(@Req() request: Request, @Res() response: Response) {
+    const file = await this.certificates.downloadLatestOwn(request.user!, request.id);
+    response.setHeader('content-type', 'application/pdf');
+    response.setHeader('content-disposition', `attachment; filename="${file.filename.replace(/["\r\n]/g, '_')}"`);
+    response.setHeader('cache-control', 'private, no-store');
+    response.setHeader('x-content-type-options', 'nosniff');
+    response.end(file.buffer);
+  }
   @Get(':id') get(@Param('id') id: string, @Req() request: Request) { return this.certificates.getOne(id, request.user!, request.id); }
   @Get(':id/history') history(@Param('id') id: string, @Req() request: Request) { return this.certificates.history(id, request.user!); }
   @RawResponse() @Get(':id/file') async file(@Param('id') id: string, @Req() request: Request, @Res() response: Response) {

@@ -34,6 +34,10 @@ export async function bootstrapService(app: INestApplication, options: Bootstrap
     origin: config.get<string>('CORS_ORIGINS', 'http://localhost:5000').split(','),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    // Attachment endpoints (e.g. certificate/admit-card PDFs) put the suggested
+    // file name in Content-Disposition; without this the browser hides that
+    // header from cross-origin SPA fetches and the client can't read it.
+    exposedHeaders: ['Content-Disposition', 'x-request-id'],
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.useGlobalInterceptors(new ApiEnvelopeInterceptor());

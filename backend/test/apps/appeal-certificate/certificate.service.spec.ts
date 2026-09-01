@@ -346,3 +346,61 @@ describe('CertificateService — Supersession on score revision (BRD §2.7)', ()
     expect(result.supersededCount).toBe(0);
   });
 });
+
+// ─── self-service download tests ──────────────────────────────────────────────
+
+describe('CertificateService — Self-service download (downloadLatestOwn)', () => {
+  it('renders the caller\'s most recent active certificate and names the file after the holder', async () => {
+    const ownerId = uuid();
+    const cert = makeCertificate({ testTakerUserId: ownerId, holderName: 'Karma Wangchuk' });
+    const findMock = jest.fn().mockResolvedValue([cert]);
+    const renderMock = jest.fn().mockResolvedValue(Buffer.from('%PDF-certificate-content'));
+    const certificates = { ...makeRepo<CertificateEntity>(), find: findMock } as unknown as Repository<CertificateEntity>;
+    const renderer = { render: renderMock } as unknown as CertificateRendererService;
+    const service = new CertificateService(
+      makeDataSource(makeManager()),
+      new ConfigService({
+        CERTIFICATE_VERIFICATION_SECRET: verificationSecret,
+        PRIVILEGED_ASSURANCE_LEVELS: 'MFA,NDI',
+        PUBLIC_API_BASE_URL: 'http://localhost:8000/api/v1',
+        NODE_ENV: 'test',
+      }),
+      makeEncryption(), makeStorage(), renderer,
+      makeSources(cert.examId, cert.applicationId, ownerId),
+      makeRepo([makeTemplate()]),
+      certificates,
+      makeRepo(),
+    );
+
+    const result = await service.downloadLatestOwn(mfaActor({ sub: ownerId, assurance: 'LOCAL', permissions: [] }), 'req-dl-1');
+
+    expect(result.filename).toBe('Karma_Wangchuk_Certificate.pdf');
+    expect(result.buffer.toString()).toContain('%PDF');
+    // Scoped strictly to the caller and to active rows.
+    expect(findMock).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { testTakerUserId: ownerId, status: CertificateStatus.Active } }),
+    );
+    // Renderer gets the real holder name and a signed verification URL for the QR.
+    const renderArgs = (renderMock.mock.calls[0] as unknown[])[1] as { holderName: string; verificationUrl: string };
+    expect(renderArgs.holderName).toBe('Karma Wangchuk');
+    expect(renderArgs.verificationUrl).toMatch(/\/public\/certificates\/verify\/[0-9a-f-]{36}\.[\w-]+$/i);
+  });
+
+  it('returns CERTIFICATE_NOT_FOUND when the caller has no active certificate', async () => {
+    const service = buildService({ certificates: makeRepo<CertificateEntity>([]) });
+    await expect(service.downloadLatestOwn(mfaActor({ assurance: 'LOCAL' }), 'req-dl-2'))
+      .rejects.toMatchObject({ response: { code: 'CERTIFICATE_NOT_FOUND' } });
+  });
+
+  it('rejects a certificate that has passed its validity date', async () => {
+    const ownerId = uuid();
+    const expired = makeCertificate({
+      testTakerUserId: ownerId,
+      status: CertificateStatus.Active,
+      validUntil: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    });
+    const service = buildService({ certificates: makeRepo([expired]) });
+    await expect(service.downloadLatestOwn(mfaActor({ sub: ownerId, assurance: 'LOCAL' }), 'req-dl-3'))
+      .rejects.toMatchObject({ response: { code: 'CERTIFICATE_NOT_ACTIVE' } });
+  });
+});

@@ -57,6 +57,15 @@ const SCORE_BOXES: Record<string, { x: number; y: number; w: number; h: number }
 const OVERALL_TIBETAN_BOX = { x: 414.36, y: 290.67, w: 34.56, h: 26.63 };
 const OVERALL_ARABIC_BOX = { x: 414.36, y: 254.68, w: 36, h: 26.63 };
 
+// Verification QR placement, in PDF points measured from the page's bottom-left
+// corner. It sits in the empty band above the signatures, hard against the right
+// margin. Tweak these four numbers to move or resize the code:
+//   X      distance from the left edge to the QR's left side
+//   Y      distance from the bottom edge to the QR's bottom side
+//   WIDTH  rendered QR width  (keep == HEIGHT so it stays square)
+//   HEIGHT rendered QR height
+const QR_BOX = { x: 465, y: 88, width: 44, height: 44 };
+
 const WHITE = rgb(1, 1, 1);
 const INK = rgb(0.12, 0.12, 0.12);
 const BLUE_BORDER = rgb(79 / 255, 129 / 255, 189 / 255);
@@ -196,7 +205,7 @@ export class CertificateRendererService {
     page.drawText(`Certificate ${certificate.certificateNumber}`, { x: 60, y: 100, size: 7.5, font: helvetica, color: INK });
     const qrPng = await QRCode.toBuffer(certificate.verificationUrl, { type: 'png', width: 160, margin: 0, errorCorrectionLevel: 'M' });
     const qr = await document.embedPng(qrPng);
-    page.drawImage(qr, { x: 465, y: 88, width: 44, height: 44 });
+    page.drawImage(qr, QR_BOX);
 
     if (template.testOnly) page.drawText('LOCAL TEST TEMPLATE - NOT AN OFFICIAL CERTIFICATE', { x: 40, y: PAGE_HEIGHT - 14, size: 7.5, font: helveticaBold, color: rgb(0.72, 0.1, 0.08) });
     document.setTitle(certificate.certificateNumber);

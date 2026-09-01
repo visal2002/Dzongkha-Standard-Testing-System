@@ -174,6 +174,53 @@ export class CertificateService {
     return { buffer, filename: `${certificate.certificateNumber}.pdf` };
   }
 
+  // Self-service variant used by the "Download my certificate" button: the caller
+  // has no certificate id, so we resolve their most recently issued one. Unlike
+  // download(id) this re-renders the PDF on the fly from the stored result
+  // snapshot + its template (rather than decrypting the archived file), so the
+  // holder always gets a copy that reflects the current name spelling and a live
+  // verification QR. Only the caller's own rows are ever considered.
+  async downloadLatestOwn(actor: AccessClaims, requestId: string) {
+    const [certificate] = await this.certificates.find({
+      where: { testTakerUserId: actor.sub, status: CertificateStatus.Active },
+      order: { issuedAt: 'DESC' },
+      take: 1,
+    });
+    if (!certificate) throw new DomainException('CERTIFICATE_NOT_FOUND', 'You do not have an active certificate to download.', 404);
+    const refreshed = this.refreshExpiry(certificate);
+    if (refreshed.status !== CertificateStatus.Active) throw new DomainException('CERTIFICATE_NOT_ACTIVE', 'Your certificate has expired and can no longer be downloaded.', 409);
+    const buffer = await this.renderOwnerCopy(refreshed);
+    await this.access(refreshed.id, CertificateAccessType.Download, actor.sub, requestId);
+    const safeName = (refreshed.holderName || 'DSTS').normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '') || 'DSTS';
+    return { buffer, filename: `${safeName}_Certificate.pdf` };
+  }
+
+  // Rebuilds the renderer's input DTO from a persisted certificate row and its
+  // template, then draws the name + verification QR over the approved artwork.
+  // The verification URL uses the same HMAC-signed token as issuance, so the
+  // regenerated QR resolves through /public/certificates/verify/:token unchanged.
+  private async renderOwnerCopy(certificate: CertificateEntity) {
+    const template = await this.templates.findOneBy({ id: certificate.templateId });
+    if (!template) throw new DomainException('CERTIFICATE_TEMPLATE_NOT_FOUND', 'The certificate template is unavailable.', 503);
+    const snapshot = (certificate.scoreSnapshot ?? {}) as { scores?: Record<string, number>; overallScore?: string | number };
+    const token = this.tokenFor(certificate.id);
+    return this.renderer.render(template, {
+      certificateNumber: certificate.certificateNumber,
+      holderName: certificate.holderName,
+      registrationNumber: certificate.registrationNumber,
+      cid: certificate.cid ?? '',
+      dateOfBirth: certificate.dateOfBirth ?? new Date(0),
+      examDate: certificate.examDate ?? certificate.issuedAt,
+      issuedAt: certificate.issuedAt,
+      validUntil: certificate.validUntil,
+      scores: snapshot.scores ?? {},
+      overallScore: String(snapshot.overallScore ?? ''),
+      bandLabel: certificate.bandLabel,
+      cefrLevel: certificate.cefrLevel,
+      verificationUrl: `${this.publicApiBaseUrl}/public/certificates/verify/${token}`,
+    });
+  }
+
   async verify(token: string, requestId: string) {
     const certificate = await this.certificateForToken(token);
     const refreshed = this.refreshExpiry(certificate);

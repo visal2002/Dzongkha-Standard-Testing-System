@@ -28,6 +28,19 @@ const sessionUser = () => {
   }
 };
 
+// Pulls the attachment filename out of a Content-Disposition header when the
+// browser/CORS setup exposes it (the API must send Access-Control-Expose-Headers:
+// Content-Disposition for a cross-origin build). Callers fall back to a default.
+const filenameFromContentDisposition = (header) => {
+  if (!header || typeof header !== 'string') return null;
+  const utf8 = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8) {
+    try { return decodeURIComponent(utf8[1]); } catch { /* fall through to the plain form */ }
+  }
+  const plain = header.match(/filename="?([^";]+)"?/i);
+  return plain ? plain[1].trim() : null;
+};
+
 const storedApplications = () => {
   try {
     const parsed = JSON.parse(localStorage.getItem('dsts_mock_applications') || '[]');
@@ -185,6 +198,25 @@ export const certificateService = {
   },
 
   recordDownload: async (id) => certificateService.download(id),
+
+  /**
+   * Self-service download of the signed-in Test Taker's most recently issued
+   * certificate as a PDF blob. The backend (GET /certificates/download) re-renders
+   * it from the stored result snapshot, redacts the template's demo name, overlays
+   * the real holder name and stamps a fresh verification QR, then streams it as an
+   * attachment. Returns the blob plus the server-suggested filename.
+   * @returns {Promise<{ blob: Blob, filename: string }>}
+   */
+  downloadOwn: async () => {
+    if (USE_MOCK_DATA) {
+      throw new Error('Certificate PDF download needs the live backend. In demo mode, open the print view instead.');
+    }
+    const response = await apiClient.get('/certificates/download', { responseType: 'blob' });
+    return {
+      blob: response.data,
+      filename: filenameFromContentDisposition(response.headers?.['content-disposition']) || 'Certificate.pdf',
+    };
+  },
 
   /**
    * Master Configuration - every certificate template version (Draft/Approved/Retired),
