@@ -8,43 +8,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, Fingerprint, Monitor, Award, ShieldCheck } from 'lucide-react';
-
-function LanguageToggle() {
-  const { i18n, t } = useTranslation();
-  const current = i18n.resolvedLanguage || i18n.language || 'en';
-  const active = current.startsWith('dz') ? 'dz' : 'en';
-
-  const setLang = (code) => {
-    if (code !== active) i18n.changeLanguage(code);
-  };
-
-  return (
-    <div
-      role="group"
-      aria-label={t('home.lang_toggle_label')}
-      className="flex items-center rounded-xl border border-brand-gold-light/40 bg-[#0d1425]/50 backdrop-blur-sm p-0.5"
-    >
-      {[
-        { code: 'en', label: 'EN' },
-        { code: 'dz', label: 'རྫོང་ཁ' },
-      ].map(({ code, label }) => (
-        <button
-          key={code}
-          type="button"
-          onClick={() => setLang(code)}
-          aria-pressed={active === code}
-          className={`px-3 h-8 rounded-lg text-sm font-medium transition-colors ${
-            active === code
-              ? 'bg-brand-gold-light/20 text-white'
-              : 'text-gray-300 hover:text-white'
-          }`}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
+import LanguageToggle from '@/components/LanguageToggle';
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -88,7 +52,7 @@ export default function HomePage() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <LanguageToggle />
+          <LanguageToggle tone="dark" />
           <Link
             to="/login"
             className="h-11 px-7 border border-brand-gold-light/80 text-white text-base font-medium rounded-xl transition-all hover:bg-brand-gold-light/20 shadow-[0_0_15px_rgba(212,131,10,0.3)] backdrop-blur-sm inline-flex items-center justify-center"
