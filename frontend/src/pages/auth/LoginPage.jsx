@@ -12,8 +12,10 @@ import {
   ArrowLeft, AlertTriangle, X, Lock, Phone,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/ui/Button';
+import LanguageToggle from '@/components/LanguageToggle';
 import toast from 'react-hot-toast';
 
 // ─── NDI Asset paths ──────────────────────────────────────────────────────────
@@ -96,6 +98,7 @@ const NDI_RETRY_BTN_STYLE = {
 };
 
 function NdiQrFrame({ qrUrl, isLoading, error, label = 'Bhutan NDI QR code' }) {
+  const { t } = useTranslation();
   return (
     <div className="ndi-scanner-qr-frame" aria-label={label}>
       {error ? (
@@ -111,13 +114,13 @@ function NdiQrFrame({ qrUrl, isLoading, error, label = 'Bhutan NDI QR code' }) {
           />
           <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'8px', padding:'14px', textAlign:'center' }}>
             <AlertTriangle size={28} style={{ color:'#f59e0b' }} />
-            <p style={{ margin:0, fontSize:'12px', fontWeight:700, color:'#334155' }}>QR code unavailable</p>
+            <p style={{ margin:0, fontSize:'12px', fontWeight:700, color:'#334155' }}>{t('auth.qr_unavailable')}</p>
           </div>
         </div>
       ) : isLoading ? (
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:'10px', color:'#5AC994' }}>
           <div style={{ width:28, height:28, borderRadius:'50%', border:'2.5px solid currentColor', borderTopColor:'transparent', animation:'spin 0.7s linear infinite' }} />
-          <span style={{ fontSize:'11px', fontWeight:600 }}>Loading Scanner...</span>
+          <span style={{ fontSize:'11px', fontWeight:600 }}>{t('auth.loading_scanner')}</span>
         </div>
       ) : qrUrl ? (
         <QRCodeSVG
@@ -136,14 +139,15 @@ function NdiQrFrame({ qrUrl, isLoading, error, label = 'Bhutan NDI QR code' }) {
 }
 
 function NdiInstructions({ status, error, onRetry }) {
+  const { t } = useTranslation();
   const reason = error ? describeNdiError(error) : null;
   return (
     <div className="ndi-scanner-instructions">
-      <p>1. Open Bhutan NDI Wallet on your phone</p>
+      <p>{t('auth.ndi_step1')}</p>
       <p style={{ display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'center', gap:'4px 6px' }}>
-        <span>2. Tap the scan button</span>
+        <span>{t('auth.ndi_step2_a')}</span>
         <img src={NDI_ASSETS.scanIcon} alt="Scan" style={{ width:22, height:22, display:'inline-block' }} />
-        <span>located on the menu bar and scan the QR code</span>
+        <span>{t('auth.ndi_step2_b')}</span>
       </p>
 
       {reason ? (
@@ -167,13 +171,13 @@ function NdiInstructions({ status, error, onRetry }) {
               onMouseEnter={e => { e.currentTarget.style.background = '#f0fdf8'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
-              Try again
+              {t('auth.try_again')}
             </button>
           )}
         </div>
       ) : status === 'PENDING' ? (
         <p style={{ paddingTop:'6px', fontSize:'12px', fontWeight:600, color:'#38ad78' }} aria-live="polite">
-          Waiting for approval in your wallet...
+          {t('auth.waiting_approval')}
         </p>
       ) : null}
     </div>
@@ -222,9 +226,10 @@ function StoreBadges() {
 }
 
 function NdiSupport() {
+  const { t } = useTranslation();
   return (
     <div className="ndi-support">
-      <p>Get Support</p>
+      <p>{t('auth.get_support')}</p>
       <div>
         <a href="mailto:ndifeedback@dhi.bt">
           <img src={NDI_ASSETS.mailIcon} alt="" aria-hidden="true" />
@@ -244,10 +249,11 @@ function NdiSupport() {
  * Used both as a full-page panel and inside the modal.
  */
 function NdiScannerPanel({ qrUrl, isLoading, error, status, onRetry, embedded = false }) {
+  const { t } = useTranslation();
   return (
     <section className={embedded ? 'ndi-scanner-panel ndi-scanner-panel-embedded' : 'ndi-scanner-panel'}>
       <h1 className="ndi-scanner-title">
-        Scan with <span>Bhutan NDI</span> Wallet
+        {t('auth.scan_title')}
       </h1>
 
       <NdiQrFrame
@@ -265,14 +271,14 @@ function NdiScannerPanel({ qrUrl, isLoading, error, status, onRetry, embedded = 
         rel="noreferrer"
         className="ndi-video-guide"
       >
-        <span>Watch video guide</span>
+        <span>{t('auth.watch_video')}</span>
         <img src={NDI_ASSETS.playButton} alt="" aria-hidden="true" />
       </a>
 
       <p className="ndi-download-copy">
-        Don't have the Bhutan NDI Wallet?{' '}
+        {t('auth.dont_have_wallet')}{' '}
         <a href="https://www.bhutanndi.com" target="_blank" rel="noreferrer">
-          Download Now!
+          {t('auth.download_now')}
         </a>
       </p>
 
@@ -284,6 +290,7 @@ function NdiScannerPanel({ qrUrl, isLoading, error, status, onRetry, embedded = 
 
 /** NDI login modal shown over the main LoginPage */
 function NdiProofModal({ login, status, error, onClose, onRetry }) {
+  const { t } = useTranslation();
   if (!login) return null;
   return (
     <div
@@ -316,7 +323,7 @@ function NdiProofModal({ login, status, error, onClose, onRetry }) {
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close Bhutan NDI login"
+          aria-label={t('auth.close_ndi')}
           style={{
             position:'absolute', top:16, right:16, zIndex:1,
             width:36, height:36, borderRadius:'50%',
@@ -377,6 +384,7 @@ export default function LoginPage() {
   const [regEducation, setRegEducation] = useState('');
 
   const { login, register, loginWithNDI, checkNDILogin, cancelNDILogin, isLoading } = useAuth();
+  const { t } = useTranslation();
   const navigate  = useNavigate();
   const location  = useLocation();
 
@@ -392,10 +400,10 @@ export default function LoginPage() {
     if (!userId.trim() || !password) return;
     const result = await login(userId.trim(), password);
     if (result.success) {
-      toast.success(`Welcome back, ${result.user.name}!`);
+      toast.success(t('auth.welcome_back', { name: result.user.name }));
       navigate('/dashboard');
     } else {
-      toast.error(result.error || 'Login failed. Please check your credentials.');
+      toast.error(result.error || t('auth.login_failed'));
     }
   };
 
@@ -411,16 +419,16 @@ export default function LoginPage() {
       education:        regEducation,
     });
     if (!result.success) {
-      toast.error(result.error || 'Registration failed. Please try again.');
+      toast.error(result.error || t('auth.registration_failed'));
       return;
     }
     const assignedUserId = result.user?.userId;
     setRegCid(''); setRegName(''); setRegDob('');
     setRegGender(''); setRegContact(''); setRegEducation('');
     if (assignedUserId) {
-      toast.success(`Welcome! Your User ID is ${assignedUserId} — use it to sign in next time.`, { duration: 8000 });
+      toast.success(t('auth.welcome_userid', { userId: assignedUserId }), { duration: 8000 });
     } else {
-      toast.success('Registration successful!');
+      toast.success(t('auth.registration_success'));
     }
     // Registration signs the account in; go straight into the app rather than back
     // to the sign-in tab. New Test Takers are routed to their profile by the photo gate.
@@ -462,7 +470,7 @@ export default function LoginPage() {
         if (stopped) return;
         if (result.status === 'VALIDATED') {
           setNdiLoginStatus('VALIDATED');
-          toast.success(`Welcome, ${result.user.name}!`);
+          toast.success(t('auth.welcome', { name: result.user.name }));
           navigate('/dashboard');
         } else if (result.status !== 'PENDING') {
           setNdiLoginStatus(result.status);
@@ -486,7 +494,7 @@ export default function LoginPage() {
     poll();
     const timer = window.setInterval(poll, 2000);
     return () => { stopped = true; window.clearInterval(timer); };
-  }, [ndiLogin, ndiLoginStatus, checkNDILogin, navigate]);
+  }, [ndiLogin, ndiLoginStatus, checkNDILogin, navigate, t]);
 
   const closeNdiLogin = () => {
     if (ndiLogin?.pollToken && ndiLoginStatus === 'PENDING') void cancelNDILogin(ndiLogin.pollToken);
@@ -498,8 +506,8 @@ export default function LoginPage() {
   const isFullScreenForm = activeTab === "register" && registerMode === "form";
 
   const tabs = [
-    { id: 'signin',   label: 'Sign In' },
-    { id: 'register', label: 'Register' },
+    { id: 'signin',   label: t('auth.tab_signin') },
+    { id: 'register', label: t('auth.tab_register') },
   ];
 
   return (
@@ -514,8 +522,13 @@ export default function LoginPage() {
             className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-900/90 px-3 py-2 text-sm text-slate-100 shadow-sm transition hover:bg-slate-800"
           >
             <ChevronLeft size={18} />
-            Home
+            {t('auth.back_home')}
           </button>
+        </div>
+
+        {/* Language toggle */}
+        <div className="absolute top-6 right-6 z-20">
+          <LanguageToggle tone="surface" />
         </div>
 
         <motion.div
@@ -536,10 +549,10 @@ export default function LoginPage() {
               </div>
               <div className="text-center">
                 <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
-                  Dzongkha Standard Testing System
+                  {t('app.subtitle')}
                 </h1>
                 <p className="text-sm text-slate-500 mt-1">
-                  {activeTab === 'signin' ? 'Sign in to your account' : 'Create a new account'}
+                  {activeTab === 'signin' ? t('auth.subtitle_signin') : t('auth.subtitle_register')}
                 </p>
               </div>
             </div>
@@ -592,14 +605,14 @@ export default function LoginPage() {
                       ) : (
                         <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="h-7 w-7 object-contain" />
                       )}
-                      <span className="tracking-wide font-medium">Login with Bhutan NDI</span>
+                      <span className="tracking-wide font-medium">{t('auth.ndi_login_btn')}</span>
                     </button>
                   </div>
 
                   {/* Divider */}
                   <div className="flex items-center gap-3 mb-5">
                     <hr className="flex-1 border-slate-200" />
-                    <span className="text-xs text-slate-400 uppercase tracking-[0.3em]">or sign in with credentials</span>
+                    <span className="text-xs text-slate-400 uppercase tracking-[0.3em]">{t('auth.divider_or_credentials')}</span>
                     <hr className="flex-1 border-slate-200" />
                   </div>
 
@@ -607,7 +620,7 @@ export default function LoginPage() {
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <label className="text-sm font-medium text-slate-700 block mb-1.5">
-                        User ID / Email
+                        {t('auth.label_userid')}
                       </label>
                       <div className="relative">
                         <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -615,7 +628,7 @@ export default function LoginPage() {
                           type="text"
                           value={userId}
                           onChange={e => setUserId(e.target.value)}
-                          placeholder="Enter your 4-digit User ID or email"
+                          placeholder={t('auth.placeholder_userid')}
                           required
                           className={INPUT_ICON_CLS}
                         />
@@ -623,14 +636,14 @@ export default function LoginPage() {
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-slate-700 block mb-1.5">Password</label>
+                      <label className="text-sm font-medium text-slate-700 block mb-1.5">{t('auth.label_password')}</label>
                       <div className="relative">
                         <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                           type={showPass ? 'text' : 'password'}
                           value={password}
                           onChange={e => setPassword(e.target.value)}
-                          placeholder="Enter your password"
+                          placeholder={t('auth.placeholder_password')}
                           required
                           className="w-full h-12 pl-10 pr-12 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
                         />
@@ -638,7 +651,7 @@ export default function LoginPage() {
                           type="button"
                           onClick={() => setShowPass(s => !s)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                          aria-label={showPass ? 'Hide password' : 'Show password'}
+                          aria-label={showPass ? t('auth.hide_password') : t('auth.show_password')}
                         >
                           {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
                         </button>
@@ -653,13 +666,13 @@ export default function LoginPage() {
                           onChange={e => setRememberMe(e.target.checked)}
                           className="h-4 w-4 rounded border-slate-300 accent-teal-500 cursor-pointer"
                         />
-                        <span className="text-sm text-slate-600">Remember me</span>
+                        <span className="text-sm text-slate-600">{t('auth.remember_me')}</span>
                       </label>
                       <button
                         type="button"
                         className="text-sm font-medium text-teal-600 hover:text-teal-500 transition-colors"
                       >
-                        Forgot password?
+                        {t('auth.forgot_password')}
                       </button>
                     </div>
 
@@ -671,7 +684,7 @@ export default function LoginPage() {
                       className="rounded-full h-12 tracking-wide text-white hover:opacity-90 transition-opacity"
                       style={{ backgroundColor: '#124143' }}
                     >
-                      Sign in to DSTS
+                      {t('auth.signin_btn')}
                     </Button>
                   </form>
                 </motion.div>
@@ -688,7 +701,7 @@ export default function LoginPage() {
                   {registerMode === 'choice' ? (
                     <div className="flex flex-col gap-4">
                       <p className="text-center text-sm text-slate-500 mb-1">
-                        Choose how you want to register your account
+                        {t('auth.register_choice_prompt')}
                       </p>
 
                       <button
@@ -698,12 +711,12 @@ export default function LoginPage() {
                         style={{ backgroundColor: '#124143' }}
                       >
                         <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="h-6 w-6 object-contain" />
-                        <span>Register with Bhutan NDI</span>
+                        <span>{t('auth.register_with_ndi')}</span>
                       </button>
 
                       <div className="flex items-center gap-3">
                         <hr className="flex-1 border-slate-200" />
-                        <span className="text-xs text-slate-400 uppercase tracking-[0.3em] font-medium">or</span>
+                        <span className="text-xs text-slate-400 uppercase tracking-[0.3em] font-medium">{t('auth.or')}</span>
                         <hr className="flex-1 border-slate-200" />
                       </div>
 
@@ -712,7 +725,7 @@ export default function LoginPage() {
                         onClick={() => setRegisterMode('form')}
                         className="h-14 px-6 rounded-full border-2 border-slate-200 text-slate-700 font-semibold hover:border-slate-300 hover:bg-slate-50 transition-all"
                       >
-                        Register without NDI
+                        {t('auth.register_without_ndi')}
                       </button>
                     </div>
                   ) : (
@@ -725,7 +738,7 @@ export default function LoginPage() {
                           className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
                         >
                           <ArrowLeft size={14} />
-                          <span>Back to method selection</span>
+                          <span>{t('auth.back_to_method')}</span>
                         </button>
                         <button
                           type="button"
@@ -733,26 +746,26 @@ export default function LoginPage() {
                           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#299d7b] hover:text-[#218366] bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full transition-colors"
                         >
                           <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="w-4 h-4 object-contain" />
-                          Register with NDI
+                          {t('auth.register_with_ndi_short')}
                         </button>
                       </div>
 
                       <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-5">
                         {/* CID */}
                         <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">CID</label>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">{t('auth.label_cid')}</label>
                           <div className="relative">
                             <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
                               type="text"
                               value={regCid}
                               onChange={e => setRegCid(e.target.value.replace(/\D/g, ''))}
-                              placeholder="11-digit Citizenship ID (CID)"
+                              placeholder={t('auth.placeholder_cid')}
                               inputMode="numeric"
                               pattern="[0-9]{11}"
                               minLength={11}
                               maxLength={11}
-                              title="Enter your 11-digit Citizenship ID number"
+                              title={t('auth.title_cid')}
                               required
                               className={INPUT_ICON_CLS}
                             />
@@ -761,14 +774,14 @@ export default function LoginPage() {
 
                         {/* Full Name */}
                         <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">Full Name</label>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">{t('auth.label_full_name')}</label>
                           <div className="relative">
                             <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
                               type="text"
                               value={regName}
                               onChange={e => setRegName(e.target.value)}
-                              placeholder="Enter your full name"
+                              placeholder={t('auth.placeholder_full_name')}
                               required
                               className={INPUT_ICON_CLS}
                             />
@@ -777,7 +790,7 @@ export default function LoginPage() {
 
                         {/* Date of Birth */}
                         <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">Date of Birth</label>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">{t('auth.label_dob')}</label>
                           <div className="relative">
                             <Calendar size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input

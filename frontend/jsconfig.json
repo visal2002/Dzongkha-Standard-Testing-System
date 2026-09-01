@@ -1,9 +1,8 @@
 {
   "compilerOptions": {
     "target": "es2023",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "module": "esnext",
     "lib": ["ES2023", "DOM"],
