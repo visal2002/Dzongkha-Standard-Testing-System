@@ -132,7 +132,7 @@ test('a user created by the administrator can sign in', async ({ page }) => {
   await page.getByRole('button', { name: 'Add User' }).click();
   await page.getByLabel('Full Name').fill('Dechen Wangmo');
   await page.getByLabel('Email Address').fill('dechen.created@example.com');
-  await page.getByLabel('CID Number').fill('10999000001');
+  await page.getByLabel('User ID Number').fill('10999000001');
   await page.getByLabel('Temporary Password').fill('CreatedUser!2026');
   // FIX 2: 'Chief of Examination' doesn't exist — ROLE_LABELS has 'Exam Head' for exam_head
   await page.getByLabel('Exam Head').check();

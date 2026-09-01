@@ -39,7 +39,10 @@ const mockAccounts = new Map([
   ['exam.head@demo.com',        { user: { id: 'USR-003', userId: '1003', email: 'exam.head@demo.com',        cid: '1003', fullName: 'Tshering Pem',   roles: ['exam_head'],        permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
   ['committee.head@demo.com',   { user: { id: 'USR-004', userId: '1004', email: 'committee.head@demo.com',   cid: '1004', fullName: 'Ugyen Tenzin',   roles: ['committee_head'],   permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
   ['chief.executive@demo.com',  { user: { id: 'USR-005', userId: '1005', email: 'chief.executive@demo.com',  cid: '1005', fullName: 'Dorji Wangmo',   roles: ['chief_executive'],  permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
-  ['test.taker@demo.com',       { user: { id: 'USR-006', userId: '1006', email: 'test.taker@demo.com',       cid: '1006', fullName: 'Pema Choden',    roles: ['test_taker'],       permissions: ['registration'], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  // The demo Test Taker is a fully provisioned account, so it carries a passport
+  // photo like every real one — without it the profile gate would hold the account
+  // on /profile and the route smoke tests could never reach the dashboard.
+  ['test.taker@demo.com',       { user: { id: 'USR-006', userId: '1006', email: 'test.taker@demo.com',       cid: '1006', fullName: 'Pema Choden',    roles: ['test_taker'],       permissions: ['registration'], passwordSet: true, emailSet: true, photo: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' }, password: MOCK_PASSWORD }],
   ['member@dsts.bt',            { user: { id: 'USR-007', userId: '1007', email: 'member@dsts.bt',            cid: '1007', fullName: 'Kinley Dorji',   roles: ['committee_member'], permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
 ]);
 
