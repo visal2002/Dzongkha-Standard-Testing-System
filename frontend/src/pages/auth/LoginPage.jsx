@@ -805,14 +805,14 @@ export default function LoginPage() {
 
                         {/* Gender */}
                         <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">Gender</label>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">{t('auth.label_gender')}</label>
                           <select
                             value={regGender}
                             onChange={e => setRegGender(e.target.value)}
                             required
                             className={INPUT_CLS}
                           >
-                            <option value="">Select gender</option>
+                            <option value="">{t('auth.select_gender')}</option>
                             <option>Male</option>
                             <option>Female</option>
                             <option>Other</option>
@@ -821,14 +821,14 @@ export default function LoginPage() {
 
                         {/* Contact No. */}
                         <div>
-                          <label className="text-sm font-medium text-slate-700 block mb-1">Contact No.</label>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">{t('auth.label_contact')}</label>
                           <div className="relative">
                             <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
                               type="tel"
                               value={regContact}
                               onChange={e => setRegContact(e.target.value)}
-                              placeholder="8-digit mobile number"
+                              placeholder={t('auth.placeholder_contact')}
                               inputMode="numeric"
                               pattern="[0-9]{8}"
                               minLength={8}
