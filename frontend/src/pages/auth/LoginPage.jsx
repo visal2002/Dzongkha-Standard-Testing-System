@@ -544,7 +544,7 @@ export default function LoginPage() {
                 <img
                   src="/images/Dzongjuk logo.png"
                   alt="Dzongjuk Logo"
-                  className="h-14 w-14 object-contain [filter:brightness(0)_invert(1)]"
+                  className="h-14 w-14 object-contain filter-[brightness(0)_invert(1)]"
                 />
               </div>
               <div className="text-center">
