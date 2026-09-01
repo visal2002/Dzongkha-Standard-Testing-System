@@ -24,7 +24,7 @@ export default function HomePage() {
           <img 
             src="/images/Dzongjuk logo.png"
             alt="Dzongjuk Logo"
-            className="h-12 w-auto object-contain rounded-lg shadow-lg shadow-[#F59E0B]/20"
+            className="h-12 w-auto object-contain [filter:brightness(0)_invert(1)]"
           />
           <div>
             <div className="flex items-baseline gap-1">
