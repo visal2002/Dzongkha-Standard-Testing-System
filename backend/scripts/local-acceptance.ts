@@ -313,7 +313,10 @@ async function main() {
     headers: { 'idempotency-key': applicationKey },
     body: {
       identityKey: 'LOCALCID2026',
-      profileSnapshot: { fullName: 'Local Acceptance Test Taker', source: 'LOCAL_ACCEPTANCE' },
+      // registration.service.ts's certificateProfile() reads fullName/cid/dateOfBirth
+      // straight off this snapshot - certificate generation fails with
+      // CERTIFICATE_PROFILE_INCOMPLETE further down the run without all three.
+      profileSnapshot: { fullName: 'Local Acceptance Test Taker', cid: '11009988776', dateOfBirth: '1998-01-01', source: 'LOCAL_ACCEPTANCE' },
     },
   });
   const applicationReplay = await request<{ applicationId: string }>(`/applications/exam/${exam.id}`, {
@@ -332,6 +335,9 @@ async function main() {
     method: 'POST', token: dcddToken, body: { examId: exam.id, userId: ids.examHead },
   });
   const pdf = Buffer.from('%PDF-1.4\n% Dzongjuk local acceptance document\n%%EOF\n', 'utf8');
+  // BRD §5.4.2 BR-1: the question paper and the answer sheet are two separate
+  // required documents - AssessmentService.upload() rejects a paper missing either.
+  const answerPdf = Buffer.from('%PDF-1.4\n% Dzongjuk local acceptance answer sheet\n%%EOF\n', 'utf8');
   const form = new FormData();
   form.set('examId', exam.id);
   form.set('title', 'Local Acceptance Question Paper');
@@ -339,6 +345,7 @@ async function main() {
   form.set('accessAllowedFrom', new Date(now - 60_000).toISOString());
   form.set('accessAllowedUntil', new Date(now + 3_600_000).toISOString());
   form.set('questionPaper', new Blob([new Uint8Array(pdf)], { type: 'application/pdf' }), 'local-acceptance.pdf');
+  form.set('answerSheet', new Blob([new Uint8Array(answerPdf)], { type: 'application/pdf' }), 'local-acceptance-answer.pdf');
   const paper = await request<{ id: string }>('/question-papers', { method: 'POST', token: examHeadToken, body: form });
   const downloaded = await download(`/question-papers/${paper.id}/question-document`, examHeadToken);
   if (!downloaded.equals(pdf)) throw new Error('Encrypted question-paper round trip did not preserve the PDF bytes.');
