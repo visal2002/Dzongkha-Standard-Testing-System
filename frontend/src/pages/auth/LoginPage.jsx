@@ -528,7 +528,7 @@ export default function LoginPage() {
 
         {/* Language toggle */}
         <div className="absolute top-6 right-6 z-20">
-          <LanguageToggle tone="surface" />
+          <LanguageToggle tone="light" />
         </div>
 
         <motion.div

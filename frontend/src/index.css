@@ -499,6 +499,13 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dzongkha (Tibetan) glyphs render smaller than Latin at the same pixel size,
+   so while the Dzongkha locale is active the root size is bumped ~6%. Every
+   rem-based Tailwind size (text, spacing) scales up from here for readability. */
+html.lang-dz {
+  font-size: 17px;
+}
+
 body {
   margin: 0;
   background-color: var(--color-surface-bg);

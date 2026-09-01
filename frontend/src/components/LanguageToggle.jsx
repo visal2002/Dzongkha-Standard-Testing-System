@@ -18,6 +18,7 @@ const LANGS = [
  *
  * `tone="dark"`    — light text on a dark/glass surface (public HomePage header).
  * `tone="surface"` — themed, sits next to the in-app header controls.
+ * `tone="light"`   — slate on white, for the hard-coded light auth screens.
  */
 export default function LanguageToggle({ tone = 'surface', className = '' }) {
   const { i18n, t } = useTranslation();
@@ -28,14 +29,18 @@ export default function LanguageToggle({ tone = 'surface', className = '' }) {
     if (code !== active) i18n.changeLanguage(code);
   };
 
-  const wrap =
-    tone === 'dark'
-      ? 'border-brand-gold-light/40 bg-[#0d1425]/50 backdrop-blur-sm'
-      : 'border-surface-border bg-surface-bg';
+  const wrap = {
+    dark: 'border-brand-gold-light/40 bg-[#0d1425]/50 backdrop-blur-sm',
+    surface: 'border-surface-border bg-surface-bg',
+    light: 'border-slate-300 bg-slate-100',
+  }[tone];
 
   const btn = (isActive) => {
     if (tone === 'dark') {
       return isActive ? 'bg-brand-gold-light/20 text-white' : 'text-gray-300 hover:text-white';
+    }
+    if (tone === 'light') {
+      return isActive ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600';
     }
     return isActive
       ? 'bg-surface-card text-text-primary shadow-sm'

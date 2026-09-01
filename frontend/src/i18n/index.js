@@ -425,10 +425,14 @@ i18n
 
 // Keep the document's <html lang> in sync so the browser, screen readers and
 // font stack all know which language is currently rendered. Dzongkha (Tibetan
-// script) is left-to-right, so no direction switch is needed.
+// script) is left-to-right, so no direction switch is needed. The `lang-dz`
+// class lets the stylesheet bump the base font size, because Tibetan glyphs
+// render noticeably smaller than Latin at the same pixel size.
 const applyDocumentLang = (lng) => {
   if (typeof document !== 'undefined') {
-    document.documentElement.setAttribute('lang', lng?.startsWith('dz') ? 'dz' : 'en');
+    const isDz = lng?.startsWith('dz') === true;
+    document.documentElement.setAttribute('lang', isDz ? 'dz' : 'en');
+    document.documentElement.classList.toggle('lang-dz', isDz);
   }
 };
 applyDocumentLang(i18n.resolvedLanguage || i18n.language);
