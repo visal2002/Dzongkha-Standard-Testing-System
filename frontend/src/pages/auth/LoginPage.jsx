@@ -180,7 +180,7 @@ function NdiInstructions({ status, error, onRetry }) {
           )}
         </div>
       ) : status === 'PENDING' ? (
-        <p style={{ paddingTop:'6px', fontSize:'12px', fontWeight:600, color:'#38ad78' }} aria-live="polite">
+        <p style={{ paddingTop:'6px', fontSize:'12px', fontWeight:600, color:'#38ad78', textAlign:'center' }} aria-live="polite">
           {t('auth.waiting_approval')}
         </p>
       ) : null}
