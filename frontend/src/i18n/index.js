@@ -124,7 +124,7 @@ const resources = {
       },
       home: {
         nav_home: 'Home',
-        nav_about: 'About DSTs',
+        nav_about: 'About',
         nav_contact: 'Contact Us',
         sign_in: 'Sign In',
         hero_title_line1: 'Dzongkha Standard',
@@ -321,7 +321,7 @@ const resources = {
       },
       home: {
         nav_home: 'མདུན་ངོས།',
-        nav_about: 'རྫོང་ཁ་ཚད་ལྡན་ཡིག་རྒྱུགས་ཀྱི་སྐོར།',
+        nav_about: 'སྐོར།',
         nav_contact: 'འབྲེལ་བ་འཐབ་ས།',
         sign_in: 'ནང་བསྐྱོད།',
         hero_title_line1: 'རྫོང་ཁ་ཚད་ལྡན་',
