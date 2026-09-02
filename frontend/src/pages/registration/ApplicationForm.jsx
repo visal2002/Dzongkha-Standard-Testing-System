@@ -3,10 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, ArrowRight, CheckCircle2, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Search, Send } from 'lucide-react';
 import { Button, Card, CardBody, Input, Select, Stepper } from '@/components/ui';
 import PageHeader from '@/components/ui/PageHeader';
-import Alert from '@/components/ui/Alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { applicationService } from '@/services/applications';
 import { examService } from '@/services/exams';
@@ -18,7 +17,7 @@ const educationLevels = ['Below Class X', 'Class X', 'Class XII', 'Certificate',
 
 const schema = z.object({
   fullName: z.string().trim().min(2, 'Full name is required.'),
-  cid: z.string().trim().min(4, 'User ID is required.').max(64),
+  cid: z.string().trim().regex(/^\d{11}$/, 'Enter a valid 11-digit CID number.'),
   dateOfBirth: z.string().min(1, 'Date of birth is required.'),
   gender: z.string().min(1, 'Gender is required.'),
   email: z.string().email('Enter a valid email address.'),
@@ -41,13 +40,15 @@ export default function ApplicationForm() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submission, setSubmission] = useState(null);
+  const [cidLookup, setCidLookup] = useState({ status: 'idle', message: 'Enter all 11 digits to retrieve your DCRC information.', fields: [] });
 
-  const { register, handleSubmit, reset, watch, trigger, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, setValue, watch, trigger, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { fullName: '', cid: '', dateOfBirth: '', gender: '', email: '', phone: '', dzongkhag: '', gewog: '', education: '', institution: '', employmentStatus: '', organization: '' },
     mode: 'onTouched',
   });
   const values = watch();
+  const cidField = register('cid');
 
   useEffect(() => {
     reset(current => ({
@@ -65,6 +66,46 @@ export default function ApplicationForm() {
       .finally(() => { if (active) setLoadingExam(false); });
     return () => { active = false; };
   }, [examId]);
+
+  useEffect(() => {
+    const cid = String(values.cid || '').replace(/\D/g, '');
+    if (cid.length !== 11) {
+      setCidLookup({ status: 'idle', message: 'Enter all 11 digits to retrieve your DCRC information.', fields: [] });
+      return undefined;
+    }
+
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setCidLookup({ status: 'loading', message: 'Retrieving citizen information from DCRC…', fields: [] });
+      try {
+        const profile = await applicationService.lookupCitizen(cid);
+        if (!active || profile.cid !== cid) return;
+        const gender = normalizeGender(profile.gender);
+        const dzongkhag = matchOption(dzongkhags, profile.dzongkhag);
+        const populated = {
+          fullName: profile.fullName,
+          dateOfBirth: profile.dateOfBirth,
+          gender,
+          phone: profile.phone,
+          dzongkhag,
+          gewog: profile.gewog,
+        };
+        Object.entries(populated).forEach(([field, value]) => {
+          if (value) setValue(field, value, { shouldDirty: true, shouldValidate: true });
+        });
+        setCidLookup({ status: 'success', message: 'Citizen information retrieved from DCRC.', fields: Object.entries(populated).filter(([, value]) => Boolean(value)).map(([field]) => field) });
+      } catch (error) {
+        if (!active) return;
+        const notFound = error.code === 'DCRC_CITIZEN_NOT_FOUND';
+        setCidLookup({
+          status: 'error',
+          message: notFound ? 'No DCRC record was found for this CID.' : 'DCRC lookup is temporarily unavailable. You may complete the form manually.',
+          fields: [],
+        });
+      }
+    }, 450);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [setValue, values.cid]);
 
   const registrationIsOpen = exam?.status === 'registration_open'
     && Date.now() >= new Date(exam.registrationStart).getTime()
@@ -105,20 +146,25 @@ export default function ApplicationForm() {
 
   return <div className="space-y-6">
     <PageHeader title="Exam Registration" subtitle={`${exam.title} · ${exam.code} · Fee Nu. ${exam.paymentAmount}`} breadcrumbs={[{ label: 'Registration' }, { label: 'Apply' }]} />
-    <Alert variant="warning" title="Identity verification integration pending">
-      Details below are accepted as entered. Automatic verification against Bhutan NDI and
-      DCRC census records is not yet connected - DCDD staff verify submissions manually
-      during review until that integration is built.
-    </Alert>
     <Stepper steps={steps} currentStep={step} />
     <Card><CardBody><form onSubmit={handleSubmit(submit)}>
       {step === 0 && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input label="Full Name" required {...register('fullName')} error={errors.fullName?.message} />
-        <Input label="User ID" required {...register('cid')} error={errors.cid?.message} hint="This User ID is used to prevent duplicate applications." />
-        <Input label="Date of Birth" type="date" required {...register('dateOfBirth')} error={errors.dateOfBirth?.message} />
+        <Input label="Full Name" required {...register('fullName')} readOnly={cidLookup.fields.includes('fullName')} error={errors.fullName?.message} />
+        <Input
+          label="CID / Identity Number"
+          required
+          {...cidField}
+          inputMode="numeric"
+          maxLength={11}
+          onChange={event => { event.target.value = event.target.value.replace(/\D/g, '').slice(0, 11); cidField.onChange(event); }}
+          error={errors.cid?.message}
+          hint={cidLookup.message}
+          iconRight={cidLookup.status === 'loading' ? <Loader2 size={14} className="animate-spin" /> : cidLookup.status === 'success' ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Search size={14} />}
+        />
+        <Input label="Date of Birth" type="date" required {...register('dateOfBirth')} readOnly={cidLookup.fields.includes('dateOfBirth')} error={errors.dateOfBirth?.message} />
         <Select label="Gender" required {...register('gender')} error={errors.gender?.message}><option value="">Select gender</option><option>Male</option><option>Female</option><option>Other</option></Select>
         <Input label="Email" type="email" required {...register('email')} error={errors.email?.message} />
-        <Input label="Contact Number" required {...register('phone')} error={errors.phone?.message} />
+        <Input label="Contact Number" required {...register('phone')} readOnly={cidLookup.fields.includes('phone')} error={errors.phone?.message} />
         <Select label="Dzongkhag" required {...register('dzongkhag')} error={errors.dzongkhag?.message}><option value="">Select dzongkhag</option>{dzongkhags.map(item => <option key={item}>{item}</option>)}</Select>
         <Input label="Gewog" required {...register('gewog')} error={errors.gewog?.message} />
       </div>}
@@ -131,10 +177,22 @@ export default function ApplicationForm() {
         <Select label="Employment Status" required {...register('employmentStatus')} error={errors.employmentStatus?.message}><option value="">Select status</option><option>Employed</option><option>Unemployed</option><option>Student</option><option>Self-employed</option></Select>
         <Input label="Organization" {...register('organization')} error={errors.organization?.message} />
       </div>}
-      {step === 2 && <div className="space-y-5"><div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl text-sm text-amber-300">Review the information carefully. The submitted profile becomes the official registration snapshot.</div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{Object.entries({ 'Full Name': values.fullName, 'User ID': values.cid, 'Date of Birth': values.dateOfBirth, 'Gender': values.gender, 'Email': values.email, 'Contact': values.phone, 'Dzongkhag': values.dzongkhag, 'Gewog': values.gewog, 'Education': values.education, 'Institution': values.institution, 'Employment': values.employmentStatus, 'Organization': values.organization || '—' }).map(([label, value]) => <div key={label}><p className="text-xs text-text-muted">{label}</p><p className="text-sm font-medium text-text-primary mt-0.5">{value}</p></div>)}</div></div>}
+      {step === 2 && <div className="space-y-5"><div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl text-sm text-amber-300">Review the information carefully. The submitted profile becomes the official registration snapshot.</div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{Object.entries({ 'Full Name': values.fullName, 'CID / Identity': values.cid, 'Date of Birth': values.dateOfBirth, 'Gender': values.gender, 'Email': values.email, 'Contact': values.phone, 'Dzongkhag': values.dzongkhag, 'Gewog': values.gewog, 'Education': values.education, 'Institution': values.institution, 'Employment': values.employmentStatus, 'Organization': values.organization || '—' }).map(([label, value]) => <div key={label}><p className="text-xs text-text-muted">{label}</p><p className="text-sm font-medium text-text-primary mt-0.5">{value}</p></div>)}</div></div>}
       <div className="flex justify-between mt-8 pt-4 border-t border-surface-border"><Button type="button" variant="secondary" icon={<ArrowLeft size={14} />} onClick={() => step ? setStep(step - 1) : navigate('/registration/windows')}>{step ? 'Previous' : 'Cancel'}</Button>{step < 2 ? <Button type="button" icon={<ArrowRight size={14} />} onClick={next}>Next</Button> : <Button type="submit" loading={submitting} icon={<Send size={14} />}>Submit Application</Button>}</div>
     </form></CardBody></Card>
   </div>;
+}
+
+function normalizeGender(value) {
+  const gender = String(value || '').trim().toLowerCase();
+  if (['m', 'male'].includes(gender)) return 'Male';
+  if (['f', 'female'].includes(gender)) return 'Female';
+  return gender ? 'Other' : '';
+}
+
+function matchOption(options, value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return options.find(option => option.toLowerCase() === normalized) || '';
 }
 
 function EmptyState({ title, message }) {

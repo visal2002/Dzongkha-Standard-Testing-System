@@ -15,7 +15,7 @@ export interface CertificateResultSource {
 }
 export interface CertificateProfileSource {
   applicationId: string; examId: string; testTakerUserId: string; registrationNumber: string; fullName: string;
-  cid: string; dateOfBirth: string;
+  cid: string; dateOfBirth: string; email: string; phone: string;
 }
 export interface CertificateExamSource {
   id: string; examDate: string;

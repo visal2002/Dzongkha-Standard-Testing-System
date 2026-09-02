@@ -4,6 +4,8 @@
  * Phone: +975 - 1750 - 5267
  */
 
+import { useTranslation } from 'react-i18next';
+
 const variants = {
   default: 'bg-[#1E2D4A] text-[#94A3C8] border border-[#243055]',
   gold: 'bg-[#F59E0B]/15 text-[#FCD34D] border border-brand-gold/30',
@@ -47,6 +49,7 @@ export default function Badge({ children, variant = 'default', size = 'md', dot 
 }
 
 export function StatusBadge({ status }) {
+  const { t } = useTranslation();
   const normalizedStatus = String(status ?? '').trim().toLowerCase();
   const map = {
     active: { label: 'Active', variant: 'success' },
@@ -85,7 +88,7 @@ export function StatusBadge({ status }) {
     waitlisted: { label: 'Waitlisted', variant: 'warning' },
   };
   const config = map[normalizedStatus] || { label: humanizeStatus(status), variant: 'default' };
-  return <Badge variant={config.variant} dot>{config.label}</Badge>;
+  return <Badge variant={config.variant} dot>{t(`status.${normalizedStatus}`, { defaultValue: config.label })}</Badge>;
 }
 
 export function humanizeStatus(status) {

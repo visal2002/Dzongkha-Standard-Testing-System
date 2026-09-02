@@ -144,11 +144,17 @@ export const questionService = {
       formData.set('title', payload.title);
       formData.set('accessAllowedFrom', new Date(payload.accessAllowedFrom).toISOString());
       formData.set('accessAllowedUntil', new Date(payload.accessAllowedUntil).toISOString());
-      formData.set('questionPaper', payload.paperFile);
+      // The assessment API accepts `file` as the primary document field. Using
+      // this alias also avoids strict DTO validation treating `questionPaper`
+      // as an unexpected text property in older deployed service builds.
+      formData.set('file', payload.paperFile);
       if (payload.answerSheetFile) formData.set('answerSheet', payload.answerSheetFile);
     }
-    // Axios detects FormData and supplies the browser-generated multipart boundary.
-    const { data } = await apiClient.post('/questions', formData);
+    // Override the API client's JSON default. Axios then preserves FormData and
+    // lets the browser add the multipart boundary instead of JSON-serializing it.
+    const { data } = await apiClient.post('/questions', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return { data: normalizeQuestionPaper(unwrap(data)) };
   },
 

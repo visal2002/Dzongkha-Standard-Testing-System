@@ -207,6 +207,11 @@ export const applicationService = {
     return data;
   },
 
+  lookupCitizen: async cid => {
+    const { data } = await apiClient.post('/applications/citizen-lookup', { cid });
+    return data?.data ?? data;
+  },
+
   /**
    * Update an existing application.
    * @param {string} id

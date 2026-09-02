@@ -21,7 +21,7 @@ This file distinguishes implemented code from approved architecture and unresolv
 | Certificates | Core workflow implemented; official template/automatic-reissue policy open | approved versioned templates, internal published-result/profile contracts, encrypted PDF storage, signed QR token, owner-only access, minimal public verification, history, revocation, appeal-driven supersession and explicit replacement generation |
 | Notifications | In-app workflow implemented; provider adapters open | versioned approved templates, idempotent RabbitMQ projection, delivery records, owner list/read/read-all/archive APIs; SMS/email credentials and retry workers remain |
 | Reports/audit viewer | Implemented core workflow | idempotent RabbitMQ projections, role dashboards, predefined and allow-listed ad-hoc queries, saved definitions, durable CSV/XLSX/PDF jobs, owner-only artifacts and append-only permission-gated audit queries/exports |
-| Integration adapters | Foundation | official NDI/DCRC/payment/SMS/email specifications remain |
+| Integration adapters | DCRC staging adapter implemented; other providers remain | server-side OAuth client, citizen-profile comparison, privacy-minimal lookup audit, registration provenance and feature-gated enforcement; supplied staging client currently returns `invalid_client` |
 | Service-owned PostgreSQL databases | Implemented through reporting | eight independently provisioned logical databases; additive migrations `0001` through `0006` execute only for their owning service and are tracked per database |
 | Redis/RabbitMQ/object storage | Implemented development topology | Compose platform and registration outbox publisher |
 | Docker/GitLab/Kubernetes | Baseline implemented | non-root image, CI pipeline, probes, HPA, PDB, network policy |
@@ -35,9 +35,9 @@ This file distinguishes implemented code from approved architecture and unresolv
 3. Recovery: MTTR says 2 hours while RTO says 60 minutes; current design uses the stricter 60 minutes.
 4. Numeric RPO is missing.
 5. Canonical Chief role and VERIFIED versus APPROVED state semantics.
-6. Official score range, rounding, overall formula and CEFR/band mapping.
+6. CEFR mapping is not part of the DSTS Total Score to Standard 1–10 table confirmed for implementation on 2026-08-28.
 7. NDI protocol, claims, assurance level, sandbox and administrative-role classification.
-8. DCRC/census, payment, SMS and email provider contracts.
+8. DCRC staging OAuth client activation and final response-field confirmation; payment, SMS and email provider contracts.
 9. Certificate public fields, template/signature controls and whether post-appeal replacement issuance is automatic.
 10. GovTech registry, Kubernetes, service mesh, secrets/KMS, storage, backup and approved CIDRs.
 

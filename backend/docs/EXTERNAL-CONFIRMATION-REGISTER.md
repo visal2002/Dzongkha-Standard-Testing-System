@@ -4,20 +4,35 @@ Production remains fail-closed until the following values are approved in writin
 
 ## Scoring formula
 
-Status: `AWAITING DCDD APPROVAL`
+Status: `CONFIRMED FOR IMPLEMENTATION ON 2026-08-28`
 
-Required confirmation:
+The project owner supplied the DSTS Total Score to Standard table for implementation. Each skill total is converted independently and the four resulting standards are averaged for the published overall standard.
+
+| Total score | DSTS Standard |
+|---:|---:|
+| 50 | 10 |
+| 48–49.5 | 9 |
+| 45–47.5 | 8 |
+| 41–44.5 | 7 |
+| 34–40.5 | 6 |
+| 27–33.5 | 5 |
+| 20–26.5 | 4 |
+| 13–19.5 | 3 |
+| 6–12.5 | 2 |
+| 1–5.5 | 1 |
+
+Implemented decisions:
 
 | Field | Required decision |
 |---|---|
-| Numeric score range | minimum and maximum per skill |
-| Increment | permitted score step, for example whole or half points |
-| Aggregation | approved overall-score formula |
-| Rounding | decimal precision and tie-breaking rule |
-| Bands | complete non-overlapping overall-score ranges and labels |
-| CEFR | approved CEFR value for each band, if applicable |
-| Effective period | start/end date and treatment of older examinations |
-| Approval authority | named role/person allowed to activate a rule |
+| Numeric score range | 1–50 per skill |
+| Increment | 0.5 |
+| Aggregation | Convert each skill total to Standard 1–10, then calculate the arithmetic mean of the four standards |
+| Rounding | 2 decimal places |
+| Bands | As listed above |
+| CEFR | Not part of the supplied standard |
+| Effective period | Effective for new submissions after migration; older results retain their original rule |
+| Approval authority | Existing privileged `score.rule.manage` approval control |
 
 Implementation gate: scoring rules are created as `DRAFT`. `POST /api/v1/scoring-rules/{id}/approve` requires `score.rule.manage` and an assurance level listed in `PRIVILEGED_ASSURANCE_LEVELS`. Score submission and result declaration return `SCORING_RULE_NOT_APPROVED` until an effective rule is approved.
 

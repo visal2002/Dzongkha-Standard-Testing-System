@@ -77,7 +77,7 @@ export default function SubmitAppeal() {
         skills: selectedSkills,
         reason,
       });
-      toast.success('Re-evaluation request submitted. Payment confirmation is pending.');
+      toast.success('Re-evaluation request submitted. Continue the payment through BIRMS from Re-evaluation.');
       navigate('/appeals');
     } catch (requestError) {
       toast.error(requestError.message || 'Unable to submit the re-evaluation request.');
@@ -117,8 +117,8 @@ export default function SubmitAppeal() {
         icon={<Scale size={18} />}
       />
 
-      <Alert variant="info" title="Payment provider pending">
-        Submission creates a payment-pending re-evaluation request. It reaches the Examination Committee only after the configured payment integration confirms the exact fee.
+      <Alert variant="info" title="Payment through BIRMS">
+        Submission creates a payment-pending re-evaluation request. Open the submitted request and pay securely through BIRMS before it is released to the Examination Committee.
       </Alert>
 
       <div className="flex items-center gap-2">

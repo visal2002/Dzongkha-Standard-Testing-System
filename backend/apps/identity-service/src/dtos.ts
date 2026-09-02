@@ -4,7 +4,7 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { IsArray, IsEmail, IsOptional, IsString, Length, MinLength } from 'class-validator';
+import { IsArray, IsEmail, IsNumber, IsObject, IsOptional, IsString, Length, Max, Min, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail() email: string;
@@ -53,4 +53,18 @@ export class CreateRoleDto {
   @IsString() @Length(2, 64) code: string;
   @IsString() @Length(2, 120) name: string;
   @IsArray() @IsString({ each: true }) permissions: string[];
+}
+
+export class UpdateMasterConfigurationDto {
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) registrationFee?: number;
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) appealFee?: number;
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) appealFeePerSkill?: number;
+  @IsOptional() @IsNumber() @Min(1) @Max(240) certificateValidity?: number;
+  @IsOptional() @IsNumber() @Min(1) @Max(50) maxBandScore?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(50) minBandScore?: number;
+  @IsOptional() @IsNumber() @Min(0.1) @Max(10) bandScoreStep?: number;
+  @IsOptional() @IsArray() @IsString({ each: true }) skills?: string[];
+  @IsOptional() @IsArray() bandLevels?: Record<string, unknown>[];
+  @IsOptional() @IsObject() certificateTemplate?: Record<string, unknown>;
+  @IsOptional() @IsObject() notificationTemplates?: Record<string, string>;
 }

@@ -13,6 +13,8 @@ import {
   ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
+  PrimaryColumn,
+  VersionColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
@@ -107,4 +109,14 @@ export class AuditEventEntity {
   @Column({ length: 64 }) requestId: string;
   @Column({ type: 'jsonb', default: {} }) safeData: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamptz' }) occurredAt: Date;
+}
+
+@Entity('master_configuration')
+export class MasterConfigurationEntity {
+  @PrimaryColumn({ type: 'varchar', length: 32, default: 'SYSTEM' }) id: string;
+  @Column({ type: 'jsonb' }) configuration: Record<string, unknown>;
+  @Column({ type: 'uuid', nullable: true }) updatedByUserId: string | null;
+  @VersionColumn() version: number;
+  @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updatedAt: Date;
 }

@@ -98,6 +98,21 @@ export class ScoringService {
       const steps = (value - minimum) / increment;
       if (Math.abs(steps - Math.round(steps)) > 1e-7) throw new DomainException('SCORE_INCREMENT_INVALID', `Scores must use increments of ${increment}.`);
     }
+
+    // DSTS raw-score conversion rules map every skill total to a numbered
+    // standard first. The published overall is the mean of those four
+    // standards, as required by the skill-wise scoring workflow.
+    if (rule.bands.every((range) => Number.isFinite(range.standard))) {
+      const standards = values.map((value) => {
+        const range = rule.bands.find((candidate) => value >= candidate.min && value <= candidate.max);
+        if (!range?.standard) throw new DomainException('SCORING_BAND_UNMAPPED', 'A skill total is not covered by the approved DSTS standard mapping.', 409);
+        return range.standard;
+      });
+      const rawStandard = standards.reduce((sum, value) => sum + value, 0) / standards.length;
+      const overall = Number(rawStandard.toFixed(rule.roundingDecimals));
+      return { overall, bandLabel: `Standard ${overall}`, cefrLevel: null };
+    }
+
     const raw = values.reduce((sum, value) => sum + value, 0) / values.length;
     const overall = Number(raw.toFixed(rule.roundingDecimals));
     const band = rule.bands.find((range) => overall >= range.min && overall <= range.max);
@@ -115,10 +130,33 @@ export class ScoringService {
     if (dto.minimumScore >= dto.maximumScore || dto.increment <= 0) throw new DomainException('SCORING_RULE_INVALID', 'Score bounds or increment are invalid.');
     if (dto.effectiveTo && new Date(dto.effectiveTo) <= new Date(dto.effectiveFrom)) throw new DomainException('SCORING_RULE_PERIOD_INVALID', 'Effective end must be after effective start.');
     const bands = [...dto.bands].sort((a, b) => a.min - b.min);
-    for (let index = 0; index < bands.length; index += 1) {
-      const band: BandRange = bands[index];
-      if (band.min > band.max || band.min < dto.minimumScore || band.max > dto.maximumScore) throw new DomainException('SCORING_BAND_INVALID', `Band ${band.label} is outside the score range.`);
-      if (index > 0 && band.min <= bands[index - 1].max) throw new DomainException('SCORING_BAND_OVERLAP', 'Scoring bands must not overlap.');
+    this.validateStandardMappings(bands, dto);
+    bands.forEach((band, index) => this.validateBand(band, bands[index - 1], dto));
+  }
+
+  private validateStandardMappings(bands: BandRange[], dto: CreateScoringRuleDto) {
+    const standardMappings = bands.filter((band) => band.standard !== undefined);
+    if (standardMappings.length === 0) return;
+    if (standardMappings.length > 0 && standardMappings.length !== bands.length) {
+      throw new DomainException('SCORING_STANDARD_INCOMPLETE', 'Every band must define a standard when raw-score conversion is used.');
     }
+    if (bands[0].min !== dto.minimumScore || bands[bands.length - 1].max !== dto.maximumScore) {
+      throw new DomainException('SCORING_STANDARD_INCOMPLETE', 'The DSTS standard mapping must cover the complete score range.');
+    }
+    bands.forEach((band, index) => {
+      const previous = bands[index - 1];
+      const values = [band.min, band.max];
+      const offIncrement = values.some((value) => Math.abs(((value - dto.minimumScore) / dto.increment) - Math.round((value - dto.minimumScore) / dto.increment)) > 1e-7);
+      if (offIncrement || (previous && Math.abs(band.min - previous.max - dto.increment) > 1e-7)) {
+        throw new DomainException('SCORING_STANDARD_INCOMPLETE', 'The DSTS standard mapping must cover every permitted score without gaps.');
+      }
+    });
+  }
+
+  private validateBand(band: BandRange, previous: BandRange | undefined, dto: CreateScoringRuleDto) {
+    if (band.min > band.max || band.min < dto.minimumScore || band.max > dto.maximumScore) {
+      throw new DomainException('SCORING_BAND_INVALID', `Band ${band.label} is outside the score range.`);
+    }
+    if (previous && band.min <= previous.max) throw new DomainException('SCORING_BAND_OVERLAP', 'Scoring bands must not overlap.');
   }
 }

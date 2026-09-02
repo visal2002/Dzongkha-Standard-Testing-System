@@ -60,6 +60,7 @@ export interface BandRange {
   min: number;
   max: number;
   label: string;
+  standard?: number;
   cefr?: string;
 }
 

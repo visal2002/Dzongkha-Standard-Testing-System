@@ -20,6 +20,21 @@ configMapGenerator:
       - 0009_registration_payments.sql=../../../backend/database/migrations/0009_registration_payments.sql
       - 0010_staging_workflow_baseline.sql=../../../backend/database/migrations/0010_staging_workflow_baseline.sql
       - 0011_birms_registration_payments.sql=../../../backend/database/migrations/0011_birms_registration_payments.sql
+      - 0012_exam_head_role_name.sql=../../../backend/database/migrations/0012_exam_head_role_name.sql
+      - 0014_appeal_skill_decisions.sql=../../../backend/database/migrations/0014_appeal_skill_decisions.sql
+      - 0015_chief_executive_matrix_permissions.sql=../../../backend/database/migrations/0015_chief_executive_matrix_permissions.sql
+      - 0016_assessment_audit_actor_nullable.sql=../../../backend/database/migrations/0016_assessment_audit_actor_nullable.sql
+      - 0017_certificate_dsts_layout_fields.sql=../../../backend/database/migrations/0017_certificate_dsts_layout_fields.sql
+      - 0018_certificate_template_assets.sql=../../../backend/database/migrations/0018_certificate_template_assets.sql
+      - 0019_dcdd_audit_read_permission.sql=../../../backend/database/migrations/0019_dcdd_audit_read_permission.sql
+      - 0020_verification_absentee_email_sms_templates.sql=../../../backend/database/migrations/0020_verification_absentee_email_sms_templates.sql
+      - 0021_notification_delivery_sending_status.sql=../../../backend/database/migrations/0021_notification_delivery_sending_status.sql
+      - 0022_committee_member_appeal_view_only.sql=../../../backend/database/migrations/0022_committee_member_appeal_view_only.sql
+      - 0023_user_login_id.sql=../../../backend/database/migrations/0023_user_login_id.sql
+      - 0024_dsts_score_standard.sql=../../../backend/database/migrations/0024_dsts_score_standard.sql
+      - 0025_dcrc_integration.sql=../../../backend/database/migrations/0025_dcrc_integration.sql
+      - 0026_birms_appeal_payments.sql=../../../backend/database/migrations/0026_birms_appeal_payments.sql
+      - 0027_master_configuration.sql=../../../backend/database/migrations/0027_master_configuration.sql
   - name: api-gateway-config
     files:
       - nginx.conf=api-gateway.conf

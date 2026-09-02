@@ -103,6 +103,9 @@ const resources = {
         dzongkha: 'Dzongkha',
         switch_language: 'Switch language',
       },
+      my_applications: {
+        title: 'My Applications',
+      },
       status: {
         submitted: 'Submitted',
         under_review: 'Under Review',
@@ -299,6 +302,9 @@ const resources = {
         english: 'English',
         dzongkha: 'རྫོང་ཁ',
         switch_language: 'སྐད་ཡིག་བརྗེ་སྒྱུར།',
+      },
+      my_applications: {
+        title: 'ངེའི་ཞུ་ཡིག་ཚུ།',
       },
       status: {
         submitted: '[dz] Submitted',

@@ -6,7 +6,7 @@
 
 import { ExamStatus, Skill } from '@dzongjuk/contracts';
 import { PartialType } from '@nestjs/swagger';
-import { IsArray, IsDateString, IsEnum, IsIn, IsInt, IsNumberString, IsObject, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsIn, IsInt, IsNumberString, IsObject, IsOptional, IsString, Length, Matches, Max, Min } from 'class-validator';
 import { RegistrationPaymentStatus } from './entities';
 
 export class CreateExamDto {
@@ -34,6 +34,10 @@ export class SubmitApplicationDto {
 // the profile details DCDD asked to be corrected, never the identity itself.
 export class ResubmitApplicationDto {
   @IsObject() profileSnapshot: Record<string, unknown>;
+}
+
+export class LookupCitizenDto {
+  @IsString() @Matches(/^\d{11}$/, { message: 'CID must contain exactly 11 digits.' }) cid: string;
 }
 
 export class ReturnApplicationDto { @IsString() @Length(3, 2000) remarks: string; }
