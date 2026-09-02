@@ -125,7 +125,7 @@
 
 .ndi-scanner-panel-embedded {
   width: 100%;
-  min-height: auto;
+  min-height: 0;
   border-radius: 28px;
   padding: 24px 16px 18px;
   box-shadow: none;

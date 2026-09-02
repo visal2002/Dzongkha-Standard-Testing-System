@@ -270,13 +270,32 @@ function NdiSupport() {
  * The central NDI scanner panel — matches the reference design.
  * Used both as a full-page panel and inside the modal.
  */
-function NdiScannerPanel({ qrUrl, isLoading, error, status, onRetry, embedded = false }) {
+function NdiScannerPanel({ qrUrl, deepLinkUrl, isLoading, error, status, onRetry, embedded = false }) {
   const { t } = useTranslation();
   return (
     <section className={embedded ? 'ndi-scanner-panel ndi-scanner-panel-embedded' : 'ndi-scanner-panel'}>
       <h1 className="ndi-scanner-title">
-        {t('auth.scan_title')}
+        <span className="ndi-title-web">{t('auth.scan_title')}</span>
+        <span className="ndi-title-mobile">{t('auth.ndi_wallet_login_title')}</span>
       </h1>
+
+      {/* Mobile-only lead: the deep-link button and an OR separator sit above the QR
+          on small screens so a phone user can jump straight into the wallet app. */}
+      <div className="ndi-mobile-lead">
+        <a
+          href={deepLinkUrl || qrUrl || undefined}
+          target="_blank"
+          rel="noreferrer"
+          className="ndi-open-wallet"
+        >
+          {t('auth.ndi_open_wallet_btn')}
+        </a>
+        <div className="ndi-scanner-divider" aria-hidden="true">
+          <span />
+          <em>{t('auth.or')}</em>
+          <span />
+        </div>
+      </div>
 
       <NdiQrFrame
         qrUrl={qrUrl}
@@ -360,6 +379,7 @@ function NdiProofModal({ login, status, error, onClose, onRetry }) {
         </button>
         <NdiScannerPanel
           qrUrl={login.proofRequestUrl}
+          deepLinkUrl={login.deepLinkUrl}
           isLoading={false}
           error={error}
           status={status}
