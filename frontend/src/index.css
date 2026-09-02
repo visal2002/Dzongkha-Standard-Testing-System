@@ -214,8 +214,9 @@
 
 .ndi-video-guide {
   margin-top: 30px;
-  min-height: 36px;
-  padding: 0 12px 0 16px;
+  min-width: 200px;
+  min-height: 40px;
+  padding: 0 16px 0 20px;
   border: 2px solid var(--ndi-primary);
   border-radius: 999px;
   color: var(--ndi-primary);
@@ -224,8 +225,8 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   transition: background-color .15s ease, color .15s ease, transform .15s ease;
   flex-shrink: 0;
 }
@@ -256,15 +257,15 @@
 .ndi-download-copy {
   margin: 30px 0 0;
   color: var(--ndi-text-secondary);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   line-height: 1.35;
   flex-shrink: 0;
 }
 
 .ndi-download-copy a {
   color: var(--ndi-primary);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .ndi-store-badges {
@@ -301,8 +302,8 @@
 .ndi-support > p {
   margin: 0 0 10px;
   color: var(--ndi-primary);
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .ndi-support > div {
