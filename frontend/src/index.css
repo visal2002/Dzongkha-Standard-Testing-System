@@ -145,20 +145,36 @@
   color: var(--ndi-primary);
 }
 
+/* The deep-link button + OR separator only appear on small screens (see the
+   max-width: 640px block); on the web layout this whole lead block is hidden. */
+.ndi-mobile-lead {
+  display: none;
+}
+
+.ndi-title-mobile {
+  display: none;
+}
+
 .ndi-open-wallet {
-  margin: -16px 0 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 34px;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
   border-radius: 999px;
   background: var(--ndi-primary);
-  padding: 0 14px;
+  padding: 0 18px;
   color: #ffffff;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
-  flex-shrink: 0;
+  text-decoration: none;
+  transition: opacity .15s ease, transform .15s ease;
+}
+
+.ndi-open-wallet:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
 }
 
 .ndi-scanner-qr-frame {
@@ -275,7 +291,7 @@
 }
 
 .ndi-support {
-  margin-top: 12px;
+  margin-top: 28px;
   flex-shrink: 0;
 }
 
@@ -334,6 +350,8 @@
   font-style: normal;
   font-size: 12px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .ndi-secondary-action {
@@ -381,16 +399,34 @@
   }
 
   .ndi-scanner-title {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     font-size: 16px;
   }
 
+  /* Phone layout: swap the heading wording and reveal the deep-link + OR lead. */
+  .ndi-title-web {
+    display: none;
+  }
+
+  .ndi-title-mobile {
+    display: inline;
+  }
+
+  .ndi-mobile-lead {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 6px;
+  }
+
   .ndi-open-wallet {
-    margin-top: -12px;
-    margin-bottom: 8px;
-    min-height: 32px;
-    font-size: 10px;
-    padding: 0 12px;
+    min-height: 42px;
+    font-size: 12px;
+  }
+
+  .ndi-mobile-lead .ndi-scanner-divider {
+    margin: 12px 0 4px;
   }
 
   .ndi-scanner-qr-frame {
@@ -441,7 +477,7 @@
   }
 
   .ndi-support {
-    margin-top: 10px;
+    margin-top: 22px;
   }
 
   .ndi-support > p {
