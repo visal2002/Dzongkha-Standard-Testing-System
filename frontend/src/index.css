@@ -440,9 +440,9 @@
   }
 
   .ndi-scanner-instructions {
-    margin-top: 14px;
+    margin-top: 24px;
     padding: 0 16px;
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .ndi-scanner-instructions p {
@@ -454,22 +454,23 @@
   }
 
   .ndi-video-guide {
-    margin-top: 12px;
-    min-height: 34px;
-    padding: 0 10px 0 12px;
-    font-size: 11px;
+    margin-top: 24px;
+    min-width: 200px;
+    min-height: 40px;
+    padding: 0 14px 0 18px;
+    font-size: 14px;
     gap: 8px;
   }
 
   .ndi-video-guide__icon {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
   }
 
   .ndi-download-copy {
-    margin-top: 12px;
-    margin-bottom: 8px;
-    font-size: 11px;
+    margin-top: 24px;
+    margin-bottom: 0;
+    font-size: 14px;
   }
 
   .ndi-store-badges {
