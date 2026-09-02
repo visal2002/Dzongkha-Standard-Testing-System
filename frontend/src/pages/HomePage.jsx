@@ -96,7 +96,7 @@ export default function HomePage() {
                   className="h-14 px-8 text-[17px] text-white font-medium rounded-xl transition-all flex items-center gap-3 shadow-lg hover:opacity-90"
                   style={{ backgroundColor: '#124143' }}
                 >
-                  <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="h-7 w-7 object-contain" /> {t('home.cta_ndi')}
+                  <img src="/images/NDI/ButtonNDILogo.svg" alt="NDI" className="h-8 w-8 object-contain" /> {t('home.cta_ndi')}
                 </Link>
               </div>
             </motion.div>

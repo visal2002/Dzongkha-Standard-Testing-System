@@ -25,7 +25,7 @@ const NDI_ASSETS = {
   playButton:  '/images/NDI/PlayButton.svg',
   mailIcon:    '/images/NDI/Mail.svg',
   callIcon:    '/images/NDI/Call.svg',
-  centerLogo:  '/images/NDI Bhutan Logo.ico',
+  centerLogo:  '/images/NDI/ButtonNDILogo.svg',
 };
 
 // ─── NDI Sub-components ───────────────────────────────────────────────────────
@@ -603,7 +603,7 @@ export default function LoginPage() {
                       {isNdiLoading ? (
                         <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
                       ) : (
-                        <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="h-7 w-7 object-contain" />
+                        <img src="/images/NDI/ButtonNDILogo.svg" alt="NDI" className="h-7 w-7 object-contain" />
                       )}
                       <span className="tracking-wide font-medium">{t('auth.ndi_login_btn')}</span>
                     </button>
@@ -710,7 +710,7 @@ export default function LoginPage() {
                         className="h-14 px-6 rounded-full text-white font-semibold flex items-center justify-center gap-2.5 shadow-md hover:opacity-90 transition-opacity"
                         style={{ backgroundColor: '#124143' }}
                       >
-                        <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="h-6 w-6 object-contain" />
+                        <img src="/images/NDI/ButtonNDILogo.svg" alt="NDI" className="h-6 w-6 object-contain" />
                         <span>{t('auth.register_with_ndi')}</span>
                       </button>
 
@@ -745,7 +745,7 @@ export default function LoginPage() {
                           onClick={() => navigate('/ndi-register')}
                           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#299d7b] hover:text-[#218366] bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full transition-colors"
                         >
-                          <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="w-4 h-4 object-contain" />
+                          <img src="/images/NDI/ButtonNDILogo.svg" alt="NDI" className="w-4 h-4 object-contain" />
                           {t('auth.register_with_ndi_short')}
                         </button>
                       </div>
