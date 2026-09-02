@@ -403,8 +403,8 @@
   }
 
   .ndi-scanner-title {
-    margin-bottom: 12px;
-    font-size: 16px;
+    margin-bottom: 20px;
+    font-size: 17px;
   }
 
   /* Phone layout: swap the heading wording and reveal the deep-link + OR lead. */
@@ -482,20 +482,20 @@
   }
 
   .ndi-support {
-    margin-top: 22px;
+    margin-top: 24px;
   }
 
   .ndi-support > p {
-    margin-bottom: 8px;
-    font-size: 11px;
+    margin-bottom: 10px;
+    font-size: 15px;
   }
 
   .ndi-support > div {
-    gap: 12px;
+    gap: 16px;
   }
 
   .ndi-support a {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .ndi-support img {
