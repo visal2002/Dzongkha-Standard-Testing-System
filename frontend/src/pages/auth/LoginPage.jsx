@@ -1038,6 +1038,7 @@ export function NdiLoginPage() {
       </button>
       <NdiScannerPanel
         qrUrl={ndiLogin?.proofRequestUrl}
+        deepLinkUrl={ndiLogin?.deepLinkUrl}
         isLoading={isNdiLoading}
         error={ndiErrorMessage}
         status={ndiLoginStatus}
@@ -1134,6 +1135,7 @@ export function NdiRegistrationPage() {
       </button>
       <NdiScannerPanel
         qrUrl={ndiRegistration?.proofRequestUrl}
+        deepLinkUrl={ndiRegistration?.deepLinkUrl}
         isLoading={isNdiLoading}
         error={ndiErrorMessage}
         status={ndiRegistrationStatus}
