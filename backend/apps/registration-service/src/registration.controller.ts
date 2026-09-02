@@ -8,7 +8,7 @@ import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Req } from '
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions, Public } from '@dzongjuk/security';
-import { CancelBirmsPaymentDto, CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto, UpdateExamStatusDto } from './dtos';
+import { CancelBirmsPaymentDto, CreateExamDto, LookupCitizenDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto, UpdateExamStatusDto } from './dtos';
 import { RegistrationService } from './registration.service';
 import { BirmsPaymentService } from './birms-payment.service';
 
@@ -36,6 +36,8 @@ export class ApplicationsController {
   }
 
   @Permissions('registration.application.submit') @Get('my') my(@Req() req: Request) { return this.service.listMine(req.user!.sub); }
+  @Public() @Post('citizen-lookup')
+  lookupCitizen(@Body() dto: LookupCitizenDto, @Req() req: Request) { return this.service.lookupCitizen(dto.cid, req.user?.sub, req.id); }
   @Permissions('registration.application.verify') @Get() list(@Query('examId') examId?: string) { return this.service.listApplications(examId); }
   @Get(':id') get(@Param('id') id: string, @Req() req: Request) {
     const elevated = req.user!.permissions.includes('*') || req.user!.permissions.includes('registration.application.verify');

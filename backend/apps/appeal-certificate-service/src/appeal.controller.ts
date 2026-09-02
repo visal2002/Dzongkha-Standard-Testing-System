@@ -9,13 +9,14 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions, Public } from '@dzongjuk/security';
 import { AppealService } from './appeal.service';
+import { AppealBirmsService } from './appeal-birms.service';
 import { ChiefDecisionDto, CommitteeReviewDto, ConfirmAppealPaymentDto, CreateAppealDto, CreateFeeRuleDto } from './dtos';
 
 @ApiBearerAuth()
 @ApiTags('Appeals')
 @Controller('appeals')
 export class AppealsController {
-  constructor(private readonly appeals: AppealService) {}
+  constructor(private readonly appeals: AppealService, private readonly birms: AppealBirmsService) {}
 
   @Permissions('appeal.submit') @Post()
   submit(@Body() dto: CreateAppealDto, @Req() request: Request, @Headers('authorization') authorization: string | undefined, @Headers('idempotency-key') key: string) {
@@ -24,6 +25,14 @@ export class AppealsController {
 
   @Permissions('appeal.submit') @Get('my') my(@Req() request: Request) { return this.appeals.listMine(request.user!); }
   @Get() list(@Req() request: Request) { return this.appeals.listAll(request.user!); }
+  @Permissions('appeal.submit') @Post(':id/payment-advice')
+  paymentAdvice(@Param('id') id: string, @Req() request: Request) { return this.birms.createAdvice(id, request.user!.sub, request.id); }
+  @Permissions('appeal.submit') @Post(':id/payment-refresh')
+  paymentRefresh(@Param('id') id: string, @Req() request: Request) { return this.birms.refresh(id, request.user!.sub, request.id); }
+  @Permissions('appeal.submit') @Get(':id/payment-receipt')
+  paymentReceipt(@Param('id') id: string, @Req() request: Request) { return this.birms.receipt(id, request.user!.sub); }
+  @Public() @Post('payments/birms/callback')
+  birmsCallback(@Body() payload: Record<string, unknown>, @Req() request: Request) { return this.birms.receiveCallback(payload, request.id); }
   @Get(':id') get(@Param('id') id: string, @Req() request: Request) { return this.appeals.getOne(id, request.user!); }
   @Get(':id/history') history(@Param('id') id: string, @Req() request: Request) { return this.appeals.getHistory(id, request.user!); }
 

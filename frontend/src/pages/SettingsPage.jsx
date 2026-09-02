@@ -12,6 +12,7 @@ import { Sun, Moon, Globe, Bell, BellOff, LogOut, ChevronRight, Palette, Mail, P
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 
 function SettingRow({ icon: Icon, label, description, children, onClick }) {
@@ -60,6 +61,7 @@ const LANGUAGES = [
 ];
 
 export default function SettingsPage() {
+  const { i18n } = useTranslation();
   const { theme, toggleTheme, isDark } = useTheme();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -96,8 +98,7 @@ export default function SettingsPage() {
     localStorage.setItem('system_contact_info', JSON.stringify(payload));
     toast.success('System contact information saved.');
   };
-  // Language (UI only — i18n integration)
-  const [language, setLanguage] = useState('en');
+  const language = i18n.resolvedLanguage?.startsWith('dz') ? 'dz' : 'en';
 
   const handleLogout = async () => {
     await logout();
@@ -106,7 +107,7 @@ export default function SettingsPage() {
   };
 
   const handleLanguageChange = (code) => {
-    setLanguage(code);
+    i18n.changeLanguage(code);
     toast(`Language set to ${LANGUAGES.find(l => l.code === code)?.label}`, { icon: '🌐' });
   };
 

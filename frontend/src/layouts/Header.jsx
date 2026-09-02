@@ -6,6 +6,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   PanelLeft, Bell, Sun, Moon, Search, ChevronDown, LogOut,
@@ -15,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import Badge from '@/components/ui/Badge';
+import LanguageToggle from '@/components/ui/LanguageToggle';
 
 const ROLE_SWITCHER = [
   { email: 'system.admin@demo.com', label: 'System Admin' },
@@ -27,6 +29,7 @@ const ROLE_SWITCHER = [
 ];
 
 function NotificationPanel({ notifications: items = [], onClose }) {
+  const { t } = useTranslation();
   const unread = items.filter(n => !n.read);
 
   return (
@@ -38,12 +41,12 @@ function NotificationPanel({ notifications: items = [], onClose }) {
       className="absolute right-0 top-full mt-2 w-[min(calc(100vw-1.5rem),20rem)] bg-surface-card border border-surface-border rounded-xl shadow-2xl shadow-black/30 z-50"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">
-        <p className="text-sm font-semibold text-text-primary">Notifications</p>
-        {unread.length > 0 && <Badge variant="gold" size="sm">{unread.length} new</Badge>}
+        <p className="text-sm font-semibold text-text-primary">{t('header.notifications')}</p>
+        {unread.length > 0 && <Badge variant="gold" size="sm">{t('header.new_notifications', { count: unread.length })}</Badge>}
       </div>
       <div className="max-h-72 overflow-y-auto">
         {items.length === 0 ? (
-          <div className="px-4 py-8 text-center text-xs text-text-muted">No notifications</div>
+          <div className="px-4 py-8 text-center text-xs text-text-muted">{t('header.no_notifications')}</div>
         ) : items.map(n => (
           <div key={n.id} className={`px-4 py-3 border-b border-surface-border/50 flex gap-3 ${!n.read ? 'bg-brand-gold/5' : ''}`}>
             <div className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${!n.read ? 'bg-brand-gold' : 'bg-surface-border'}`} />
@@ -56,7 +59,7 @@ function NotificationPanel({ notifications: items = [], onClose }) {
       </div>
       <div className="px-4 py-2">
         <button className="text-xs text-brand-gold hover:text-brand-gold-light transition-colors" onClick={onClose}>
-          View all notifications →
+          {t('header.view_all_notifications')} →
         </button>
       </div>
     </motion.div>
@@ -64,6 +67,7 @@ function NotificationPanel({ notifications: items = [], onClose }) {
 }
 
 function UserMenu({ onClose }) {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -103,13 +107,13 @@ function UserMenu({ onClose }) {
           onClick={() => { navigate('/profile'); onClose(); }}
           className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:bg-surface-border/60 transition-colors"
         >
-          <User size={14} /> Profile
+          <User size={14} /> {t('header.profile')}
         </button>
         <button
           onClick={() => { navigate('/settings'); onClose(); }}
           className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:bg-surface-border/60 transition-colors"
         >
-          <Settings size={14} /> Settings
+          <Settings size={14} /> {t('header.settings')}
         </button>
       </div>
       <div className="border-t border-surface-border py-1.5">
@@ -117,7 +121,7 @@ function UserMenu({ onClose }) {
           onClick={handleLogout}
           className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
         >
-          <LogOut size={14} /> Sign out
+          <LogOut size={14} /> {t('header.sign_out')}
         </button>
       </div>
     </motion.div>
@@ -125,6 +129,7 @@ function UserMenu({ onClose }) {
 }
 
 export default function Header({ collapsed, setCollapsed, isDesktop, onOpenMobileSidebar }) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { notifications: userNotifs, unreadCount } = useNotifications();
@@ -169,8 +174,8 @@ export default function Header({ collapsed, setCollapsed, isDesktop, onOpenMobil
         <div className="flex items-center gap-2 h-8 px-3 bg-surface-bg border border-surface-border rounded-lg">
           <Search size={13} className="text-text-muted shrink-0" />
           <input
-            aria-label="Search applicants, certificates, exams"
-            placeholder="Search applicants, certificates, exams..."
+            aria-label={t('header.search')}
+            placeholder={t('header.search')}
             className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-muted outline-none"
           />
           <kbd className="text-[10px] text-text-muted bg-surface-border px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
@@ -205,6 +210,9 @@ export default function Header({ collapsed, setCollapsed, isDesktop, onOpenMobil
             {showNotifs && <NotificationPanel notifications={userNotifs.slice(0, 6)} onClose={() => setShowNotifs(false)} />}
           </AnimatePresence>
         </div>
+
+        {/* Interface language */}
+        <LanguageToggle />
 
         {/* User */}
         <div className="relative">

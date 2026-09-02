@@ -9,6 +9,19 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { createServiceInfoController, databaseOptions, PlatformModule } from '@dzongjuk/common';
 import { SecurityModule } from '@dzongjuk/security';
+import { DcrcController } from './dcrc.controller';
+import { DcrcLookupAuditEntity } from './dcrc.entity';
+import { DcrcService } from './dcrc.service';
 const InfoController = createServiceInfoController('integration-service', ['ndi-adapter', 'dcrc-adapter', 'payment-adapter', 'sms-adapter', 'email-adapter', 'retry-and-reconciliation']);
-@Module({ imports: [ConfigModule.forRoot({ isGlobal: true }), TypeOrmModule.forRootAsync({ inject: [ConfigService], useFactory: (c: ConfigService) => databaseOptions(c, 'integration') }), SecurityModule, PlatformModule], controllers: [InfoController] })
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({ inject: [ConfigService], useFactory: (c: ConfigService) => databaseOptions(c, 'integration') }),
+    TypeOrmModule.forFeature([DcrcLookupAuditEntity]),
+    SecurityModule,
+    PlatformModule,
+  ],
+  controllers: [InfoController, DcrcController],
+  providers: [DcrcService],
+})
 export class AppModule {}

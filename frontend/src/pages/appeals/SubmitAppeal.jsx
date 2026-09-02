@@ -77,7 +77,7 @@ export default function SubmitAppeal() {
         skills: selectedSkills,
         reason,
       });
-      toast.success('Appeal submitted. Payment confirmation is pending.');
+      toast.success('Appeal submitted. Continue the payment through BIRMS from Appeals.');
       navigate('/appeals');
     } catch (requestError) {
       toast.error(requestError.message || 'Unable to submit appeal.');
@@ -117,8 +117,8 @@ export default function SubmitAppeal() {
         icon={<Scale size={18} />}
       />
 
-      <Alert variant="info" title="Payment provider pending">
-        Submission creates a payment-pending appeal. It reaches the Examination Committee only after the configured payment integration confirms the exact fee.
+      <Alert variant="info" title="Payment through BIRMS">
+        Submission creates a payment-pending appeal. Open the submitted appeal and pay securely through BIRMS before it is released to the Examination Committee.
       </Alert>
 
       <div className="flex items-center gap-2">

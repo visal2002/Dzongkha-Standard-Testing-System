@@ -73,18 +73,12 @@ export default function ViewScores() {
       header: 'Application',
       cell: info => <span className="font-mono text-xs font-medium text-brand-gold">{info.getValue()}</span>,
     }),
-    columnHelper.accessor('writing', { header: 'Writing', cell: info => <ScoreCell value={info.getValue()} /> }),
-    columnHelper.accessor('reading', { header: 'Reading', cell: info => <ScoreCell value={info.getValue()} /> }),
-    columnHelper.accessor('listening', { header: 'Listening', cell: info => <ScoreCell value={info.getValue()} /> }),
-    columnHelper.accessor('speaking', { header: 'Speaking', cell: info => <ScoreCell value={info.getValue()} /> }),
-    columnHelper.accessor('overall', { header: 'Overall', cell: info => <ScoreCell value={info.getValue()} /> }),
-    columnHelper.accessor('cefrLevel', {
-      header: 'Level',
-      cell: info => {
-        const row = info.row.original;
-        return <span className="text-xs font-semibold text-text-primary">{info.getValue()} / {row.bandLabel}</span>;
-      },
-    }),
+    columnHelper.accessor('writing', { header: 'Writing Total', cell: info => <ScoreCell value={info.getValue()} /> }),
+    columnHelper.accessor('reading', { header: 'Reading Total', cell: info => <ScoreCell value={info.getValue()} /> }),
+    columnHelper.accessor('listening', { header: 'Listening Total', cell: info => <ScoreCell value={info.getValue()} /> }),
+    columnHelper.accessor('speaking', { header: 'Speaking Total', cell: info => <ScoreCell value={info.getValue()} /> }),
+    columnHelper.accessor('overall', { header: 'Overall Standard', cell: info => <ScoreCell value={info.getValue()} /> }),
+    columnHelper.accessor('bandLabel', { header: 'DSTS Standard', cell: info => <span className="text-xs font-semibold text-text-primary">{info.getValue()}</span> }),
     columnHelper.accessor('status', { header: 'Status', cell: info => <StatusBadge status={info.getValue()} /> }),
     columnHelper.accessor('publishedAt', {
       header: 'Published',
@@ -103,7 +97,7 @@ export default function ViewScores() {
 
       <div className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-text-secondary">
         <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-400" />
-        <p>Scores and labels are displayed exactly as calculated by the backend's active approved rule. The official DSTS scoring formula and band mapping still require written confirmation.</p>
+        <p>Each skill total is converted using the approved DSTS Total Score to Standard 1–10 table. The overall standard is the average of the four converted skill standards.</p>
       </div>
 
       {error && (

@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import { CheckCircle, Eye, Scale, XCircle } from 'lucide-react';
+import { CheckCircle, Download, ExternalLink, Eye, RefreshCw, Scale, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/Table';
@@ -28,6 +28,10 @@ const normalizeAppeal = appeal => ({
   paymentAmount: appeal.payment?.amount || '0.00',
   paymentCurrency: appeal.payment?.currency || 'BTN',
   paymentStatus: appeal.payment?.status || 'UNKNOWN',
+  paymentReference: appeal.payment?.providerReference || null,
+  paymentAdviceNo: appeal.payment?.paymentAdviceNo || null,
+  paymentRedirectUrl: appeal.payment?.paymentRedirectUrl || null,
+  paymentReceiptNo: appeal.payment?.paymentReceiptNo || null,
 });
 
 export default function AppealList() {
@@ -37,6 +41,7 @@ export default function AppealList() {
   const [remarks, setRemarks] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [paymentBusy, setPaymentBusy] = useState(false);
   const isChief = user?.role === 'chief_executive';
   const isCommittee = user?.role === 'committee_head';
 
@@ -80,6 +85,49 @@ export default function AppealList() {
     } catch (requestError) {
       toast.error(requestError.message || 'Unable to complete committee review.');
     }
+  };
+
+  const continuePayment = async appeal => {
+    setPaymentBusy(true);
+    try {
+      const payment = appeal.paymentRedirectUrl
+        ? { redirectUrl: appeal.paymentRedirectUrl }
+        : await appealService.createPaymentAdvice(appeal.id);
+      if (!payment.redirectUrl) throw new Error('BIRMS did not provide a payment page.');
+      window.location.assign(payment.redirectUrl);
+    } catch (requestError) {
+      toast.error(requestError.message || 'Unable to start the BIRMS appeal payment.');
+      setPaymentBusy(false);
+    }
+  };
+
+  const refreshPayment = async appeal => {
+    setPaymentBusy(true);
+    try {
+      const payment = await appealService.refreshPayment(appeal.id);
+      toast.success(`Payment status: ${String(payment.status).replace(/_/g, ' ')}`);
+      await load();
+      setSelected(null);
+    } catch (requestError) {
+      toast.error(requestError.message || 'Unable to check the BIRMS payment status.');
+    } finally { setPaymentBusy(false); }
+  };
+
+  const downloadReceipt = async appeal => {
+    setPaymentBusy(true);
+    try {
+      const receipt = await appealService.getPaymentReceipt(appeal.id);
+      if (!receipt.base64Pdf) throw new Error('BIRMS did not return a receipt file.');
+      const bytes = Uint8Array.from(atob(receipt.base64Pdf.replace(/\s/g, '')), character => character.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${receipt.receiptNumber || 'BIRMS-appeal-receipt'}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (requestError) {
+      toast.error(requestError.message || 'Unable to download the BIRMS receipt.');
+    } finally { setPaymentBusy(false); }
   };
 
   const columns = [
@@ -141,6 +189,30 @@ export default function AppealList() {
               ].map(([label, value]) => <div key={label}><p className="text-text-muted mb-0.5">{label}</p><p className="font-medium text-text-primary break-all">{value}</p></div>)}
             </div>
             <div className="p-3 bg-surface-bg rounded-xl border border-surface-border"><p className="text-xs text-text-muted mb-1">Reason for Appeal</p><p className="text-sm text-text-primary">{selected.reason}</p></div>
+            {user?.role === 'test_taker' && (
+              <div className="rounded-xl border border-brand-gold/20 bg-brand-gold/5 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-text-primary">Payment through BIRMS</p>
+                    <p className="mt-0.5 text-[11px] text-text-muted">Re-evaluation/Appeal for recheck of Exam Paper</p>
+                    {selected.paymentAdviceNo && <p className="mt-1 text-[10px] text-text-muted">Payment advice: {selected.paymentAdviceNo}</p>}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {['INITIATED', 'FAILED'].includes(selected.paymentStatus) && (
+                      <Button size="xs" loading={paymentBusy} icon={<ExternalLink size={12} />} onClick={() => continuePayment(selected)}>
+                        {selected.paymentRedirectUrl ? 'Continue Payment' : 'Pay via BIRMS'}
+                      </Button>
+                    )}
+                    {selected.paymentReference && selected.paymentStatus !== 'PAID' && (
+                      <Button size="xs" variant="outline" disabled={paymentBusy} icon={<RefreshCw size={12} />} onClick={() => refreshPayment(selected)}>Check Status</Button>
+                    )}
+                    {selected.paymentStatus === 'PAID' && selected.paymentReceiptNo && (
+                      <Button size="xs" variant="outline" disabled={paymentBusy} icon={<Download size={12} />} onClick={() => downloadReceipt(selected)}>Receipt</Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             <div>
               <p className="text-xs font-semibold text-text-muted uppercase mb-2">Selected-skill score snapshot</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

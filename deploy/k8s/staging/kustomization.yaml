@@ -20,6 +20,10 @@ configMapGenerator:
       - 0009_registration_payments.sql=../../../backend/database/migrations/0009_registration_payments.sql
       - 0010_staging_workflow_baseline.sql=../../../backend/database/migrations/0010_staging_workflow_baseline.sql
       - 0011_birms_registration_payments.sql=../../../backend/database/migrations/0011_birms_registration_payments.sql
+      - 0012_dsts_score_standard.sql=../../../backend/database/migrations/0012_dsts_score_standard.sql
+      - 0013_dcrc_integration.sql=../../../backend/database/migrations/0013_dcrc_integration.sql
+      - 0014_birms_appeal_payments.sql=../../../backend/database/migrations/0014_birms_appeal_payments.sql
+      - 0015_master_configuration.sql=../../../backend/database/migrations/0015_master_configuration.sql
   - name: api-gateway-config
     files:
       - nginx.conf=api-gateway.conf

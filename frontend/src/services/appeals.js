@@ -64,6 +64,21 @@ export const appealService = {
     return data;
   },
 
+  createPaymentAdvice: async id => {
+    const { data } = await apiClient.post(`/appeals/${id}/payment-advice`);
+    return data?.data ?? data;
+  },
+
+  refreshPayment: async id => {
+    const { data } = await apiClient.post(`/appeals/${id}/payment-refresh`);
+    return data?.data ?? data;
+  },
+
+  getPaymentReceipt: async id => {
+    const { data } = await apiClient.get(`/appeals/${id}/payment-receipt`);
+    return data?.data ?? data;
+  },
+
   /**
    * Committee submits revised scores for an appeal.
    * @param {string} id

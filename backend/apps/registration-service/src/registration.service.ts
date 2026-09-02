@@ -12,6 +12,7 @@ import { ApplicationStatus, DomainEventTypes, ExamStatus } from '@dzongjuk/contr
 import { assertInternalService, DomainException } from '@dzongjuk/common';
 import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto } from './dtos';
 import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEntity, IdempotencyRecordEntity, OutboxEventEntity, RegistrationPaymentStatus, WaitlistEntryEntity } from './entities';
+import { DcrcClientService } from './dcrc-client.service';
 
 @Injectable()
 export class RegistrationService {
@@ -21,6 +22,7 @@ export class RegistrationService {
     @InjectRepository(ExamEntity) private readonly exams: Repository<ExamEntity>,
     @InjectRepository(ApplicationEntity) private readonly applications: Repository<ApplicationEntity>,
     @InjectRepository(ApplicationHistoryEntity) private readonly history: Repository<ApplicationHistoryEntity>,
+    private readonly dcrc: DcrcClientService,
   ) {}
 
   async listExams() {
@@ -184,6 +186,10 @@ export class RegistrationService {
     return application;
   }
 
+  lookupCitizen(cid: string, userId: string | undefined, requestId: string) {
+    return this.dcrc.lookup(cid, userId, requestId);
+  }
+
   async cancel(id: string, userId: string, requestId: string) {
     return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
       const application = await manager.findOne(ApplicationEntity, { where: { id }, lock: { mode: 'pessimistic_write' } });
@@ -218,9 +224,19 @@ export class RegistrationService {
   }
 
   async verify(id: string, actorId: string, requestId: string) {
+    const candidate = await this.applications.findOneBy({ id });
+    if (!candidate) throw new DomainException('APPLICATION_NOT_FOUND', 'Application not found.', 404);
+    if (candidate.status !== ApplicationStatus.UnderReview) {
+      throw new DomainException('APPLICATION_TRANSITION_INVALID', `Cannot change application from ${candidate.status} to ${ApplicationStatus.Verified}.`, 409);
+    }
+    const dcrc = this.dcrc.isRequired() ? await this.dcrc.verify(candidate, actorId, requestId) : null;
     return this.transition(id, [ApplicationStatus.UnderReview], ApplicationStatus.Verified, actorId, requestId, null, (application) => {
       application.verifiedAt = new Date();
       application.registrationNumber = `DSTS-${new Date().getUTCFullYear()}-${application.id.slice(0, 8).toUpperCase()}`;
+      if (dcrc) {
+        application.dcrcLookupId = dcrc.lookupId;
+        application.dcrcVerifiedAt = new Date();
+      }
     }, DomainEventTypes.ApplicationVerified);
   }
 
@@ -280,7 +296,18 @@ export class RegistrationService {
     return {
       applicationId: application.id, examId: application.examId, testTakerUserId: application.testTakerUserId,
       registrationNumber: application.registrationNumber, fullName: fullName.trim(),
+      cid: this.profileText(application.profileSnapshot, ['cid']) || application.identityKey,
+      email: this.profileText(application.profileSnapshot, ['email']),
+      phone: this.profileText(application.profileSnapshot, ['phone', 'contactNo', 'mobileNo']),
     };
+  }
+
+  private profileText(profile: Record<string, unknown>, keys: string[]) {
+    for (const key of keys) {
+      const candidate = profile[key];
+      if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+    }
+    return '';
   }
 
   private async transition(id: string, allowed: ApplicationStatus[], target: ApplicationStatus, actorId: string, requestId: string, remarks: string | null, mutate?: (application: ApplicationEntity) => void, eventType?: string) {

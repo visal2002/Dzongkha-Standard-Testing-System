@@ -6,6 +6,7 @@
 
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Upload, X, CheckCircle, Lock } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
@@ -19,6 +20,7 @@ import toast from 'react-hot-toast';
 const SKILLS = ['Writing', 'Reading', 'Listening', 'Speaking'];
 
 export default function UploadQuestionPaper() {
+  const { t } = useTranslation();
   const { data: examWindowsData, loading: loadingExams } = useApi(examService.getAll);
   const examWindows = examWindowsData || [];
 
@@ -97,7 +99,7 @@ export default function UploadQuestionPaper() {
             <Upload size={18} className="text-text-muted" />
           </div>
           <p className="text-sm font-medium text-text-primary mb-0.5">{label}</p>
-          <p className="text-xs text-text-muted">Drag & drop or click to browse · PDF only · Max 50MB</p>
+          <p className="text-xs text-text-muted">{t('question_upload.drop_hint')}</p>
         </div>
       )}
     </div>
@@ -106,29 +108,29 @@ export default function UploadQuestionPaper() {
   return (
     <div className="space-y-6 max-w-2xl">
       <PageHeader
-        title="Upload Question Paper"
-        subtitle="Upload and encrypt examination question papers and answer sheets"
-        breadcrumbs={[{ label: 'Question Papers', href: '/questions' }, { label: 'Upload' }]}
+        title={t('question_upload.title')}
+        subtitle={t('question_upload.subtitle')}
+        breadcrumbs={[{ label: t('nav.question_papers'), href: '/questions' }, { label: t('question_upload.upload') }]}
         icon={<Upload size={18} />}
       />
 
-      <Alert variant="warning" title="Classified Upload">
-        Question papers are automatically encrypted upon upload. Access is strictly controlled and logged for audit purposes.
+      <Alert variant="warning" title={t('question_upload.classified_title')}>
+        {t('question_upload.classified_description')}
       </Alert>
 
       <form onSubmit={handleSubmit} className="space-y-5 bg-surface-card border border-surface-border rounded-2xl p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="col-span-1 sm:col-span-2">
             <Input
-              label="Document Title"
-              placeholder="e.g. DSTS Writing Test — July 2026"
+              label={t('question_upload.document_title')}
+              placeholder={t('question_upload.document_placeholder')}
               required
               value={form.title}
               onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
             />
           </div>
           <Select
-            label="Examination Window"
+            label={t('question_upload.exam_window')}
             required
             value={form.examId}
             onChange={e => {
@@ -145,57 +147,57 @@ export default function UploadQuestionPaper() {
             }}
             disabled={loadingExams}
           >
-            <option value="">{loadingExams ? 'Loading exams...' : 'Select exam window'}</option>
+            <option value="">{loadingExams ? t('question_upload.loading_exams') : t('question_upload.select_exam')}</option>
             {examWindows.map(ew => <option key={ew.id} value={ew.id}>{ew.title}</option>)}
           </Select>
           <Select
-            label="Skill Area"
+            label={t('question_upload.skill_area')}
             required
             value={form.skill}
             onChange={e => setForm(p => ({ ...p, skill: e.target.value }))}
           >
-            <option value="">Select skill</option>
-            {SKILLS.map(s => <option key={s} value={s}>{s}</option>)}
+            <option value="">{t('question_upload.select_skill')}</option>
+            {SKILLS.map(s => <option key={s} value={s}>{t(`question_upload.${s.toLowerCase()}`)}</option>)}
           </Select>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             type="datetime-local"
-            label="Secure Access Opens"
+            label={t('question_upload.access_opens')}
             required
             value={form.accessAllowedFrom}
             onChange={e => setForm(p => ({ ...p, accessAllowedFrom: e.target.value }))}
-            hint="Authorised examiners can download from this time."
+            hint={t('question_upload.access_opens_hint')}
           />
           <Input
             type="datetime-local"
-            label="Secure Access Closes"
+            label={t('question_upload.access_closes')}
             required
             value={form.accessAllowedUntil}
             min={form.accessAllowedFrom || undefined}
             onChange={e => setForm(p => ({ ...p, accessAllowedUntil: e.target.value }))}
-            hint="Downloads are blocked after this time."
+            hint={t('question_upload.access_closes_hint')}
           />
         </div>
 
         <div className="space-y-3">
-          <DropZone field="paper" label="Question Paper (required)" fileRef={paperRef} />
-          <DropZone field="answerSheet" label="Answer Sheet (optional)" fileRef={answerRef} />
+          <DropZone field="paper" label={t('question_upload.question_paper')} fileRef={paperRef} />
+          <DropZone field="answerSheet" label={t('question_upload.answer_sheet')} fileRef={answerRef} />
         </div>
 
         <div className="p-3 bg-surface-bg rounded-xl border border-surface-border flex items-start gap-2">
           <Lock size={13} className="text-amber-400 mt-0.5 shrink-0" />
           <div className="text-xs text-text-muted">
-            <p className="font-medium text-amber-400">Encryption Notice</p>
-            <p>Files will be encrypted with AES-256 before storage. Only you can access them during the examination window. After results are declared, papers will be published in Sample Papers.</p>
+            <p className="font-medium text-amber-400">{t('question_upload.encryption_title')}</p>
+            <p>{t('question_upload.encryption_description')}</p>
           </div>
         </div>
 
         <div className="flex gap-3 pt-2">
-          <Button variant="ghost" type="button" onClick={() => navigate('/questions')}>Cancel</Button>
+          <Button variant="ghost" type="button" onClick={() => navigate('/questions')}>{t('common.cancel')}</Button>
           <Button type="submit" loading={isSubmitting} icon={<Upload size={13} />}>
-            Upload & Encrypt
+            {t('question_upload.upload_encrypt')}
           </Button>
         </div>
       </form>

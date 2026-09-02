@@ -28,8 +28,8 @@ export default function MasterConfiguration() {
     try {
       await masterService.updateConfig(effectiveConfig);
       toast.success('Master configuration saved successfully');
-    } catch {
-      toast.error('Failed to save configuration');
+    } catch (requestError) {
+      toast.error(requestError?.message || 'Failed to save configuration');
     } finally {
       setSaving(false);
     }
@@ -128,12 +128,12 @@ export default function MasterConfiguration() {
           <TabPanel value="scoring">
             <div className="bg-surface-card border border-surface-border rounded-xl p-5 space-y-5">
               <div className="grid grid-cols-3 gap-5">
-                <Input label="Max Band Score" type="number" value={effectiveConfig?.maxBandScore ?? ''} readOnly hint="Fixed at 9.0 per CEFR" />
-                <Input label="Min Band Score" type="number" value={effectiveConfig?.minBandScore ?? ''} readOnly />
+                <Input label="Maximum Total Score" type="number" value={effectiveConfig?.maxBandScore ?? ''} readOnly hint="Fixed at 50 by the DSTS standard" />
+                <Input label="Minimum Total Score" type="number" value={effectiveConfig?.minBandScore ?? ''} readOnly />
                 <Input label="Score Step" type="number" value={effectiveConfig?.bandScoreStep ?? ''} step="0.5" hint="0.5 increment" readOnly />
               </div>
               <div>
-                <p className="text-sm font-semibold text-text-primary mb-3">CEFR Band Levels</p>
+                <p className="text-sm font-semibold text-text-primary mb-3">DSTS Total Score Conversion</p>
                 <div className="space-y-2">
                   {(effectiveConfig?.bandLevels || []).map(bl => (
                     <div key={bl.level} className="flex items-center gap-4 p-3 bg-surface-bg rounded-xl border border-surface-border">

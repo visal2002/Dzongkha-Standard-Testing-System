@@ -499,6 +499,25 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Tibetan-script glyphs need more vertical space than Latin text at the same
+   nominal size. Scale the Dzongkha interface and prefer locally available
+   Tibetan fonts without affecting the English layout. */
+html[lang='dz'] {
+  font-size: 22px;
+}
+
+html[lang='dz'] body {
+  font-family: 'Microsoft Himalaya', 'Noto Sans Tibetan', 'Jomolhari', sans-serif;
+  font-weight: 500;
+  line-height: 1.65;
+}
+
+@media (max-width: 640px) {
+  html[lang='dz'] {
+    font-size: 20px;
+  }
+}
+
 body {
   margin: 0;
   background-color: var(--color-surface-bg);

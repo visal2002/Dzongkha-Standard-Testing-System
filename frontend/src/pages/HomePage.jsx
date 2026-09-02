@@ -103,7 +103,7 @@ export default function HomePage() {
         >
           {[
             { icon: Monitor, title: 'Online Registration', desc: 'Apply for DSTS examinations online with secure document submission' },
-            { icon: Award, title: 'Digital Certificates', desc: 'Secure, QR-verified certificates with official CEFR band scores' },
+            { icon: Award, title: 'Digital Certificates', desc: 'Secure, QR-verified certificates with official DSTS Standard scores' },
             { icon: ShieldCheck, title: 'Secure & Transparent', desc: 'Role-based access, comprehensive audit trails, and NDI authentication' },
           ].map(f => (
             <div key={f.title} className="p-7 bg-[#172036]/80 backdrop-blur-md border border-surface-border hover:border-brand-gold-light/30 transition-colors rounded-2xl text-left shadow-xl shadow-black/20 group">

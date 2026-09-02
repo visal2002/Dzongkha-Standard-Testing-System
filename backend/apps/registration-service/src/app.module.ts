@@ -14,6 +14,7 @@ import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEnti
 import { RegistrationService } from './registration.service';
 import { OutboxPublisherService } from './outbox-publisher.service';
 import { BirmsPaymentService } from './birms-payment.service';
+import { DcrcClientService } from './dcrc-client.service';
 
 @Module({
   imports: [
@@ -24,6 +25,6 @@ import { BirmsPaymentService } from './birms-payment.service';
     PlatformModule,
   ],
   controllers: [ExamsController, ApplicationsController, BirmsPaymentsController, VerificationController, AttendanceController],
-  providers: [RegistrationService, OutboxPublisherService, BirmsPaymentService],
+  providers: [RegistrationService, OutboxPublisherService, BirmsPaymentService, DcrcClientService],
 })
 export class AppModule {}

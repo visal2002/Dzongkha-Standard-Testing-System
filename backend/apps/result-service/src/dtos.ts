@@ -43,6 +43,7 @@ export class BandRangeDto {
   @IsNumber() min: number;
   @IsNumber() max: number;
   @IsString() @Length(1, 80) label: string;
+  @IsOptional() @IsInt() @Min(1) @Max(10) standard?: number;
   @IsOptional() @IsString() @Length(1, 40) cefr?: string;
 }
 

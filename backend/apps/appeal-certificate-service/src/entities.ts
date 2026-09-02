@@ -70,6 +70,12 @@ export class PaymentEntity {
   @Column({ type: 'enum', enum: PaymentStatus, enumName: 'payment_status' }) status: PaymentStatus;
   @Column({ type: 'varchar', length: 80, nullable: true }) gateway: string | null;
   @Index({ unique: true }) @Column({ type: 'varchar', length: 160, nullable: true }) externalTransactionId: string | null;
+  @Index({ unique: true }) @Column({ type: 'varchar', length: 100, nullable: true }) providerReference: string | null;
+  @Index({ unique: true }) @Column({ type: 'varchar', length: 100, nullable: true }) paymentAdviceNo: string | null;
+  @Column({ type: 'text', nullable: true }) paymentRedirectUrl: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) paymentReceiptNo: string | null;
+  @Column({ type: 'jsonb', nullable: true }) providerDetails: Record<string, unknown> | null;
+  @Column({ type: 'timestamptz', nullable: true }) providerUpdatedAt: Date | null;
   @Column({ type: 'timestamptz' }) initiatedAt: Date;
   @Column({ type: 'timestamptz', nullable: true }) paidAt: Date | null;
   @Column({ type: 'timestamptz', nullable: true }) failedAt: Date | null;

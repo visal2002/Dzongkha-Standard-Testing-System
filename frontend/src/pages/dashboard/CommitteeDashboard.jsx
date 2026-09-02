@@ -16,9 +16,11 @@ import { useApi } from '@/hooks/useApi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const scoreDistData = [
-  { band: 'A1', count: 2 }, { band: 'A2', count: 5 },
-  { band: 'B1', count: 12 }, { band: 'B2', count: 18 },
-  { band: 'C1', count: 8 }, { band: 'C2', count: 3 },
+  { standard: '1', count: 2 }, { standard: '2', count: 5 },
+  { standard: '3', count: 7 }, { standard: '4', count: 12 },
+  { standard: '5', count: 18 }, { standard: '6', count: 14 },
+  { standard: '7', count: 10 }, { standard: '8', count: 8 },
+  { standard: '9', count: 4 }, { standard: '10', count: 1 },
 ];
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -81,11 +83,11 @@ export default function CommitteeDashboard() {
         {/* Score Distribution */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-5">
           <h3 className="text-sm font-semibold text-text-primary mb-1">Score Distribution</h3>
-          <p className="text-xs text-text-muted mb-4">CEFR band levels — January 2026</p>
+          <p className="text-xs text-text-muted mb-4">DSTS Standards 1–10 — January 2026</p>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={scoreDistData} barSize={28}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-border)" />
-              <XAxis dataKey="band" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="standard" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="count" fill="#F59E0B" radius={[4, 4, 0, 0]} name="Candidates" />

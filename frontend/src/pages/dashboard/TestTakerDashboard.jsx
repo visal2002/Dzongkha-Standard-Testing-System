@@ -116,18 +116,18 @@ export default function TestTakerDashboard() {
           </div>
         </div>
 
-        {/* Latest Band */}
+        {/* Latest Standard */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-3.5 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
           <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
             <BarChart2 size={18} />
           </div>
           <div>
-            <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider mb-0.5">Latest Band</p>
+            <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wider mb-0.5">Latest DSTS Standard</p>
             <div className="flex items-baseline gap-1.5 leading-none">
-              <p className="text-xl font-bold text-text-primary">6.8</p>
-              <span className="text-[8px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded">B2 Level</span>
+              <p className="text-xl font-bold text-text-primary">6.5</p>
+              <span className="text-[8px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded">Standard</span>
             </div>
-            <p className="text-[9px] text-blue-600 font-medium flex items-center gap-0.5 mt-1"><ArrowRight size={9} className="-rotate-45" /> Improved from 6.5</p>
+            <p className="text-[9px] text-blue-600 font-medium flex items-center gap-0.5 mt-1"><ArrowRight size={9} className="-rotate-45" /> Average of four skill standards</p>
           </div>
         </div>
 

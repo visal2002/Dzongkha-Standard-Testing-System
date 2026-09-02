@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FileText, CheckSquare, Users, Upload, ClipboardList,
@@ -19,36 +20,36 @@ import Badge from '@/components/ui/Badge';
 import { canAccess } from '@/features/rbac/accessMatrix';
 
 const NAV_CONFIG = [
-  { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
-  { label: 'User Management', icon: Users, to: '/admin/users', access: ['users', 'read'] },
-  { label: 'Role Management', icon: UserCog, to: '/admin/roles', access: ['roles', 'read'] },
+  { labelKey: 'nav.dashboard', icon: LayoutDashboard, to: '/dashboard' },
+  { labelKey: 'nav.user_management', icon: Users, to: '/admin/users', access: ['users', 'read'] },
+  { labelKey: 'nav.role_management', icon: UserCog, to: '/admin/roles', access: ['roles', 'read'] },
   {
-    label: 'Registration', icon: FileText, access: ['registration', 'read'], children: [
-      { label: 'Exam Windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'] },
-      { label: 'Applications', icon: ClipboardList, to: '/registration/applications', access: ['registration', 'read_all'] },
-      { label: 'My Applications', icon: ClipboardList, to: '/my-applications', access: ['registration', 'read_own'] },
+    labelKey: 'nav.registration', icon: FileText, access: ['registration', 'read'], children: [
+      { labelKey: 'nav.exam_windows', icon: Bookmark, to: '/registration/windows', access: ['registration', 'read'] },
+      { labelKey: 'nav.applications', icon: ClipboardList, to: '/registration/applications', access: ['registration', 'read_all'] },
+      { labelKey: 'nav.my_applications', icon: ClipboardList, to: '/my-applications', access: ['registration', 'read_own'] },
     ],
   },
-  { label: 'Verification', icon: CheckSquare, to: '/verification', access: ['verification', 'read'] },
-  { label: 'Absentee', icon: Users, to: '/attendance', access: ['attendance', 'read'] },
+  { labelKey: 'nav.verification', icon: CheckSquare, to: '/verification', access: ['verification', 'read'] },
+  { labelKey: 'nav.absentee', icon: Users, to: '/attendance', access: ['attendance', 'read'] },
   {
-    label: 'Question Papers', icon: BookOpen, access: ['questions', 'read'], children: [
-      { label: 'Upload Papers', icon: Upload, to: '/questions/upload', access: ['questions', 'create'] },
-      { label: 'Question Papers', icon: FileText, to: '/questions', access: ['questions', 'read'] },
+    labelKey: 'nav.question_papers', icon: BookOpen, access: ['questions', 'read'], children: [
+      { labelKey: 'nav.upload_papers', icon: Upload, to: '/questions/upload', access: ['questions', 'create'] },
+      { labelKey: 'nav.question_papers', icon: FileText, to: '/questions', access: ['questions', 'read'] },
     ],
   },
-  { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'] },
-  { label: 'Band Score Entry', icon: ClipboardList, to: '/scores', access: ['scores', 'submit'] },
-  { label: 'View Scores', icon: FileText, to: '/scores/view', access: ['scores', 'read'], excludeRoles: ['admin', 'dcdd', 'exam_head', 'committee_head'] },
-  { label: 'Score Summary', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'] },
-  { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'] },
-  { label: 'Submit Re-evaluation', icon: AlertCircle, to: '/appeals/new', access: ['appeals', 'submit_own'] },
-  { label: 'Certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'] },
-  { label: 'Reports', icon: BarChart3, to: '/reports', access: ['reports', 'read'] },
-  { label: 'Technical Settings', icon: Wrench, to: '/admin/technical', roles: ['admin'] },
-  { label: 'Exam Configuration', icon: Settings, to: '/masters', roles: ['admin', 'dcdd'] },
-  { label: 'Operational Settings', icon: SlidersHorizontal, to: '/dcdd/operational', roles: ['dcdd'] },
-  { label: 'Notifications', icon: Zap, to: '/notifications' },
+  { labelKey: 'nav.sample_papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'] },
+  { labelKey: 'nav.band_score_entry', icon: ClipboardList, to: '/scores', access: ['scores', 'submit'] },
+  { labelKey: 'nav.view_scores', icon: FileText, to: '/scores/view', access: ['scores', 'read'], excludeRoles: ['admin', 'dcdd', 'exam_head', 'committee_head'] },
+  { labelKey: 'nav.score_summary', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'] },
+  { labelKey: 'nav.re_evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'] },
+  { labelKey: 'nav.submit_re_evaluation', icon: AlertCircle, to: '/appeals/new', access: ['appeals', 'submit_own'] },
+  { labelKey: 'nav.certificates', icon: Award, to: '/certificates', access: ['certificates', 'read'] },
+  { labelKey: 'nav.reports', icon: BarChart3, to: '/reports', access: ['reports', 'read'] },
+  { labelKey: 'nav.technical_settings', icon: Wrench, to: '/admin/technical', roles: ['admin'] },
+  { labelKey: 'nav.exam_configuration', icon: Settings, to: '/masters', roles: ['admin', 'dcdd'] },
+  { labelKey: 'nav.operational_settings', icon: SlidersHorizontal, to: '/dcdd/operational', roles: ['dcdd'] },
+  { labelKey: 'nav.notifications', icon: Zap, to: '/notifications' },
 ];
 
 function permitted(item, role) {
@@ -67,6 +68,7 @@ function navigationFor(role) {
 }
 
 function NavItem({ item, collapsed }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const [open, setOpen] = useState(() => item.children?.some(c => location.pathname.startsWith(c.to)));
 
@@ -86,7 +88,7 @@ function NavItem({ item, collapsed }) {
           <item.icon size={16} className="shrink-0" />
           {!collapsed && (
             <>
-              <span className="flex-1 text-left truncate">{item.label}</span>
+              <span className="flex-1 text-left truncate">{t(item.labelKey)}</span>
               <ChevronDown size={13} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
             </>
           )}
@@ -113,7 +115,7 @@ function NavItem({ item, collapsed }) {
                     ].join(' ')}
                   >
                     <child.icon size={13} className="shrink-0" />
-                    <span className="truncate">{child.label}</span>
+                    <span className="truncate">{t(child.labelKey)}</span>
                   </NavLink>
                 ))}
               </div>
@@ -127,7 +129,7 @@ function NavItem({ item, collapsed }) {
   return (
     <NavLink
       to={item.to}
-      title={collapsed ? item.label : undefined}
+      title={collapsed ? t(item.labelKey) : undefined}
       className={({ isActive }) => [
         'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
         isActive
@@ -136,7 +138,7 @@ function NavItem({ item, collapsed }) {
       ].join(' ')}
     >
       <item.icon size={16} className="shrink-0" />
-      {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+      {!collapsed && <span className="flex-1 truncate">{t(item.labelKey)}</span>}
     </NavLink>
   );
 }

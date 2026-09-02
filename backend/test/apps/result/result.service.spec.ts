@@ -82,17 +82,24 @@ const makeRepo = <T extends ObjectLiteral>(rows: T[] = []): Repository<T> =>
 
 const approvedRule: ScoringRuleEntity = Object.assign(new ScoringRuleEntity(), {
   id: uuid(),
-  code: 'DSTS-V1',
-  name: 'DSTS Scoring v1',
+  code: 'DSTS-TOTAL-1-50-V1',
+  name: 'DSTS Total Score to Standard 1–10',
   minimumScore: '1',
-  maximumScore: '9',
+  maximumScore: '50',
   increment: '0.5',
-  roundingDecimals: 1,
+  roundingDecimals: 2,
   aggregation: 'ARITHMETIC_MEAN' as const,
   bands: [
-    { min: 1, max: 4.9, label: 'LOW' },
-    { min: 5, max: 6.9, label: 'MEDIUM', cefr: 'B2' },
-    { min: 7, max: 9, label: 'HIGH', cefr: 'C1' },
+    { min: 1, max: 5.5, label: 'Standard 1', standard: 1 },
+    { min: 6, max: 12.5, label: 'Standard 2', standard: 2 },
+    { min: 13, max: 19.5, label: 'Standard 3', standard: 3 },
+    { min: 20, max: 26.5, label: 'Standard 4', standard: 4 },
+    { min: 27, max: 33.5, label: 'Standard 5', standard: 5 },
+    { min: 34, max: 40.5, label: 'Standard 6', standard: 6 },
+    { min: 41, max: 44.5, label: 'Standard 7', standard: 7 },
+    { min: 45, max: 47.5, label: 'Standard 8', standard: 8 },
+    { min: 48, max: 49.5, label: 'Standard 9', standard: 9 },
+    { min: 50, max: 50, label: 'Standard 10', standard: 10 },
   ],
   status: ScoringRuleStatus.Approved,
   effectiveFrom: new Date('2026-01-01'),
@@ -209,7 +216,7 @@ describe('ResultService — Committee formation (BRD §2.5)', () => {
 // ─── score draft / submit tests ───────────────────────────────────────────────
 
 describe('ResultService — Score entry (BRD §2.5)', () => {
-  const validScores = { writing: 7, reading: 6.5, listening: 7.5, speaking: 6 };
+  const validScores = { writing: 41, reading: 45, listening: 48, speaking: 50 };
   const headActor = mfaActor({ permissions: ['score.submit'] });
 
   it('blocks absent/ineligible candidates from receiving scores', async () => {
@@ -262,7 +269,7 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
       committeeId: uuid(),
       status: ScoreSheetStatus.Submitted,
       currentVersion: 1,
-      draftScores: { WRITING: 7, READING: 7, LISTENING: 7, SPEAKING: 7 },
+      draftScores: { WRITING: 41, READING: 41, LISTENING: 41, SPEAKING: 41 },
     });
     const manager = makeManager({
       findOne: jest.fn().mockImplementation(async (entity: unknown) => {
@@ -284,7 +291,7 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     const draftSheet = Object.assign(new ScoreSheetEntity(), {
       id: sheetId, examId, applicationId, committeeId,
       status: ScoreSheetStatus.Draft, currentVersion: 0,
-      draftScores: { WRITING: 7, READING: 7, LISTENING: 7, SPEAKING: 7 },
+      draftScores: { WRITING: 41, READING: 45, LISTENING: 48, SPEAKING: 50 },
     });
     const candidate = Object.assign(new CandidateEligibilityEntity(), {
       applicationId, examId, testTakerUserId: uuid(), status: EligibilityStatus.Eligible, sourceEventId: 'evt-3',

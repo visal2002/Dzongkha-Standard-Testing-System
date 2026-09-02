@@ -15,6 +15,7 @@ export interface CertificateResultSource {
 }
 export interface CertificateProfileSource {
   applicationId: string; examId: string; testTakerUserId: string; registrationNumber: string; fullName: string;
+  cid: string; email: string; phone: string;
 }
 
 @Injectable()

@@ -13,10 +13,20 @@ import { useApi } from '@/hooks/useApi';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccess } from '@/features/rbac/accessMatrix';
+import {
+  DSTS_SCORE_INCREMENT,
+  DSTS_SCORE_MAXIMUM,
+  DSTS_SCORE_MINIMUM,
+  dstsOverallStandard,
+  dstsStandardForTotal,
+} from '@/constants/scoringStandard';
 
 const SKILLS = ['writing', 'reading', 'listening', 'speaking'];
 const SKILL_LABELS = { writing: 'Writing', reading: 'Reading', listening: 'Listening', speaking: 'Speaking' };
-const SCORES = Array.from({ length: 19 }, (_, index) => (index * 0.5 + 1).toFixed(1));
+const SCORES = Array.from(
+  { length: ((DSTS_SCORE_MAXIMUM - DSTS_SCORE_MINIMUM) / DSTS_SCORE_INCREMENT) + 1 },
+  (_, index) => (index * DSTS_SCORE_INCREMENT + DSTS_SCORE_MINIMUM).toFixed(1),
+);
 const columnHelper = createColumnHelper();
 
 export default function ScoreEntry() {
@@ -102,13 +112,13 @@ export default function ScoreEntry() {
     }),
   ];
 
-  const average = Object.values(scores).every(Boolean)
-    ? (Object.values(scores).reduce((sum, value) => sum + Number(value), 0) / 4).toFixed(2)
+  const overallStandard = Object.values(scores).every(Boolean)
+    ? dstsOverallStandard(Object.values(scores))
     : null;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Band Score Entry" subtitle="Enter examination band scores for eligible test takers" breadcrumbs={[{ label: 'Scores' }, { label: 'Score Entry' }]} icon={<ClipboardList size={18} />} />
+      <PageHeader title="DSTS Score Entry" subtitle="Enter skill totals and calculate the approved DSTS Standard" breadcrumbs={[{ label: 'Scores' }, { label: 'Score Entry' }]} icon={<ClipboardList size={18} />} />
       <Alert variant="info" title="Committee Head Access Only">Only the designated Committee Head can enter and submit band scores. Committee members have view-only access.</Alert>
 
       <div className="max-w-md">
@@ -139,14 +149,14 @@ export default function ScoreEntry() {
         </>
       )}
 
-      <Modal isOpen={!!scoring} onClose={() => setScoring(null)} title={`Enter Band Scores — ${scoring?.testTakerName}`} size="md" footer={<><Button variant="ghost" onClick={() => setScoring(null)}>Cancel</Button>{canSubmit && <Button onClick={handleSubmit} loading={submitting} icon={<Save size={13} />}>Submit Scores</Button>}</>}>
+      <Modal isOpen={!!scoring} onClose={() => setScoring(null)} title={`Enter Skill Totals — ${scoring?.testTakerName}`} size="md" footer={<><Button variant="ghost" onClick={() => setScoring(null)}>Cancel</Button>{canSubmit && <Button onClick={handleSubmit} loading={submitting} icon={<Save size={13} />}>Submit Scores</Button>}</>}>
         <div className="space-y-4">
           <div className="p-3 bg-surface-bg rounded-xl border border-surface-border text-xs"><p className="text-text-muted">Application ID</p><p className="font-mono text-brand-gold">{scoring?.applicationId}</p></div>
-          <p className="text-xs text-text-muted">Enter scores from 1.0 to 9.0 in increments of 0.5 for each skill:</p>
+          <p className="text-xs text-text-muted">Enter total marks from 1.0 to 50.0 in increments of 0.5. Each total is converted to DSTS Standard 1–10.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {SKILLS.map(skill => <div key={skill}><label className="text-sm font-medium text-text-secondary block mb-1.5">{SKILL_LABELS[skill]}</label><select value={scores[skill]} onChange={event => setScores(current => ({ ...current, [skill]: event.target.value }))} className="w-full h-9 px-3 rounded-lg bg-surface-bg border border-surface-border text-text-primary text-sm"><option value="">Select score</option>{SCORES.map(score => <option key={score} value={score}>{score}</option>)}</select></div>)}
+            {SKILLS.map(skill => <div key={skill}><label className="text-sm font-medium text-text-secondary block mb-1.5">{SKILL_LABELS[skill]} Total</label><select value={scores[skill]} onChange={event => setScores(current => ({ ...current, [skill]: event.target.value }))} className="w-full h-9 px-3 rounded-lg bg-surface-bg border border-surface-border text-text-primary text-sm"><option value="">Select total</option>{SCORES.map(score => <option key={score} value={score}>{score} — Standard {dstsStandardForTotal(Number(score))}</option>)}</select></div>)}
           </div>
-          {average && <div className="p-3 bg-[#F59E0B]/5 border border-brand-gold/20 rounded-xl flex justify-between"><span className="text-sm text-text-secondary">Overall Average</span><span className="text-xl font-bold text-brand-gold">{average}</span></div>}
+          {overallStandard !== null && <div className="p-3 bg-[#F59E0B]/5 border border-brand-gold/20 rounded-xl flex justify-between"><span className="text-sm text-text-secondary">Overall DSTS Standard</span><span className="text-xl font-bold text-brand-gold">{overallStandard.toFixed(2)}</span></div>}
         </div>
       </Modal>
     </div>

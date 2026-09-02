@@ -50,12 +50,11 @@ const skillAvgMonthly = [
 ];
 
 const bandDistribution = [
-  { name: 'C2', value: 2, color: '#7C3AED' },
-  { name: 'C1', value: 8, color: '#3B82F6' },
-  { name: 'B2', value: 18, color: '#0D9488' },
-  { name: 'B1', value: 12, color: '#10B981' },
-  { name: 'A2', value: 5, color: '#F59E0B' },
-  { name: 'A1', value: 2, color: '#EF4444' },
+  { name: 'Standards 1–2', value: 7, color: '#EF4444' },
+  { name: 'Standards 3–4', value: 19, color: '#F59E0B' },
+  { name: 'Standards 5–6', value: 32, color: '#10B981' },
+  { name: 'Standards 7–8', value: 18, color: '#3B82F6' },
+  { name: 'Standards 9–10', value: 5, color: '#7C3AED' },
 ];
 
 const appealTrend = [
@@ -70,7 +69,7 @@ const appealTrend = [
 const PREDEFINED_REPORTS = [
   { id: 'reg-summary', label: 'Registration Summary', icon: Users, description: 'Total applications by status, dzongkhag, and exam window' },
   { id: 'verification', label: 'Verification Status Report', icon: Filter, description: 'Applications pending, verified, approved, and returned' },
-  { id: 'band-dist', label: 'Band Score Distribution', icon: BarChart3, description: 'CEFR level distribution across all candidates' },
+  { id: 'band-dist', label: 'DSTS Standard Distribution', icon: BarChart3, description: 'DSTS Standard 1–10 distribution across all candidates' },
   { id: 'appeal-track', label: 'Appeal Tracking Report', icon: Scale, description: 'Status of all re-evaluation requests and decisions' },
   { id: 'cert-validity', label: 'Certificate Validity Report', icon: Award, description: 'Active, expiring, and expired certificate inventory' },
   { id: 'exam-schedule', label: 'Examination Schedule', icon: Calendar, description: 'All exam windows with registration and capacity data' },
@@ -145,7 +144,7 @@ export default function Reports() {
               </div>
 
               <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-                <h3 className="text-sm font-semibold text-text-primary mb-4">CEFR Band Distribution</h3>
+                <h3 className="text-sm font-semibold text-text-primary mb-4">DSTS Standard Distribution</h3>
                 <div className="flex items-center gap-4">
                   <PieChart width={180} height={180}>
                     <Pie data={bandDistribution} cx={85} cy={85} innerRadius={50} outerRadius={80} dataKey="value" strokeWidth={0}>

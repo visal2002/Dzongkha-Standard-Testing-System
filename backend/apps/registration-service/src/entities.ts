@@ -47,6 +47,8 @@ export class ApplicationEntity {
   @Column({ type: 'timestamptz', nullable: true }) reviewStartedAt: Date | null;
   @Column({ type: 'timestamptz', nullable: true }) submittedAt: Date | null;
   @Column({ type: 'timestamptz', nullable: true }) verifiedAt: Date | null;
+  @Column({ type: 'uuid', nullable: true }) dcrcLookupId: string | null;
+  @Column({ type: 'timestamptz', nullable: true }) dcrcVerifiedAt: Date | null;
   @Column({ type: 'timestamptz', nullable: true }) cancelledAt: Date | null;
   @Column({ type: 'text', nullable: true }) reviewRemarks: string | null;
   @Column({ type: 'enum', enum: RegistrationPaymentStatus, enumName: 'registration_payment_status', default: RegistrationPaymentStatus.Initiated }) paymentStatus: RegistrationPaymentStatus;

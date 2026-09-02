@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource, EntityManager, ObjectLiteral, Repository } from 'typeorm';
 import { ApplicationStatus, DomainEventTypes, ExamStatus, Skill } from '@dzongjuk/contracts';
 import { RegistrationService } from '../../../apps/registration-service/src/registration.service';
+import { DcrcClientService } from '../../../apps/registration-service/src/dcrc-client.service';
 import {
   ApplicationEntity,
   ApplicationHistoryEntity,
@@ -51,6 +52,8 @@ const application = (overrides: Partial<ApplicationEntity> = {}): ApplicationEnt
     reviewStartedAt: null,
     submittedAt: new Date(),
     verifiedAt: null,
+    dcrcLookupId: null,
+    dcrcVerifiedAt: null,
     cancelledAt: null,
     reviewRemarks: null,
     paymentStatus: RegistrationPaymentStatus.Waived,
@@ -109,6 +112,7 @@ const makeRepo = <T extends ObjectLiteral>(rows: T[] = []): Repository<T> =>
   } as unknown as Repository<T>);
 
 const config = new ConfigService({ INTERNAL_SERVICE_SECRET: 'a'.repeat(32) });
+const dcrc = { isRequired: jest.fn().mockReturnValue(false), verify: jest.fn() } as unknown as DcrcClientService;
 
 // ─── factory ─────────────────────────────────────────────────────────────────
 
@@ -117,14 +121,16 @@ const buildService = ({
   applications = makeRepo<ApplicationEntity>(),
   history = makeRepo<ApplicationHistoryEntity>(),
   manager = makeManager(),
+  dcrcClient = dcrc,
 }: {
   exams?: Repository<ExamEntity>;
   applications?: Repository<ApplicationEntity>;
   history?: Repository<ApplicationHistoryEntity>;
   manager?: EntityManager;
+  dcrcClient?: DcrcClientService;
 } = {}) => {
   const ds = makeDataSource(manager);
-  return new RegistrationService(ds, config, exams, applications, history);
+  return new RegistrationService(ds, config, exams, applications, history, dcrcClient);
 };
 
 // ─── test suites ─────────────────────────────────────────────────────────────
@@ -351,10 +357,27 @@ describe('RegistrationService — Cancellation & waitlist promotion (BRD §2.2)'
 });
 
 describe('RegistrationService — Verify & registration number (BRD §2.2)', () => {
+  it('records DCRC verification provenance when enforcement is enabled', async () => {
+    const app = application({ status: ApplicationStatus.UnderReview });
+    const lookupId = uuid();
+    const dcrcClient = {
+      isRequired: jest.fn().mockReturnValue(true),
+      verify: jest.fn().mockResolvedValue({ lookupId, verified: true, matchedFields: ['cid'], mismatchFields: [] }),
+    } as unknown as DcrcClientService;
+    const manager = makeManager({ findOne: jest.fn().mockResolvedValue(app) });
+    const service = buildService({ manager, applications: makeRepo([app]), dcrcClient });
+
+    const verified = await service.verify(app.id, 'actor-1', 'req-1');
+
+    expect(dcrcClient.verify).toHaveBeenCalledWith(app, 'actor-1', 'req-1');
+    expect(verified.dcrcLookupId).toBe(lookupId);
+    expect(verified.dcrcVerifiedAt).toBeInstanceOf(Date);
+  });
+
   it('generates a unique registration number matching DSTS-YYYY-XXXXXXXX', async () => {
     const app = application({ status: ApplicationStatus.UnderReview });
     const manager = makeManager({ findOne: jest.fn().mockResolvedValue(app) });
-    const service = buildService({ manager });
+    const service = buildService({ manager, applications: makeRepo([app]) });
     const verified = await service.verify(app.id, 'actor-1', 'req-1');
     expect(verified.registrationNumber).toMatch(/^DSTS-\d{4}-[A-F0-9]{8}$/);
   });
@@ -370,7 +393,7 @@ describe('RegistrationService — Verify & registration number (BRD §2.2)', () 
       }),
       create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     });
-    const service = buildService({ manager });
+    const service = buildService({ manager, applications: makeRepo([app]) });
     await service.verify(app.id, 'actor-1', 'req-1');
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.ApplicationVerified)).toBe(true);
   });
@@ -459,7 +482,7 @@ describe('RegistrationService — Certificate profile internal endpoint (BRD §2
   it('returns 403 when internal key is wrong', async () => {
     const wrongKeyConfig = new ConfigService({ INTERNAL_SERVICE_SECRET: 'b'.repeat(32) });
     const ds = makeDataSource(makeManager());
-    const service = new RegistrationService(ds, wrongKeyConfig, makeRepo(), makeRepo(), makeRepo());
+    const service = new RegistrationService(ds, wrongKeyConfig, makeRepo(), makeRepo(), makeRepo(), dcrc);
     await expect(service.certificateProfile(uuid(), 'wrong-key'))
       .rejects.toMatchObject({ response: { code: 'INTERNAL_SERVICE_AUTH_FAILED' } });
   });
@@ -470,7 +493,7 @@ describe('RegistrationService — Certificate profile internal endpoint (BRD §2
     const applications = makeRepo<ApplicationEntity>([app]);
     const correctKeyConfig = new ConfigService({ INTERNAL_SERVICE_SECRET: correctKey });
     const ds = makeDataSource(makeManager());
-    const service = new RegistrationService(ds, correctKeyConfig, makeRepo(), applications, makeRepo());
+    const service = new RegistrationService(ds, correctKeyConfig, makeRepo(), applications, makeRepo(), dcrc);
     const profile = await service.certificateProfile(app.id, correctKey);
     expect(profile.registrationNumber).toBe('DSTS-2026-ABCD1234');
     expect(profile.applicationId).toBe(app.id);
