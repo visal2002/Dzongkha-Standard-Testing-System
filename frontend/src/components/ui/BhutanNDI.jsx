@@ -135,12 +135,12 @@ function NDISupportSection({ assets }) {
       <p className="text-lg font-semibold ndi-text-primary">Get Support</p>
       <div className="space-y-3 text-sm text-slate-700">
         <a
-          href="mailto:ndifeedback@dhi.bt"
+          href="mailto:ndifeedback@bhutanndi.bt"
           className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 ndi-bg-popup px-4 py-3 transition ndi-hover-border"
           aria-label="Email Bhutan NDI support"
         >
           <img src={assets.mailIcon} alt="" aria-hidden="true" className="h-5 w-5 shrink-0" />
-          <span>ndifeedback@dhi.bt</span>
+          <span>ndifeedback@bhutanndi.bt</span>
         </a>
         <a
           href="tel:1199"
