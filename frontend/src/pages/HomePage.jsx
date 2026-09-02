@@ -7,7 +7,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Fingerprint, Monitor, Award, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Monitor, Award, ShieldCheck } from 'lucide-react';
 import LanguageToggle from '@/components/LanguageToggle';
 
 export default function HomePage() {
@@ -93,9 +93,10 @@ export default function HomePage() {
                 </Link>
                 <Link
                   to="/ndi-login"
-                  className="h-14 px-8 text-[17px] bg-surface-card/60 backdrop-blur-md border border-brand-gold-light/30 hover:border-brand-gold-light/70 text-white font-medium rounded-xl transition-all flex items-center gap-3 shadow-lg"
+                  className="h-14 px-8 text-[17px] text-white font-medium rounded-xl transition-all flex items-center gap-3 shadow-lg hover:opacity-90"
+                  style={{ backgroundColor: '#124143' }}
                 >
-                  <Fingerprint size={20} className="text-brand-gold-light" /> {t('home.cta_ndi')}
+                  <img src="/images/NDI Bhutan Logo.ico" alt="NDI" className="h-7 w-7 object-contain" /> {t('home.cta_ndi')}
                 </Link>
               </div>
             </motion.div>
