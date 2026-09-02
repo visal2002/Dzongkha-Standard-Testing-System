@@ -35,5 +35,6 @@
     "zaproxy",
     "zricethezav"
   ],
-  "claudeCodeChat.permissions.yoloMode": false
+  "claudeCodeChat.permissions.yoloMode": false,
+  "css.lint.unknownAtRules": "ignore"
 }
