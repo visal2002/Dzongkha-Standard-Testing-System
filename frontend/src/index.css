@@ -292,12 +292,12 @@
 }
 
 .ndi-support {
-  margin-top: 28px;
+  margin-top: 30px;
   flex-shrink: 0;
 }
 
 .ndi-support > p {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   color: var(--ndi-primary);
   font-size: 12px;
   font-weight: 800;
