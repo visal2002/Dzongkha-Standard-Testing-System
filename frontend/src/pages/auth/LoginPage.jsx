@@ -272,6 +272,10 @@ function NdiSupport() {
  */
 function NdiScannerPanel({ qrUrl, deepLinkUrl, isLoading, error, status, onRetry, embedded = false }) {
   const { t } = useTranslation();
+  // The mock backend hands back a `mock:` proof URL that no wallet can open, so only
+  // fall back to the QR value when it is a real navigable link.
+  const walletHref = deepLinkUrl
+    || (qrUrl && !qrUrl.startsWith('mock:') ? qrUrl : undefined);
   return (
     <section className={embedded ? 'ndi-scanner-panel ndi-scanner-panel-embedded' : 'ndi-scanner-panel'}>
       <h1 className="ndi-scanner-title">
@@ -283,7 +287,7 @@ function NdiScannerPanel({ qrUrl, deepLinkUrl, isLoading, error, status, onRetry
           on small screens so a phone user can jump straight into the wallet app. */}
       <div className="ndi-mobile-lead">
         <a
-          href={deepLinkUrl || qrUrl || undefined}
+          href={walletHref}
           target="_blank"
           rel="noreferrer"
           className="ndi-open-wallet"
