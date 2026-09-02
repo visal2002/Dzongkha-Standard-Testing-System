@@ -139,10 +139,10 @@ const resources = {
         feature_certificates_desc: 'Secure, QR-verified certificates with official CEFR band scores',
         feature_secure_title: 'Secure & Transparent',
         feature_secure_desc: 'Role-based access, comprehensive audit trails, and NDI authentication',
-        footer_copyright:
-          '© 2026 Department of Culture and Dzongkha Development, Ministry of Home Affairs, Bhutan',
-        footer_developed: 'Developed by GovTech · Secured by NDI',
-        footer_department: 'Department of Culture and Dzongkha Development, Bhutan',
+        footer_copyright: '© 2026 Royal Government of Bhutan · All rights reserved',
+        footer_developed: 'Developed by JDMS',
+        footer_department:
+          'Department of Culture and Dzongkha Development, Ministry of Home Affairs',
         lang_toggle_label: 'Switch language',
       },
       auth: {
@@ -338,7 +338,7 @@ const resources = {
         feature_secure_desc: 'ལས་འགན་གཞི་བཞག་གི་འཛུལ་སྤྱོད། ཞིབ་དཔྱད་ཐོ་ཡིག་ཡོངས་རྫོགས། NDI ར་སྤྲོད་བཅས།',
         footer_copyright:
           '© ༢༠༢༦ ནང་སྲིད་ལྷན་ཁག། རིག་གཞུང་དང་རྫོང་ཁ་གོང་འཕེལ་ལས་ཁུངས། འབྲུག།',
-        footer_developed: 'GovTech གིས་བཟོ་བསྐྲུན་འབད། NDI གིས་ཉེན་སྲུང་འབད།',
+        footer_developed: 'JDMS གིས་བཟོ་བསྐྲུན་འབད།',
         footer_department: 'རིག་གཞུང་དང་རྫོང་ཁ་གོང་འཕེལ་ལས་ཁུངས། འབྲུག།',
         lang_toggle_label: 'སྐད་ཡིག་བརྗེ་སྒྱུར།',
       },
