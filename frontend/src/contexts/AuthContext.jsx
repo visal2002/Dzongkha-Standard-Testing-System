@@ -4,13 +4,16 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { authService } from '@/services/auth';
+import { authService } from '@/features/auth/api';
 import { recordAuditEvent } from '@/services/audit';
+import * as sessionStore from '@/lib/session';
 
 const AuthContext = createContext(null);
-const SESSION_KEY = 'dsts_session';
+
+// A session is refreshed to this far ahead on every recorded activity.
+const ACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 
 const normalizeUserSession = (user) => {
   if (!user) return null;
@@ -31,51 +34,35 @@ const normalizeUserSession = (user) => {
   };
 };
 
+/** The stored session, normalised, or null when absent or expired. */
 const readSession = () => {
-  try {
-    // In production, sessionStorage is the sole session store.
-    // In dev, also check localStorage so developers can inject test sessions easily.
-    const lsRaw = import.meta.env.DEV ? localStorage.getItem(SESSION_KEY) : null;
-    const raw = sessionStorage.getItem(SESSION_KEY) ?? lsRaw;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed?.user) return null;
-    if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
-      sessionStorage.removeItem(SESSION_KEY);
-      if (import.meta.env.DEV) localStorage.removeItem(SESSION_KEY);
-      return null;
-    }
-    // Migrate legacy dev localStorage session into sessionStorage
-    if (import.meta.env.DEV && lsRaw && !sessionStorage.getItem(SESSION_KEY)) {
-      sessionStorage.setItem(SESSION_KEY, raw);
-    }
-    return {
-      user: normalizeUserSession(parsed.user),
-      accessToken: parsed.accessToken,
-      expiresAt: parsed.expiresAt,
-    };
-  } catch {
-    sessionStorage.removeItem(SESSION_KEY);
-    if (import.meta.env.DEV) localStorage.removeItem(SESSION_KEY);
+  const stored = sessionStore.readSession();
+  if (!stored?.user) return null;
+  if (stored.expiresAt && Date.now() > stored.expiresAt) {
+    sessionStore.clearSession();
     return null;
   }
+  sessionStore.adoptDevSession();
+  return { ...stored, user: normalizeUserSession(stored.user) };
 };
 
 const saveSession = (user, accessToken, expiresIn = 900) => {
   const normalized = normalizeUserSession(user);
-  const expiresAt = Date.now() + Number(expiresIn || 900) * 1000;
-  const sessionPayload = JSON.stringify({ user: normalized, accessToken, expiresAt });
-  sessionStorage.setItem(SESSION_KEY, sessionPayload);
-  // Always clean up any leftover dev localStorage entry on login
-  try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+  sessionStore.writeSession({
+    user: normalized,
+    accessToken,
+    expiresAt: Date.now() + Number(expiresIn || 900) * 1000,
+  });
   return normalized;
 };
 
-const clearSession = () => {
-  sessionStorage.removeItem(SESSION_KEY);
-  // Clear legacy dev localStorage entry if present
-  try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+/** Write a changed user back into the stored session, extending its lifetime. */
+const persistUser = (updated) => {
+  sessionStore.patchSession({ user: updated, expiresAt: Date.now() + 60 * 60 * 1000 });
+  return updated;
 };
+
+const clearSession = sessionStore.clearSession;
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => readSession()?.user ?? null);
@@ -193,42 +180,31 @@ export function AuthProvider({ children }) {
 
   // Session auto-expiry & inactivity tracker (15 minutes)
   useEffect(() => {
-    if (!user) return;
-    
-    const ACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+    if (!user) return undefined;
+
     let lastActivity = Date.now();
-    let activityInterval;
-    
     const bumpActivity = () => { lastActivity = Date.now(); };
     const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
-    events.forEach(e => document.addEventListener(e, bumpActivity, { passive: true }));
-    
+    events.forEach(event => document.addEventListener(event, bumpActivity, { passive: true }));
+
     const checkInactivity = () => {
       const now = Date.now();
       if (now - lastActivity >= ACTIVITY_TIMEOUT_MS) {
         logout();
         toast.error('Session expired due to inactivity.', { id: 'session-timeout' });
-      } else {
-        // Extend session storage expiration quietly
-        const raw = sessionStorage.getItem(SESSION_KEY);
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            if (now > parsed.expiresAt) {
-              logout();
-            } else {
-              parsed.expiresAt = now + ACTIVITY_TIMEOUT_MS;
-              sessionStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
-            }
-          } catch {}
-        }
+        return;
       }
+      const stored = sessionStore.readSession();
+      if (!stored) return;
+      // Still active: quietly push the stored expiry out rather than signing out.
+      if (now > stored.expiresAt) logout();
+      else sessionStore.patchSession({ expiresAt: now + ACTIVITY_TIMEOUT_MS });
     };
-    
-    activityInterval = setInterval(checkInactivity, 60 * 1000); // Check every minute
-    
+
+    const activityInterval = setInterval(checkInactivity, 60 * 1000);
+
     return () => {
-      events.forEach(e => document.removeEventListener(e, bumpActivity));
+      events.forEach(event => document.removeEventListener(event, bumpActivity));
       clearInterval(activityInterval);
     };
   }, [user, logout]);
@@ -241,13 +217,7 @@ export function AuthProvider({ children }) {
     // The service may return extra derived fields (e.g. `emailSet: true` once a valid
     // address is entered) - merge those in too, not just what the caller passed.
     const applied = { ...updatedFields, ...(response?.data && typeof response.data === 'object' ? response.data : {}) };
-    setUser(prevUser => {
-      if (!prevUser) return null;
-      const updated = normalizeUserSession({ ...prevUser, ...applied });
-      const session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...session, user: updated, expiresAt: Date.now() + 60 * 60 * 1000 }));
-      return updated;
-    });
+    setUser(prevUser => (prevUser ? persistUser(normalizeUserSession({ ...prevUser, ...applied })) : null));
   }, []);
 
   // Set an initial password (no current password required). On success the local
@@ -257,13 +227,7 @@ export function AuthProvider({ children }) {
     if (result && result.success === false) {
       throw new Error(result.error || 'Failed to set the password.');
     }
-    setUser(prevUser => {
-      if (!prevUser) return null;
-      const updated = normalizeUserSession({ ...prevUser, passwordSet: true });
-      const session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...session, user: updated, expiresAt: Date.now() + 60 * 60 * 1000 }));
-      return updated;
-    });
+    setUser(prevUser => (prevUser ? persistUser(normalizeUserSession({ ...prevUser, passwordSet: true })) : null));
     recordAuditEvent({ action: 'Password Created', actorUserId: user?.userId || user?.id, role: user?.roleName, status: 'Success' });
     return result;
   }, [user]);
@@ -292,7 +256,7 @@ export function AuthProvider({ children }) {
     return user.permissions.includes('*') || permissions.some(permission => user.permissions.includes(permission));
   }, [user]);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     isAuthenticated: !!user,
     isLoading,
@@ -308,7 +272,10 @@ export function AuthProvider({ children }) {
     hasAnyRole,
     hasPermission,
     hasAnyPermission,
-  };
+  }), [
+    user, isLoading, login, register, loginWithNDI, checkNDILogin, cancelNDILogin,
+    logout, updateProfile, setPassword, hasRole, hasAnyRole, hasPermission, hasAnyPermission,
+  ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

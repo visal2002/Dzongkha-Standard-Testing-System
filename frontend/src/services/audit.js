@@ -9,9 +9,7 @@
  * Read access to the reporting service's immutable audit trail (BRD §7.3).
  */
 import apiClient from './api';
-
-const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test';
-const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
+import { USE_MOCK_DATA } from '@/lib/env';
 
 const MOCK_EVENTS = [
   { id: 'AUD-001', eventId: 'evt-001', action: 'Role Change', source: 'identity-service', resourceId: 'USR-003', actorUserId: 'USR-001', correlationId: 'corr-001', occurredAt: '2026-08-20T09:14:00Z', safeData: { role: 'System Administrator', ipAddress: '10.0.4.12', status: 'Success' } },

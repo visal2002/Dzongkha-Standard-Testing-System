@@ -15,6 +15,9 @@ import { CandidateEligibilityEntity, CommitteeEntity, CommitteeMemberEntity, Com
 import { IdentityClientService } from './identity-client.service';
 import { ScoringService } from './scoring.service';
 
+/** Score sheets whose result has been released to the candidate. */
+const RELEASED_STATUSES = [ScoreSheetStatus.Published, ScoreSheetStatus.Revised];
+
 @Injectable()
 export class ResultService {
   constructor(
@@ -151,7 +154,8 @@ export class ResultService {
       if (!committee || !await this.members.existsBy({ committeeId: committee.id, userId: actor.sub, removedAt: IsNull() })) throw new DomainException('COMMITTEE_ACCESS_REQUIRED', 'Only the assigned committee may view these scores.', 403);
     }
     const sheets = await this.sheets.find({ where: { examId }, order: { updatedAt: 'DESC' } });
-    return Promise.all(sheets.map(async (sheet) => ({ ...sheet, versions: await this.versions.find({ where: { scoreSheetId: sheet.id }, order: { versionNumber: 'DESC' } }) })));
+    const versionsBySheet = await this.versionsBySheet(sheets.map((sheet) => sheet.id));
+    return sheets.map((sheet) => ({ ...sheet, versions: versionsBySheet.get(sheet.id) ?? [] }));
   }
 
   async getCandidates(examId: string, actor: AccessClaims) {
@@ -178,27 +182,29 @@ export class ResultService {
     const candidates = await this.eligibility.findBy({ testTakerUserId: userId });
     if (!candidates.length) return [];
     const applicationIds = candidates.map((candidate) => candidate.applicationId);
-    const sheets = await this.sheets.findBy({ applicationId: In(applicationIds), status: In([ScoreSheetStatus.Published, ScoreSheetStatus.Revised]) });
-    return Promise.all(sheets.map(async (sheet) => ({ ...sheet, score: await this.versions.findOneBy({ scoreSheetId: sheet.id, versionNumber: sheet.currentVersion }) })));
+    const sheets = await this.sheets.findBy({ applicationId: In(applicationIds), status: In(RELEASED_STATUSES) });
+    const currentBySheet = await this.currentVersionBySheet(sheets);
+    return sheets.map((sheet) => ({ ...sheet, score: currentBySheet.get(sheet.id) ?? null }));
   }
 
   async certificateResults(examId: string, internalKey: string | undefined) {
     assertInternalService(this.config, internalKey);
     const declaration = await this.dataSource.getRepository(ResultDeclarationEntity).findOneBy({ examId });
     if (!declaration) throw new DomainException('RESULTS_NOT_DECLARED', 'Results have not been declared.', 409);
-    const sheets = await this.sheets.findBy({ examId, status: In([ScoreSheetStatus.Published, ScoreSheetStatus.Revised]) });
+    const sheets = await this.sheets.findBy({ examId, status: In(RELEASED_STATUSES) });
     const candidates = await this.eligibility.findBy({ examId, status: EligibilityStatus.Eligible });
     const candidateByApplication = new Map(candidates.map((candidate) => [candidate.applicationId, candidate]));
-    return Promise.all(sheets.map(async (sheet) => {
+    const currentBySheet = await this.currentVersionBySheet(sheets);
+    return sheets.map((sheet) => {
       const candidate = candidateByApplication.get(sheet.applicationId);
-      const score = await this.versions.findOneBy({ scoreSheetId: sheet.id, versionNumber: sheet.currentVersion });
+      const score = currentBySheet.get(sheet.id);
       if (!candidate || !score) throw new DomainException('CERTIFICATE_RESULT_INCOMPLETE', 'Published result data is incomplete.', 409);
       return {
         examId: sheet.examId, applicationId: sheet.applicationId, testTakerUserId: candidate.testTakerUserId,
         scoreSheetId: sheet.id, scoreVersionNumber: score.versionNumber, scores: score.scores,
         overallScore: score.overallScore, bandLabel: score.bandLabel, cefrLevel: score.cefrLevel,
       };
-    }));
+    });
   }
 
   async applyAppealRevision(
@@ -228,7 +234,7 @@ export class ResultService {
 
       const sheet = await manager.findOne(ScoreSheetEntity, { where: { id: scoreSheetId }, lock: { mode: 'pessimistic_write' } });
       if (!sheet) throw new DomainException('SCORE_SHEET_NOT_FOUND', 'Score sheet not found.', 404);
-      if (![ScoreSheetStatus.Published, ScoreSheetStatus.Revised].includes(sheet.status)) {
+      if (!RELEASED_STATUSES.includes(sheet.status)) {
         throw new DomainException('SCORE_REVISION_STATE_INVALID', 'Only a published result may receive an approved appeal revision.', 409);
       }
       if (sheet.currentVersion !== dto.expectedVersion) {
@@ -270,6 +276,43 @@ export class ResultService {
       await manager.save(ResultIdempotencyEntity, manager.create(ResultIdempotencyEntity, { scope, key: idempotencyKey, response }));
       return response;
     });
+  }
+
+  /**
+   * Every score version for each sheet, newest first, keyed by score sheet id.
+   *
+   * Replaces a per-sheet query inside a `Promise.all`, which opened one connection
+   * per candidate and made a full exam roster scale linearly in round-trips.
+   */
+  private async versionsBySheet(sheetIds: string[]): Promise<Map<string, ScoreVersionEntity[]>> {
+    const grouped = new Map<string, ScoreVersionEntity[]>();
+    if (!sheetIds.length) return grouped;
+    const versions = await this.versions.find({
+      where: { scoreSheetId: In(sheetIds) },
+      order: { versionNumber: 'DESC' },
+    });
+    for (const version of versions) {
+      const bucket = grouped.get(version.scoreSheetId);
+      if (bucket) bucket.push(version);
+      else grouped.set(version.scoreSheetId, [version]);
+    }
+    return grouped;
+  }
+
+  /**
+   * The version each sheet currently points at, keyed by score sheet id. Fetched in
+   * one query and matched in memory on the (sheet, version) pair the sheet names -
+   * `uq_score_version` guarantees at most one row per pair.
+   */
+  private async currentVersionBySheet(sheets: ScoreSheetEntity[]): Promise<Map<string, ScoreVersionEntity>> {
+    const current = new Map<string, ScoreVersionEntity>();
+    if (!sheets.length) return current;
+    const wanted = new Map(sheets.map((sheet) => [sheet.id, sheet.currentVersion]));
+    const versions = await this.versions.findBy({ scoreSheetId: In([...wanted.keys()]) });
+    for (const version of versions) {
+      if (wanted.get(version.scoreSheetId) === version.versionNumber) current.set(version.scoreSheetId, version);
+    }
+    return current;
   }
 
   private async assertCommitteeHead(manager: EntityManager, committeeId: string, actor: AccessClaims) {

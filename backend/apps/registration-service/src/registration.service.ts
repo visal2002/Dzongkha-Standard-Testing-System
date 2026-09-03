@@ -13,6 +13,31 @@ import { assertInternalService, DomainException } from '@dzongjuk/common';
 import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ResubmitApplicationDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto } from './dtos';
 import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEntity, IdempotencyRecordEntity, OutboxEventEntity, RegistrationPaymentStatus, WaitlistEntryEntity } from './entities';
 
+/**
+ * Statuses that occupy a seat once the capacity check has admitted an applicant.
+ * Absent is included: the candidate did take up a seat for that sitting.
+ */
+const SEAT_OCCUPYING_STATUSES = [
+  ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned,
+  ApplicationStatus.Verified, ApplicationStatus.Absent,
+];
+
+/** Applications still awaiting a DCDD verification decision. */
+const PENDING_VERIFICATION_STATUSES = [
+  ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned,
+];
+
+/** Applications eligible to appear on the exam-day attendance roll. */
+const ATTENDANCE_STATUSES = [ApplicationStatus.Verified, ApplicationStatus.Absent];
+
+/** Statuses counted against capacity at submission time, before verification. */
+const CAPACITY_STATUSES = [
+  ApplicationStatus.Submitted, ApplicationStatus.UnderReview,
+  ApplicationStatus.Returned, ApplicationStatus.Verified,
+];
+
+interface ExamOccupancy { currentRegistrations: number; waitlistCount: number }
+
 @Injectable()
 export class RegistrationService {
   constructor(
@@ -25,13 +50,44 @@ export class RegistrationService {
 
   async listExams() {
     const exams = await this.exams.find({ order: { examDate: 'ASC' } });
-    return Promise.all(exams.map(async exam => ({
+    if (!exams.length) return [];
+    const occupancy = await this.occupancyByExam(exams.map(exam => exam.id));
+    return exams.map(exam => ({
       ...exam,
-      currentRegistrations: await this.applications.count({
-        where: { examId: exam.id, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned, ApplicationStatus.Verified, ApplicationStatus.Absent]) },
-      }),
-      waitlistCount: await this.applications.count({ where: { examId: exam.id, status: ApplicationStatus.Waitlisted } }),
-    })));
+      currentRegistrations: occupancy.get(exam.id)?.currentRegistrations ?? 0,
+      waitlistCount: occupancy.get(exam.id)?.waitlistCount ?? 0,
+    }));
+  }
+
+  /**
+   * Seat and waitlist totals for a set of examinations, keyed by exam id.
+   *
+   * One grouped aggregate over `idx_application_exam_status` replaces the two
+   * COUNT round-trips per examination this used to issue, so listing the window
+   * board costs a fixed three queries instead of growing with the schedule.
+   */
+  private async occupancyByExam(examIds: string[]): Promise<Map<string, ExamOccupancy>> {
+    const rows = await this.applications.createQueryBuilder('application')
+      .select('application.examId', 'examId')
+      .addSelect('application.status', 'status')
+      .addSelect('COUNT(*)', 'total')
+      .where('application.examId IN (:...examIds)', { examIds })
+      .andWhere('application.status IN (:...statuses)', {
+        statuses: [...SEAT_OCCUPYING_STATUSES, ApplicationStatus.Waitlisted],
+      })
+      .groupBy('application.examId')
+      .addGroupBy('application.status')
+      .getRawMany<{ examId: string; status: ApplicationStatus; total: string }>();
+
+    const occupancy = new Map<string, ExamOccupancy>();
+    for (const row of rows) {
+      const entry = occupancy.get(row.examId) ?? { currentRegistrations: 0, waitlistCount: 0 };
+      const total = Number(row.total);
+      if (row.status === ApplicationStatus.Waitlisted) entry.waitlistCount += total;
+      else entry.currentRegistrations += total;
+      occupancy.set(row.examId, entry);
+    }
+    return occupancy;
   }
 
   async getExam(id: string) {
@@ -92,7 +148,7 @@ export class RegistrationService {
       if (await manager.exists(ApplicationEntity, { where: { examId, identityKey: dto.identityKey } })) {
         throw new DomainException('APPLICATION_DUPLICATE', 'You already registered for this examination.', 409);
       }
-      const confirmed = await manager.count(ApplicationEntity, { where: { examId, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned, ApplicationStatus.Verified]) } });
+      const confirmed = await manager.count(ApplicationEntity, { where: { examId, status: In(CAPACITY_STATUSES) } });
       const status = confirmed < exam.capacity ? ApplicationStatus.Submitted : ApplicationStatus.Waitlisted;
       const application = await manager.save(ApplicationEntity, manager.create(ApplicationEntity, {
         examId, exam, testTakerUserId: userId, identityKey: dto.identityKey,
@@ -138,7 +194,7 @@ export class RegistrationService {
 
       const capacity = dto.capacity ?? exam.capacity;
       const reserved = await manager.count(ApplicationEntity, {
-        where: { examId: id, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned, ApplicationStatus.Verified, ApplicationStatus.Absent]) },
+        where: { examId: id, status: In(SEAT_OCCUPYING_STATUSES) },
       });
       if (capacity < reserved) throw new DomainException('EXAM_CAPACITY_INVALID', `Capacity cannot be lower than the ${reserved} confirmed registrations.`, 409);
 
@@ -151,9 +207,7 @@ export class RegistrationService {
 
   listPendingVerification(examId?: string) {
     return this.applications.find({
-      where: examId
-        ? { examId, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned]) }
-        : { status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned]) },
+      where: { ...(examId ? { examId } : {}), status: In(PENDING_VERIFICATION_STATUSES) },
       order: { submittedAt: 'ASC' },
       take: 100,
     });
@@ -161,9 +215,7 @@ export class RegistrationService {
 
   async listAttendance(examId?: string) {
     const applications = await this.applications.find({
-      where: examId
-        ? { examId, status: In([ApplicationStatus.Verified, ApplicationStatus.Absent]) }
-        : { status: In([ApplicationStatus.Verified, ApplicationStatus.Absent]) },
+      where: { ...(examId ? { examId } : {}), status: In(ATTENDANCE_STATUSES) },
       order: { verifiedAt: 'ASC' },
       take: 500,
     });

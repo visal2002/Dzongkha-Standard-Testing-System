@@ -19,38 +19,16 @@
  *   const res = await apiClient.get('/exams');
  */
 import axios from 'axios';
+import { API_BASE_URL, API_DEBUG, API_TIMEOUT, USE_MOCK_DATA } from '@/lib/env';
+import { clearSession, readAccessToken } from '@/lib/session';
 
-// ─── Environment Config ────────────────────────────────────────────────────────
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-export const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
-
-
-const DEBUG = import.meta.env.VITE_API_DEBUG === 'true';
-const SESSION_KEY = 'dsts_session';
+export { API_BASE_URL, API_TIMEOUT };
 
 // In mock-data mode the app runs without a real auth backend. Only a subset of
 // services have mock branches; any endpoint that still reaches the API is sent the
 // fixture bearer token and answers 401. That 401 must not tear down the mock
 // session, so the automatic logout below is skipped whenever mock data is active.
-// A real build folds these to `false` and the logout behaves as before.
-const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test';
-const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
-
-const clearClientSession = () => {
-  try {
-    sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    // ignore storage failures
-  }
-};
-
-const readAccessToken = () => {
-  try {
-    return JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}').accessToken || null;
-  } catch {
-    return null;
-  }
-};
+// A real build folds USE_MOCK_DATA to `false` and the logout behaves as before.
 
 // ─── Axios Instance ────────────────────────────────────────────────────────────
 const apiClient = axios.create({
@@ -78,7 +56,7 @@ apiClient.interceptors.request.use(
       // browser set the correct multipart boundary.
       config.headers.delete('Content-Type');
     }
-    if (DEBUG) {
+    if (API_DEBUG) {
       console.info(`[API] → ${config.method?.toUpperCase()} ${config.url}`, config.data || '');
     }
     return config;
@@ -88,7 +66,7 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response) => {
-    if (DEBUG) {
+    if (API_DEBUG) {
       console.info(`[API] ← ${response.status} ${response.config.url}`, response.data);
     }
     return response;
@@ -104,13 +82,13 @@ apiClient.interceptors.response.use(
       'Network error. Please check your connection.';
 
     if (status === 401 && !USE_MOCK_DATA) {
-      clearClientSession();
+      clearSession();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
     }
 
-    if (DEBUG) {
+    if (API_DEBUG) {
       console.error(`[API] ✕ ${status ?? 'ERR'} ${error?.config?.url}`, message);
     }
 

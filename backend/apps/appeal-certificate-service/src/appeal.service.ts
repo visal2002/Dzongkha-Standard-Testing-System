@@ -4,13 +4,12 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { timingSafeEqual } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, IsNull, LessThanOrEqual, MoreThan, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, LessThanOrEqual, MoreThan, Not, Repository } from 'typeorm';
 import { AccessClaims, AppealStatus, DomainEventTypes, Skill } from '@dzongjuk/contracts';
-import { DomainException } from '@dzongjuk/common';
+import { assertSharedSecret, DomainException } from '@dzongjuk/common';
 import { ChiefDecisionDto, CommitteeReviewDto, ConfirmAppealPaymentDto, CreateAppealDto, CreateFeeRuleDto } from './dtos';
 import {
   AppealApprovalEntity,
@@ -121,7 +120,10 @@ export class AppealService {
   }
 
   async confirmPayment(appealId: string, dto: ConfirmAppealPaymentDto, internalKey: string | undefined, requestId: string) {
-    this.assertInternalService(internalKey);
+    assertSharedSecret(this.internalServiceSecret, internalKey, {
+      code: 'PAYMENT_CONFIRMATION_UNAVAILABLE',
+      message: 'Internal payment confirmation is not configured.',
+    });
     return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
       const appeal = await manager.findOne(AppealEntity, { where: { id: appealId }, lock: { mode: 'pessimistic_write' } });
       if (!appeal || !appeal.paymentId) throw new DomainException('APPEAL_NOT_FOUND', 'Appeal not found.', 404);
@@ -319,13 +321,13 @@ export class AppealService {
 
   async listMine(actor: AccessClaims) {
     const appeals = await this.appeals.find({ where: { testTakerUserId: actor.sub }, order: { submittedAt: 'DESC' } });
-    return Promise.all(appeals.map((appeal) => this.detail(this.dataSource.manager, appeal.id)));
+    return this.details(appeals);
   }
 
   async listAll(actor: AccessClaims) {
     this.assertElevated(actor);
     const appeals = await this.appeals.find({ order: { submittedAt: 'DESC' } });
-    return Promise.all(appeals.map((appeal) => this.detail(this.dataSource.manager, appeal.id)));
+    return this.details(appeals);
   }
 
   async getOne(id: string, actor: AccessClaims) {
@@ -436,6 +438,44 @@ export class AppealService {
     }
   }
 
+  /**
+   * The same shape `detail()` returns, for a whole list.
+   *
+   * `detail()` costs five queries per appeal; mapping it over a list issued that
+   * many round-trips per row, so an organisation-wide queue grew linearly. Each
+   * related table is now read once for the whole page and matched in memory.
+   */
+  private async details(appeals: AppealEntity[]) {
+    if (!appeals.length) return [];
+    const appealIds = appeals.map((appeal) => appeal.id);
+    const paymentIds = appeals.map((appeal) => appeal.paymentId).filter((id): id is string => Boolean(id));
+    const manager = this.dataSource.manager;
+    const [skills, payments, reviews, approvals] = await Promise.all([
+      manager.find(AppealSkillEntity, { where: { appealId: In(appealIds) }, order: { skill: 'ASC' } }),
+      paymentIds.length ? manager.find(PaymentEntity, { where: { id: In(paymentIds) } }) : Promise.resolve([]),
+      manager.find(AppealCommitteeReviewEntity, { where: { appealId: In(appealIds) } }),
+      manager.find(AppealApprovalEntity, { where: { appealId: In(appealIds) } }),
+    ]);
+
+    const skillsByAppeal = new Map<string, AppealSkillEntity[]>();
+    for (const skill of skills) {
+      const bucket = skillsByAppeal.get(skill.appealId);
+      if (bucket) bucket.push(skill);
+      else skillsByAppeal.set(skill.appealId, [skill]);
+    }
+    const paymentById = new Map(payments.map((payment) => [payment.id, payment]));
+    const reviewByAppeal = new Map(reviews.map((review) => [review.appealId, review]));
+    const approvalByAppeal = new Map(approvals.map((approval) => [approval.appealId, approval]));
+
+    return appeals.map((appeal) => ({
+      ...appeal,
+      skills: skillsByAppeal.get(appeal.id) ?? [],
+      payment: appeal.paymentId ? paymentById.get(appeal.paymentId) ?? null : null,
+      committeeReview: reviewByAppeal.get(appeal.id) ?? null,
+      approval: approvalByAppeal.get(appeal.id) ?? null,
+    }));
+  }
+
   private async detail(manager: EntityManager, id: string) {
     const appeal = await manager.findOneBy(AppealEntity, { id });
     if (!appeal) throw new DomainException('APPEAL_NOT_FOUND', 'Appeal not found.', 404);
@@ -481,12 +521,4 @@ export class AppealService {
     if (!this.privilegedAssurance.includes(actor.assurance)) throw new DomainException('PRIVILEGED_ASSURANCE_REQUIRED', 'Privileged appeal approval requires approved MFA or NDI assurance.', 403);
   }
 
-  private assertInternalService(presented: string | undefined) {
-    if (this.internalServiceSecret.length < 32) throw new DomainException('PAYMENT_CONFIRMATION_UNAVAILABLE', 'Internal payment confirmation is not configured.', 503);
-    const expectedBuffer = Buffer.from(this.internalServiceSecret);
-    const presentedBuffer = Buffer.from(presented ?? '');
-    if (expectedBuffer.length !== presentedBuffer.length || !timingSafeEqual(expectedBuffer, presentedBuffer)) {
-      throw new DomainException('INTERNAL_SERVICE_AUTH_FAILED', 'Internal service authentication failed.', 401);
-    }
-  }
 }

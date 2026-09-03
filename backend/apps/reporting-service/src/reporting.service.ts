@@ -16,6 +16,23 @@ import {
 } from './entities';
 import { DASHBOARD_METRICS, REPORT_CATALOG } from './report-catalog';
 
+/** Optional narrowing applied to a projection read. */
+interface ProjectionScope { examId?: string; ownerUserId?: string }
+
+/** Per-status totals for one resource type, with the lookups the reports need. */
+interface StatusCounts {
+  total: number;
+  /** Rows in exactly this status. */
+  of(status: string): number;
+  /** Rows in any of these statuses. */
+  totalOf(statuses: string[]): number;
+  /** Rows in any status other than these. */
+  totalExcept(statuses: string[]): number;
+}
+
+/** Appeal statuses that are no longer active work. */
+const CLOSED_APPEAL_STATUSES = ['COMPLETED', 'REJECTED', 'NO_CHANGE'];
+
 export interface ReportQueryResult {
   dataset: ReportDataset;
   fields: string[];
@@ -57,29 +74,31 @@ export class ReportingService {
 
   async summary() {
     const [applications, scores, appeals, certificates] = await Promise.all([
-      this.byType(ReportResourceType.Application), this.byType(ReportResourceType.Score),
-      this.byType(ReportResourceType.Appeal), this.byType(ReportResourceType.Certificate),
+      this.statusCounts(ReportResourceType.Application), this.statusCounts(ReportResourceType.Score),
+      this.statusCounts(ReportResourceType.Appeal), this.statusCounts(ReportResourceType.Certificate),
     ]);
     return {
-      totalApplications: applications.length,
-      totalScores: scores.length,
-      totalCertificates: certificates.length,
-      activeAppeals: appeals.filter((item) => !['COMPLETED', 'REJECTED', 'NO_CHANGE'].includes(item.status)).length,
+      totalApplications: applications.total,
+      totalScores: scores.total,
+      totalCertificates: certificates.total,
+      activeAppeals: appeals.totalExcept(CLOSED_APPEAL_STATUSES),
     };
   }
 
   async registrationReport(examId?: string) {
-    const items = (await this.byType(ReportResourceType.Application)).filter((item) => !examId || item.examId === examId);
+    const counts = await this.statusCounts(ReportResourceType.Application, { examId });
     return {
-      total: items.length,
-      submitted: this.count(items, 'SUBMITTED'), underReview: this.count(items, 'UNDER_REVIEW'),
-      verified: this.count(items, 'VERIFIED'), returned: this.count(items, 'RETURNED'),
-      cancelled: this.count(items, 'CANCELLED'), waitlisted: this.count(items, 'WAITLISTED'), absent: this.count(items, 'ABSENT'),
+      total: counts.total,
+      submitted: counts.of('SUBMITTED'), underReview: counts.of('UNDER_REVIEW'),
+      verified: counts.of('VERIFIED'), returned: counts.of('RETURNED'),
+      cancelled: counts.of('CANCELLED'), waitlisted: counts.of('WAITLISTED'), absent: counts.of('ABSENT'),
     };
   }
 
   async scoreReport(examId?: string) {
-    const items = (await this.byType(ReportResourceType.Score)).filter((item) => !examId || item.examId === examId);
+    // Unlike the other reports this one histograms the per-skill scores held in
+    // `dimensions`, so it does need the rows themselves - but only this exam's.
+    const items = await this.byType(ReportResourceType.Score, { examId });
     const histogram = (field: string) => {
       const counts = new Map<number, number>();
       for (const item of items) {
@@ -101,11 +120,11 @@ export class ReportingService {
   }
 
   async appealsReport(examId?: string) {
-    const items = (await this.byType(ReportResourceType.Appeal)).filter((item) => !examId || item.examId === examId);
+    const counts = await this.statusCounts(ReportResourceType.Appeal, { examId });
     return {
-      total: items.length, submitted: this.count(items, 'SUBMITTED'), pendingCommittee: this.count(items, 'PENDING_COMMITTEE'),
-      revisionRequested: this.count(items, 'REVISION_REQUESTED'), approved: this.count(items, 'APPROVED_PENDING_SCORE_UPDATE'),
-      rejected: this.count(items, 'REJECTED'), completed: this.count(items, 'COMPLETED'), noChange: this.count(items, 'NO_CHANGE'),
+      total: counts.total, submitted: counts.of('SUBMITTED'), pendingCommittee: counts.of('PENDING_COMMITTEE'),
+      revisionRequested: counts.of('REVISION_REQUESTED'), approved: counts.of('APPROVED_PENDING_SCORE_UPDATE'),
+      rejected: counts.of('REJECTED'), completed: counts.of('COMPLETED'), noChange: counts.of('NO_CHANGE'),
     };
   }
 
@@ -115,18 +134,21 @@ export class ReportingService {
     const allowed = configured?.metricKeys ?? this.defaultMetrics(role);
     const owner = role === 'test_taker' ? actor.sub : undefined;
     const [applications, scores, appeals, certificates, examinations, committees] = await Promise.all([
-      this.byType(ReportResourceType.Application, owner), this.byType(ReportResourceType.Score, owner),
-      this.byType(ReportResourceType.Appeal, owner), this.byType(ReportResourceType.Certificate, owner),
-      this.byType(ReportResourceType.Examination), this.byType(ReportResourceType.Committee),
+      this.statusCounts(ReportResourceType.Application, { ownerUserId: owner }),
+      this.statusCounts(ReportResourceType.Score, { ownerUserId: owner }),
+      this.statusCounts(ReportResourceType.Appeal, { ownerUserId: owner }),
+      this.statusCounts(ReportResourceType.Certificate, { ownerUserId: owner }),
+      this.statusCounts(ReportResourceType.Examination),
+      this.statusCounts(ReportResourceType.Committee),
     ]);
     const metrics: Record<string, number> = {
-      totalApplications: applications.length, pendingApplications: applications.filter((item) => ['SUBMITTED', 'UNDER_REVIEW'].includes(item.status)).length,
-      verifiedApplications: this.count(applications, 'VERIFIED'), waitlistedApplications: this.count(applications, 'WAITLISTED'),
-      totalScores: scores.length, publishedScores: scores.filter((item) => ['PUBLISHED', 'REVISED'].includes(item.status)).length,
-      activeAppeals: appeals.filter((item) => !['COMPLETED', 'REJECTED', 'NO_CHANGE'].includes(item.status)).length,
-      totalCertificates: certificates.length, activeCertificates: this.count(certificates, 'ACTIVE'),
-      scheduledExaminations: examinations.filter((item) => !['ARCHIVED', 'CANCELLED'].includes(item.status)).length,
-      configuredCommittees: committees.length,
+      totalApplications: applications.total, pendingApplications: applications.totalOf(['SUBMITTED', 'UNDER_REVIEW']),
+      verifiedApplications: applications.of('VERIFIED'), waitlistedApplications: applications.of('WAITLISTED'),
+      totalScores: scores.total, publishedScores: scores.totalOf(['PUBLISHED', 'REVISED']),
+      activeAppeals: appeals.totalExcept(CLOSED_APPEAL_STATUSES),
+      totalCertificates: certificates.total, activeCertificates: certificates.of('ACTIVE'),
+      scheduledExaminations: examinations.totalExcept(['ARCHIVED', 'CANCELLED']),
+      configuredCommittees: committees.total,
     };
     return { role, metrics: Object.fromEntries(allowed.filter((key) => key in metrics).map((key) => [key, metrics[key]])), projectedAt: new Date() };
   }
@@ -191,11 +213,55 @@ export class ReportingService {
     return event;
   }
 
-  private byType(resourceType: ReportResourceType, ownerUserId?: string) {
-    return this.resources.find({ where: ownerUserId ? { resourceType, ownerUserId } : { resourceType }, order: { occurredAt: 'DESC' } });
+  private byType(resourceType: ReportResourceType, scope: ProjectionScope = {}) {
+    return this.resources.find({
+      where: {
+        resourceType,
+        ...(scope.ownerUserId ? { ownerUserId: scope.ownerUserId } : {}),
+        ...(scope.examId ? { examId: scope.examId } : {}),
+      },
+      order: { occurredAt: 'DESC' },
+    });
   }
 
-  private count(items: ReportResourceProjectionEntity[], status: string) { return items.filter((item) => item.status === status).length; }
+  /**
+   * Per-status row counts for one resource type, as a single grouped aggregate.
+   *
+   * The dashboard and the summary reports only ever needed these totals, but used
+   * to load every matching projection row - jsonb dimensions included - into memory
+   * and count them in JavaScript, so response time and heap both grew with the
+   * table. Postgres now does the counting behind `idx_reporting_resource_type_status`
+   * and returns one small row per status.
+   */
+  private async statusCounts(resourceType: ReportResourceType, scope: ProjectionScope = {}): Promise<StatusCounts> {
+    const query = this.resources.createQueryBuilder('projection')
+      .select('projection.status', 'status')
+      .addSelect('COUNT(*)', 'total')
+      .where('projection.resourceType = :resourceType', { resourceType })
+      .groupBy('projection.status');
+    if (scope.ownerUserId) query.andWhere('projection.ownerUserId = :ownerUserId', { ownerUserId: scope.ownerUserId });
+    if (scope.examId) query.andWhere('projection.examId = :examId', { examId: scope.examId });
+
+    const rows = await query.getRawMany<{ status: string; total: string }>();
+    const byStatus = new Map<string, number>();
+    let total = 0;
+    for (const row of rows) {
+      const count = Number(row.total);
+      byStatus.set(row.status, (byStatus.get(row.status) ?? 0) + count);
+      total += count;
+    }
+    return {
+      total,
+      of: (status) => byStatus.get(status) ?? 0,
+      totalOf: (statuses) => statuses.reduce((sum, status) => sum + (byStatus.get(status) ?? 0), 0),
+      totalExcept: (statuses) => {
+        const excluded = new Set(statuses);
+        let sum = 0;
+        for (const [status, count] of byStatus) if (!excluded.has(status)) sum += count;
+        return sum;
+      },
+    };
+  }
 
   private row(item: ReportResourceProjectionEntity): Record<string, unknown> {
     return { resourceId: item.resourceId, examId: item.examId, status: item.status, occurredAt: item.occurredAt, ...item.dimensions };

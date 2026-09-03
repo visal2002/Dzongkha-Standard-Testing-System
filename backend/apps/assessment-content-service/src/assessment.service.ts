@@ -93,7 +93,7 @@ export class AssessmentService {
       if (!examId) where = { examId: In(examIds.length ? examIds : ['00000000-0000-0000-0000-000000000000']) };
     }
     const papers = await this.papers.find({ where: where as never, order: { createdAt: 'DESC' }, take: 100 });
-    return Promise.all(papers.map(async (paper) => this.metadata(paper, await this.documents.findBy({ questionPaperId: paper.id }))));
+    return this.withDocuments(papers);
   }
 
   async getMetadata(id: string, actor: AccessClaims) {
@@ -167,7 +167,7 @@ export class AssessmentService {
 
   async listSamples() {
     const papers = await this.papers.find({ where: { status: QuestionPaperStatus.SamplePublished }, order: { updatedAt: 'DESC' } });
-    return Promise.all(papers.map(async (paper) => this.metadata(paper, await this.documents.findBy({ questionPaperId: paper.id }))));
+    return this.withDocuments(papers);
   }
 
   // Dashboard support for BR-1/BR-2: which exams the caller is assigned to manage
@@ -230,6 +230,24 @@ export class AssessmentService {
     if (!await this.assignments.existsBy({ examId, userId: actor.sub, active: true })) {
       throw new DomainException('EXAM_CONTENT_ASSIGNMENT_REQUIRED', 'You are not assigned to manage classified content for this examination.', 403);
     }
+  }
+
+  /**
+   * Attach each paper's documents, fetched in a single query and grouped in memory.
+   *
+   * The per-paper lookup this replaces ran inside a `Promise.all`, so listing a
+   * hundred papers opened a hundred concurrent document queries.
+   */
+  private async withDocuments(papers: QuestionPaperEntity[]) {
+    if (!papers.length) return [];
+    const documents = await this.documents.findBy({ questionPaperId: In(papers.map((paper) => paper.id)) });
+    const byPaper = new Map<string, QuestionDocumentEntity[]>();
+    for (const document of documents) {
+      const bucket = byPaper.get(document.questionPaperId);
+      if (bucket) bucket.push(document);
+      else byPaper.set(document.questionPaperId, [document]);
+    }
+    return papers.map((paper) => this.metadata(paper, byPaper.get(paper.id) ?? []));
   }
 
   private metadata(paper: QuestionPaperEntity, documents: QuestionDocumentEntity[]) {

@@ -30,7 +30,8 @@ export class CertificateService {
 
   constructor(
     private readonly dataSource: DataSource,
-    private readonly config: ConfigService,
+    // Read into the fields below; not retained as an instance field itself.
+    config: ConfigService,
     private readonly encryption: CertificateEncryptionService,
     private readonly storage: CertificateStorageService,
     private readonly renderer: CertificateRendererService,
