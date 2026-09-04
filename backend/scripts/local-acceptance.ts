@@ -322,12 +322,16 @@ async function main() {
       // registration.service.ts's certificateProfile() reads fullName/cid/dateOfBirth
       // straight off this snapshot - certificate generation fails with
       // CERTIFICATE_PROFILE_INCOMPLETE further down the run without all three.
-      profileSnapshot: { fullName: 'Local Acceptance Test Taker', cid: '11009988776', dateOfBirth: '1998-01-01', source: 'LOCAL_ACCEPTANCE' },
+      profileSnapshot: { fullName: 'Local Acceptance Test Taker', cid: '11009988776', dateOfBirth: '1998-01-01' },
     },
   });
   const applicationReplay = await request<{ applicationId: string }>(`/applications/exam/${exam.id}`, {
     method: 'POST', token: testTaker.accessToken, headers: { 'idempotency-key': applicationKey },
-    body: { identityKey: 'LOCALCID2026', profileSnapshot: { source: 'REPLAY_SHOULD_NOT_REPLACE' } },
+    // A valid but different snapshot: the replay must return the first
+    // application untouched rather than adopt this name. ProfileSnapshotDto
+    // rejects an arbitrary marker object, so the difference is carried in
+    // fullName instead.
+    body: { identityKey: 'LOCALCID2026', profileSnapshot: { fullName: 'Replay Should Not Replace', cid: '11009988776', dateOfBirth: '1998-01-01' } },
   });
   if (applicationReplay.applicationId !== application.applicationId) throw new Error('Application idempotency replay failed.');
 
