@@ -19,9 +19,8 @@
  */
 
 import { Repository } from 'typeorm';
-import { ReportDataset } from '@dzongjuk/contracts';
 import { ReportingService } from '../../../apps/reporting-service/src/reporting.service';
-import { ReportResourceProjectionEntity, ReportResourceType } from '../../../apps/reporting-service/src/entities';
+import { ReportDataset, ReportResourceProjectionEntity, ReportResourceType } from '../../../apps/reporting-service/src/entities';
 
 const SCAN_LIMIT = 10000;
 
