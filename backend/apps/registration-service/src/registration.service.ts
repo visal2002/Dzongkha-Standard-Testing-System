@@ -171,7 +171,7 @@ export class RegistrationService {
     const status = confirmed < exam.capacity ? ApplicationStatus.Submitted : ApplicationStatus.Waitlisted;
     const application = await manager.save(ApplicationEntity, manager.create(ApplicationEntity, {
       examId: exam.id, exam, testTakerUserId: userId, identityKey: dto.identityKey,
-      profileSnapshot: dto.profileSnapshot, status, submittedAt: now,
+      profileSnapshot: snapshotColumn(dto.profileSnapshot), status, submittedAt: now,
       paymentAmount: exam.registrationFee,
       paymentCurrency: 'BTN',
       paymentStatus: Number(exam.registrationFee) === 0 ? RegistrationPaymentStatus.Waived : RegistrationPaymentStatus.Initiated,
@@ -282,7 +282,7 @@ export class RegistrationService {
     const application = await this.getApplication(id, userId, false);
     return this.transition(application.id, [ApplicationStatus.Returned], ApplicationStatus.Submitted, userId, requestId, null, (record) => {
       record.reviewRemarks = null;
-      record.profileSnapshot = dto.profileSnapshot;
+      record.profileSnapshot = snapshotColumn(dto.profileSnapshot);
     });
   }
 
