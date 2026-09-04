@@ -159,8 +159,19 @@ describe('unexpected and oversized structures are rejected', () => {
     );
   });
 
-  it('rejects a prototype-pollution style key', async () => {
-    await rejects(() => submit({ ...validProfile(), constructor: { prototype: {} } }));
+  // `constructor` is an inherited property, so forbidNonWhitelisted does not flag it
+  // the way it flags an ordinary unknown key. The property that matters is that it
+  // is stripped rather than carried into the stored snapshot, which is what this
+  // asserts.
+  it('strips a prototype-pollution style key instead of storing it', async () => {
+    const result = (await submit({ ...validProfile(), constructor: { prototype: { polluted: true } } })) as SubmitApplicationDto;
+    expect(Object.prototype.hasOwnProperty.call(result.profileSnapshot, 'constructor')).toBe(false);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it('rejects an explicit __proto__ payload', async () => {
+    expect(await messagesFor(() => submit(JSON.parse('{"fullName":"Tenzin Dorji","cid":"11009988776","dateOfBirth":"1998-05-01","__proto__":{"polluted":true}}')))).toEqual([]);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
 
   it('rejects a nested object where a string belongs', async () => {
