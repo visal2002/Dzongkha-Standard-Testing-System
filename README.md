@@ -1,8 +1,6 @@
-<p align="center">
-  <img src="frontend/public/images/Dzongjuk%20logo.png" alt="Dzongjuk Logo" width="120" />
-</p>
-
 # Dzongjuk - Dzongkha Standard Testing System
+
+![Dzongjuk Logo](frontend/public/images/Dzongjuk%20logo.png)
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![React](https://img.shields.io/badge/React-19-61dafb.svg?logo=react)
