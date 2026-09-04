@@ -10,7 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { ApplicationStatus, DomainEventTypes, ExamStatus } from '@dzongjuk/contracts';
 import { assertInternalService, DomainException } from '@dzongjuk/common';
-import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ResubmitApplicationDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto } from './dtos';
+import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ResubmitApplicationDto, ReturnApplicationDto, snapshotColumn, SubmitApplicationDto, UpdateExamDto } from './dtos';
 import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEntity, IdempotencyRecordEntity, OutboxEventEntity, RegistrationPaymentStatus, WaitlistEntryEntity } from './entities';
 
 /**
