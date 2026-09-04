@@ -383,7 +383,7 @@ describe('AuthService — NDI status poll (BRD §2.9)', () => {
 
     expect(result).toEqual({ status: 'EXPIRED' });
     expect(overdue.status).toBe('FAILED');
-    expect(ndi.unsubscribe).toHaveBeenCalledWith(overdue.threadId);
+    expect((ndi.unsubscribe as jest.Mock)).toHaveBeenCalledWith(overdue.threadId);
   });
 
   it('does not expire a request whose deadline has not passed', async () => {
@@ -453,7 +453,7 @@ describe('AuthService — NDI status poll (BRD §2.9)', () => {
       { id: validated.id, status: 'VALIDATED', consumedAt: IsNull() },
       expect.objectContaining({ status: 'CONSUMED' }),
     );
-    expect(ndi.unsubscribe).toHaveBeenCalledWith(validated.threadId);
+    expect((ndi.unsubscribe as jest.Mock)).toHaveBeenCalledWith(validated.threadId);
     expect(result).toMatchObject({ status: 'VALIDATED', accessToken: 'signed.access.token' });
     expect(result).toHaveProperty('refreshToken');
   });
