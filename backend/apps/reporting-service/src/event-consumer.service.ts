@@ -62,16 +62,27 @@ export class ReportingEventConsumer implements OnModuleInit, OnApplicationShutdo
   }
 
   private async project(manager: EntityManager, event: DomainEvent<Record<string, unknown>>, state: ProjectionState) {
-    let projection = await manager.findOneBy(ReportResourceProjectionEntity, { resourceType: state.type, resourceId: state.id });
-    if (projection && projection.occurredAt > new Date(event.occurredAt)) return;
-    const dimensions = { ...(projection?.dimensions ?? {}), ...this.dimensions(event.payload) };
-    projection = manager.create(ReportResourceProjectionEntity, {
-      ...projection, resourceType: state.type, resourceId: state.id,
-      examId: this.uuid(event.payload.examId) ?? projection?.examId ?? null,
-      ownerUserId: this.uuid(event.payload.testTakerUserId) ?? projection?.ownerUserId ?? null,
-      status: state.status, dimensions, sourceEventId: event.eventId, occurredAt: new Date(event.occurredAt),
-    });
+    const existing = await manager.findOneBy(ReportResourceProjectionEntity, { resourceType: state.type, resourceId: state.id });
+    // Events can arrive out of order across services; an older event must not
+    // overwrite a projection a newer one already produced.
+    if (existing && existing.occurredAt > new Date(event.occurredAt)) return;
+    const projection = manager.create(ReportResourceProjectionEntity, this.projectionFields(event, state, existing));
     await manager.save(projection);
+  }
+
+  /** Merges this event's fields onto the current projection row, if any. */
+  private projectionFields(event: DomainEvent<Record<string, unknown>>, state: ProjectionState, existing: ReportResourceProjectionEntity | null) {
+    return {
+      ...existing,
+      resourceType: state.type,
+      resourceId: state.id,
+      examId: this.uuid(event.payload.examId) ?? existing?.examId ?? null,
+      ownerUserId: this.uuid(event.payload.testTakerUserId) ?? existing?.ownerUserId ?? null,
+      status: state.status,
+      dimensions: { ...(existing?.dimensions ?? {}), ...this.dimensions(event.payload) },
+      sourceEventId: event.eventId,
+      occurredAt: new Date(event.occurredAt),
+    };
   }
 
   private audit(manager: EntityManager, event: DomainEvent<Record<string, unknown>>) {

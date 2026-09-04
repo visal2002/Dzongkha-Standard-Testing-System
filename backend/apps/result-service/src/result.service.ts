@@ -220,62 +220,72 @@ export class ResultService {
     return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
       const replay = await manager.findOneBy(ResultIdempotencyEntity, { scope, key: idempotencyKey });
       if (replay) return replay.response;
+      // A version already exists for this appeal - either this is a retried request
+      // (replay it) or the appeal was somehow already applied to a different sheet
+      // (reject it). Either way, no new revision is created below.
       const existing = await manager.findOneBy(ScoreVersionEntity, { appealId: dto.appealId });
-      if (existing) {
-        if (existing.scoreSheetId !== scoreSheetId) throw new DomainException('APPEAL_REVISION_CONFLICT', 'The appeal has already revised a different score sheet.', 409);
-        const existingSheet = await manager.findOneBy(ScoreSheetEntity, { id: scoreSheetId });
-        if (!existingSheet) throw new DomainException('SCORE_SHEET_NOT_FOUND', 'Score sheet not found.', 404);
-        const candidate = await manager.findOneBy(CandidateEligibilityEntity, { applicationId: existingSheet.applicationId });
-        if (!candidate) throw new DomainException('CANDIDATE_NOT_SCOREABLE', 'Candidate eligibility is unavailable.', 409);
-        const response = this.revisionResponse(existingSheet, existing, candidate.testTakerUserId);
-        await manager.save(ResultIdempotencyEntity, manager.create(ResultIdempotencyEntity, { scope, key: idempotencyKey, response }));
-        return response;
-      }
-
-      const sheet = await manager.findOne(ScoreSheetEntity, { where: { id: scoreSheetId }, lock: { mode: 'pessimistic_write' } });
-      if (!sheet) throw new DomainException('SCORE_SHEET_NOT_FOUND', 'Score sheet not found.', 404);
-      if (!RELEASED_STATUSES.includes(sheet.status)) {
-        throw new DomainException('SCORE_REVISION_STATE_INVALID', 'Only a published result may receive an approved appeal revision.', 409);
-      }
-      if (sheet.currentVersion !== dto.expectedVersion) {
-        throw new DomainException('SCORE_REVISION_VERSION_CONFLICT', 'The appealed score version is no longer current.', 409);
-      }
-      const candidate = await manager.findOneBy(CandidateEligibilityEntity, { applicationId: sheet.applicationId });
-      if (!candidate || candidate.status !== EligibilityStatus.Eligible) throw new DomainException('CANDIDATE_NOT_SCOREABLE', 'Candidate is not eligible for scoring.', 409);
-      const current = await manager.findOneBy(ScoreVersionEntity, { scoreSheetId, versionNumber: sheet.currentVersion });
-      if (!current) throw new DomainException('SCORE_VERSION_NOT_FOUND', 'The current score version is unavailable.', 409);
-      const changes = this.toScoreChanges(dto.changes);
-      if (!Object.keys(changes).length) throw new DomainException('SCORE_REVISION_EMPTY', 'At least one skill score must be revised.');
-      const revisedScores: ScoreValues = { ...current.scores, ...changes };
-      if ((Object.keys(changes) as Array<keyof ScoreValues>).every((skill) => revisedScores[skill] === current.scores[skill])) {
-        throw new DomainException('SCORE_REVISION_UNCHANGED', 'An appeal revision must change at least one skill score.');
-      }
-      const rule = await this.scoring.ruleForRevision(manager, current.scoringRuleId);
-      const calculated = this.scoring.calculate(revisedScores, rule);
-      const version = await manager.save(ScoreVersionEntity, manager.create(ScoreVersionEntity, {
-        scoreSheetId: sheet.id, versionNumber: sheet.currentVersion + 1, scores: revisedScores,
-        overallScore: String(calculated.overall), bandLabel: calculated.bandLabel, cefrLevel: calculated.cefrLevel,
-        scoringRuleId: rule.id, source: 'APPEAL_REVISION', appealId: dto.appealId, createdByUserId: dto.approvedByUserId,
-      }));
-      sheet.currentVersion = version.versionNumber;
-      sheet.draftScores = revisedScores;
-      sheet.status = ScoreSheetStatus.Revised;
-      await manager.save(sheet);
-      await this.audit(manager, 'SCORE_REVISED', 'ScoreSheet', sheet.id, dto.approvedByUserId, requestId, {
-        appealId: dto.appealId, previousVersion: current.versionNumber, version: version.versionNumber, scoringRuleId: rule.id,
-        revisedSkills: Object.keys(changes),
-      });
-      await this.outbox(manager, DomainEventTypes.ScoreRevised, sheet.id, requestId, {
-        appealId: dto.appealId, scoreSheetId: sheet.id, examId: sheet.examId, applicationId: sheet.applicationId,
-        testTakerUserId: candidate.testTakerUserId, previousVersion: current.versionNumber, version: version.versionNumber,
-        overallScore: version.overallScore, bandLabel: version.bandLabel, cefrLevel: version.cefrLevel,
-        writing: version.scores.WRITING, reading: version.scores.READING, listening: version.scores.LISTENING,
-        speaking: version.scores.SPEAKING, approvedByUserId: dto.approvedByUserId,
-      });
-      const response = this.revisionResponse(sheet, version, candidate.testTakerUserId);
-      await manager.save(ResultIdempotencyEntity, manager.create(ResultIdempotencyEntity, { scope, key: idempotencyKey, response }));
-      return response;
+      if (existing) return this.replayAppealRevision(manager, scoreSheetId, existing, scope, idempotencyKey);
+      return this.createAppealRevision(manager, scoreSheetId, dto, requestId, scope, idempotencyKey);
     });
+  }
+
+  /** The appeal already produced a version; re-derive and re-save the same idempotent response instead of revising again. */
+  private async replayAppealRevision(manager: EntityManager, scoreSheetId: string, existing: ScoreVersionEntity, scope: string, idempotencyKey: string) {
+    if (existing.scoreSheetId !== scoreSheetId) throw new DomainException('APPEAL_REVISION_CONFLICT', 'The appeal has already revised a different score sheet.', 409);
+    const existingSheet = await manager.findOneBy(ScoreSheetEntity, { id: scoreSheetId });
+    if (!existingSheet) throw new DomainException('SCORE_SHEET_NOT_FOUND', 'Score sheet not found.', 404);
+    const candidate = await manager.findOneBy(CandidateEligibilityEntity, { applicationId: existingSheet.applicationId });
+    if (!candidate) throw new DomainException('CANDIDATE_NOT_SCOREABLE', 'Candidate eligibility is unavailable.', 409);
+    const response = this.revisionResponse(existingSheet, existing, candidate.testTakerUserId);
+    await manager.save(ResultIdempotencyEntity, manager.create(ResultIdempotencyEntity, { scope, key: idempotencyKey, response }));
+    return response;
+  }
+
+  /** First application of an approved appeal's revision: validates, calculates, versions and records it. */
+  private async createAppealRevision(manager: EntityManager, scoreSheetId: string, dto: ApplyAppealRevisionDto, requestId: string, scope: string, idempotencyKey: string) {
+    const sheet = await manager.findOne(ScoreSheetEntity, { where: { id: scoreSheetId }, lock: { mode: 'pessimistic_write' } });
+    if (!sheet) throw new DomainException('SCORE_SHEET_NOT_FOUND', 'Score sheet not found.', 404);
+    if (!RELEASED_STATUSES.includes(sheet.status)) {
+      throw new DomainException('SCORE_REVISION_STATE_INVALID', 'Only a published result may receive an approved appeal revision.', 409);
+    }
+    if (sheet.currentVersion !== dto.expectedVersion) {
+      throw new DomainException('SCORE_REVISION_VERSION_CONFLICT', 'The appealed score version is no longer current.', 409);
+    }
+    const candidate = await manager.findOneBy(CandidateEligibilityEntity, { applicationId: sheet.applicationId });
+    if (!candidate || candidate.status !== EligibilityStatus.Eligible) throw new DomainException('CANDIDATE_NOT_SCOREABLE', 'Candidate is not eligible for scoring.', 409);
+    const current = await manager.findOneBy(ScoreVersionEntity, { scoreSheetId, versionNumber: sheet.currentVersion });
+    if (!current) throw new DomainException('SCORE_VERSION_NOT_FOUND', 'The current score version is unavailable.', 409);
+    const changes = this.toScoreChanges(dto.changes);
+    if (!Object.keys(changes).length) throw new DomainException('SCORE_REVISION_EMPTY', 'At least one skill score must be revised.');
+    const revisedScores: ScoreValues = { ...current.scores, ...changes };
+    if ((Object.keys(changes) as Array<keyof ScoreValues>).every((skill) => revisedScores[skill] === current.scores[skill])) {
+      throw new DomainException('SCORE_REVISION_UNCHANGED', 'An appeal revision must change at least one skill score.');
+    }
+    const rule = await this.scoring.ruleForRevision(manager, current.scoringRuleId);
+    const calculated = this.scoring.calculate(revisedScores, rule);
+    const version = await manager.save(ScoreVersionEntity, manager.create(ScoreVersionEntity, {
+      scoreSheetId: sheet.id, versionNumber: sheet.currentVersion + 1, scores: revisedScores,
+      overallScore: String(calculated.overall), bandLabel: calculated.bandLabel, cefrLevel: calculated.cefrLevel,
+      scoringRuleId: rule.id, source: 'APPEAL_REVISION', appealId: dto.appealId, createdByUserId: dto.approvedByUserId,
+    }));
+    sheet.currentVersion = version.versionNumber;
+    sheet.draftScores = revisedScores;
+    sheet.status = ScoreSheetStatus.Revised;
+    await manager.save(sheet);
+    await this.audit(manager, 'SCORE_REVISED', 'ScoreSheet', sheet.id, dto.approvedByUserId, requestId, {
+      appealId: dto.appealId, previousVersion: current.versionNumber, version: version.versionNumber, scoringRuleId: rule.id,
+      revisedSkills: Object.keys(changes),
+    });
+    await this.outbox(manager, DomainEventTypes.ScoreRevised, sheet.id, requestId, {
+      appealId: dto.appealId, scoreSheetId: sheet.id, examId: sheet.examId, applicationId: sheet.applicationId,
+      testTakerUserId: candidate.testTakerUserId, previousVersion: current.versionNumber, version: version.versionNumber,
+      overallScore: version.overallScore, bandLabel: version.bandLabel, cefrLevel: version.cefrLevel,
+      writing: version.scores.WRITING, reading: version.scores.READING, listening: version.scores.LISTENING,
+      speaking: version.scores.SPEAKING, approvedByUserId: dto.approvedByUserId,
+    });
+    const response = this.revisionResponse(sheet, version, candidate.testTakerUserId);
+    await manager.save(ResultIdempotencyEntity, manager.create(ResultIdempotencyEntity, { scope, key: idempotencyKey, response }));
+    return response;
   }
 
   /**

@@ -112,12 +112,31 @@ export class ScoringService {
   }
 
   private validateRule(dto: CreateScoringRuleDto) {
-    if (dto.minimumScore >= dto.maximumScore || dto.increment <= 0) throw new DomainException('SCORING_RULE_INVALID', 'Score bounds or increment are invalid.');
-    if (dto.effectiveTo && new Date(dto.effectiveTo) <= new Date(dto.effectiveFrom)) throw new DomainException('SCORING_RULE_PERIOD_INVALID', 'Effective end must be after effective start.');
+    this.assertValidBounds(dto);
+    this.assertValidPeriod(dto);
+    this.assertValidBands(dto);
+  }
+
+  private assertValidBounds(dto: CreateScoringRuleDto) {
+    if (dto.minimumScore >= dto.maximumScore || dto.increment <= 0) {
+      throw new DomainException('SCORING_RULE_INVALID', 'Score bounds or increment are invalid.');
+    }
+  }
+
+  private assertValidPeriod(dto: CreateScoringRuleDto) {
+    if (dto.effectiveTo && new Date(dto.effectiveTo) <= new Date(dto.effectiveFrom)) {
+      throw new DomainException('SCORING_RULE_PERIOD_INVALID', 'Effective end must be after effective start.');
+    }
+  }
+
+  /** Every band must sit inside the rule's overall score range, and adjacent bands (sorted by `min`) must not overlap. */
+  private assertValidBands(dto: CreateScoringRuleDto) {
     const bands = [...dto.bands].sort((a, b) => a.min - b.min);
     for (let index = 0; index < bands.length; index += 1) {
       const band: BandRange = bands[index];
-      if (band.min > band.max || band.min < dto.minimumScore || band.max > dto.maximumScore) throw new DomainException('SCORING_BAND_INVALID', `Band ${band.label} is outside the score range.`);
+      if (band.min > band.max || band.min < dto.minimumScore || band.max > dto.maximumScore) {
+        throw new DomainException('SCORING_BAND_INVALID', `Band ${band.label} is outside the score range.`);
+      }
       if (index > 0 && band.min <= bands[index - 1].max) throw new DomainException('SCORING_BAND_OVERLAP', 'Scoring bands must not overlap.');
     }
   }

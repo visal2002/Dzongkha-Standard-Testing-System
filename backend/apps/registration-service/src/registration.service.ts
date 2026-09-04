@@ -142,30 +142,44 @@ export class RegistrationService {
       const exam = await manager.findOne(ExamEntity, { where: { id: examId }, lock: { mode: 'pessimistic_write' } });
       if (!exam) throw new DomainException('EXAM_NOT_FOUND', 'Examination not found.', 404);
       const now = new Date();
-      if (exam.status !== ExamStatus.RegistrationOpen || now < exam.registrationStart || now > exam.registrationEnd) {
-        throw new DomainException('REGISTRATION_CLOSED', 'The registration window is not open.', 409);
-      }
-      if (await manager.exists(ApplicationEntity, { where: { examId, identityKey: dto.identityKey } })) {
-        throw new DomainException('APPLICATION_DUPLICATE', 'You already registered for this examination.', 409);
-      }
-      const confirmed = await manager.count(ApplicationEntity, { where: { examId, status: In(CAPACITY_STATUSES) } });
-      const status = confirmed < exam.capacity ? ApplicationStatus.Submitted : ApplicationStatus.Waitlisted;
-      const application = await manager.save(ApplicationEntity, manager.create(ApplicationEntity, {
-        examId, exam, testTakerUserId: userId, identityKey: dto.identityKey,
-        profileSnapshot: dto.profileSnapshot, status, submittedAt: now,
-        paymentAmount: exam.registrationFee,
-        paymentCurrency: 'BTN',
-        paymentStatus: Number(exam.registrationFee) === 0 ? RegistrationPaymentStatus.Waived : RegistrationPaymentStatus.Initiated,
-      }));
-      if (status === ApplicationStatus.Waitlisted) {
-        await manager.save(WaitlistEntryEntity, manager.create(WaitlistEntryEntity, { examId, applicationId: application.id, positionKey: Date.now().toString(), status: 'WAITING' }));
-      }
-      await this.transitionLog(manager, application.id, null, status, userId, requestId, null);
-      await this.outbox(manager, status === ApplicationStatus.Waitlisted ? DomainEventTypes.ApplicationWaitlisted : DomainEventTypes.ApplicationSubmitted, application.id, requestId, { applicationId: application.id, examId, testTakerUserId: userId });
-      const response = { applicationId: application.id, status };
+      this.assertRegistrationOpen(exam, now);
+      await this.assertNotDuplicate(manager, examId, dto.identityKey);
+      const application = await this.createApplication(manager, exam, dto, userId, now);
+      await this.transitionLog(manager, application.id, null, application.status, userId, requestId, null);
+      await this.outbox(manager, application.status === ApplicationStatus.Waitlisted ? DomainEventTypes.ApplicationWaitlisted : DomainEventTypes.ApplicationSubmitted, application.id, requestId, { applicationId: application.id, examId, testTakerUserId: userId });
+      const response = { applicationId: application.id, status: application.status };
       await manager.save(IdempotencyRecordEntity, manager.create(IdempotencyRecordEntity, { scope, key: idempotencyKey, response }));
       return response;
     });
+  }
+
+  private assertRegistrationOpen(exam: ExamEntity, now: Date) {
+    if (exam.status !== ExamStatus.RegistrationOpen || now < exam.registrationStart || now > exam.registrationEnd) {
+      throw new DomainException('REGISTRATION_CLOSED', 'The registration window is not open.', 409);
+    }
+  }
+
+  private async assertNotDuplicate(manager: EntityManager, examId: string, identityKey: string) {
+    if (await manager.exists(ApplicationEntity, { where: { examId, identityKey } })) {
+      throw new DomainException('APPLICATION_DUPLICATE', 'You already registered for this examination.', 409);
+    }
+  }
+
+  /** Confirms a seat or waitlists, per the same capacity count `submit()` always used, then creates the row(s) for it. */
+  private async createApplication(manager: EntityManager, exam: ExamEntity, dto: SubmitApplicationDto, userId: string, now: Date) {
+    const confirmed = await manager.count(ApplicationEntity, { where: { examId: exam.id, status: In(CAPACITY_STATUSES) } });
+    const status = confirmed < exam.capacity ? ApplicationStatus.Submitted : ApplicationStatus.Waitlisted;
+    const application = await manager.save(ApplicationEntity, manager.create(ApplicationEntity, {
+      examId: exam.id, exam, testTakerUserId: userId, identityKey: dto.identityKey,
+      profileSnapshot: dto.profileSnapshot, status, submittedAt: now,
+      paymentAmount: exam.registrationFee,
+      paymentCurrency: 'BTN',
+      paymentStatus: Number(exam.registrationFee) === 0 ? RegistrationPaymentStatus.Waived : RegistrationPaymentStatus.Initiated,
+    }));
+    if (status === ApplicationStatus.Waitlisted) {
+      await manager.save(WaitlistEntryEntity, manager.create(WaitlistEntryEntity, { examId: exam.id, applicationId: application.id, positionKey: Date.now().toString(), status: 'WAITING' }));
+    }
+    return application;
   }
 
   listMine(userId: string) { return this.applications.find({ where: { testTakerUserId: userId }, order: { submittedAt: 'DESC' } }); }

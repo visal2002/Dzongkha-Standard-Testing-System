@@ -23,7 +23,7 @@ This file distinguishes implemented code from approved architecture and unresolv
 | Reports/audit viewer | Implemented core workflow | idempotent RabbitMQ projections, role dashboards, predefined and allow-listed ad-hoc queries, saved definitions, durable CSV/XLSX/PDF jobs, owner-only artifacts and append-only permission-gated audit queries/exports |
 | Integration adapters | Foundation | official NDI/DCRC/payment/SMS/email specifications remain |
 | Service-owned PostgreSQL databases | Implemented through reporting | eight independently provisioned logical databases; additive migrations `0001` through `0006` execute only for their owning service and are tracked per database |
-| Redis/RabbitMQ/object storage | Implemented development topology | Compose platform and registration outbox publisher |
+| RabbitMQ/object storage | Implemented development topology | Compose platform and registration outbox publisher |
 | Docker/GitLab/Kubernetes | Baseline implemented | non-root image, CI pipeline, probes, HPA, PDB, network policy |
 | Observability | Partial | request IDs, health and Prometheus runtime metrics; OpenTelemetry collector/tracing remains |
 | Backup/DR/VAPT/load evidence | Not yet accepted | requires target GovTech infrastructure and formal test execution |

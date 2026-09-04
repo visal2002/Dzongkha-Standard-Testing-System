@@ -131,31 +131,47 @@ export class AppealService {
       if (!payment) throw new DomainException('APPEAL_PAYMENT_NOT_FOUND', 'Appeal payment record not found.', 404);
       const reused = await manager.findOneBy(PaymentEntity, { externalTransactionId: dto.externalTransactionId });
       if (reused && reused.id !== payment.id) throw new DomainException('PAYMENT_TRANSACTION_DUPLICATE', 'The provider transaction has already been reconciled.', 409);
-      if (payment.status === PaymentStatus.Paid) {
-        if (payment.externalTransactionId !== dto.externalTransactionId) throw new DomainException('PAYMENT_ALREADY_CONFIRMED', 'Appeal payment was confirmed using a different transaction.', 409);
-        return this.detail(manager, appeal.id);
-      }
-      if (appeal.status !== AppealStatus.Submitted || payment.status !== PaymentStatus.Initiated) throw new DomainException('PAYMENT_STATE_INVALID', 'This appeal is not awaiting payment.', 409);
-      if (Number(payment.amount) !== dto.amount || payment.currency !== dto.currency) throw new DomainException('PAYMENT_AMOUNT_MISMATCH', 'Confirmed payment does not match the required appeal fee.', 409);
-
-      payment.status = PaymentStatus.Paid;
-      payment.gateway = dto.gateway;
-      payment.externalTransactionId = dto.externalTransactionId;
-      payment.paidAt = new Date(dto.paidAt);
-      payment.reconciliationStatus = ReconciliationStatus.Matched;
-      await manager.save(PaymentEntity, payment);
-      await manager.save(PaymentEventEntity, manager.create(PaymentEventEntity, {
-        paymentId: payment.id,
-        eventType: 'PAYMENT_CONFIRMED',
-        externalTransactionId: dto.externalTransactionId,
-        safeData: { gateway: dto.gateway, amount: payment.amount, currency: payment.currency },
-      }));
-      await this.transition(manager, appeal, AppealStatus.PaymentCompleted, null, 'INTEGRATION', requestId, 'Payment confirmed and reconciled.');
-      await this.transition(manager, appeal, AppealStatus.PendingCommittee, null, 'SYSTEM', requestId, 'Appeal released to the Examination Committee.');
-      await this.audit(manager, 'APPEAL_PAYMENT_CONFIRMED', appeal.id, null, requestId, { paymentId: payment.id, gateway: dto.gateway, amount: payment.amount, currency: payment.currency });
-      await this.outbox(manager, DomainEventTypes.AppealPaymentCompleted, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, testTakerUserId: appeal.testTakerUserId, paymentId: payment.id });
-      return this.detail(manager, appeal.id);
+      if (payment.status === PaymentStatus.Paid) return this.alreadyConfirmedDetail(manager, appeal, payment, dto);
+      this.assertPaymentAwaited(appeal, payment, dto);
+      return this.recordPaymentConfirmation(manager, appeal, payment, dto, requestId);
     });
+  }
+
+  /** Idempotent replay: the same transaction was already confirmed, so re-return its detail rather than re-applying it. */
+  private alreadyConfirmedDetail(manager: EntityManager, appeal: AppealEntity, payment: PaymentEntity, dto: ConfirmAppealPaymentDto) {
+    if (payment.externalTransactionId !== dto.externalTransactionId) {
+      throw new DomainException('PAYMENT_ALREADY_CONFIRMED', 'Appeal payment was confirmed using a different transaction.', 409);
+    }
+    return this.detail(manager, appeal.id);
+  }
+
+  private assertPaymentAwaited(appeal: AppealEntity, payment: PaymentEntity, dto: ConfirmAppealPaymentDto) {
+    if (appeal.status !== AppealStatus.Submitted || payment.status !== PaymentStatus.Initiated) {
+      throw new DomainException('PAYMENT_STATE_INVALID', 'This appeal is not awaiting payment.', 409);
+    }
+    if (Number(payment.amount) !== dto.amount || payment.currency !== dto.currency) {
+      throw new DomainException('PAYMENT_AMOUNT_MISMATCH', 'Confirmed payment does not match the required appeal fee.', 409);
+    }
+  }
+
+  private async recordPaymentConfirmation(manager: EntityManager, appeal: AppealEntity, payment: PaymentEntity, dto: ConfirmAppealPaymentDto, requestId: string) {
+    payment.status = PaymentStatus.Paid;
+    payment.gateway = dto.gateway;
+    payment.externalTransactionId = dto.externalTransactionId;
+    payment.paidAt = new Date(dto.paidAt);
+    payment.reconciliationStatus = ReconciliationStatus.Matched;
+    await manager.save(PaymentEntity, payment);
+    await manager.save(PaymentEventEntity, manager.create(PaymentEventEntity, {
+      paymentId: payment.id,
+      eventType: 'PAYMENT_CONFIRMED',
+      externalTransactionId: dto.externalTransactionId,
+      safeData: { gateway: dto.gateway, amount: payment.amount, currency: payment.currency },
+    }));
+    await this.transition(manager, appeal, AppealStatus.PaymentCompleted, null, 'INTEGRATION', requestId, 'Payment confirmed and reconciled.');
+    await this.transition(manager, appeal, AppealStatus.PendingCommittee, null, 'SYSTEM', requestId, 'Appeal released to the Examination Committee.');
+    await this.audit(manager, 'APPEAL_PAYMENT_CONFIRMED', appeal.id, null, requestId, { paymentId: payment.id, gateway: dto.gateway, amount: payment.amount, currency: payment.currency });
+    await this.outbox(manager, DomainEventTypes.AppealPaymentCompleted, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, testTakerUserId: appeal.testTakerUserId, paymentId: payment.id });
+    return this.detail(manager, appeal.id);
   }
 
   async committeeReview(appealId: string, dto: CommitteeReviewDto, actor: AccessClaims, authorization: string | undefined, requestId: string) {
@@ -259,25 +275,14 @@ export class AppealService {
 
     const appeal = await this.appeals.findOneBy({ id: appealId });
     if (!appeal) throw new DomainException('APPEAL_NOT_FOUND', 'Appeal not found.', 404);
-    if (appeal.status === AppealStatus.Completed && appeal.chiefDecision === AppealDecision.Approved) {
-      return this.detail(this.dataSource.manager, appealId);
-    }
-    if (appeal.status !== AppealStatus.ApprovedPendingScoreUpdate || appeal.chiefDecision !== AppealDecision.Approved) {
-      throw new DomainException('APPEAL_SCORE_UPDATE_STATE_INVALID', 'Only an approved appeal awaiting score update may be applied.', 409);
-    }
+    if (this.isCompletedApproval(appeal)) return this.detail(this.dataSource.manager, appealId);
+    this.assertReadyForRevision(appeal);
     const skills = await this.dataSource.manager.findBy(AppealSkillEntity, { appealId });
-    const approvedSkills = skills.filter((skill) => skill.chiefDecision === AppealDecision.Approved);
-    const changes: Record<string, number> = {};
-    for (const skill of approvedSkills) {
-      if (skill.proposedScore === null) throw new DomainException('APPEAL_PROPOSED_SCORE_MISSING', `Proposed ${skill.skill} score is unavailable.`, 409);
-      changes[this.scoreProperty(skill.skill)] = Number(skill.proposedScore);
-    }
+    const changes = this.approvedScoreChanges(skills);
     const revision = await this.resultClient.applyAppealRevision(
       appeal.scoreSheetId, appeal.id, appeal.scoreVersionNumber, actor.sub, changes, requestId,
     );
-    if (revision.examId !== appeal.examId || revision.applicationId !== appeal.applicationId || revision.testTakerUserId !== appeal.testTakerUserId) {
-      throw new DomainException('APPEAL_SCORE_UPDATE_MISMATCH', 'The revised result does not match the approved appeal.', 409);
-    }
+    this.assertRevisionMatchesAppeal(revision, appeal);
     const certificateUpdate = await this.certificateService.supersedeForScoreRevision(
       revision.scoreSheetId, revision.version, actor, requestId,
     );
@@ -317,6 +322,34 @@ export class AppealService {
       await manager.save(AppealIdempotencyEntity, manager.create(AppealIdempotencyEntity, { scope, key: idempotencyKey, response }));
       return response;
     });
+  }
+
+  /** True once the Chief's approval has already been carried through to a completed appeal. */
+  private isCompletedApproval(appeal: AppealEntity): boolean {
+    return appeal.status === AppealStatus.Completed && appeal.chiefDecision === AppealDecision.Approved;
+  }
+
+  private assertReadyForRevision(appeal: AppealEntity) {
+    if (appeal.status !== AppealStatus.ApprovedPendingScoreUpdate || appeal.chiefDecision !== AppealDecision.Approved) {
+      throw new DomainException('APPEAL_SCORE_UPDATE_STATE_INVALID', 'Only an approved appeal awaiting score update may be applied.', 409);
+    }
+  }
+
+  /** The proposed score for every Chief-approved skill, keyed the way `ResultClientService.applyAppealRevision` expects. */
+  private approvedScoreChanges(skills: AppealSkillEntity[]): Record<string, number> {
+    const changes: Record<string, number> = {};
+    for (const skill of skills) {
+      if (skill.chiefDecision !== AppealDecision.Approved) continue;
+      if (skill.proposedScore === null) throw new DomainException('APPEAL_PROPOSED_SCORE_MISSING', `Proposed ${skill.skill} score is unavailable.`, 409);
+      changes[this.scoreProperty(skill.skill)] = Number(skill.proposedScore);
+    }
+    return changes;
+  }
+
+  private assertRevisionMatchesAppeal(revision: { examId: string; applicationId: string; testTakerUserId: string }, appeal: AppealEntity) {
+    if (revision.examId !== appeal.examId || revision.applicationId !== appeal.applicationId || revision.testTakerUserId !== appeal.testTakerUserId) {
+      throw new DomainException('APPEAL_SCORE_UPDATE_MISMATCH', 'The revised result does not match the approved appeal.', 409);
+    }
   }
 
   async listMine(actor: AccessClaims) {
@@ -404,15 +437,31 @@ export class AppealService {
 
   private validateRecommendation(dto: CommitteeReviewDto, skills: AppealSkillEntity[]) {
     const proposed = dto.proposedScores ?? {};
-    const keys = Object.keys(proposed);
-    const selected = new Set(skills.map((skill) => skill.skill));
     if (dto.recommendation === AppealRecommendation.NoChange) {
-      if (keys.length) throw new DomainException('APPEAL_PROPOSED_SCORE_NOT_ALLOWED', 'No proposed scores are allowed for a no-change recommendation.');
+      this.assertNoProposedScores(proposed);
       return;
     }
+    this.assertProposedSkillsMatch(proposed, skills);
+    this.assertProposedScoresValid(proposed, skills);
+  }
+
+  private assertNoProposedScores(proposed: Partial<Record<Skill, number>>) {
+    if (Object.keys(proposed).length) {
+      throw new DomainException('APPEAL_PROPOSED_SCORE_NOT_ALLOWED', 'No proposed scores are allowed for a no-change recommendation.');
+    }
+  }
+
+  /** A revision must propose a score for exactly the appealed skills - no more, no fewer. */
+  private assertProposedSkillsMatch(proposed: Partial<Record<Skill, number>>, skills: AppealSkillEntity[]) {
+    const keys = Object.keys(proposed);
+    const selected = new Set(skills.map((skill) => skill.skill));
     if (keys.length !== selected.size || keys.some((key) => !selected.has(key as Skill))) {
       throw new DomainException('APPEAL_PROPOSED_SKILLS_INVALID', 'Proposed scores must contain exactly the appealed skills.');
     }
+  }
+
+  /** Every proposed score must be a valid non-negative number, and at least one must actually differ from the published score. */
+  private assertProposedScoresValid(proposed: Partial<Record<Skill, number>>, skills: AppealSkillEntity[]) {
     let changed = false;
     for (const skill of skills) {
       const proposedScore = proposed[skill.skill];

@@ -147,13 +147,30 @@ export class AuthService {
   async ndiStatus(pollToken: string, context: RequestContext) {
     const login = await this.ndiLogins.findOneBy({ pollTokenHash: this.hash(pollToken) });
     if (!login) throw new DomainException('NDI_LOGIN_NOT_FOUND', 'This Bhutan NDI login request is no longer available.', 404);
-    if (login.expiresAt <= new Date() && login.status === 'PENDING') {
-      login.status = 'FAILED';
-      login.completedAt = new Date();
-      await this.ndiLogins.save(login);
-      void this.ndi.unsubscribe(login.threadId);
-      return { status: 'EXPIRED' };
-    }
+    const expired = await this.expireOverdueNdiLogin(login);
+    if (expired) return expired;
+    const terminal = this.terminalNdiStatus(login);
+    if (terminal) return terminal;
+    if (!login.user) throw new DomainException('NDI_ACCOUNT_NOT_LINKED', 'No Dzongjuk account is linked to this verified identity.', 403);
+    return this.consumeValidatedNdiLogin(login, login.user, context);
+  }
+
+  /** A still-pending request past its TTL is failed out and reported EXPIRED; anything else, this returns null. */
+  private async expireOverdueNdiLogin(login: NdiLoginRequestEntity): Promise<{ status: 'EXPIRED' } | null> {
+    if (login.status !== 'PENDING' || login.expiresAt > new Date()) return null;
+    login.status = 'FAILED';
+    login.completedAt = new Date();
+    await this.ndiLogins.save(login);
+    void this.ndi.unsubscribe(login.threadId);
+    return { status: 'EXPIRED' };
+  }
+
+  /**
+   * The plain `{status}` response for every status that needs no further action, or
+   * throws for one already claimed by a prior poll. Null once the request is ready
+   * to be consumed (VALIDATED and not yet claimed).
+   */
+  private terminalNdiStatus(login: NdiLoginRequestEntity): { status: 'PENDING'; expiresAt: string } | { status: 'REJECTED' | 'FAILED' | 'CANCELLED' } | null {
     if (login.status === 'PENDING') return { status: 'PENDING', expiresAt: login.expiresAt.toISOString() };
     if (login.status === 'REJECTED') return { status: 'REJECTED' };
     if (login.status === 'FAILED') return { status: 'FAILED' };
@@ -161,14 +178,18 @@ export class AuthService {
     if (login.status === 'CONSUMED' || login.consumedAt) {
       throw new DomainException('NDI_LOGIN_CONSUMED', 'This Bhutan NDI login request has already been used.', 409);
     }
-    if (!login.user) throw new DomainException('NDI_ACCOUNT_NOT_LINKED', 'No Dzongjuk account is linked to this verified identity.', 403);
+    return null;
+  }
+
+  /** Atomically claims a validated login (so a concurrent poll cannot double-consume it) and opens the session. */
+  private async consumeValidatedNdiLogin(login: NdiLoginRequestEntity, user: UserEntity, context: RequestContext) {
     const claimed = await this.ndiLogins.update(
       { id: login.id, status: 'VALIDATED', consumedAt: IsNull() },
       { status: 'CONSUMED', consumedAt: new Date() },
     );
     if (claimed.affected !== 1) throw new DomainException('NDI_LOGIN_CONSUMED', 'This Bhutan NDI login request has already been used.', 409);
     void this.ndi.unsubscribe(login.threadId);
-    const session = await this.createSession(login.user, 'NDI', context);
+    const session = await this.createSession(user, 'NDI', context);
     return { status: 'VALIDATED', ...session };
   }
 

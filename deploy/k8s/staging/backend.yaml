@@ -7,7 +7,6 @@ data:
   DATABASE_HOST: postgres
   DATABASE_PORT: "5432"
   DATABASE_USER: dzongjuk
-  REDIS_URL: redis://redis:6379
   CORS_ORIGINS: http://172.30.3.63:30430,https://dzongjuk.netlify.app
   SESSION_IDLE_MINUTES: "15"
   LOCKOUT_MINUTES: "30"

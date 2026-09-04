@@ -43,6 +43,34 @@ export class AssessmentService {
 
   async upload(dto: UploadQuestionPaperDto, files: UploadedDocuments, actor: AccessClaims, requestId: string) {
     await this.assertAssigned(dto.examId, actor);
+    const { questionFile, answerFile, allowedFrom, allowedUntil } = this.assertUploadInputs(dto, files);
+
+    const paperId = randomUUID();
+    const uploadedKeys: string[] = [];
+    try {
+      const prepared = await Promise.all([
+        this.prepareDocument(paperId, DocumentType.QuestionPaper, questionFile),
+        this.prepareDocument(paperId, DocumentType.AnswerSheet, answerFile),
+      ]);
+      for (const item of prepared) if (item) uploadedKeys.push(item.document.objectKey);
+
+      return await this.dataSource.transaction((manager) =>
+        this.persistUpload(manager, { id: paperId, dto, allowedFrom, allowedUntil, actor, requestId, prepared }),
+      );
+    } catch (error) {
+      // Object storage sits outside the transaction above, so a failure anywhere in
+      // it - including the transaction itself - must not leave orphaned ciphertext.
+      await Promise.allSettled(uploadedKeys.map((key) => this.storage.delete(key)));
+      throw error;
+    }
+  }
+
+  /**
+   * Resolves and validates the two required upload files and the access window.
+   * Pulled out of `upload()` purely to keep that method's branching readable; every
+   * check, error code and message is unchanged.
+   */
+  private assertUploadInputs(dto: UploadQuestionPaperDto, files: UploadedDocuments) {
     const questionFile = files.questionPaper?.[0] ?? files.file?.[0];
     if (!questionFile) throw new DomainException('QUESTION_DOCUMENT_REQUIRED', 'A question-paper PDF is required.');
     // BRD §5.4.2 BR-1: the question paper and the answer sheet are uploaded as two
@@ -56,32 +84,24 @@ export class AssessmentService {
     if (allowedUntil <= allowedFrom) throw new DomainException('ACCESS_WINDOW_INVALID', 'Access end must be after access start.');
     this.validatePdf(questionFile);
     this.validatePdf(answerFile);
+    return { questionFile, answerFile, allowedFrom, allowedUntil };
+  }
 
-    const paperId = randomUUID();
-    const uploadedKeys: string[] = [];
-    try {
-      const prepared = await Promise.all([
-        this.prepareDocument(paperId, DocumentType.QuestionPaper, questionFile),
-        this.prepareDocument(paperId, DocumentType.AnswerSheet, answerFile),
-      ]);
-      for (const item of prepared) if (item) uploadedKeys.push(item.document.objectKey);
-
-      return await this.dataSource.transaction(async (manager) => {
-        const paper = manager.create(QuestionPaperEntity, {
-          id: paperId, examId: dto.examId, title: dto.title, skill: dto.skill,
-          status: QuestionPaperStatus.Ready, accessAllowedFrom: allowedFrom,
-          accessAllowedUntil: allowedUntil, uploadedByUserId: actor.sub,
-        });
-        await manager.save(QuestionPaperEntity, paper);
-        for (const item of prepared) if (item) await manager.save(QuestionDocumentEntity, item.document);
-        await this.audit(manager, paper.id, null, actor.sub, 'QUESTION_PAPER_UPLOADED', requestId, { examId: dto.examId, skill: dto.skill, documents: prepared.filter(Boolean).length });
-        await this.outbox(manager, DomainEventTypes.QuestionPaperUploaded, paper.id, requestId, { questionPaperId: paper.id, examId: paper.examId, skill: paper.skill });
-        return this.metadata(paper, prepared.filter((item): item is NonNullable<typeof item> => item !== null).map((item) => item.document));
-      });
-    } catch (error) {
-      await Promise.allSettled(uploadedKeys.map((key) => this.storage.delete(key)));
-      throw error;
-    }
+  private async persistUpload(manager: EntityManager, params: {
+    id: string; dto: UploadQuestionPaperDto; allowedFrom: Date; allowedUntil: Date;
+    actor: AccessClaims; requestId: string; prepared: Array<{ document: QuestionDocumentEntity } | null>;
+  }) {
+    const { id, dto, allowedFrom, allowedUntil, actor, requestId, prepared } = params;
+    const paper = manager.create(QuestionPaperEntity, {
+      id, examId: dto.examId, title: dto.title, skill: dto.skill,
+      status: QuestionPaperStatus.Ready, accessAllowedFrom: allowedFrom,
+      accessAllowedUntil: allowedUntil, uploadedByUserId: actor.sub,
+    });
+    await manager.save(QuestionPaperEntity, paper);
+    for (const item of prepared) if (item) await manager.save(QuestionDocumentEntity, item.document);
+    await this.audit(manager, paper.id, null, actor.sub, 'QUESTION_PAPER_UPLOADED', requestId, { examId: dto.examId, skill: dto.skill, documents: prepared.filter(Boolean).length });
+    await this.outbox(manager, DomainEventTypes.QuestionPaperUploaded, paper.id, requestId, { questionPaperId: paper.id, examId: paper.examId, skill: paper.skill });
+    return this.metadata(paper, prepared.filter((item): item is NonNullable<typeof item> => item !== null).map((item) => item.document));
   }
 
   async list(actor: AccessClaims, examId?: string) {

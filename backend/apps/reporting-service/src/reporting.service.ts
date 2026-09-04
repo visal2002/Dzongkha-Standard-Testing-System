@@ -9,7 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { AccessClaims } from '@dzongjuk/contracts';
 import { DomainException } from '@dzongjuk/common';
-import { CreateReportJobDto, DashboardConfigDto, ReportFilterOperator, ReportQueryDto, SaveReportDto } from './dtos';
+import { CreateReportJobDto, DashboardConfigDto, ReportFilterDto, ReportFilterOperator, ReportQueryDto, SaveReportDto } from './dtos';
 import {
   DashboardConfigEntity, ReportDataset, ReportJobEntity, ReportJobStatus, ReportResourceProjectionEntity,
   ReportResourceType, ReportingAuditEventEntity, SavedReportEntity,
@@ -32,6 +32,23 @@ interface StatusCounts {
 
 /** Appeal statuses that are no longer active work. */
 const CLOSED_APPEAL_STATUSES = ['COMPLETED', 'REJECTED', 'NO_CHANGE'];
+
+interface AuditQuery {
+  action?: string; source?: string; actorUserId?: string; correlationId?: string;
+  from?: string; to?: string; page?: number; pageSize?: number;
+}
+
+/**
+ * One comparison per report-filter operator, dispatched by `filterMatches` instead
+ * of a chain of `if` branches - each comparison stays independently simple, and
+ * adding an operator means adding an entry here rather than growing one function.
+ */
+const FILTER_EVALUATORS: Record<ReportFilterOperator, (actual: unknown, value: unknown) => boolean> = {
+  [ReportFilterOperator.Equals]: (actual, value) => String(actual ?? '') === String(value ?? ''),
+  [ReportFilterOperator.In]: (actual, value) => Array.isArray(value) && value.map(String).includes(String(actual)),
+  [ReportFilterOperator.From]: (actual, value) => String(actual ?? '') >= String(value ?? ''),
+  [ReportFilterOperator.To]: (actual, value) => String(actual ?? '') <= String(value ?? ''),
+};
 
 export interface ReportQueryResult {
   dataset: ReportDataset;
@@ -192,19 +209,31 @@ export class ReportingService {
     return job;
   }
 
-  async audit(query: { action?: string; source?: string; actorUserId?: string; correlationId?: string; from?: string; to?: string; page?: number; pageSize?: number }) {
+  async audit(query: AuditQuery) {
     const page = Math.max(query.page ?? 1, 1);
     const pageSize = Math.min(Math.max(query.pageSize ?? 50, 1), 100);
+    const where = this.auditWhere(query);
+    const [items, total] = await this.auditEvents.findAndCount({ where, order: { occurredAt: 'DESC' }, skip: (page - 1) * pageSize, take: pageSize });
+    return { items, total, page, pageSize };
+  }
+
+  private auditWhere(query: AuditQuery): FindOptionsWhere<ReportingAuditEventEntity> {
     const where: FindOptionsWhere<ReportingAuditEventEntity> = {};
     if (query.action) where.action = query.action;
     if (query.source) where.source = query.source;
     if (query.actorUserId) where.actorUserId = query.actorUserId;
     if (query.correlationId) where.correlationId = query.correlationId;
-    if (query.from && query.to) where.occurredAt = Between(new Date(query.from), new Date(query.to));
-    else if (query.from) where.occurredAt = MoreThanOrEqual(new Date(query.from));
-    else if (query.to) where.occurredAt = LessThanOrEqual(new Date(query.to));
-    const [items, total] = await this.auditEvents.findAndCount({ where, order: { occurredAt: 'DESC' }, skip: (page - 1) * pageSize, take: pageSize });
-    return { items, total, page, pageSize };
+    const occurredAt = this.auditOccurredAtFilter(query.from, query.to);
+    if (occurredAt) where.occurredAt = occurredAt;
+    return where;
+  }
+
+  /** The three ways an audit query can bound `occurredAt`: a range, an open start, or an open end. */
+  private auditOccurredAtFilter(from?: string, to?: string) {
+    if (from && to) return Between(new Date(from), new Date(to));
+    if (from) return MoreThanOrEqual(new Date(from));
+    if (to) return LessThanOrEqual(new Date(to));
+    return undefined;
   }
 
   async auditOne(id: string) {
@@ -268,14 +297,11 @@ export class ReportingService {
   }
 
   private matches(row: Record<string, unknown>, dto: ReportQueryDto) {
-    return (dto.filters ?? []).every((filter) => {
-      const actual = row[filter.field];
-      if (filter.operator === ReportFilterOperator.Equals) return String(actual ?? '') === String(filter.value ?? '');
-      if (filter.operator === ReportFilterOperator.In) return Array.isArray(filter.value) && filter.value.map(String).includes(String(actual));
-      if (filter.operator === ReportFilterOperator.From) return String(actual ?? '') >= String(filter.value ?? '');
-      if (filter.operator === ReportFilterOperator.To) return String(actual ?? '') <= String(filter.value ?? '');
-      return false;
-    });
+    return (dto.filters ?? []).every((filter) => this.filterMatches(row[filter.field], filter));
+  }
+
+  private filterMatches(actual: unknown, filter: ReportFilterDto): boolean {
+    return FILTER_EVALUATORS[filter.operator]?.(actual, filter.value) ?? false;
   }
 
   private group(rows: Record<string, unknown>[], field: string) {
