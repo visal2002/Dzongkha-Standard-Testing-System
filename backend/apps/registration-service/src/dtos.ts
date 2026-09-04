@@ -73,7 +73,9 @@ export class ProfileSnapshotDto {
 
   @IsOptional() @IsString() @Length(1, 40) gender?: string;
   @IsOptional() @IsEmail() @MaxLength(254) email?: string;
-  @IsOptional() @IsString() @Length(6, 32) @Matches(/^[+0-9][0-9 ()-]*$/, { message: 'phone may contain only digits, spaces, brackets, hyphens and a leading +.' })
+  // Accepts the shapes the form actually produces - 17123456, +975 17123456,
+  // +975-17-123-456 and (02) 322345 - while excluding letters and control characters.
+  @IsOptional() @IsString() @Length(6, 32) @Matches(/^[+(]?[0-9][0-9 ()+-]*$/, { message: 'phone may contain only digits, spaces, brackets, hyphens and a leading +.' })
   phone?: string;
   @IsOptional() @IsString() @Length(2, 80) dzongkhag?: string;
   @IsOptional() @IsString() @Length(2, 80) gewog?: string;
