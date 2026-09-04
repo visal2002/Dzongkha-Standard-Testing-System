@@ -57,7 +57,7 @@ export class AuthService {
    */
   private async allocateUserId(): Promise<string> {
     const [highest] = await this.users.find({
-      where: { userId: Not(IsNull()) }, select: ['userId'], order: { userId: 'DESC' }, take: 1,
+      where: { userId: Not(IsNull()) }, select: ['id', 'userId'], order: { userId: 'DESC' }, take: 1,
     });
     let next = (Number(highest?.userId) || 1000) + 1;
     for (let attempt = 0; attempt < 25; attempt += 1, next += 1) {

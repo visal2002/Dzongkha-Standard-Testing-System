@@ -5,7 +5,7 @@
  */
 
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DomainException } from '@dzongjuk/common';
 
@@ -23,6 +23,7 @@ export type EncryptionMetadata = Omit<EncryptedDocument, 'ciphertext'>;
 
 @Injectable()
 export class EncryptionService {
+  private readonly logger = new Logger(EncryptionService.name);
   private readonly masterKey: Buffer;
   private readonly keyVersion: string;
 
@@ -65,16 +66,45 @@ export class EncryptionService {
     if (metadata.keyVersion !== this.keyVersion) {
       throw new DomainException('ASSESSMENT_KEY_VERSION_UNAVAILABLE', 'The required encryption key version is unavailable.', 503);
     }
-    const keyDecipher = createDecipheriv('aes-256-gcm', this.masterKey, Buffer.from(metadata.wrapIv, 'base64'));
-    keyDecipher.setAuthTag(Buffer.from(metadata.wrapAuthTag, 'base64'));
-    const dataKey = Buffer.concat([keyDecipher.update(Buffer.from(metadata.wrappedKey, 'base64')), keyDecipher.final()]);
+    const dataKey = this.unwrapDataKey(metadata);
     try {
       const decipher = createDecipheriv('aes-256-gcm', dataKey, Buffer.from(metadata.dataIv, 'base64'));
       decipher.setAuthTag(Buffer.from(metadata.dataAuthTag, 'base64'));
       return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    } catch (error) {
+      throw this.undecryptable('ciphertext', error);
     } finally {
       dataKey.fill(0);
     }
+  }
+
+  private unwrapDataKey(metadata: EncryptionMetadata): Buffer {
+    try {
+      const keyDecipher = createDecipheriv('aes-256-gcm', this.masterKey, Buffer.from(metadata.wrapIv, 'base64'));
+      keyDecipher.setAuthTag(Buffer.from(metadata.wrapAuthTag, 'base64'));
+      return Buffer.concat([keyDecipher.update(Buffer.from(metadata.wrappedKey, 'base64')), keyDecipher.final()]);
+    } catch (error) {
+      throw this.undecryptable('wrapped data key', error);
+    }
+  }
+
+  /**
+   * An AES-GCM authentication failure arrives as a bare `Error` from `final()`, which the
+   * global exception filter can only report as an opaque 500 - the caller is told nothing
+   * and the download simply fails. The usual cause is a rotated ASSESSMENT_MASTER_KEY_BASE64
+   * with an unchanged ASSESSMENT_KEY_VERSION: every document stored under the previous key
+   * still records the current version, so the version guard passes it through and the unwrap
+   * is what breaks. Report it as a deliberate domain error, and keep the stack in the service
+   * log because the filter only traces exceptions it did not expect.
+   */
+  private undecryptable(stage: 'ciphertext' | 'wrapped data key', cause: unknown): DomainException {
+    const error = cause instanceof Error ? cause : new Error(String(cause));
+    this.logger.error(`Failed to authenticate the ${stage} under key version ${this.keyVersion}; the document was encrypted with a different master key.`, error.stack);
+    return new DomainException(
+      'ASSESSMENT_DOCUMENT_UNDECRYPTABLE',
+      'This document cannot be decrypted with the active encryption key and must be uploaded again.',
+      503,
+    );
   }
 
   private assertMasterKey() {
