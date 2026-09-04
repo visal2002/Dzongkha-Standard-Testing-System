@@ -11,3 +11,4 @@ export * from './platform.module';
 export * from './service-info';
 export * from './rabbit-outbox';
 export * from './internal-auth';
+export * from './config-validation';

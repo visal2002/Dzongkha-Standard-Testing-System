@@ -15,6 +15,8 @@ async function bootstrap() {
     description: 'Identity, NDI boundary, sessions, users, roles and permissions.',
     portEnv: 'IDENTITY_PORT',
     defaultPort: 8001,
+    // Guards GET /admin/users/:id/internal-contact, which has no user session.
+    requires: [{ key: 'INTERNAL_SERVICE_SECRET', kind: 'secret' }],
   });
 }
 

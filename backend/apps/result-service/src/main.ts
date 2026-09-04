@@ -7,5 +7,5 @@
 import { NestFactory } from '@nestjs/core';
 import { bootstrapService } from '@dzongjuk/common';
 import { AppModule } from './app.module';
-async function bootstrap() { const app = await NestFactory.create(AppModule); await bootstrapService(app, { name: 'Dzongjuk Evaluation Result Service', description: 'Committees, immutable score versions and result declaration.', portEnv: 'RESULT_PORT', defaultPort: 8004 }); }
+async function bootstrap() { const app = await NestFactory.create(AppModule); await bootstrapService(app, { name: 'Dzongjuk Evaluation Result Service', description: 'Committees, immutable score versions and result declaration.', portEnv: 'RESULT_PORT', defaultPort: 8004, requires: [{ key: 'INTERNAL_SERVICE_SECRET', kind: 'secret' }, { key: 'DATA_ENCRYPTION_KEY', kind: 'secret', minLength: 44 }] }); }
 void bootstrap();

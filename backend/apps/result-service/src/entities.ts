@@ -8,8 +8,20 @@ import { ScoreSheetStatus } from '@dzongjuk/contracts';
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Unique, UpdateDateColumn, VersionColumn } from 'typeorm';
 import { AesGcmEncryptionTransformer } from '@dzongjuk/security';
 
-const encryptionKey = process.env.DATA_ENCRYPTION_KEY || 'uGvF2eOq8P0hRjD7V9wX4mN3yC1zA5tB6sYkM+LpI/c=';
-const scoreTransformer = new AesGcmEncryptionTransformer(encryptionKey);
+// Committed development key. It is in a public repository, so anything it protects
+// is protected by nothing - but score rows in existing development and staging
+// databases were encrypted with it, and changing the value would make them
+// undecryptable. It therefore stays exactly as it is for those environments, and
+// production refuses to start rather than fall back to it.
+//
+// Read from process.env rather than ConfigService because TypeORM needs the
+// transformer while this module is being loaded, before Nest has built an injector.
+const DEVELOPMENT_ENCRYPTION_KEY = 'uGvF2eOq8P0hRjD7V9wX4mN3yC1zA5tB6sYkM+LpI/c=';
+const configuredKey = process.env.DATA_ENCRYPTION_KEY?.trim();
+if (process.env.NODE_ENV === 'production' && (!configuredKey || configuredKey === DEVELOPMENT_ENCRYPTION_KEY)) {
+  throw new Error('DATA_ENCRYPTION_KEY must be set to a deployment-specific 32-byte base64 key in production; the committed development key is not usable there.');
+}
+const scoreTransformer = new AesGcmEncryptionTransformer(configuredKey || DEVELOPMENT_ENCRYPTION_KEY);
 
 export enum CommitteeRole { Head = 'HEAD', Member = 'MEMBER' }
 export enum EligibilityStatus { Eligible = 'ELIGIBLE', Absent = 'ABSENT', Ineligible = 'INELIGIBLE' }

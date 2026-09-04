@@ -15,6 +15,14 @@ async function bootstrap() {
     description: 'Examinations, applications, verification, waitlist and attendance.',
     portEnv: 'REGISTRATION_PORT',
     defaultPort: 8002,
+    requires: [
+      // Guards the internal certificate-profile and contact lookups.
+      { key: 'INTERNAL_SERVICE_SECRET', kind: 'secret' },
+      // BIRMS is a live payment gateway. This used to fall back to the staging
+      // host in code, so an unset variable silently pointed real registration
+      // payments at a test system - see BirmsPaymentService.baseUrl().
+      { key: 'BIRMS_BASE_URL', kind: 'url', rejectHostsContaining: ['stagging', 'staging', 'localhost'] },
+    ],
   });
 }
 void bootstrap();

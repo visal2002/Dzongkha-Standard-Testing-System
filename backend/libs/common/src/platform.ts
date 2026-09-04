@@ -11,6 +11,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
+import { assertConfiguration, RequiredSetting } from './config-validation';
 import { ApiEnvelopeInterceptor, ApiExceptionFilter } from './http';
 
 export interface BootstrapOptions {
@@ -18,10 +19,21 @@ export interface BootstrapOptions {
   description: string;
   portEnv: string;
   defaultPort: number;
+  /**
+   * Settings this service cannot safely run without. Checked before the HTTP
+   * listener opens, so a production deployment missing a signing key or holding a
+   * placeholder secret fails to start rather than serving traffic with it. See
+   * config-validation.ts - failures name the setting only, never its value.
+   */
+  requires?: RequiredSetting[];
 }
+
+/** JWT_SECRET signs and verifies every access token, so every service needs it. */
+export const SHARED_REQUIRED_SETTINGS: RequiredSetting[] = [{ key: 'JWT_SECRET', kind: 'secret' }];
 
 export async function bootstrapService(app: INestApplication, options: BootstrapOptions) {
   const config = app.get(ConfigService);
+  assertConfiguration(config, [...SHARED_REQUIRED_SETTINGS, ...(options.requires ?? [])], options.name);
   app.setGlobalPrefix('api/v1', { exclude: ['health/live', 'health/ready', 'metrics'] });
   app.use(helmet());
   app.use(cookieParser());
