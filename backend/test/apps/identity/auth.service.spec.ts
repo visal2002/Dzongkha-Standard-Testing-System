@@ -377,13 +377,14 @@ describe('AuthService — NDI status poll (BRD §2.9)', () => {
     (ndiLogins.findOneBy as jest.Mock).mockResolvedValue(overdue);
     (ndiLogins.save as jest.Mock).mockImplementation(async (data: unknown) => data);
     const ndi = makeNdi();
+    const unsubscribeSpy = jest.spyOn(ndi, 'unsubscribe');
     const service = buildService({ ndiLogins, ndi });
 
     const result = await service.ndiStatus('token', ctx);
 
     expect(result).toEqual({ status: 'EXPIRED' });
     expect(overdue.status).toBe('FAILED');
-    expect((ndi.unsubscribe as jest.Mock)).toHaveBeenCalledWith(overdue.threadId);
+    expect(unsubscribeSpy).toHaveBeenCalledWith(overdue.threadId);
   });
 
   it('does not expire a request whose deadline has not passed', async () => {
@@ -445,6 +446,7 @@ describe('AuthService — NDI status poll (BRD §2.9)', () => {
     ndiLogins.update = updateMock;
     const sessions = makeRepo<SessionEntity>();
     const ndi = makeNdi();
+    const unsubscribeSpy = jest.spyOn(ndi, 'unsubscribe');
     const service = buildService({ ndiLogins, sessions, ndi });
 
     const result = await service.ndiStatus('token', ctx);
@@ -453,7 +455,7 @@ describe('AuthService — NDI status poll (BRD §2.9)', () => {
       { id: validated.id, status: 'VALIDATED', consumedAt: IsNull() },
       expect.objectContaining({ status: 'CONSUMED' }),
     );
-    expect((ndi.unsubscribe as jest.Mock)).toHaveBeenCalledWith(validated.threadId);
+    expect(unsubscribeSpy).toHaveBeenCalledWith(validated.threadId);
     expect(result).toMatchObject({ status: 'VALIDATED', accessToken: 'signed.access.token' });
     expect(result).toHaveProperty('refreshToken');
   });
