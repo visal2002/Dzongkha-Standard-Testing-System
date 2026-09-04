@@ -95,21 +95,32 @@ export class ReportingService {
     if (dto.groupBy) this.assertFields([dto.groupBy], definition.fields);
     for (const filter of dto.filters ?? []) this.assertFields([filter.field], definition.fields);
 
-    // One row beyond the cap, purely to detect that the cap was reached. Without it
-    // a dataset larger than SCAN_LIMIT reported `total` as exactly SCAN_LIMIT and
-    // looked like a complete answer, which on a governed report is a wrong figure
-    // rather than a slow one. The extra row is dropped before anything is computed.
+    const { projections, scanTruncated } = await this.scan(definition.resourceType);
+    const allRows = projections.map((item) => this.row(item)).filter((row) => this.matches(row, dto));
+    const rows = allRows.slice(0, dto.limit ?? 1000).map((row) => Object.fromEntries(fields.map((field) => [field, row[field] ?? null])));
+    const grouped = dto.groupBy ? this.group(allRows, dto.groupBy) : undefined;
+    const truncatedBy = this.truncationReason(scanTruncated, allRows.length, rows.length);
+    return { dataset: dto.dataset, fields, rows, total: allRows.length, truncated: truncatedBy !== undefined, truncatedBy, grouped };
+  }
+
+  /**
+   * Reads up to SCAN_LIMIT projections, plus one extra row used only to detect that
+   * the cap was reached. Without that extra row a dataset larger than the cap
+   * reported `total` as exactly SCAN_LIMIT and looked like a complete answer, which
+   * on a governed report is a wrong figure rather than a slow one.
+   */
+  private async scan(resourceType: ReportResourceType) {
     const scanned = await this.resources.find({
-      where: { resourceType: definition.resourceType }, order: { occurredAt: 'DESC' }, take: ReportingService.SCAN_LIMIT + 1,
+      where: { resourceType }, order: { occurredAt: 'DESC' }, take: ReportingService.SCAN_LIMIT + 1,
     });
     const scanTruncated = scanned.length > ReportingService.SCAN_LIMIT;
-    const projections = scanTruncated ? scanned.slice(0, ReportingService.SCAN_LIMIT) : scanned;
-    const allRows = projections.map((item) => this.row(item)).filter((row) => this.matches(row, dto));
-    const limit = dto.limit ?? 1000;
-    const rows = allRows.slice(0, limit).map((row) => Object.fromEntries(fields.map((field) => [field, row[field] ?? null])));
-    const grouped = dto.groupBy ? this.group(allRows, dto.groupBy) : undefined;
-    const truncatedBy = scanTruncated ? 'scan' as const : allRows.length > rows.length ? 'limit' as const : undefined;
-    return { dataset: dto.dataset, fields, rows, total: allRows.length, truncated: truncatedBy !== undefined, truncatedBy, grouped };
+    return { projections: scanTruncated ? scanned.slice(0, ReportingService.SCAN_LIMIT) : scanned, scanTruncated };
+  }
+
+  /** 'scan' outranks 'limit': a capped scan means `matched` is itself a floor. */
+  private truncationReason(scanTruncated: boolean, matched: number, returned: number) {
+    if (scanTruncated) return 'scan' as const;
+    return matched > returned ? ('limit' as const) : undefined;
   }
 
   async summary() {

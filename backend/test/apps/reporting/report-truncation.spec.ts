@@ -93,7 +93,7 @@ describe('the audit endpoint paginates rather than truncating', () => {
     const empty = {} as never;
     const service = new ReportingService(empty, empty, empty, empty, auditEvents as never);
 
-    const result = await service.audit({ page: 2, pageSize: 500 } as never);
+    const result = await service.audit({ page: 2, pageSize: 500 });
     expect(result.pageSize).toBe(100);
     expect(result.page).toBe(2);
     // The caller is told there are 4321 records and can page to all of them.
