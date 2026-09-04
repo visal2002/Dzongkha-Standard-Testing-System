@@ -54,12 +54,27 @@ export interface ReportQueryResult {
   dataset: ReportDataset;
   fields: string[];
   rows: Record<string, unknown>[];
+  /**
+   * Matching records found. When `truncated` is true this is a floor, not a count:
+   * the scan stopped at SCAN_LIMIT and more records match than were examined.
+   */
   total: number;
+  /** True when `rows` is shorter than the matching set, for either reason below. */
+  truncated: boolean;
+  /** Why the result was cut: the per-request row limit, the scan cap, or neither. */
+  truncatedBy?: 'limit' | 'scan';
   grouped?: Array<{ value: unknown; count: number }>;
 }
 
 @Injectable()
 export class ReportingService {
+  /**
+   * Most rows a single report query will read into memory. Reporting projections are
+   * filtered in the application rather than in SQL, so this bounds both the response
+   * and the per-request footprint.
+   */
+  private static readonly SCAN_LIMIT = 10000;
+
   constructor(
     @InjectRepository(ReportResourceProjectionEntity) private readonly resources: Repository<ReportResourceProjectionEntity>,
     @InjectRepository(SavedReportEntity) private readonly savedReports: Repository<SavedReportEntity>,
@@ -80,13 +95,21 @@ export class ReportingService {
     if (dto.groupBy) this.assertFields([dto.groupBy], definition.fields);
     for (const filter of dto.filters ?? []) this.assertFields([filter.field], definition.fields);
 
-    const projections = await this.resources.find({
-      where: { resourceType: definition.resourceType }, order: { occurredAt: 'DESC' }, take: 10000,
+    // One row beyond the cap, purely to detect that the cap was reached. Without it
+    // a dataset larger than SCAN_LIMIT reported `total` as exactly SCAN_LIMIT and
+    // looked like a complete answer, which on a governed report is a wrong figure
+    // rather than a slow one. The extra row is dropped before anything is computed.
+    const scanned = await this.resources.find({
+      where: { resourceType: definition.resourceType }, order: { occurredAt: 'DESC' }, take: ReportingService.SCAN_LIMIT + 1,
     });
+    const scanTruncated = scanned.length > ReportingService.SCAN_LIMIT;
+    const projections = scanTruncated ? scanned.slice(0, ReportingService.SCAN_LIMIT) : scanned;
     const allRows = projections.map((item) => this.row(item)).filter((row) => this.matches(row, dto));
-    const rows = allRows.slice(0, dto.limit ?? 1000).map((row) => Object.fromEntries(fields.map((field) => [field, row[field] ?? null])));
+    const limit = dto.limit ?? 1000;
+    const rows = allRows.slice(0, limit).map((row) => Object.fromEntries(fields.map((field) => [field, row[field] ?? null])));
     const grouped = dto.groupBy ? this.group(allRows, dto.groupBy) : undefined;
-    return { dataset: dto.dataset, fields, rows, total: allRows.length, grouped };
+    const truncatedBy = scanTruncated ? 'scan' as const : allRows.length > rows.length ? 'limit' as const : undefined;
+    return { dataset: dto.dataset, fields, rows, total: allRows.length, truncated: truncatedBy !== undefined, truncatedBy, grouped };
   }
 
   async summary() {
