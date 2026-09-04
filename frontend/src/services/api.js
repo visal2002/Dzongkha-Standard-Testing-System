@@ -64,6 +64,24 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+/**
+ * A request made with `responseType: 'blob'` — every document, question paper and
+ * certificate download — gets its *error* body handed back as a Blob too, so the
+ * `data.error.message` lookup below finds nothing on the Blob and the caller is left
+ * showing the generic "Request failed with status code 500". Reading the blob back as
+ * JSON lets the API's own code and message reach the toast, which is the difference
+ * between "download failed" and "this document must be uploaded again".
+ */
+const readErrorBody = async (response) => {
+  const body = response?.data;
+  if (typeof Blob === 'undefined' || !(body instanceof Blob)) return body;
+  try {
+    return JSON.parse(await body.text());
+  } catch {
+    return null;
+  }
+};
+
 apiClient.interceptors.response.use(
   (response) => {
     if (API_DEBUG) {
@@ -71,12 +89,13 @@ apiClient.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     const status = error?.response?.status;
-    const apiError = error?.response?.data?.error;
+    const data = await readErrorBody(error?.response);
+    const apiError = data?.error;
     const message =
       apiError?.message ||
-      error?.response?.data?.message ||
+      data?.message ||
       (typeof apiError === 'string' ? apiError : null) ||
       error?.message ||
       'Network error. Please check your connection.';
@@ -96,4 +115,3 @@ apiClient.interceptors.response.use(
   },
 );
 export default apiClient;
-
