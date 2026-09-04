@@ -13,7 +13,7 @@
  */
 
 import { ConfigService } from '@nestjs/config';
-import { assertConfiguration, isProduction, RequiredSetting, RequiredUrl, validateConfiguration } from '../../libs/common/src/config-validation';
+import { assertConfiguration, isProduction, RequiredSetting, validateConfiguration } from '../../libs/common/src/config-validation';
 
 const configFor = (values: Record<string, string | undefined>) =>
   ({ get: (key: string) => values[key] } as unknown as ConfigService);
@@ -119,7 +119,7 @@ describe('URL validation', () => {
   // so the environment declares that deliberately rather than the check being
   // dropped for everyone.
   describe('the non-production host waiver', () => {
-    const waivable: RequiredSetting = { ...(BIRMS as RequiredUrl), allowNonProductionHostKey: 'BIRMS_ALLOW_NON_PRODUCTION_HOST' };
+    const waivable: RequiredSetting = { ...BIRMS, allowNonProductionHostKey: 'BIRMS_ALLOW_NON_PRODUCTION_HOST' };
     const stagingHost = 'https://birmsstagging.drc.gov.bt/api-services';
 
     it('names the waiver in the failure, so the fix is discoverable', () => {
