@@ -39,6 +39,18 @@ export interface RequiredUrl {
    * it is treated as a misconfiguration rather than a preference.
    */
   rejectHostsContaining?: string[];
+  /**
+   * Setting whose value 'true' waives the rejectHostsContaining check - and only
+   * that check; the HTTPS requirement still applies.
+   *
+   * This exists because an environment can legitimately run with NODE_ENV=production
+   * and still be pointed at an upstream's test system. deploy/k8s/staging does
+   * exactly that: it sets NODE_ENV=production so the services behave as they will in
+   * production, while integrating against the BIRMS staging gateway. Requiring that
+   * environment to say so explicitly keeps the check meaningful for real production,
+   * where the waiver must never be set.
+   */
+  allowNonProductionHostKey?: string;
 }
 
 export type RequiredSetting = RequiredSecret | RequiredUrl;
