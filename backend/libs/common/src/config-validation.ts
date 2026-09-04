@@ -92,14 +92,19 @@ function checkSecret(value: string | undefined, setting: RequiredSecret): string
 }
 
 /** The extra conditions a URL only has to satisfy in production. */
-function checkProductionUrl(url: URL, setting: RequiredUrl): string | null {
+function checkProductionUrl(url: URL, setting: RequiredUrl, waived: boolean): string | null {
   if (url.protocol !== 'https:') return `${setting.key} must use https in production.`;
+  if (waived) return null;
   const host = url.hostname.toLowerCase();
   const matched = (setting.rejectHostsContaining ?? []).find((fragment) => host.includes(fragment.toLowerCase()));
-  return matched ? `${setting.key} points at a host containing "${matched}", which is not a production endpoint.` : null;
+  if (!matched) return null;
+  const waiver = setting.allowNonProductionHostKey;
+  return `${setting.key} points at a host containing "${matched}", which is not a production endpoint.${
+    waiver ? ` Set ${waiver}=true only if this environment is deliberately integrated against a test system.` : ''
+  }`;
 }
 
-function checkUrl(value: string | undefined, setting: RequiredUrl, production: boolean): string | null {
+function checkUrl(config: ConfigService, value: string | undefined, setting: RequiredUrl, production: boolean): string | null {
   if (!value || !value.trim()) return `${setting.key} is not set.`;
   let url: URL;
   try {
@@ -108,7 +113,9 @@ function checkUrl(value: string | undefined, setting: RequiredUrl, production: b
     return `${setting.key} is not a valid absolute URL.`;
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return `${setting.key} must use http or https.`;
-  return production ? checkProductionUrl(url, setting) : null;
+  if (!production) return null;
+  const waived = setting.allowNonProductionHostKey !== undefined && config.get<string>(setting.allowNonProductionHostKey) === 'true';
+  return checkProductionUrl(url, setting, waived);
 }
 
 /**
@@ -120,7 +127,7 @@ export function validateConfiguration(config: ConfigService, settings: RequiredS
   return settings
     .map((setting) => {
       const value = config.get<string>(setting.key);
-      return setting.kind === 'secret' ? checkSecret(value, setting) : checkUrl(value, setting, production);
+      return setting.kind === 'secret' ? checkSecret(value, setting) : checkUrl(config, value, setting, production);
     })
     .filter((problem): problem is string => problem !== null);
 }

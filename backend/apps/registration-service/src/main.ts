@@ -21,7 +21,12 @@ async function bootstrap() {
       // BIRMS is a live payment gateway. This used to fall back to the staging
       // host in code, so an unset variable silently pointed real registration
       // payments at a test system - see BirmsPaymentService.baseUrl().
-      { key: 'BIRMS_BASE_URL', kind: 'url', rejectHostsContaining: ['stagging', 'staging', 'localhost'] },
+      {
+        key: 'BIRMS_BASE_URL',
+        kind: 'url',
+        rejectHostsContaining: ['stagging', 'staging', 'localhost'],
+        allowNonProductionHostKey: 'BIRMS_ALLOW_NON_PRODUCTION_HOST',
+      },
     ],
   });
 }

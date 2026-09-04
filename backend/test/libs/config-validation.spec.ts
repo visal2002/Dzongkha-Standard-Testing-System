@@ -13,7 +13,7 @@
  */
 
 import { ConfigService } from '@nestjs/config';
-import { assertConfiguration, isProduction, RequiredSetting, validateConfiguration } from '../../libs/common/src/config-validation';
+import { assertConfiguration, isProduction, RequiredSetting, RequiredUrl, validateConfiguration } from '../../libs/common/src/config-validation';
 
 const configFor = (values: Record<string, string | undefined>) =>
   ({ get: (key: string) => values[key] } as unknown as ConfigService);
@@ -113,6 +113,40 @@ describe('URL validation', () => {
   it('permits the staging host outside production, which is where staging belongs', () => {
     const config = configFor({ NODE_ENV: 'staging', BIRMS_BASE_URL: 'https://birmsstagging.drc.gov.bt/api-services' });
     expect(validateConfiguration(config, [BIRMS])).toEqual([]);
+  });
+
+  // deploy/k8s/staging runs NODE_ENV=production against the BIRMS staging gateway,
+  // so the environment declares that deliberately rather than the check being
+  // dropped for everyone.
+  describe('the non-production host waiver', () => {
+    const waivable: RequiredSetting = { ...(BIRMS as RequiredUrl), allowNonProductionHostKey: 'BIRMS_ALLOW_NON_PRODUCTION_HOST' };
+    const stagingHost = 'https://birmsstagging.drc.gov.bt/api-services';
+
+    it('names the waiver in the failure, so the fix is discoverable', () => {
+      const config = configFor({ NODE_ENV: 'production', BIRMS_BASE_URL: stagingHost });
+      expect(validateConfiguration(config, [waivable])[0]).toContain('BIRMS_ALLOW_NON_PRODUCTION_HOST=true');
+    });
+
+    it('permits the staging host in production when the waiver is set', () => {
+      const config = configFor({ NODE_ENV: 'production', BIRMS_BASE_URL: stagingHost, BIRMS_ALLOW_NON_PRODUCTION_HOST: 'true' });
+      expect(validateConfiguration(config, [waivable])).toEqual([]);
+    });
+
+    it('still rejects the staging host when the waiver is anything but "true"', () => {
+      for (const value of ['false', '1', 'yes', 'TRUE', undefined]) {
+        const config = configFor({ NODE_ENV: 'production', BIRMS_BASE_URL: stagingHost, BIRMS_ALLOW_NON_PRODUCTION_HOST: value });
+        expect(validateConfiguration(config, [waivable])).toHaveLength(1);
+      }
+    });
+
+    it('waives only the host check, never the https requirement', () => {
+      const config = configFor({
+        NODE_ENV: 'production',
+        BIRMS_BASE_URL: 'http://birmsstagging.drc.gov.bt/api-services',
+        BIRMS_ALLOW_NON_PRODUCTION_HOST: 'true',
+      });
+      expect(validateConfiguration(config, [waivable])).toEqual(['BIRMS_BASE_URL must use https in production.']);
+    });
   });
 });
 
