@@ -9,12 +9,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Eye, EyeOff, ChevronLeft, User, Calendar,
-  ArrowLeft, Lock, Phone,
+  ArrowLeft, CheckCircle2, Loader2, Lock, Phone,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/ui/Button';
 import LanguageToggle from '@/components/LanguageToggle';
+import { applicationService } from '@/features/registration/api';
 import toast from 'react-hot-toast';
 import NdiProofModal from '../components/NdiProofModal';
 import { useNdiProofSession } from '../useNdiProofSession';
@@ -28,6 +29,20 @@ const NDI_STATUS_MESSAGES = {
 
 // Highest education level — same list the exam application form (ApplicationForm.jsx) uses.
 const EDUCATION_LEVELS = ['Below Class X', 'Class X', 'Class XII', 'Certificate', 'Diploma', "Bachelor's Degree", "Master's Degree", 'Doctorate', 'Other'];
+
+function normalizeGender(value) {
+  const gender = String(value || '').trim().toLowerCase();
+  if (['m', 'male'].includes(gender)) return 'Male';
+  if (['f', 'female'].includes(gender)) return 'Female';
+  return gender ? 'Other' : '';
+}
+
+function normalizeBhutanMobile(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 8) return digits;
+  if (digits.length === 11 && digits.startsWith('975')) return digits.slice(3);
+  return '';
+}
 
 // ─── Shared input style ───────────────────────────────────────────────────────
 const INPUT_CLS = 'w-full h-12 px-4 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors';
@@ -52,6 +67,7 @@ export default function LoginPage() {
   const [regGender, setRegGender]   = useState('');
   const [regContact, setRegContact] = useState('');
   const [regEducation, setRegEducation] = useState('');
+  const [regCidLookup, setRegCidLookup] = useState({ status: 'idle', message: '', fields: [] });
 
   const { login, register, isLoading } = useAuth();
   const { t } = useTranslation();
@@ -63,6 +79,53 @@ export default function LoginPage() {
     const tab = new URLSearchParams(location.search).get('tab');
     if (tab === 'register') setActiveTab('register');
   }, [location]);
+
+  // Retrieve the citizen profile after a complete CID is entered. If DCRC is
+  // unavailable, the applicant can still complete the same fields manually.
+  useEffect(() => {
+    if (regCid.length !== 11) {
+      setRegCidLookup({ status: 'idle', message: '', fields: [] });
+      return undefined;
+    }
+
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setRegCidLookup({ status: 'loading', message: 'Retrieving citizen information from DCRC…', fields: [] });
+      try {
+        const profile = await applicationService.lookupCitizen(regCid);
+        if (!active || String(profile.cid) !== regCid) return;
+
+        const gender = normalizeGender(profile.gender);
+        const contact = normalizeBhutanMobile(profile.phone);
+        setRegName(profile.fullName || '');
+        setRegDob(profile.dateOfBirth || '');
+        setRegGender(gender);
+        if (contact) setRegContact(contact);
+
+        const fields = [
+          profile.fullName && 'fullName',
+          profile.dateOfBirth && 'dateOfBirth',
+          gender && 'gender',
+          contact && 'phone',
+        ].filter(Boolean);
+        setRegCidLookup({ status: 'success', message: 'Citizen information retrieved from DCRC.', fields });
+      } catch (error) {
+        if (!active) return;
+        setRegCidLookup({
+          status: 'error',
+          message: error.code === 'DCRC_CITIZEN_NOT_FOUND'
+            ? 'DCRC did not return a record for this CID. Please retry or enter the details manually.'
+            : 'DCRC lookup is temporarily unavailable. You may enter the details manually.',
+          fields: [],
+        });
+      }
+    }, 450);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [regCid]);
 
   // ── Sign-in handler ──
   const handleSubmit = async (e) => {
@@ -95,6 +158,7 @@ export default function LoginPage() {
     const assignedUserId = result.user?.userId;
     setRegCid(''); setRegName(''); setRegDob('');
     setRegGender(''); setRegContact(''); setRegEducation('');
+    setRegCidLookup({ status: 'idle', message: '', fields: [] });
     if (assignedUserId) {
       toast.success(t('auth.welcome_userid', { userId: assignedUserId }), { duration: 8000 });
     } else {
@@ -379,9 +443,23 @@ export default function LoginPage() {
                               maxLength={11}
                               title={t('auth.title_cid')}
                               required
-                              className={INPUT_ICON_CLS}
+                              className={`${INPUT_ICON_CLS} pr-10`}
                             />
+                            {regCidLookup.status === 'loading' && (
+                              <Loader2 size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-teal-600 animate-spin" />
+                            )}
+                            {regCidLookup.status === 'success' && (
+                              <CheckCircle2 size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-600" />
+                            )}
                           </div>
+                          {regCidLookup.message && (
+                            <p
+                              className={`mt-1 text-xs ${regCidLookup.status === 'error' ? 'text-amber-600' : 'text-slate-500'}`}
+                              aria-live="polite"
+                            >
+                              {regCidLookup.message}
+                            </p>
+                          )}
                         </div>
 
                         {/* Full Name */}
@@ -393,6 +471,7 @@ export default function LoginPage() {
                               type="text"
                               value={regName}
                               onChange={e => setRegName(e.target.value)}
+                              readOnly={regCidLookup.fields.includes('fullName')}
                               placeholder={t('auth.placeholder_full_name')}
                               required
                               className={INPUT_ICON_CLS}
@@ -409,6 +488,7 @@ export default function LoginPage() {
                               type="date"
                               value={regDob}
                               onChange={e => setRegDob(e.target.value)}
+                              readOnly={regCidLookup.fields.includes('dateOfBirth')}
                               required
                               className={INPUT_ICON_CLS}
                             />
@@ -421,6 +501,7 @@ export default function LoginPage() {
                           <select
                             value={regGender}
                             onChange={e => setRegGender(e.target.value)}
+                            disabled={regCidLookup.fields.includes('gender')}
                             required
                             className={INPUT_CLS}
                           >
@@ -439,7 +520,8 @@ export default function LoginPage() {
                             <input
                               type="tel"
                               value={regContact}
-                              onChange={e => setRegContact(e.target.value)}
+                              onChange={e => setRegContact(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                              readOnly={regCidLookup.fields.includes('phone')}
                               placeholder={t('auth.placeholder_contact')}
                               inputMode="numeric"
                               pattern="[0-9]{8}"
