@@ -29,7 +29,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: frontend
-          image: dev-harbor.systems.gov.bt/dzongjuk/frontend:44b9619
+          image: dev-harbor.systems.gov.bt/dzongjuk/frontend:27f1a73
           imagePullPolicy: Always
           ports:
             - name: http
