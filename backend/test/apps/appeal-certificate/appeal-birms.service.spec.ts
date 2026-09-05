@@ -36,11 +36,11 @@ describe('AppealBirmsService', () => {
     const appeals = { findOneBy: jest.fn().mockResolvedValue(appeal) } as unknown as Repository<AppealEntity>;
     const payments = {
       findOneBy: jest.fn().mockResolvedValue(payment),
-      save: jest.fn().mockImplementation(async value => value),
+      save: jest.fn().mockImplementation(async (value: PaymentEntity) => value),
     } as unknown as Repository<PaymentEntity>;
     const events = {
-      create: jest.fn().mockImplementation(value => value),
-      save: jest.fn().mockImplementation(async value => value),
+      create: jest.fn().mockImplementation((value: PaymentEventEntity) => value),
+      save: jest.fn().mockImplementation(async (value: PaymentEventEntity) => value),
     } as unknown as Repository<PaymentEventEntity>;
     const sources = {
       profile: jest.fn().mockResolvedValue({
@@ -69,7 +69,10 @@ describe('AppealBirmsService', () => {
 
     const result = await service.createAdvice(appeal.id, appeal.testTakerUserId, 'request-1');
     const createRequest = fetchMock.mock.calls[1][1] as RequestInit;
-    const payload = JSON.parse(String(createRequest.body));
+    const payload = JSON.parse(String(createRequest.body)) as {
+      agencyCode: string;
+      paymentLists: Array<{ serviceCode: string; description: string; payableAmount: string }>;
+    };
 
     expect(payload.agencyCode).toBe('1212');
     expect(payload.paymentLists).toEqual([{

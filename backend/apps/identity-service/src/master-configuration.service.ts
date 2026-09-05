@@ -39,15 +39,17 @@ export class MasterConfigurationService {
   private merge(current: Record<string, unknown>, updates: Record<string, unknown>) {
     const merged = { ...current, ...updates };
     if (updates.certificateTemplate && typeof updates.certificateTemplate === 'object') {
+      const currentCertificate = current.certificateTemplate;
       merged.certificateTemplate = {
-        ...((current.certificateTemplate as Record<string, unknown> | undefined) ?? {}),
-        ...(updates.certificateTemplate as Record<string, unknown>),
+        ...(currentCertificate && typeof currentCertificate === 'object' ? currentCertificate : {}),
+        ...updates.certificateTemplate,
       };
     }
     if (updates.notificationTemplates && typeof updates.notificationTemplates === 'object') {
+      const currentNotifications = current.notificationTemplates;
       merged.notificationTemplates = {
-        ...((current.notificationTemplates as Record<string, unknown> | undefined) ?? {}),
-        ...(updates.notificationTemplates as Record<string, unknown>),
+        ...(currentNotifications && typeof currentNotifications === 'object' ? currentNotifications : {}),
+        ...updates.notificationTemplates,
       };
     }
     return merged;

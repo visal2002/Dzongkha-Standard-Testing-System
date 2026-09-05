@@ -13,8 +13,8 @@ describe('MasterConfigurationService', () => {
     };
     const repository = {
       findOneBy: jest.fn().mockResolvedValue(entity),
-      create: jest.fn((value) => value),
-      save: jest.fn(async (value) => ({ ...value, version: 2 })),
+      create: jest.fn((value: typeof entity) => value),
+      save: jest.fn(async (value: typeof entity) => ({ ...value, version: 2 })),
     };
     const audit = { record: jest.fn().mockResolvedValue(undefined) };
     const service = new MasterConfigurationService(repository as never, audit as never);

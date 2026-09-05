@@ -365,16 +365,17 @@ describe('RegistrationService — Verify & registration number (BRD §2.2)', () 
   it('records DCRC verification provenance when enforcement is enabled', async () => {
     const app = application({ status: ApplicationStatus.UnderReview });
     const lookupId = uuid();
+    const verifyDcrc = jest.fn().mockResolvedValue({ lookupId, verified: true, matchedFields: ['cid'], mismatchFields: [] });
     const dcrcClient = {
       isRequired: jest.fn().mockReturnValue(true),
-      verify: jest.fn().mockResolvedValue({ lookupId, verified: true, matchedFields: ['cid'], mismatchFields: [] }),
+      verify: verifyDcrc,
     } as unknown as DcrcClientService;
     const manager = makeManager({ findOne: jest.fn().mockResolvedValue(app) });
     const service = buildService({ manager, applications: makeRepo([app]), dcrcClient });
 
     const verified = await service.verify(app.id, 'actor-1', 'req-1');
 
-    expect(dcrcClient.verify).toHaveBeenCalledWith(app, 'actor-1', 'req-1');
+    expect(verifyDcrc).toHaveBeenCalledWith(app, 'actor-1', 'req-1');
     expect(verified.dcrcLookupId).toBe(lookupId);
     expect(verified.dcrcVerifiedAt).toBeInstanceOf(Date);
   });
