@@ -19,7 +19,7 @@ export {
 
 export { OUT_OF_MATRIX_OPERATIONS, canPerform, rolesFor } from './outOfMatrix';
 
+export { RouteGuard } from './RouteGuard';
 export { AuthGuard } from './AuthGuard';
 export { AccessDeniedPage } from './AccessDeniedPage';
-export { PermissionMatrix } from './PermissionMatrix';
 export { RoleAssignmentDrawer } from './RoleAssignmentDrawer';

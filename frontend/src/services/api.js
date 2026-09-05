@@ -19,40 +19,16 @@
  *   const res = await apiClient.get('/exams');
  */
 import axios from 'axios';
+import { API_BASE_URL, API_DEBUG, API_TIMEOUT, USE_MOCK_DATA } from '@/lib/env';
+import { clearSession, readAccessToken } from '@/lib/session';
 
-// ─── Environment Config ────────────────────────────────────────────────────────
-// Use the frontend's same-origin Nginx proxy by default. This keeps staging and
-// production browser traffic independent of developer-machine localhost URLs.
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-export const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
-
-
-const DEBUG = import.meta.env.VITE_API_DEBUG === 'true';
-const SESSION_KEY = 'dsts_session';
+export { API_BASE_URL, API_TIMEOUT };
 
 // In mock-data mode the app runs without a real auth backend. Only a subset of
 // services have mock branches; any endpoint that still reaches the API is sent the
 // fixture bearer token and answers 401. That 401 must not tear down the mock
 // session, so the automatic logout below is skipped whenever mock data is active.
-// A real build folds these to `false` and the logout behaves as before.
-const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test';
-const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
-
-const clearClientSession = () => {
-  try {
-    sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    // ignore storage failures
-  }
-};
-
-const readAccessToken = () => {
-  try {
-    return JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}').accessToken || null;
-  } catch {
-    return null;
-  }
-};
+// A real build folds USE_MOCK_DATA to `false` and the logout behaves as before.
 
 // ─── Axios Instance ────────────────────────────────────────────────────────────
 const apiClient = axios.create({
@@ -80,7 +56,7 @@ apiClient.interceptors.request.use(
       // browser set the correct multipart boundary.
       config.headers.delete('Content-Type');
     }
-    if (DEBUG) {
+    if (API_DEBUG) {
       console.info(`[API] → ${config.method?.toUpperCase()} ${config.url}`, config.data || '');
     }
     return config;
@@ -88,31 +64,50 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+/**
+ * A request made with `responseType: 'blob'` — every document, question paper and
+ * certificate download — gets its *error* body handed back as a Blob too, so the
+ * `data.error.message` lookup below finds nothing on the Blob and the caller is left
+ * showing the generic "Request failed with status code 500". Reading the blob back as
+ * JSON lets the API's own code and message reach the toast, which is the difference
+ * between "download failed" and "this document must be uploaded again".
+ */
+const readErrorBody = async (response) => {
+  const body = response?.data;
+  if (typeof Blob === 'undefined' || !(body instanceof Blob)) return body;
+  try {
+    return JSON.parse(await body.text());
+  } catch {
+    return null;
+  }
+};
+
 apiClient.interceptors.response.use(
   (response) => {
-    if (DEBUG) {
+    if (API_DEBUG) {
       console.info(`[API] ← ${response.status} ${response.config.url}`, response.data);
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     const status = error?.response?.status;
-    const apiError = error?.response?.data?.error;
+    const data = await readErrorBody(error?.response);
+    const apiError = data?.error;
     const message =
       apiError?.message ||
-      error?.response?.data?.message ||
+      data?.message ||
       (typeof apiError === 'string' ? apiError : null) ||
       error?.message ||
       'Network error. Please check your connection.';
 
     if (status === 401 && !USE_MOCK_DATA) {
-      clearClientSession();
+      clearSession();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
     }
 
-    if (DEBUG) {
+    if (API_DEBUG) {
       console.error(`[API] ✕ ${status ?? 'ERR'} ${error?.config?.url}`, message);
     }
 
@@ -120,4 +115,3 @@ apiClient.interceptors.response.use(
   },
 );
 export default apiClient;
-

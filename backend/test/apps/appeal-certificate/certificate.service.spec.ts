@@ -15,6 +15,8 @@ import { CertificateSourceClientService } from '../../../apps/appeal-certificate
 import {
   CertificateEntity,
   CertificateFileEntity,
+  CertificateOrientation,
+  CertificatePaperSize,
   CertificateTemplateEntity,
   CertificateTemplateStatus,
 } from '../../../apps/appeal-certificate-service/src/entities';
@@ -402,5 +404,87 @@ describe('CertificateService — Self-service download (downloadLatestOwn)', () 
     const service = buildService({ certificates: makeRepo([expired]) });
     await expect(service.downloadLatestOwn(mfaActor({ sub: ownerId, assurance: 'LOCAL' }), 'req-dl-3'))
       .rejects.toMatchObject({ response: { code: 'CERTIFICATE_NOT_ACTIVE' } });
+  });
+});
+
+// ─── template creation: asset column extraction ────────────────────────────────
+// `createTemplate`'s per-asset `data`/`mimeType` fallback logic was extracted into
+// `assetColumns()` to bring the transaction's cyclomatic complexity from 22 under
+// the project's limit. These pin the two cases that logic actually branches on: an
+// asset provided, and one omitted - for every one of the five asset slots.
+
+describe('CertificateService.createTemplate - asset columns', () => {
+  const baseDto = () => ({
+    code: 'DSTS-V2',
+    versionNumber: 2,
+    title: 'Dzongkha Standard Testing System Certificate',
+    declarationText: 'This is to certify that the holder has attained the level below.',
+    signatoryName: 'Signatory Name',
+    signatoryTitle: 'Registrar',
+    chiefExecutiveName: 'Chief Executive Name',
+    chiefExecutiveTitle: 'Chief Executive Officer',
+    paperSize: CertificatePaperSize.A4,
+    orientation: CertificateOrientation.Landscape,
+    validityMonths: 24,
+    effectiveFrom: new Date('2026-01-01').toISOString(),
+  });
+
+  const asset = (byte: number) => ({ dataBase64: Buffer.from([byte, byte, byte]).toString('base64'), mimeType: 'image/png' as const });
+
+  it('decodes a provided asset into its Data/MimeType columns and leaves an omitted one null', async () => {
+    let saved: Record<string, unknown> | null = null;
+    const manager = makeManager({
+      save: jest.fn().mockImplementation(async (entity: unknown, data: unknown) => {
+        // `audit()` also calls `manager.save`, after the template itself; only the
+        // template save is the one this test cares about.
+        if (entity === CertificateTemplateEntity) saved = data as Record<string, unknown>;
+        return { ...(data as Record<string, unknown>), id: uuid() };
+      }),
+    });
+    const service = buildService({ manager });
+
+    await service.createTemplate({ ...baseDto(), leftLogo: asset(9) }, mfaActor({ roles: ['identity_admin'], permissions: ['*'] }), 'req-tpl-1');
+
+    expect(saved).not.toBeNull();
+    const row = saved as unknown as Record<string, unknown>;
+    // Provided asset: both columns populated from the decoded bytes/mimeType.
+    expect((row.leftLogoData as Buffer).equals(Buffer.from([9, 9, 9]))).toBe(true);
+    expect(row.leftLogoMimeType).toBe('image/png');
+    // Every other asset was omitted: both of its columns are null, not undefined.
+    for (const prefix of ['rightLogo', 'borderImage', 'signatureImage', 'sealImage']) {
+      expect(row[`${prefix}Data`]).toBeNull();
+      expect(row[`${prefix}MimeType`]).toBeNull();
+    }
+  });
+
+  it('decodes all five assets independently when every one is provided', async () => {
+    let saved: Record<string, unknown> | null = null;
+    const manager = makeManager({
+      save: jest.fn().mockImplementation(async (entity: unknown, data: unknown) => {
+        if (entity === CertificateTemplateEntity) saved = data as Record<string, unknown>;
+        return { ...(data as Record<string, unknown>), id: uuid() };
+      }),
+    });
+    const service = buildService({ manager });
+
+    await service.createTemplate({
+      ...baseDto(),
+      leftLogo: asset(1), rightLogo: asset(2), borderImage: asset(3), signatureImage: asset(4), sealImage: asset(5),
+    }, mfaActor({ roles: ['identity_admin'], permissions: ['*'] }), 'req-tpl-2');
+
+    const row = saved as unknown as Record<string, unknown>;
+    expect((row.leftLogoData as Buffer).equals(Buffer.from([1, 1, 1]))).toBe(true);
+    expect((row.rightLogoData as Buffer).equals(Buffer.from([2, 2, 2]))).toBe(true);
+    expect((row.borderImageData as Buffer).equals(Buffer.from([3, 3, 3]))).toBe(true);
+    expect((row.signatureImageData as Buffer).equals(Buffer.from([4, 4, 4]))).toBe(true);
+    expect((row.sealImageData as Buffer).equals(Buffer.from([5, 5, 5]))).toBe(true);
+  });
+
+  it('still rejects an oversized asset before any column is built', async () => {
+    const service = buildService();
+    const oversized = { dataBase64: Buffer.alloc(3 * 1024 * 1024).toString('base64'), mimeType: 'image/png' as const };
+    await expect(
+      service.createTemplate({ ...baseDto(), leftLogo: oversized }, mfaActor({ roles: ['identity_admin'], permissions: ['*'] }), 'req-tpl-3'),
+    ).rejects.toMatchObject({ response: { code: 'CERTIFICATE_TEMPLATE_ASSET_INVALID' } });
   });
 });

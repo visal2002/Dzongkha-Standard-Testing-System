@@ -8,7 +8,7 @@ import { Body, Controller, Get, Headers, Param, Post, Req, Res } from '@nestjs/c
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { RawResponse } from '@dzongjuk/common';
-import { Permissions, Public } from '@dzongjuk/security';
+import { AnyPermissions, Permissions, Public } from '@dzongjuk/security';
 import { CertificateService } from './certificate.service';
 import { CreateCertificateTemplateDto, GenerateCertificatesDto, RevokeCertificateDto } from './dtos';
 
@@ -42,8 +42,19 @@ export class CertificatesController {
     response.setHeader('x-content-type-options', 'nosniff');
     response.end(file.buffer);
   }
+  // These three carried no @Permissions declaration. Authentication was never
+  // optional on them - JwtAccessGuard is global and none of them is @Public() - and
+  // ownership is enforced in CertificateService.getAuthorized(), which admits the
+  // holder, `certificate.manage` and the admin wildcard and 403s everyone else. The
+  // declarations below state that same rule at the routing layer so it is visible
+  // in the controller and enforced before the handler runs, rather than only in the
+  // service. `certificate.view_own` and `certificate.manage` are alternatives, not a
+  // pair: no role holds both, so @Permissions with both would lock everyone out.
+  @AnyPermissions('certificate.view_own', 'certificate.manage')
   @Get(':id') get(@Param('id') id: string, @Req() request: Request) { return this.certificates.getOne(id, request.user!, request.id); }
+  @AnyPermissions('certificate.view_own', 'certificate.manage')
   @Get(':id/history') history(@Param('id') id: string, @Req() request: Request) { return this.certificates.history(id, request.user!); }
+  @AnyPermissions('certificate.view_own', 'certificate.manage')
   @RawResponse() @Get(':id/file') async file(@Param('id') id: string, @Req() request: Request, @Res() response: Response) {
     const file = await this.certificates.download(id, request.user!, request.id);
     response.setHeader('content-type', 'application/pdf');

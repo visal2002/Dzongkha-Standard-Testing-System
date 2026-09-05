@@ -49,21 +49,36 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const request = context.getRequest<Request>();
     const status = exception instanceof HttpException ? exception.getStatus() : 500;
     const raw = exception instanceof HttpException ? exception.getResponse() : null;
-    const body = typeof raw === 'object' && raw !== null ? (raw as Record<string, any>) : {};
-    const validationMessage = Array.isArray(body.message) ? body.message.join('; ') : body.message;
-    if (!(exception instanceof HttpException)) {
-      const error = exception instanceof Error ? exception : new Error(String(exception));
-      this.logger.error(`${request.method} ${request.originalUrl} failed [requestId=${request.id}]`, error.stack);
-    }
-    response.status(status).json({
-      success: false,
-      error: {
-        code: body.code ?? (status === 500 ? 'INTERNAL_ERROR' : `HTTP_${status}`),
-        message: validationMessage ?? (status === 500 ? 'An unexpected error occurred.' : String(raw)),
-        requestId: request.id,
-        details: body.details ?? {},
-      },
-    });
+    const body = this.normalizedBody(raw);
+    this.logIfUnexpected(exception, request);
+    response.status(status).json({ success: false, error: this.errorPayload(status, body, raw, request.id) });
+  }
+
+  /** `HttpException.getResponse()` may be a plain string; only an object carries `code`/`message`/`details`. */
+  private normalizedBody(raw: unknown): Record<string, any> {
+    return typeof raw === 'object' && raw !== null ? (raw as Record<string, any>) : {};
+  }
+
+  /** Class-validator reports multiple failures as a `message` array; every other exception shape gives a single string. */
+  private validationMessage(body: Record<string, any>): string | undefined {
+    const message: unknown = body.message;
+    return Array.isArray(message) ? message.join('; ') : (message as string | undefined);
+  }
+
+  /** Anything that did not arrive as a deliberate `HttpException` is an unexpected failure worth the stack trace. */
+  private logIfUnexpected(exception: unknown, request: Request): void {
+    if (exception instanceof HttpException) return;
+    const error = exception instanceof Error ? exception : new Error(String(exception));
+    this.logger.error(`${request.method} ${request.originalUrl} failed [requestId=${request.id}]`, error.stack);
+  }
+
+  private errorPayload(status: number, body: Record<string, any>, raw: unknown, requestId: string) {
+    return {
+      code: body.code ?? (status === 500 ? 'INTERNAL_ERROR' : `HTTP_${status}`),
+      message: this.validationMessage(body) ?? (status === 500 ? 'An unexpected error occurred.' : String(raw)),
+      requestId,
+      details: body.details ?? {},
+    };
   }
 }
 

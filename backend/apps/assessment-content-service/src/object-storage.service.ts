@@ -35,10 +35,11 @@ export class ObjectStorageService implements OnModuleInit {
   async onModuleInit() {
     try {
       await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
-    } catch {
+    } catch (error) {
       if (this.production) {
         throw new Error(`Required assessment bucket ${this.bucket} is unavailable.`);
       }
+      this.logger.warn(`Assessment bucket ${this.bucket} was not found; creating it for local development.`, error as Error);
       await this.client.send(new CreateBucketCommand({ Bucket: this.bucket }));
     }
   }
@@ -59,7 +60,8 @@ export class ObjectStorageService implements OnModuleInit {
       const result = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
       if (!result.Body) throw new Error('Object body missing');
       return Buffer.from(await result.Body.transformToByteArray());
-    } catch {
+    } catch (error) {
+      this.logger.error(`Unable to retrieve object ${key} from bucket ${this.bucket}.`, error as Error);
       throw new DomainException('ASSESSMENT_OBJECT_UNAVAILABLE', 'The encrypted document is unavailable.', 503);
     }
   }

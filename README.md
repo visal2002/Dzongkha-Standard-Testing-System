@@ -1,5 +1,7 @@
 # Dzongjuk - Dzongkha Standard Testing System
 
+![Dzongjuk Logo](frontend/public/images/Dzongjuk%20logo.png)
+
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![React](https://img.shields.io/badge/React-19-61dafb.svg?logo=react)
 ![Vite](https://img.shields.io/badge/Vite-6-646cff.svg?logo=vite)
@@ -67,7 +69,7 @@ The application presents a complete internal workflow for exam administration. I
 | **PDF** | @react-pdf/renderer v4 |
 | **Utils** | React Hot Toast, qrcode.react (NDI login QR + certificate QR) |
 | **Testing** | Vitest (service contracts), Playwright (Chromium route suite) |
-| **Backend** | NestJS microservices, TypeORM, PostgreSQL, Redis, RabbitMQ, MinIO |
+| **Backend** | NestJS microservices, TypeORM, PostgreSQL, RabbitMQ, MinIO |
 | **Gateway** | nginx (Docker Compose locally, Kubernetes in staging) |
 
 ---
@@ -183,7 +185,7 @@ GitHub Actions (`.github/workflows/quality.yml`) runs the frontend contract and 
 
 ### Staging (manual)
 
-Staging runs from the manifests in `deploy/k8s/staging/` against the GovTech registry `dev-harbor.systems.gov.bt`, in namespace `dzongjuk`. It comprises all eight backend services, the frontend, an nginx API gateway exposed via NodePort, and the PostgreSQL, Redis, RabbitMQ, and MinIO infrastructure.
+Staging runs from the manifests in `deploy/k8s/staging/` against the GovTech registry `dev-harbor.systems.gov.bt`, in namespace `dzongjuk`. It comprises all eight backend services, the frontend, an nginx API gateway exposed via NodePort, and the PostgreSQL, RabbitMQ, and MinIO infrastructure.
 
 ```bash
 # 1. Build and push a backend service image
@@ -308,7 +310,7 @@ backend/
 │   ├── apps/               # Per-service unit specs, mirroring apps/
 │   ├── libs/               # Contract and security-guard specs
 │   └── integration/        # Cross-service event and outbox contracts
-├── compose.yml             # Local stack: services, Postgres, Redis, RabbitMQ, MinIO
+├── compose.yml             # Local stack: services, Postgres, RabbitMQ, MinIO
 └── .gitlab-ci.yml          # Reference pipeline (not executed by GitHub)
 
 deploy/k8s/staging/         # Manifests staging actually runs (namespace: dzongjuk)

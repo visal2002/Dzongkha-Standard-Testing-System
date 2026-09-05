@@ -8,18 +8,18 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "target": "ES2022",
+    "baseUrl": "./",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
     "strict": true,
     "strictPropertyInitialization": false,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@dzongjuk/common": ["libs/common/src"],
-      "@dzongjuk/contracts": ["libs/contracts/src"],
-      "@dzongjuk/security": ["libs/security/src"]
+      "@dzongjuk/common": ["./libs/common/src"],
+      "@dzongjuk/contracts": ["./libs/contracts/src"],
+      "@dzongjuk/security": ["./libs/security/src"]
     }
   }
 }

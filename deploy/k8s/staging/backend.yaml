@@ -7,7 +7,6 @@ data:
   DATABASE_HOST: postgres
   DATABASE_PORT: "5432"
   DATABASE_USER: dzongjuk
-  REDIS_URL: redis://redis:6379
   CORS_ORIGINS: http://172.30.3.63:30430,https://dzongjuk.netlify.app
   SESSION_IDLE_MINUTES: "15"
   LOCKOUT_MINUTES: "30"
@@ -31,6 +30,13 @@ data:
   CERTIFICATE_KEY_VERSION: "1"
   NDI_ALLOW_TEST_TAKER_PROVISIONING: "true"
   BIRMS_BASE_URL: https://birmsstagging.drc.gov.bt/api-services
+  # This environment runs with NODE_ENV=production so the services behave as they
+  # will in production, but it integrates against the BIRMS *staging* gateway. The
+  # registration service's startup check refuses a production build pointed at a
+  # host named "stagging"/"staging" unless the environment says so explicitly.
+  # Real production must never set this: it is what stops a missing or mistyped
+  # BIRMS_BASE_URL sending live registration payments to a test system.
+  BIRMS_ALLOW_NON_PRODUCTION_HOST: "true"
   BIRMS_SERVICE_PATH: moha-service/api/v1
   BIRMS_PLATFORM: Dzongjuk
   BIRMS_AGENCY_CODE: ""

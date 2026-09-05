@@ -9,23 +9,72 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { AccessClaims } from '@dzongjuk/contracts';
 import { DomainException } from '@dzongjuk/common';
-import { CreateReportJobDto, DashboardConfigDto, ReportFilterOperator, ReportQueryDto, SaveReportDto } from './dtos';
+import { CreateReportJobDto, DashboardConfigDto, ReportFilterDto, ReportFilterOperator, ReportQueryDto, SaveReportDto } from './dtos';
 import {
   DashboardConfigEntity, ReportDataset, ReportJobEntity, ReportJobStatus, ReportResourceProjectionEntity,
   ReportResourceType, ReportingAuditEventEntity, SavedReportEntity,
 } from './entities';
 import { DASHBOARD_METRICS, REPORT_CATALOG } from './report-catalog';
 
+/** Optional narrowing applied to a projection read. */
+interface ProjectionScope { examId?: string; ownerUserId?: string }
+
+/** Per-status totals for one resource type, with the lookups the reports need. */
+interface StatusCounts {
+  total: number;
+  /** Rows in exactly this status. */
+  of(status: string): number;
+  /** Rows in any of these statuses. */
+  totalOf(statuses: string[]): number;
+  /** Rows in any status other than these. */
+  totalExcept(statuses: string[]): number;
+}
+
+/** Appeal statuses that are no longer active work. */
+const CLOSED_APPEAL_STATUSES = ['COMPLETED', 'REJECTED', 'NO_CHANGE'];
+
+interface AuditQuery {
+  action?: string; source?: string; actorUserId?: string; correlationId?: string;
+  from?: string; to?: string; page?: number; pageSize?: number;
+}
+
+/**
+ * One comparison per report-filter operator, dispatched by `filterMatches` instead
+ * of a chain of `if` branches - each comparison stays independently simple, and
+ * adding an operator means adding an entry here rather than growing one function.
+ */
+const FILTER_EVALUATORS: Record<ReportFilterOperator, (actual: unknown, value: unknown) => boolean> = {
+  [ReportFilterOperator.Equals]: (actual, value) => String(actual ?? '') === String(value ?? ''),
+  [ReportFilterOperator.In]: (actual, value) => Array.isArray(value) && value.map(String).includes(String(actual)),
+  [ReportFilterOperator.From]: (actual, value) => String(actual ?? '') >= String(value ?? ''),
+  [ReportFilterOperator.To]: (actual, value) => String(actual ?? '') <= String(value ?? ''),
+};
+
 export interface ReportQueryResult {
   dataset: ReportDataset;
   fields: string[];
   rows: Record<string, unknown>[];
+  /**
+   * Matching records found. When `truncated` is true this is a floor, not a count:
+   * the scan stopped at SCAN_LIMIT and more records match than were examined.
+   */
   total: number;
+  /** True when `rows` is shorter than the matching set, for either reason below. */
+  truncated: boolean;
+  /** Why the result was cut: the per-request row limit, the scan cap, or neither. */
+  truncatedBy?: 'limit' | 'scan';
   grouped?: Array<{ value: unknown; count: number }>;
 }
 
 @Injectable()
 export class ReportingService {
+  /**
+   * Most rows a single report query will read into memory. Reporting projections are
+   * filtered in the application rather than in SQL, so this bounds both the response
+   * and the per-request footprint.
+   */
+  private static readonly SCAN_LIMIT = 10000;
+
   constructor(
     @InjectRepository(ReportResourceProjectionEntity) private readonly resources: Repository<ReportResourceProjectionEntity>,
     @InjectRepository(SavedReportEntity) private readonly savedReports: Repository<SavedReportEntity>,
@@ -46,40 +95,61 @@ export class ReportingService {
     if (dto.groupBy) this.assertFields([dto.groupBy], definition.fields);
     for (const filter of dto.filters ?? []) this.assertFields([filter.field], definition.fields);
 
-    const projections = await this.resources.find({
-      where: { resourceType: definition.resourceType }, order: { occurredAt: 'DESC' }, take: 10000,
-    });
+    const { projections, scanTruncated } = await this.scan(definition.resourceType);
     const allRows = projections.map((item) => this.row(item)).filter((row) => this.matches(row, dto));
     const rows = allRows.slice(0, dto.limit ?? 1000).map((row) => Object.fromEntries(fields.map((field) => [field, row[field] ?? null])));
     const grouped = dto.groupBy ? this.group(allRows, dto.groupBy) : undefined;
-    return { dataset: dto.dataset, fields, rows, total: allRows.length, grouped };
+    const truncatedBy = this.truncationReason(scanTruncated, allRows.length, rows.length);
+    return { dataset: dto.dataset, fields, rows, total: allRows.length, truncated: truncatedBy !== undefined, truncatedBy, grouped };
+  }
+
+  /**
+   * Reads up to SCAN_LIMIT projections, plus one extra row used only to detect that
+   * the cap was reached. Without that extra row a dataset larger than the cap
+   * reported `total` as exactly SCAN_LIMIT and looked like a complete answer, which
+   * on a governed report is a wrong figure rather than a slow one.
+   */
+  private async scan(resourceType: ReportResourceType) {
+    const scanned = await this.resources.find({
+      where: { resourceType }, order: { occurredAt: 'DESC' }, take: ReportingService.SCAN_LIMIT + 1,
+    });
+    const scanTruncated = scanned.length > ReportingService.SCAN_LIMIT;
+    return { projections: scanTruncated ? scanned.slice(0, ReportingService.SCAN_LIMIT) : scanned, scanTruncated };
+  }
+
+  /** 'scan' outranks 'limit': a capped scan means `matched` is itself a floor. */
+  private truncationReason(scanTruncated: boolean, matched: number, returned: number) {
+    if (scanTruncated) return 'scan' as const;
+    return matched > returned ? ('limit' as const) : undefined;
   }
 
   async summary() {
     const [applications, scores, appeals, certificates] = await Promise.all([
-      this.byType(ReportResourceType.Application), this.byType(ReportResourceType.Score),
-      this.byType(ReportResourceType.Appeal), this.byType(ReportResourceType.Certificate),
+      this.statusCounts(ReportResourceType.Application), this.statusCounts(ReportResourceType.Score),
+      this.statusCounts(ReportResourceType.Appeal), this.statusCounts(ReportResourceType.Certificate),
     ]);
     return {
-      totalApplications: applications.length,
-      totalScores: scores.length,
-      totalCertificates: certificates.length,
-      activeAppeals: appeals.filter((item) => !['COMPLETED', 'REJECTED', 'NO_CHANGE'].includes(item.status)).length,
+      totalApplications: applications.total,
+      totalScores: scores.total,
+      totalCertificates: certificates.total,
+      activeAppeals: appeals.totalExcept(CLOSED_APPEAL_STATUSES),
     };
   }
 
   async registrationReport(examId?: string) {
-    const items = (await this.byType(ReportResourceType.Application)).filter((item) => !examId || item.examId === examId);
+    const counts = await this.statusCounts(ReportResourceType.Application, { examId });
     return {
-      total: items.length,
-      submitted: this.count(items, 'SUBMITTED'), underReview: this.count(items, 'UNDER_REVIEW'),
-      verified: this.count(items, 'VERIFIED'), returned: this.count(items, 'RETURNED'),
-      cancelled: this.count(items, 'CANCELLED'), waitlisted: this.count(items, 'WAITLISTED'), absent: this.count(items, 'ABSENT'),
+      total: counts.total,
+      submitted: counts.of('SUBMITTED'), underReview: counts.of('UNDER_REVIEW'),
+      verified: counts.of('VERIFIED'), returned: counts.of('RETURNED'),
+      cancelled: counts.of('CANCELLED'), waitlisted: counts.of('WAITLISTED'), absent: counts.of('ABSENT'),
     };
   }
 
   async scoreReport(examId?: string) {
-    const items = (await this.byType(ReportResourceType.Score)).filter((item) => !examId || item.examId === examId);
+    // Unlike the other reports this one histograms the per-skill scores held in
+    // `dimensions`, so it does need the rows themselves - but only this exam's.
+    const items = await this.byType(ReportResourceType.Score, { examId });
     const histogram = (field: string) => {
       const counts = new Map<number, number>();
       for (const item of items) {
@@ -101,11 +171,11 @@ export class ReportingService {
   }
 
   async appealsReport(examId?: string) {
-    const items = (await this.byType(ReportResourceType.Appeal)).filter((item) => !examId || item.examId === examId);
+    const counts = await this.statusCounts(ReportResourceType.Appeal, { examId });
     return {
-      total: items.length, submitted: this.count(items, 'SUBMITTED'), pendingCommittee: this.count(items, 'PENDING_COMMITTEE'),
-      revisionRequested: this.count(items, 'REVISION_REQUESTED'), approved: this.count(items, 'APPROVED_PENDING_SCORE_UPDATE'),
-      rejected: this.count(items, 'REJECTED'), completed: this.count(items, 'COMPLETED'), noChange: this.count(items, 'NO_CHANGE'),
+      total: counts.total, submitted: counts.of('SUBMITTED'), pendingCommittee: counts.of('PENDING_COMMITTEE'),
+      revisionRequested: counts.of('REVISION_REQUESTED'), approved: counts.of('APPROVED_PENDING_SCORE_UPDATE'),
+      rejected: counts.of('REJECTED'), completed: counts.of('COMPLETED'), noChange: counts.of('NO_CHANGE'),
     };
   }
 
@@ -115,18 +185,21 @@ export class ReportingService {
     const allowed = configured?.metricKeys ?? this.defaultMetrics(role);
     const owner = role === 'test_taker' ? actor.sub : undefined;
     const [applications, scores, appeals, certificates, examinations, committees] = await Promise.all([
-      this.byType(ReportResourceType.Application, owner), this.byType(ReportResourceType.Score, owner),
-      this.byType(ReportResourceType.Appeal, owner), this.byType(ReportResourceType.Certificate, owner),
-      this.byType(ReportResourceType.Examination), this.byType(ReportResourceType.Committee),
+      this.statusCounts(ReportResourceType.Application, { ownerUserId: owner }),
+      this.statusCounts(ReportResourceType.Score, { ownerUserId: owner }),
+      this.statusCounts(ReportResourceType.Appeal, { ownerUserId: owner }),
+      this.statusCounts(ReportResourceType.Certificate, { ownerUserId: owner }),
+      this.statusCounts(ReportResourceType.Examination),
+      this.statusCounts(ReportResourceType.Committee),
     ]);
     const metrics: Record<string, number> = {
-      totalApplications: applications.length, pendingApplications: applications.filter((item) => ['SUBMITTED', 'UNDER_REVIEW'].includes(item.status)).length,
-      verifiedApplications: this.count(applications, 'VERIFIED'), waitlistedApplications: this.count(applications, 'WAITLISTED'),
-      totalScores: scores.length, publishedScores: scores.filter((item) => ['PUBLISHED', 'REVISED'].includes(item.status)).length,
-      activeAppeals: appeals.filter((item) => !['COMPLETED', 'REJECTED', 'NO_CHANGE'].includes(item.status)).length,
-      totalCertificates: certificates.length, activeCertificates: this.count(certificates, 'ACTIVE'),
-      scheduledExaminations: examinations.filter((item) => !['ARCHIVED', 'CANCELLED'].includes(item.status)).length,
-      configuredCommittees: committees.length,
+      totalApplications: applications.total, pendingApplications: applications.totalOf(['SUBMITTED', 'UNDER_REVIEW']),
+      verifiedApplications: applications.of('VERIFIED'), waitlistedApplications: applications.of('WAITLISTED'),
+      totalScores: scores.total, publishedScores: scores.totalOf(['PUBLISHED', 'REVISED']),
+      activeAppeals: appeals.totalExcept(CLOSED_APPEAL_STATUSES),
+      totalCertificates: certificates.total, activeCertificates: certificates.of('ACTIVE'),
+      scheduledExaminations: examinations.totalExcept(['ARCHIVED', 'CANCELLED']),
+      configuredCommittees: committees.total,
     };
     return { role, metrics: Object.fromEntries(allowed.filter((key) => key in metrics).map((key) => [key, metrics[key]])), projectedAt: new Date() };
   }
@@ -170,19 +243,31 @@ export class ReportingService {
     return job;
   }
 
-  async audit(query: { action?: string; source?: string; actorUserId?: string; correlationId?: string; from?: string; to?: string; page?: number; pageSize?: number }) {
+  async audit(query: AuditQuery) {
     const page = Math.max(query.page ?? 1, 1);
     const pageSize = Math.min(Math.max(query.pageSize ?? 50, 1), 100);
+    const where = this.auditWhere(query);
+    const [items, total] = await this.auditEvents.findAndCount({ where, order: { occurredAt: 'DESC' }, skip: (page - 1) * pageSize, take: pageSize });
+    return { items, total, page, pageSize };
+  }
+
+  private auditWhere(query: AuditQuery): FindOptionsWhere<ReportingAuditEventEntity> {
     const where: FindOptionsWhere<ReportingAuditEventEntity> = {};
     if (query.action) where.action = query.action;
     if (query.source) where.source = query.source;
     if (query.actorUserId) where.actorUserId = query.actorUserId;
     if (query.correlationId) where.correlationId = query.correlationId;
-    if (query.from && query.to) where.occurredAt = Between(new Date(query.from), new Date(query.to));
-    else if (query.from) where.occurredAt = MoreThanOrEqual(new Date(query.from));
-    else if (query.to) where.occurredAt = LessThanOrEqual(new Date(query.to));
-    const [items, total] = await this.auditEvents.findAndCount({ where, order: { occurredAt: 'DESC' }, skip: (page - 1) * pageSize, take: pageSize });
-    return { items, total, page, pageSize };
+    const occurredAt = this.auditOccurredAtFilter(query.from, query.to);
+    if (occurredAt) where.occurredAt = occurredAt;
+    return where;
+  }
+
+  /** The three ways an audit query can bound `occurredAt`: a range, an open start, or an open end. */
+  private auditOccurredAtFilter(from?: string, to?: string) {
+    if (from && to) return Between(new Date(from), new Date(to));
+    if (from) return MoreThanOrEqual(new Date(from));
+    if (to) return LessThanOrEqual(new Date(to));
+    return undefined;
   }
 
   async auditOne(id: string) {
@@ -191,25 +276,66 @@ export class ReportingService {
     return event;
   }
 
-  private byType(resourceType: ReportResourceType, ownerUserId?: string) {
-    return this.resources.find({ where: ownerUserId ? { resourceType, ownerUserId } : { resourceType }, order: { occurredAt: 'DESC' } });
+  private byType(resourceType: ReportResourceType, scope: ProjectionScope = {}) {
+    return this.resources.find({
+      where: {
+        resourceType,
+        ...(scope.ownerUserId ? { ownerUserId: scope.ownerUserId } : {}),
+        ...(scope.examId ? { examId: scope.examId } : {}),
+      },
+      order: { occurredAt: 'DESC' },
+    });
   }
 
-  private count(items: ReportResourceProjectionEntity[], status: string) { return items.filter((item) => item.status === status).length; }
+  /**
+   * Per-status row counts for one resource type, as a single grouped aggregate.
+   *
+   * The dashboard and the summary reports only ever needed these totals, but used
+   * to load every matching projection row - jsonb dimensions included - into memory
+   * and count them in JavaScript, so response time and heap both grew with the
+   * table. Postgres now does the counting behind `idx_reporting_resource_type_status`
+   * and returns one small row per status.
+   */
+  private async statusCounts(resourceType: ReportResourceType, scope: ProjectionScope = {}): Promise<StatusCounts> {
+    const query = this.resources.createQueryBuilder('projection')
+      .select('projection.status', 'status')
+      .addSelect('COUNT(*)', 'total')
+      .where('projection.resourceType = :resourceType', { resourceType })
+      .groupBy('projection.status');
+    if (scope.ownerUserId) query.andWhere('projection.ownerUserId = :ownerUserId', { ownerUserId: scope.ownerUserId });
+    if (scope.examId) query.andWhere('projection.examId = :examId', { examId: scope.examId });
+
+    const rows = await query.getRawMany<{ status: string; total: string }>();
+    const byStatus = new Map<string, number>();
+    let total = 0;
+    for (const row of rows) {
+      const count = Number(row.total);
+      byStatus.set(row.status, (byStatus.get(row.status) ?? 0) + count);
+      total += count;
+    }
+    return {
+      total,
+      of: (status) => byStatus.get(status) ?? 0,
+      totalOf: (statuses) => statuses.reduce((sum, status) => sum + (byStatus.get(status) ?? 0), 0),
+      totalExcept: (statuses) => {
+        const excluded = new Set(statuses);
+        let sum = 0;
+        for (const [status, count] of byStatus) if (!excluded.has(status)) sum += count;
+        return sum;
+      },
+    };
+  }
 
   private row(item: ReportResourceProjectionEntity): Record<string, unknown> {
     return { resourceId: item.resourceId, examId: item.examId, status: item.status, occurredAt: item.occurredAt, ...item.dimensions };
   }
 
   private matches(row: Record<string, unknown>, dto: ReportQueryDto) {
-    return (dto.filters ?? []).every((filter) => {
-      const actual = row[filter.field];
-      if (filter.operator === ReportFilterOperator.Equals) return String(actual ?? '') === String(filter.value ?? '');
-      if (filter.operator === ReportFilterOperator.In) return Array.isArray(filter.value) && filter.value.map(String).includes(String(actual));
-      if (filter.operator === ReportFilterOperator.From) return String(actual ?? '') >= String(filter.value ?? '');
-      if (filter.operator === ReportFilterOperator.To) return String(actual ?? '') <= String(filter.value ?? '');
-      return false;
-    });
+    return (dto.filters ?? []).every((filter) => this.filterMatches(row[filter.field], filter));
+  }
+
+  private filterMatches(actual: unknown, filter: ReportFilterDto): boolean {
+    return FILTER_EVALUATORS[filter.operator]?.(actual, filter.value) ?? false;
   }
 
   private group(rows: Record<string, unknown>[], field: string) {

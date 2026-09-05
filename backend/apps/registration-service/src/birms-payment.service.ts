@@ -208,7 +208,29 @@ export class BirmsPaymentService {
     return token;
   }
 
-  private baseUrl() { return (this.config.get<string>('BIRMS_BASE_URL') || 'https://birmsstagging.drc.gov.bt/api-services').replace(/\/$/, ''); }
+  /**
+   * BIRMS is a live payment gateway, so this deliberately has no default. It used to
+   * fall back to the staging host, which meant a deployment that simply forgot to
+   * set BIRMS_BASE_URL would take real registration payments to a test system and
+   * look like it was working. An unset or malformed value now fails the request the
+   * same way a missing BIRMS_AGENCY_CODE already did, and the startup check in
+   * main.ts refuses to boot a production service without it at all.
+   *
+   * assertRedirectUrl() pins the redirect BIRMS returns to this hostname, so the
+   * value is also the trust anchor for where a payer's browser is sent.
+   */
+  private baseUrl() {
+    const configured = this.required('BIRMS_BASE_URL');
+    let url: URL;
+    try { url = new URL(configured); } catch { throw new DomainException('BIRMS_NOT_CONFIGURED', 'BIRMS setting BIRMS_BASE_URL is not a valid absolute URL.', 503); }
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+      throw new DomainException('BIRMS_NOT_CONFIGURED', 'BIRMS setting BIRMS_BASE_URL must use http or https.', 503);
+    }
+    if (url.protocol !== 'https:' && this.config.get<string>('NODE_ENV') === 'production') {
+      throw new DomainException('BIRMS_NOT_CONFIGURED', 'BIRMS setting BIRMS_BASE_URL must use https in production.', 503);
+    }
+    return configured.replace(/\/$/, '');
+  }
   private servicePath() { return (this.config.get<string>('BIRMS_SERVICE_PATH') || 'moha-service/api/v1').replace(/^\/+|\/+$/g, ''); }
   private required(key: string) {
     const value = this.config.get<string>(key)?.trim();

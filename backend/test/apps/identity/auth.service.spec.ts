@@ -6,7 +6,7 @@
 
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { ObjectLiteral, Repository } from 'typeorm';
+import { IsNull, ObjectLiteral, Repository } from 'typeorm';
 import { CanonicalRole } from '@dzongjuk/contracts';
 import { AuthService } from '../../../apps/identity-service/src/auth.service';
 import { AuditService } from '../../../apps/identity-service/src/audit.service';
@@ -350,6 +350,125 @@ describe('AuthService — NDI webhook (BRD §2.9 + §3)', () => {
       requested_presentation: { revealed_attrs: { 'Full Name': [{ value: 'Missing CID' }] } },
     });
     expect(pendingLogin.status).toBe('FAILED');
+  });
+});
+
+// ─── NDI status poll tests ────────────────────────────────────────────────────
+// `ndiStatus` was split into `expireOverdueNdiLogin`, `terminalNdiStatus` and
+// `consumeValidatedNdiLogin` to bring its cyclomatic complexity under the
+// project's ESLint limit. Every branch it dispatches to is pinned here.
+
+describe('AuthService — NDI status poll (BRD §2.9)', () => {
+  const login = (overrides: Partial<NdiLoginRequestEntity> = {}) => Object.assign(new NdiLoginRequestEntity(), {
+    id: uuid(), threadId: uuid(), status: 'PENDING',
+    expiresAt: new Date(Date.now() + 60_000), completedAt: null, consumedAt: null,
+    verifiedIdentity: {}, user: null,
+    ...overrides,
+  });
+
+  it('rejects an unknown poll token', async () => {
+    const service = buildService();
+    await expect(service.ndiStatus('unknown-token', ctx)).rejects.toMatchObject({ response: { code: 'NDI_LOGIN_NOT_FOUND' } });
+  });
+
+  it('fails an overdue pending request and reports EXPIRED', async () => {
+    const overdue = login({ expiresAt: new Date(Date.now() - 1000) });
+    const ndiLogins = makeRepo<NdiLoginRequestEntity>([overdue]);
+    (ndiLogins.findOneBy as jest.Mock).mockResolvedValue(overdue);
+    (ndiLogins.save as jest.Mock).mockImplementation(async (data: unknown) => data);
+    const ndi = makeNdi();
+    const unsubscribeSpy = jest.spyOn(ndi, 'unsubscribe');
+    const service = buildService({ ndiLogins, ndi });
+
+    const result = await service.ndiStatus('token', ctx);
+
+    expect(result).toEqual({ status: 'EXPIRED' });
+    expect(overdue.status).toBe('FAILED');
+    expect(unsubscribeSpy).toHaveBeenCalledWith(overdue.threadId);
+  });
+
+  it('does not expire a request whose deadline has not passed', async () => {
+    const notOverdue = login({ expiresAt: new Date(Date.now() + 60_000) });
+    const ndiLogins = makeRepo<NdiLoginRequestEntity>([notOverdue]);
+    (ndiLogins.findOneBy as jest.Mock).mockResolvedValue(notOverdue);
+    const service = buildService({ ndiLogins });
+
+    const result = await service.ndiStatus('token', ctx);
+
+    expect(result).toMatchObject({ status: 'PENDING' });
+    expect(notOverdue.status).toBe('PENDING');
+  });
+
+  it('reports PENDING with the expiry, unmodified', async () => {
+    const pending = login();
+    const ndiLogins = makeRepo<NdiLoginRequestEntity>([pending]);
+    (ndiLogins.findOneBy as jest.Mock).mockResolvedValue(pending);
+    const service = buildService({ ndiLogins });
+
+    const result = await service.ndiStatus('token', ctx);
+
+    expect(result).toEqual({ status: 'PENDING', expiresAt: pending.expiresAt.toISOString() });
+  });
+
+  it.each(['REJECTED', 'FAILED', 'CANCELLED'] as const)('reports terminal status %s as-is', async (status) => {
+    const terminal = login({ status });
+    const ndiLogins = makeRepo<NdiLoginRequestEntity>([terminal]);
+    (ndiLogins.findOneBy as jest.Mock).mockResolvedValue(terminal);
+    const service = buildService({ ndiLogins });
+
+    expect(await service.ndiStatus('token', ctx)).toEqual({ status });
+  });
+
+  it('rejects a request already consumed by a prior poll', async () => {
+    const consumed = login({ status: 'CONSUMED', consumedAt: new Date() });
+    const ndiLogins = makeRepo<NdiLoginRequestEntity>([consumed]);
+    (ndiLogins.findOneBy as jest.Mock).mockResolvedValue(consumed);
+    const service = buildService({ ndiLogins });
+
+    await expect(service.ndiStatus('token', ctx)).rejects.toMatchObject({ response: { code: 'NDI_LOGIN_CONSUMED' } });
+  });
+
+  it('rejects a validated request with no linked account', async () => {
+    const orphaned = login({ status: 'VALIDATED', user: null });
+    const ndiLogins = makeRepo<NdiLoginRequestEntity>([orphaned]);
+    (ndiLogins.findOneBy as jest.Mock).mockResolvedValue(orphaned);
+    const service = buildService({ ndiLogins });
+
+    await expect(service.ndiStatus('token', ctx)).rejects.toMatchObject({ response: { code: 'NDI_ACCOUNT_NOT_LINKED' } });
+  });
+
+  it('claims a validated request exactly once and opens a session with a refresh token', async () => {
+    const user = makeUser();
+    const validated = login({ status: 'VALIDATED', user });
+    const ndiLogins = makeRepo<NdiLoginRequestEntity>([validated]);
+    (ndiLogins.findOneBy as jest.Mock).mockResolvedValue(validated);
+    const updateMock = jest.fn().mockResolvedValue({ affected: 1 });
+    ndiLogins.update = updateMock;
+    const sessions = makeRepo<SessionEntity>();
+    const ndi = makeNdi();
+    const unsubscribeSpy = jest.spyOn(ndi, 'unsubscribe');
+    const service = buildService({ ndiLogins, sessions, ndi });
+
+    const result = await service.ndiStatus('token', ctx);
+
+    expect(updateMock).toHaveBeenCalledWith(
+      { id: validated.id, status: 'VALIDATED', consumedAt: IsNull() },
+      expect.objectContaining({ status: 'CONSUMED' }),
+    );
+    expect(unsubscribeSpy).toHaveBeenCalledWith(validated.threadId);
+    expect(result).toMatchObject({ status: 'VALIDATED', accessToken: 'signed.access.token' });
+    expect(result).toHaveProperty('refreshToken');
+  });
+
+  it('rejects a validated request already claimed by a concurrent poll', async () => {
+    const user = makeUser();
+    const validated = login({ status: 'VALIDATED', user });
+    const ndiLogins = makeRepo<NdiLoginRequestEntity>([validated]);
+    (ndiLogins.findOneBy as jest.Mock).mockResolvedValue(validated);
+    ndiLogins.update = jest.fn().mockResolvedValue({ affected: 0 }); // another poll already claimed it
+    const service = buildService({ ndiLogins });
+
+    await expect(service.ndiStatus('token', ctx)).rejects.toMatchObject({ response: { code: 'NDI_LOGIN_CONSUMED' } });
   });
 });
 

@@ -5,72 +5,56 @@
  */
 
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { canAccess } from '@/features/rbac/accessMatrix';
 import { rolesFor } from '@/features/rbac/outOfMatrix';
-
-// The "finish your profile first" gate is part of the mock onboarding flow (email,
-// password and photo are all collected post-registration there). A real backend
-// mandates email + password at registration, so the gate is scoped to mock builds.
-const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE === 'test';
-const PROFILE_GATE_ACTIVE = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
+import { RouteGuard as PrivateRoute } from '@/features/rbac/RouteGuard';
+import PageLoader from '@/components/ui/PageLoader';
 
 // Layout
 import AppLayout from '@/layouts/AppLayout';
 
 // Eagerly loaded critical pages
-import LoginPage, { NdiLoginPage, NdiRegistrationPage } from '@/pages/auth/LoginPage';
+import LoginPage from '@/features/auth/pages/LoginPage';
 import HomePage from '@/pages/HomePage';
-import Dashboard from '@/pages/dashboard/Dashboard';
+import Dashboard from '@/features/dashboard/pages/Dashboard';
 
 // Lazy loaded pages
-const RegistrationWindows = lazy(() => import('@/pages/registration/RegistrationWindows'));
-const MyApplications = lazy(() => import('@/pages/registration/MyApplications'));
-const ApplicationForm = lazy(() => import('@/pages/registration/ApplicationForm'));
-const VerificationList = lazy(() => import('@/pages/verification/VerificationList'));
-const AttendanceList = lazy(() => import('@/pages/attendance/AttendanceList'));
-const ScoreEntry = lazy(() => import('@/pages/scores/ScoreEntry'));
-const ViewScores = lazy(() => import('@/pages/scores/ViewScores'));
-const CommitteeSetup = lazy(() => import('@/pages/scores/CommitteeSetup'));
-const ScoreSummary = lazy(() => import('@/pages/scores/ScoreSummary'));
-const ViewBandScores = lazy(() => import('@/pages/scores/ViewBandScores'));
-const AppealList = lazy(() => import('@/pages/appeals/AppealList'));
-const RevisionTracker = lazy(() => import('@/pages/appeals/RevisionTracker'));
-const SubmitAppeal = lazy(() => import('@/pages/appeals/SubmitAppeal'));
-const CertificateList = lazy(() => import('@/pages/certificates/CertificateList'));
-const CertificatePrint = lazy(() => import('@/pages/certificates/CertificatePrint'));
-const QuestionPapers = lazy(() => import('@/pages/questions/QuestionPapers'));
-const UploadQuestionPaper = lazy(() => import('@/pages/questions/UploadQuestionPaper'));
-const ExamDayDownloads = lazy(() => import('@/pages/questions/ExamDayDownloads'));
-const SamplePapers = lazy(() => import('@/pages/questions/SamplePapers'));
-const Reports = lazy(() => import('@/pages/reports/Reports'));
-const MyReports = lazy(() => import('@/pages/reports/MyReports'));
-const Notifications = lazy(() => import('@/pages/notifications/Notifications'));
-const UserManagement = lazy(() => import('@/pages/admin/UserManagement'));
-const RoleManagement = lazy(() => import('@/pages/admin/RoleManagement'));
-const PermissionManagement = lazy(() => import('@/pages/admin/permissions/PermissionManagement'));
-const RoleAssignment = lazy(() => import('@/pages/admin/RoleAssignment'));
-const AuditLogs = lazy(() => import('@/pages/admin/AuditLogs'));
-const MasterConfiguration = lazy(() => import('@/pages/admin/MasterConfiguration'));
-const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
-const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
-const TechnicalSettings = lazy(() => import('@/pages/admin/TechnicalSettings'));
-
-// Page loader
-export function PageLoader() {
-  return (
-    <div className="flex flex-col gap-6 w-full p-6 animate-pulse">
-      <div className="h-10 bg-surface-card border border-surface-border rounded-xl w-1/3"></div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-28 bg-surface-card border border-surface-border rounded-xl"></div>
-        ))}
-      </div>
-      <div className="h-64 bg-surface-card border border-surface-border rounded-xl w-full mt-4"></div>
-    </div>
-  );
-}
+// The standalone Bhutan NDI screens are a detour from the login page rather than
+// part of it, so they load on demand instead of riding in the entry bundle.
+const NdiLoginPage = lazy(() => import('@/features/auth/pages/NdiLoginPage'));
+const NdiRegistrationPage = lazy(() => import('@/features/auth/pages/NdiRegistrationPage'));
+const RegistrationWindows = lazy(() => import('@/features/registration/pages/RegistrationWindows'));
+const MyApplications = lazy(() => import('@/features/registration/pages/MyApplications'));
+const ApplicationForm = lazy(() => import('@/features/registration/pages/ApplicationForm'));
+const VerificationList = lazy(() => import('@/features/verification/pages/VerificationList'));
+const AttendanceList = lazy(() => import('@/features/attendance/pages/AttendanceList'));
+const ScoreEntry = lazy(() => import('@/features/scores/pages/ScoreEntry'));
+const ViewScores = lazy(() => import('@/features/scores/pages/ViewScores'));
+const CommitteeSetup = lazy(() => import('@/features/scores/pages/CommitteeSetup'));
+const ScoreSummary = lazy(() => import('@/features/scores/pages/ScoreSummary'));
+const ViewBandScores = lazy(() => import('@/features/scores/pages/ViewBandScores'));
+const AppealList = lazy(() => import('@/features/appeals/pages/AppealList'));
+const RevisionTracker = lazy(() => import('@/features/appeals/pages/RevisionTracker'));
+const SubmitAppeal = lazy(() => import('@/features/appeals/pages/SubmitAppeal'));
+const CertificateList = lazy(() => import('@/features/certificates/pages/CertificateList'));
+const CertificatePrint = lazy(() => import('@/features/certificates/pages/CertificatePrint'));
+const QuestionPapers = lazy(() => import('@/features/questions/pages/QuestionPapers'));
+const UploadQuestionPaper = lazy(() => import('@/features/questions/pages/UploadQuestionPaper'));
+const ExamDayDownloads = lazy(() => import('@/features/questions/pages/ExamDayDownloads'));
+const SamplePapers = lazy(() => import('@/features/questions/pages/SamplePapers'));
+const Reports = lazy(() => import('@/features/reports/pages/Reports'));
+const MyReports = lazy(() => import('@/features/reports/pages/MyReports'));
+const Notifications = lazy(() => import('@/features/notifications/pages/Notifications'));
+const UserManagement = lazy(() => import('@/features/admin/pages/UserManagement'));
+const RoleManagement = lazy(() => import('@/features/admin/pages/RoleManagement'));
+const PermissionManagement = lazy(() => import('@/features/admin/pages/PermissionManagement'));
+const RoleAssignment = lazy(() => import('@/features/admin/pages/RoleAssignment'));
+const AuditLogs = lazy(() => import('@/features/admin/pages/AuditLogs'));
+const MasterConfiguration = lazy(() => import('@/features/admin/pages/MasterConfiguration'));
+const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage'));
+const SettingsPage = lazy(() => import('@/features/profile/pages/SettingsPage'));
+const TechnicalSettings = lazy(() => import('@/features/admin/pages/TechnicalSettings'));
 
 // 404
 const NotFoundPage = () => (
@@ -81,41 +65,6 @@ const NotFoundPage = () => (
     <Link to="/dashboard" className="text-sm text-brand-gold hover:text-[#FCD34D] transition-colors">← Back to Dashboard</Link>
   </div>
 );
-
-// Route Guard
-function PrivateRoute({ children, requiredRoles, requiredAccess }) {
-  const { isAuthenticated, user, isLoading } = useAuth();
-  const location = useLocation();
-  if (isLoading) return <PageLoader />;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-
-  // A Test Taker is sent straight to their profile after signing in and cannot leave
-  // it until their email, password and passport-size photo are all on file - none of
-  // the three is collected at registration, so all three are completed on that page.
-  if (
-    PROFILE_GATE_ACTIVE
-    && user?.role === 'test_taker'
-    && (!user?.photo || !user?.passwordSet || !user?.emailSet)
-    && location.pathname !== '/profile'
-  ) {
-    return <Navigate to="/profile" replace />;
-  }
-
-  // A System Administrator is not admitted to a route just for being one. The
-  // backend keeps a `*` wildcard as documented break-glass, but the frontend follows
-  // the approved matrix and the out-of-matrix registry, so `admin` reaches a
-  // role-listed route only where it is actually listed.
-  const roles = Array.isArray(user?.roles) ? user.roles : [user?.role];
-  const hasRequiredRole = !requiredRoles || requiredRoles.some(role => roles.includes(role) || user?.role === role);
-
-  if (!hasRequiredRole) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  if (requiredAccess && !canAccess(user?.role, requiredAccess.module, requiredAccess.action)) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  return children;
-}
 
 export default function AppRoutes() {
   const { isAuthenticated } = useAuth();

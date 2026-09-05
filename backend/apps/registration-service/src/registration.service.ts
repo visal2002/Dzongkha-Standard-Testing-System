@@ -10,9 +10,34 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { ApplicationStatus, DomainEventTypes, ExamStatus } from '@dzongjuk/contracts';
 import { assertInternalService, DomainException } from '@dzongjuk/common';
-import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ResubmitApplicationDto, ReturnApplicationDto, SubmitApplicationDto, UpdateExamDto } from './dtos';
+import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ResubmitApplicationDto, ReturnApplicationDto, snapshotColumn, SubmitApplicationDto, UpdateExamDto } from './dtos';
 import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEntity, IdempotencyRecordEntity, OutboxEventEntity, RegistrationPaymentStatus, WaitlistEntryEntity } from './entities';
 import { DcrcClientService } from './dcrc-client.service';
+
+/**
+ * Statuses that occupy a seat once the capacity check has admitted an applicant.
+ * Absent is included: the candidate did take up a seat for that sitting.
+ */
+const SEAT_OCCUPYING_STATUSES = [
+  ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned,
+  ApplicationStatus.Verified, ApplicationStatus.Absent,
+];
+
+/** Applications still awaiting a DCDD verification decision. */
+const PENDING_VERIFICATION_STATUSES = [
+  ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned,
+];
+
+/** Applications eligible to appear on the exam-day attendance roll. */
+const ATTENDANCE_STATUSES = [ApplicationStatus.Verified, ApplicationStatus.Absent];
+
+/** Statuses counted against capacity at submission time, before verification. */
+const CAPACITY_STATUSES = [
+  ApplicationStatus.Submitted, ApplicationStatus.UnderReview,
+  ApplicationStatus.Returned, ApplicationStatus.Verified,
+];
+
+interface ExamOccupancy { currentRegistrations: number; waitlistCount: number }
 
 @Injectable()
 export class RegistrationService {
@@ -27,13 +52,44 @@ export class RegistrationService {
 
   async listExams() {
     const exams = await this.exams.find({ order: { examDate: 'ASC' } });
-    return Promise.all(exams.map(async exam => ({
+    if (!exams.length) return [];
+    const occupancy = await this.occupancyByExam(exams.map(exam => exam.id));
+    return exams.map(exam => ({
       ...exam,
-      currentRegistrations: await this.applications.count({
-        where: { examId: exam.id, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned, ApplicationStatus.Verified, ApplicationStatus.Absent]) },
-      }),
-      waitlistCount: await this.applications.count({ where: { examId: exam.id, status: ApplicationStatus.Waitlisted } }),
-    })));
+      currentRegistrations: occupancy.get(exam.id)?.currentRegistrations ?? 0,
+      waitlistCount: occupancy.get(exam.id)?.waitlistCount ?? 0,
+    }));
+  }
+
+  /**
+   * Seat and waitlist totals for a set of examinations, keyed by exam id.
+   *
+   * One grouped aggregate over `idx_application_exam_status` replaces the two
+   * COUNT round-trips per examination this used to issue, so listing the window
+   * board costs a fixed three queries instead of growing with the schedule.
+   */
+  private async occupancyByExam(examIds: string[]): Promise<Map<string, ExamOccupancy>> {
+    const rows = await this.applications.createQueryBuilder('application')
+      .select('application.examId', 'examId')
+      .addSelect('application.status', 'status')
+      .addSelect('COUNT(*)', 'total')
+      .where('application.examId IN (:...examIds)', { examIds })
+      .andWhere('application.status IN (:...statuses)', {
+        statuses: [...SEAT_OCCUPYING_STATUSES, ApplicationStatus.Waitlisted],
+      })
+      .groupBy('application.examId')
+      .addGroupBy('application.status')
+      .getRawMany<{ examId: string; status: ApplicationStatus; total: string }>();
+
+    const occupancy = new Map<string, ExamOccupancy>();
+    for (const row of rows) {
+      const entry = occupancy.get(row.examId) ?? { currentRegistrations: 0, waitlistCount: 0 };
+      const total = Number(row.total);
+      if (row.status === ApplicationStatus.Waitlisted) entry.waitlistCount += total;
+      else entry.currentRegistrations += total;
+      occupancy.set(row.examId, entry);
+    }
+    return occupancy;
   }
 
   async getExam(id: string) {
@@ -88,30 +144,44 @@ export class RegistrationService {
       const exam = await manager.findOne(ExamEntity, { where: { id: examId }, lock: { mode: 'pessimistic_write' } });
       if (!exam) throw new DomainException('EXAM_NOT_FOUND', 'Examination not found.', 404);
       const now = new Date();
-      if (exam.status !== ExamStatus.RegistrationOpen || now < exam.registrationStart || now > exam.registrationEnd) {
-        throw new DomainException('REGISTRATION_CLOSED', 'The registration window is not open.', 409);
-      }
-      if (await manager.exists(ApplicationEntity, { where: { examId, identityKey: dto.identityKey } })) {
-        throw new DomainException('APPLICATION_DUPLICATE', 'You already registered for this examination.', 409);
-      }
-      const confirmed = await manager.count(ApplicationEntity, { where: { examId, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned, ApplicationStatus.Verified]) } });
-      const status = confirmed < exam.capacity ? ApplicationStatus.Submitted : ApplicationStatus.Waitlisted;
-      const application = await manager.save(ApplicationEntity, manager.create(ApplicationEntity, {
-        examId, exam, testTakerUserId: userId, identityKey: dto.identityKey,
-        profileSnapshot: dto.profileSnapshot, status, submittedAt: now,
-        paymentAmount: exam.registrationFee,
-        paymentCurrency: 'BTN',
-        paymentStatus: Number(exam.registrationFee) === 0 ? RegistrationPaymentStatus.Waived : RegistrationPaymentStatus.Initiated,
-      }));
-      if (status === ApplicationStatus.Waitlisted) {
-        await manager.save(WaitlistEntryEntity, manager.create(WaitlistEntryEntity, { examId, applicationId: application.id, positionKey: Date.now().toString(), status: 'WAITING' }));
-      }
-      await this.transitionLog(manager, application.id, null, status, userId, requestId, null);
-      await this.outbox(manager, status === ApplicationStatus.Waitlisted ? DomainEventTypes.ApplicationWaitlisted : DomainEventTypes.ApplicationSubmitted, application.id, requestId, { applicationId: application.id, examId, testTakerUserId: userId });
-      const response = { applicationId: application.id, status };
+      this.assertRegistrationOpen(exam, now);
+      await this.assertNotDuplicate(manager, examId, dto.identityKey);
+      const application = await this.createApplication(manager, exam, dto, userId, now);
+      await this.transitionLog(manager, application.id, null, application.status, userId, requestId, null);
+      await this.outbox(manager, application.status === ApplicationStatus.Waitlisted ? DomainEventTypes.ApplicationWaitlisted : DomainEventTypes.ApplicationSubmitted, application.id, requestId, { applicationId: application.id, examId, testTakerUserId: userId });
+      const response = { applicationId: application.id, status: application.status };
       await manager.save(IdempotencyRecordEntity, manager.create(IdempotencyRecordEntity, { scope, key: idempotencyKey, response }));
       return response;
     });
+  }
+
+  private assertRegistrationOpen(exam: ExamEntity, now: Date) {
+    if (exam.status !== ExamStatus.RegistrationOpen || now < exam.registrationStart || now > exam.registrationEnd) {
+      throw new DomainException('REGISTRATION_CLOSED', 'The registration window is not open.', 409);
+    }
+  }
+
+  private async assertNotDuplicate(manager: EntityManager, examId: string, identityKey: string) {
+    if (await manager.exists(ApplicationEntity, { where: { examId, identityKey } })) {
+      throw new DomainException('APPLICATION_DUPLICATE', 'You already registered for this examination.', 409);
+    }
+  }
+
+  /** Confirms a seat or waitlists, per the same capacity count `submit()` always used, then creates the row(s) for it. */
+  private async createApplication(manager: EntityManager, exam: ExamEntity, dto: SubmitApplicationDto, userId: string, now: Date) {
+    const confirmed = await manager.count(ApplicationEntity, { where: { examId: exam.id, status: In(CAPACITY_STATUSES) } });
+    const status = confirmed < exam.capacity ? ApplicationStatus.Submitted : ApplicationStatus.Waitlisted;
+    const application = await manager.save(ApplicationEntity, manager.create(ApplicationEntity, {
+      examId: exam.id, exam, testTakerUserId: userId, identityKey: dto.identityKey,
+      profileSnapshot: snapshotColumn(dto.profileSnapshot), status, submittedAt: now,
+      paymentAmount: exam.registrationFee,
+      paymentCurrency: 'BTN',
+      paymentStatus: Number(exam.registrationFee) === 0 ? RegistrationPaymentStatus.Waived : RegistrationPaymentStatus.Initiated,
+    }));
+    if (status === ApplicationStatus.Waitlisted) {
+      await manager.save(WaitlistEntryEntity, manager.create(WaitlistEntryEntity, { examId: exam.id, applicationId: application.id, positionKey: Date.now().toString(), status: 'WAITING' }));
+    }
+    return application;
   }
 
   listMine(userId: string) { return this.applications.find({ where: { testTakerUserId: userId }, order: { submittedAt: 'DESC' } }); }
@@ -140,7 +210,7 @@ export class RegistrationService {
 
       const capacity = dto.capacity ?? exam.capacity;
       const reserved = await manager.count(ApplicationEntity, {
-        where: { examId: id, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned, ApplicationStatus.Verified, ApplicationStatus.Absent]) },
+        where: { examId: id, status: In(SEAT_OCCUPYING_STATUSES) },
       });
       if (capacity < reserved) throw new DomainException('EXAM_CAPACITY_INVALID', `Capacity cannot be lower than the ${reserved} confirmed registrations.`, 409);
 
@@ -153,9 +223,7 @@ export class RegistrationService {
 
   listPendingVerification(examId?: string) {
     return this.applications.find({
-      where: examId
-        ? { examId, status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned]) }
-        : { status: In([ApplicationStatus.Submitted, ApplicationStatus.UnderReview, ApplicationStatus.Returned]) },
+      where: { ...(examId ? { examId } : {}), status: In(PENDING_VERIFICATION_STATUSES) },
       order: { submittedAt: 'ASC' },
       take: 100,
     });
@@ -163,9 +231,7 @@ export class RegistrationService {
 
   async listAttendance(examId?: string) {
     const applications = await this.applications.find({
-      where: examId
-        ? { examId, status: In([ApplicationStatus.Verified, ApplicationStatus.Absent]) }
-        : { status: In([ApplicationStatus.Verified, ApplicationStatus.Absent]) },
+      where: { ...(examId ? { examId } : {}), status: In(ATTENDANCE_STATUSES) },
       order: { verifiedAt: 'ASC' },
       take: 500,
     });
@@ -222,7 +288,7 @@ export class RegistrationService {
     const application = await this.getApplication(id, userId, false);
     return this.transition(application.id, [ApplicationStatus.Returned], ApplicationStatus.Submitted, userId, requestId, null, (record) => {
       record.reviewRemarks = null;
-      record.profileSnapshot = dto.profileSnapshot;
+      record.profileSnapshot = snapshotColumn(dto.profileSnapshot);
     });
   }
 

@@ -209,7 +209,12 @@ describe('RegistrationService — Exam management (BRD §2.2)', () => {
 });
 
 describe('RegistrationService — Application submission (BRD §2.2 BR-1)', () => {
-  const dto = { identityKey: 'CID-10701000001', profileSnapshot: { fullName: 'Tenzin Dorji' } };
+  // A complete snapshot: fullName, cid and dateOfBirth are required by
+  // ProfileSnapshotDto because certificate generation reads all three.
+  const dto = {
+    identityKey: 'CID-10701000001',
+    profileSnapshot: { fullName: 'Tenzin Dorji', cid: 'CID-10701000001', dateOfBirth: '1998-05-01' },
+  };
   const idempotencyKey = 'idem-001';
 
   it('rejects submission when registration window is closed', async () => {

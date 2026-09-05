@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { MATRIX_ROLES, canAccess } from './accessMatrix';
 import { OUT_OF_MATRIX_OPERATIONS, canPerform, rolesFor } from './outOfMatrix';
 import { navigationFor } from '@/layouts/Sidebar';
-import { DASHBOARD_ROLES } from '@/pages/dashboard/Dashboard';
+import { DASHBOARD_ROLES } from '@/features/dashboard/pages/Dashboard';
 
 // Transcribed from routes/index.jsx. `access` mirrors requiredAccess, `operation`
 // mirrors a requiredRoles list sourced from the out-of-matrix registry.

@@ -127,8 +127,25 @@ export class ScoringService {
   }
 
   private validateRule(dto: CreateScoringRuleDto) {
-    if (dto.minimumScore >= dto.maximumScore || dto.increment <= 0) throw new DomainException('SCORING_RULE_INVALID', 'Score bounds or increment are invalid.');
-    if (dto.effectiveTo && new Date(dto.effectiveTo) <= new Date(dto.effectiveFrom)) throw new DomainException('SCORING_RULE_PERIOD_INVALID', 'Effective end must be after effective start.');
+    this.assertValidBounds(dto);
+    this.assertValidPeriod(dto);
+    this.assertValidBands(dto);
+  }
+
+  private assertValidBounds(dto: CreateScoringRuleDto) {
+    if (dto.minimumScore >= dto.maximumScore || dto.increment <= 0) {
+      throw new DomainException('SCORING_RULE_INVALID', 'Score bounds or increment are invalid.');
+    }
+  }
+
+  private assertValidPeriod(dto: CreateScoringRuleDto) {
+    if (dto.effectiveTo && new Date(dto.effectiveTo) <= new Date(dto.effectiveFrom)) {
+      throw new DomainException('SCORING_RULE_PERIOD_INVALID', 'Effective end must be after effective start.');
+    }
+  }
+
+  /** Every band must sit inside the rule's overall score range, and adjacent bands (sorted by `min`) must not overlap. */
+  private assertValidBands(dto: CreateScoringRuleDto) {
     const bands = [...dto.bands].sort((a, b) => a.min - b.min);
     this.validateStandardMappings(bands, dto);
     bands.forEach((band, index) => this.validateBand(band, bands[index - 1], dto));

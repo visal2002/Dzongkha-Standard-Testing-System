@@ -30,7 +30,8 @@ export class CertificateService {
 
   constructor(
     private readonly dataSource: DataSource,
-    private readonly config: ConfigService,
+    // Read into the fields below; not retained as an instance field itself.
+    config: ConfigService,
     private readonly encryption: CertificateEncryptionService,
     private readonly storage: CertificateStorageService,
     private readonly renderer: CertificateRendererService,
@@ -57,6 +58,11 @@ export class CertificateService {
       throw new DomainException('CERTIFICATE_TEMPLATE_ASSET_INVALID', `${field} must be a non-empty image under 2MB.`, 400);
     }
     return { data, mimeType: asset.mimeType };
+  }
+
+  /** The `{data, mimeType}` pair a template's asset columns store - `null`/`null` when no asset was decoded. */
+  private assetColumns(asset: { data: Buffer; mimeType: string } | null) {
+    return { data: asset?.data ?? null, mimeType: asset?.mimeType ?? null };
   }
 
   // Templates are a low-traffic admin config surface, not a file-download endpoint -
@@ -87,20 +93,24 @@ export class CertificateService {
     const to = dto.effectiveTo ? new Date(dto.effectiveTo) : null;
     if (to && to <= from) throw new DomainException('CERTIFICATE_TEMPLATE_PERIOD_INVALID', 'Template effectiveTo must be after effectiveFrom.');
     const { leftLogo, rightLogo, borderImage, signatureImage, sealImage, ...fields } = dto;
-    const leftLogoAsset = this.decodeAsset(leftLogo, 'leftLogo');
-    const rightLogoAsset = this.decodeAsset(rightLogo, 'rightLogo');
-    const borderImageAsset = this.decodeAsset(borderImage, 'borderImage');
-    const signatureImageAsset = this.decodeAsset(signatureImage, 'signatureImage');
-    const sealImageAsset = this.decodeAsset(sealImage, 'sealImage');
+    // Each `??` fallback below used to be written inline five times over inside the
+    // transaction (once per asset, `data` and `mimeType` each) - the repetition, not
+    // any real branching, was what pushed that function's complexity to 22.
+    // `assetColumns` absorbs the fallback once; these five calls are plain data prep.
+    const leftLogoColumns = this.assetColumns(this.decodeAsset(leftLogo, 'leftLogo'));
+    const rightLogoColumns = this.assetColumns(this.decodeAsset(rightLogo, 'rightLogo'));
+    const borderImageColumns = this.assetColumns(this.decodeAsset(borderImage, 'borderImage'));
+    const signatureImageColumns = this.assetColumns(this.decodeAsset(signatureImage, 'signatureImage'));
+    const sealImageColumns = this.assetColumns(this.decodeAsset(sealImage, 'sealImage'));
     return this.dataSource.transaction(async (manager) => {
       const template = await manager.save(CertificateTemplateEntity, manager.create(CertificateTemplateEntity, {
         ...fields, effectiveFrom: from, effectiveTo: to, testOnly: dto.testOnly ?? false,
         status: CertificateTemplateStatus.Draft, createdByUserId: actor.sub,
-        leftLogoData: leftLogoAsset?.data ?? null, leftLogoMimeType: leftLogoAsset?.mimeType ?? null,
-        rightLogoData: rightLogoAsset?.data ?? null, rightLogoMimeType: rightLogoAsset?.mimeType ?? null,
-        borderImageData: borderImageAsset?.data ?? null, borderImageMimeType: borderImageAsset?.mimeType ?? null,
-        signatureImageData: signatureImageAsset?.data ?? null, signatureImageMimeType: signatureImageAsset?.mimeType ?? null,
-        sealImageData: sealImageAsset?.data ?? null, sealImageMimeType: sealImageAsset?.mimeType ?? null,
+        leftLogoData: leftLogoColumns.data, leftLogoMimeType: leftLogoColumns.mimeType,
+        rightLogoData: rightLogoColumns.data, rightLogoMimeType: rightLogoColumns.mimeType,
+        borderImageData: borderImageColumns.data, borderImageMimeType: borderImageColumns.mimeType,
+        signatureImageData: signatureImageColumns.data, signatureImageMimeType: signatureImageColumns.mimeType,
+        sealImageData: sealImageColumns.data, sealImageMimeType: sealImageColumns.mimeType,
       }));
       await this.audit(manager, 'CERTIFICATE_TEMPLATE_CREATED', template.id, actor.sub, requestId, { code: template.code, versionNumber: template.versionNumber, testOnly: template.testOnly }, 'CertificateTemplate');
       return this.serializeTemplate(template);

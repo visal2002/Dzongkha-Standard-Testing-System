@@ -33,11 +33,6 @@ services:
       - ./database/migrations:/migrations:ro
     command: ["sh", "/provision-service-databases.sh"]
     depends_on: { postgres: { condition: service_healthy } }
-  redis:
-    image: redis:8.2-alpine
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes: ["redis-data:/data"]
-    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 10s, timeout: 3s, retries: 10 }
   rabbitmq:
     image: rabbitmq:4.1-management-alpine
     environment: { RABBITMQ_DEFAULT_USER: dzongjuk, RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD:-development-only}" }
@@ -48,8 +43,8 @@ services:
     env_file:
       - path: .env
         required: false
-    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${IDENTITY_DATABASE_NAME:-dzongjuk_identity}", IDENTITY_PORT: 8001, REDIS_URL: "redis://redis:6379" }
-    depends_on: { database-provisioner: { condition: service_completed_successfully }, redis: { condition: service_healthy } }
+    environment: { DATABASE_HOST: postgres, DATABASE_NAME: "${IDENTITY_DATABASE_NAME:-dzongjuk_identity}", IDENTITY_PORT: 8001 }
+    depends_on: { database-provisioner: { condition: service_completed_successfully } }
   registration-service:
     build: { context: ., args: { SERVICE: registration-service } }
     env_file:
@@ -101,7 +96,12 @@ services:
     depends_on: { database-provisioner: { condition: service_completed_successfully }, rabbitmq: { condition: service_healthy } }
   gateway:
     image: nginx:1.29-alpine
-    ports: ["8000:8000"]
+    # 8000 is the public gateway. 8010 is the internal-service-key gateway defined
+    # in the same nginx.conf; it is bound to loopback so only tooling running on
+    # this machine (scripts/local-acceptance.ts) can reach it, never the LAN. The
+    # staging and production gateways do not define an internal listener at all -
+    # real service-to-service calls address each other's containers directly.
+    ports: ["8000:8000", "127.0.0.1:8010:8010"]
     volumes: ["./deploy/docker/nginx.conf:/etc/nginx/nginx.conf:ro"]
     depends_on: [identity-service, registration-service, assessment-content-service, result-service, appeal-certificate-service, notification-service, reporting-service, integration-service]
   minio:
@@ -111,7 +111,6 @@ services:
     volumes: ["object-data:/data"]
 volumes:
   postgres-data:
-  redis-data:
   rabbitmq-data:
   object-data:
 networks:

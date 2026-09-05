@@ -72,7 +72,6 @@ Required confirmation:
 | Malware scanning | service endpoint, response contract, limits and SLA |
 | PostgreSQL | HA endpoint, TLS CA, pooling, backup, PITR and maintenance window |
 | RabbitMQ | HA endpoint, TLS CA, credentials, quorum/DLQ policy and monitoring |
-| Redis | HA endpoint, TLS CA, persistence and eviction policy |
 | Observability | in-country logs, metrics, traces, retention and alert destinations |
 | DR | numeric RPO, approved RTO, DR site and restore-test schedule |
 | Data residency | written confirmation that data and metadata remain in Bhutan |
