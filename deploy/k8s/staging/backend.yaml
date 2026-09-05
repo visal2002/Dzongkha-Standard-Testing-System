@@ -96,7 +96,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8003 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: result-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/result-service:44b9619
+          image: dev-harbor.systems.gov.bt/dzongjuk/result-service:f515a16
           ports: [{ name: result, containerPort: 8004 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_result }, { name: RESULT_PORT, value: "8004" }]
