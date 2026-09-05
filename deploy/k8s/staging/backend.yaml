@@ -20,6 +20,10 @@ data:
   MAX_ASSESSMENT_FILE_BYTES: "52428800"
   MALWARE_SCAN_REQUIRED: "false"
   SCORING_CONFIG_APPROVAL_REQUIRED: "true"
+  # Temporary compatibility for score rows already encrypted with the historical
+  # staging key. Remove this together with the key after a ciphertext rotation.
+  DATA_ENCRYPTION_KEY: uGvF2eOq8P0hRjD7V9wX4mN3yC1zA5tB6sYkM+LpI/c=
+  ALLOW_LEGACY_SCORE_ENCRYPTION_KEY: "true"
   # VPN-isolated staging also permits locally authenticated administrators.
   PRIVILEGED_ASSURANCE_LEVELS: MFA,LOCAL
   RESULT_SERVICE_URL: http://result-service:8004/api/v1

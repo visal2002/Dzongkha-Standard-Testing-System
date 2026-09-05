@@ -18,7 +18,11 @@ import { AesGcmEncryptionTransformer } from '@dzongjuk/security';
 // transformer while this module is being loaded, before Nest has built an injector.
 const DEVELOPMENT_ENCRYPTION_KEY = 'uGvF2eOq8P0hRjD7V9wX4mN3yC1zA5tB6sYkM+LpI/c=';
 const configuredKey = process.env.DATA_ENCRYPTION_KEY?.trim();
-if (process.env.NODE_ENV === 'production' && (!configuredKey || configuredKey === DEVELOPMENT_ENCRYPTION_KEY)) {
+// Staging already contains score rows encrypted with the historical development
+// key. Keep their data readable until a deliberate key-rotation migration is
+// performed, while requiring an explicit, staging-manifest-only exception.
+const allowLegacyStagingKey = process.env.ALLOW_LEGACY_SCORE_ENCRYPTION_KEY === 'true';
+if (process.env.NODE_ENV === 'production' && (!configuredKey || (configuredKey === DEVELOPMENT_ENCRYPTION_KEY && !allowLegacyStagingKey))) {
   throw new Error('DATA_ENCRYPTION_KEY must be set to a deployment-specific 32-byte base64 key in production; the committed development key is not usable there.');
 }
 const scoreTransformer = new AesGcmEncryptionTransformer(configuredKey || DEVELOPMENT_ENCRYPTION_KEY);
