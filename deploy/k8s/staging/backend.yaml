@@ -63,7 +63,7 @@ spec:
       imagePullSecrets: [{ name: harbor-registry }]
       containers:
         - name: identity-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:master-config-20260829-0105
+          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:44b9619
           ports: [{ name: identity, containerPort: 8001 }]
           envFrom: &commonEnv
             - { configMapRef: { name: dzongjuk-backend-config } }
@@ -76,7 +76,7 @@ spec:
           livenessProbe: &live8001 { httpGet: { path: /health/live, port: 8001 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: &resources { requests: { cpu: 50m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
         - name: registration-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/registration-service:birms-appeal-20260828-2342
+          image: dev-harbor.systems.gov.bt/dzongjuk/registration-service:44b9619
           ports: [{ name: registration, containerPort: 8002 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_registration }, { name: REGISTRATION_PORT, value: "8002" }]
@@ -84,7 +84,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8002 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: assessment-content-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/assessment-content-service:8a68757
+          image: dev-harbor.systems.gov.bt/dzongjuk/assessment-content-service:44b9619
           ports: [{ name: assessment, containerPort: 8003 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_assessment }, { name: ASSESSMENT_PORT, value: "8003" }]
@@ -92,7 +92,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8003 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: result-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/result-service:dsts-standard-20260828-1005
+          image: dev-harbor.systems.gov.bt/dzongjuk/result-service:44b9619
           ports: [{ name: result, containerPort: 8004 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_result }, { name: RESULT_PORT, value: "8004" }]
@@ -100,7 +100,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8004 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: appeal-certificate-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/appeal-certificate-service:birms-appeal-20260828-2342
+          image: dev-harbor.systems.gov.bt/dzongjuk/appeal-certificate-service:44b9619
           ports: [{ name: appeal, containerPort: 8005 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_appeal_certificate }, { name: APPEAL_PORT, value: "8005" }]
@@ -108,7 +108,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8005 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: notification-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/notification-service:8a68757
+          image: dev-harbor.systems.gov.bt/dzongjuk/notification-service:44b9619
           ports: [{ name: notification, containerPort: 8006 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_notification }, { name: NOTIFICATION_PORT, value: "8006" }]
@@ -116,7 +116,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8006 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: reporting-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/reporting-service:8a68757
+          image: dev-harbor.systems.gov.bt/dzongjuk/reporting-service:44b9619
           ports: [{ name: reporting, containerPort: 8007 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_reporting }, { name: REPORTING_PORT, value: "8007" }]
@@ -124,7 +124,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8007 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: integration-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/integration-service:dcrc-profile-20260828-2300
+          image: dev-harbor.systems.gov.bt/dzongjuk/integration-service:44b9619
           ports: [{ name: integration, containerPort: 8008 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_integration }, { name: INTEGRATION_PORT, value: "8008" }]
