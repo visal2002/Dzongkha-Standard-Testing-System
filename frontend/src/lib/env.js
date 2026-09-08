@@ -17,6 +17,9 @@ export const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE ===
 /** True when fixture-backed responses should actually be served. */
 export const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
+/** Temporary NDI-only demo flow for staging before verifier credentials are issued. */
+export const NDI_DEMO_MODE = import.meta.env.VITE_NDI_DEMO_MODE === 'true';
+
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 export const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
 export const API_DEBUG = import.meta.env.VITE_API_DEBUG === 'true';

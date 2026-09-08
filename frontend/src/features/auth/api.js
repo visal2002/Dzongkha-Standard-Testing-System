@@ -9,7 +9,7 @@
  * Handles login, logout, token refresh, and NDI authentication.
  */
 import apiClient from '@/services/api';
-import { MOCK_DATA_ALLOWED, USE_MOCK_DATA } from '@/lib/env';
+import { MOCK_DATA_ALLOWED, NDI_DEMO_MODE, USE_MOCK_DATA } from '@/lib/env';
 import { clearSession, readSessionUser } from '@/lib/session';
 
 const MOCK_NDI_DELAY_MS = 5000;
@@ -317,7 +317,7 @@ export const authService = {
   /** Create a Bhutan NDI proof request for QR/deep-link login. */
   loginWithNDI: async () => {
 
-    if (USE_MOCK_DATA) {
+    if (USE_MOCK_DATA || NDI_DEMO_MODE) {
       return createMockNdiLogin();
     }
 
@@ -337,7 +337,7 @@ export const authService = {
   },
 
   checkNDILogin: async (pollToken) => {
-    if (MOCK_DATA_ALLOWED && pollToken.startsWith('mock_ndi_')) {
+    if ((MOCK_DATA_ALLOWED || NDI_DEMO_MODE) && pollToken.startsWith('mock_ndi_')) {
       const startTime = parseInt(pollToken.split('_')[2], 10);
       if (Date.now() - startTime > MOCK_NDI_DELAY_MS) {
         if (!USE_MOCK_DATA) {
@@ -371,7 +371,7 @@ export const authService = {
   },
 
   cancelNDILogin: async (pollToken) => {
-    if (MOCK_DATA_ALLOWED && pollToken?.startsWith('mock_ndi_')) return;
+    if ((MOCK_DATA_ALLOWED || NDI_DEMO_MODE) && pollToken?.startsWith('mock_ndi_')) return;
     try { await apiClient.post('/auth/ndi/cancel', { pollToken }); } catch { /* best-effort cleanup */ }
   },
 
