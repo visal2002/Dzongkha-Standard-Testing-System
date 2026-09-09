@@ -57,7 +57,7 @@ describe('AppealBirmsService', () => {
         BIRMS_BASE_URL: 'https://birmsstagging.drc.gov.bt/api-services',
         BIRMS_SERVICE_PATH: 'moha-service/api/v1', BIRMS_PLATFORM: 'Dzongjuk',
         BIRMS_USERNAME: 'configured-user', BIRMS_PASSWORD: 'configured-password',
-        BIRMS_AGENCY_CODE: '1212', BIRMS_SERVICE_CODE: '100621',
+        BIRMS_AGENCY_CODE: 'DTH5759', BIRMS_SERVICE_CODE: '100621',
         BIRMS_SERVICE_DESCRIPTION: 'Re-evaluation/Appeal for recheck of Exam Paper',
       }),
       sources,
@@ -74,7 +74,7 @@ describe('AppealBirmsService', () => {
       paymentLists: Array<{ serviceCode: string; description: string; payableAmount: string }>;
     };
 
-    expect(payload.agencyCode).toBe('1212');
+    expect(payload.agencyCode).toBe('DTH5759');
     expect(payload.paymentLists).toEqual([{
       serviceCode: '100621',
       description: 'Re-evaluation/Appeal for recheck of Exam Paper',

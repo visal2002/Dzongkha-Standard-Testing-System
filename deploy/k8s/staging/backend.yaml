@@ -43,7 +43,7 @@ data:
   BIRMS_ALLOW_NON_PRODUCTION_HOST: "true"
   BIRMS_SERVICE_PATH: moha-service/api/v1
   BIRMS_PLATFORM: Dzongjuk
-  BIRMS_AGENCY_CODE: ""
+  BIRMS_AGENCY_CODE: "DTH5759"
   BIRMS_SERVICE_CODE: "100621"
   BIRMS_SERVICE_DESCRIPTION: Re-evaluation/Appeal for recheck of Exam Paper
   DCRC_TOKEN_URL: https://stg-sso.tech.gov.bt/oauth2/token
