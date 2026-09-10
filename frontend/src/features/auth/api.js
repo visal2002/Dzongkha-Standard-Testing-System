@@ -29,18 +29,19 @@ const MOCK_PASSWORD = 'LocalTestOnly!2026';
 const mockAccounts = new Map([
   [MOCK_NDI_USER.email, { user: MOCK_NDI_USER, password: MOCK_PASSWORD }],
   // Demo accounts for E2E tests. `userId` is the 4-digit login handle the account
-  // signs in with; a real registration also supplies an 11-digit `cid`.
-  ['system.admin@demo.com',     { user: { id: 'USR-001', userId: '1001', email: 'system.admin@demo.com',     cid: '1001', fullName: 'Sonam Dorji',    roles: ['admin'],            permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
-  ['dcdd.admin@demo.com',       { user: { id: 'USR-002', userId: '1002', email: 'dcdd.admin@demo.com',       cid: '1002', fullName: 'Karma Wangchuk', roles: ['dcdd'],             permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
-  ['exam.head@demo.com',        { user: { id: 'USR-003', userId: '1003', email: 'exam.head@demo.com',        cid: '1003', fullName: 'Tshering Pem',   roles: ['exam_head'],        permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
-  ['committee.head@demo.com',   { user: { id: 'USR-004', userId: '1004', email: 'committee.head@demo.com',   cid: '1004', fullName: 'Ugyen Tenzin',   roles: ['committee_head'],   permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
-  ['chief.executive@demo.com',  { user: { id: 'USR-005', userId: '1005', email: 'chief.executive@demo.com',  cid: '1005', fullName: 'Dorji Wangmo',   roles: ['chief_executive'],  permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  // signs in with; `cid` is the 11-digit Bhutan Citizenship ID (distinct from userId).
+  ['system.admin@demo.com',     { user: { id: 'USR-001', userId: '1001', email: 'system.admin@demo.com',     cid: '10010000001', fullName: 'Sonam Dorji',    roles: ['admin'],            permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  ['dcdd.admin@demo.com',       { user: { id: 'USR-002', userId: '1002', email: 'dcdd.admin@demo.com',       cid: '10020000002', fullName: 'Karma Wangchuk', roles: ['dcdd'],             permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  ['exam.head@demo.com',        { user: { id: 'USR-003', userId: '1003', email: 'exam.head@demo.com',        cid: '10030000003', fullName: 'Tshering Pem',   roles: ['exam_head'],        permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  ['committee.head@demo.com',   { user: { id: 'USR-004', userId: '1004', email: 'committee.head@demo.com',   cid: '10040000004', fullName: 'Ugyen Tenzin',   roles: ['committee_head'],   permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  ['chief.executive@demo.com',  { user: { id: 'USR-005', userId: '1005', email: 'chief.executive@demo.com',  cid: '10050000005', fullName: 'Dorji Wangmo',   roles: ['chief_executive'],  permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
   // The demo Test Taker is a fully provisioned account, so it carries a passport
   // photo like every real one — without it the profile gate would hold the account
   // on /profile and the route smoke tests could never reach the dashboard.
-  ['test.taker@demo.com',       { user: { id: 'USR-006', userId: '1006', email: 'test.taker@demo.com',       cid: '1006', fullName: 'Pema Choden',    roles: ['test_taker'],       permissions: ['registration'], passwordSet: true, emailSet: true, photo: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' }, password: MOCK_PASSWORD }],
-  ['member@dsts.bt',            { user: { id: 'USR-007', userId: '1007', email: 'member@dsts.bt',            cid: '1007', fullName: 'Kinley Dorji',   roles: ['committee_member'], permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
+  ['test.taker@demo.com',       { user: { id: 'USR-006', userId: '1006', email: 'test.taker@demo.com',       cid: '10060000006', fullName: 'Pema Choden',    roles: ['test_taker'],       permissions: ['registration'], passwordSet: true, emailSet: true, photo: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' }, password: MOCK_PASSWORD }],
+  ['member@dsts.bt',            { user: { id: 'USR-007', userId: '1007', email: 'member@dsts.bt',            cid: '10070000007', fullName: 'Kinley Dorji',   roles: ['committee_member'], permissions: [], passwordSet: true, emailSet: true }, password: MOCK_PASSWORD }],
 ]);
+
 
 // Emails seeded above — lets us tell built-in demo accounts apart from ones created
 // at runtime (self-registration, or the admin "Add User" form).
@@ -50,10 +51,20 @@ const SEEDED_ACCOUNT_EMAILS = new Set([...mockAccounts.keys()]);
 // refresh — and so removing one from the System Admin screen genuinely frees its
 // CID/User ID for re-registration, instead of the change lasting only until reload.
 const MOCK_ACCOUNTS_STORE_KEY = 'dsts_mock_registered_accounts';
+// Bump this version whenever the seed-account data format changes (e.g. CID length fix).
+// Stale stored data from older versions is automatically discarded on load.
+const MOCK_ACCOUNTS_VERSION = '2';
+const MOCK_ACCOUNTS_VERSION_KEY = 'dsts_mock_registered_accounts_v';
 
 const readStoredAccounts = () => {
   if (!USE_MOCK_DATA || typeof localStorage === 'undefined') return [];
   try {
+    // If the stored version doesn't match, wipe it so stale data can't corrupt logins.
+    if (localStorage.getItem(MOCK_ACCOUNTS_VERSION_KEY) !== MOCK_ACCOUNTS_VERSION) {
+      localStorage.removeItem(MOCK_ACCOUNTS_STORE_KEY);
+      localStorage.setItem(MOCK_ACCOUNTS_VERSION_KEY, MOCK_ACCOUNTS_VERSION);
+      return [];
+    }
     const parsed = JSON.parse(localStorage.getItem(MOCK_ACCOUNTS_STORE_KEY) || '[]');
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -64,6 +75,7 @@ const readStoredAccounts = () => {
 const writeStoredAccounts = (entries) => {
   try {
     localStorage.setItem(MOCK_ACCOUNTS_STORE_KEY, JSON.stringify(entries));
+    localStorage.setItem(MOCK_ACCOUNTS_VERSION_KEY, MOCK_ACCOUNTS_VERSION);
   } catch {
     // storage unavailable - the account still lives for this session
   }
@@ -80,6 +92,7 @@ for (const entry of readStoredAccounts()) {
   const key = entry?.user?.email?.toLowerCase() || entry?.user?.id;
   if (key && !mockAccounts.has(key)) mockAccounts.set(key, entry);
 }
+
 
 // System-assigned 4-digit login handle, allocated in sequence: the next number after
 // the highest one already in use (seed accounts run 1000-1007, so the first new
