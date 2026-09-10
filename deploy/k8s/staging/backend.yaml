@@ -85,7 +85,7 @@ spec:
           livenessProbe: &live8001 { httpGet: { path: /health/live, port: 8001 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: &resources { requests: { cpu: 50m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
         - name: registration-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/registration-service:ee4e8af
+          image: dev-harbor.systems.gov.bt/dzongjuk/registration-service:905dcf7
           ports: [{ name: registration, containerPort: 8002 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_registration }, { name: REGISTRATION_PORT, value: "8002" }]
@@ -109,7 +109,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8004 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: appeal-certificate-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/appeal-certificate-service:ee4e8af
+          image: dev-harbor.systems.gov.bt/dzongjuk/appeal-certificate-service:905dcf7
           ports: [{ name: appeal, containerPort: 8005 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_appeal_certificate }, { name: APPEAL_PORT, value: "8005" }]
