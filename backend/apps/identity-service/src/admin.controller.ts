@@ -37,6 +37,7 @@ export class AdminController {
   @Permissions('admin.user.manage') @Put('users/:id') updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req: Request) { return this.admin.updateUser(id, dto, req.user!.sub, req.id); }
   @Permissions('admin.user.manage') @Delete('users/:id') deleteUser(@Param('id') id: string, @Req() req: Request) { return this.admin.deleteUser(id, req.user!.sub, req.id); }
   @Permissions('admin.user.manage') @Patch('users/:id/status') setStatus(@Param('id') id: string, @Body() dto: SetStatusDto, @Req() req: Request) { return this.admin.setStatus(id, dto.status, req.user!.sub, req.id); }
+  @Permissions('admin.user.manage') @Patch('users/:id/unlock') unlockUser(@Param('id') id: string, @Req() req: Request) { return this.admin.unlockUser(id, req.user!.sub, req.id); }
   @Permissions('admin.user.manage') @Put('users/:id/roles') setRoles(@Param('id') id: string, @Body() dto: UpdateUserRolesDto, @Req() req: Request) { return this.admin.setRoles(id, dto, req.user!.sub, req.id); }
   @Permissions('admin.role.read') @Get('roles') listRoles() { return this.admin.listRoles(); }
   @Permissions('admin.role.manage') @Post('roles') createRole(@Body() dto: CreateRoleDto, @Req() req: Request) { return this.admin.createRole(dto, req.user!.sub, req.id); }

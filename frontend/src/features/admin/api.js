@@ -185,6 +185,21 @@ export const adminService = {
     return data;
   },
 
+  /** Clear a temporary login lock and reset its failed-attempt counter. */
+  unlockUser: async (id) => {
+    if (USE_MOCK_DATA) {
+      mockUsers = mockUsers.map(user => user.id === id ? {
+        ...user, status: 'ACTIVE', failedLoginCount: 0, lockedUntil: null,
+        lockReason: null, lockReasonCode: null,
+      } : user);
+      recordAuditEvent({ action: 'User Account Unlocked', actorUserId: id, status: 'Success' });
+      return normalizeUser(mockUsers.find(user => user.id === id));
+    }
+
+    const { data } = await apiClient.patch(`/admin/users/${id}/unlock`);
+    return normalizeUser(data?.data || data);
+  },
+
   /** @param {string} id */
   deleteUser: async (id) => {
     if (USE_MOCK_DATA) {
