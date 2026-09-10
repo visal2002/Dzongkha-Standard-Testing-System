@@ -164,9 +164,9 @@ export default function LoginPage() {
     } else {
       toast.success(t('auth.registration_success'));
     }
-    // Registration signs the account in; go straight into the app rather than back
-    // to the sign-in tab. New Test Takers are routed to their profile by the photo gate.
-    navigate('/dashboard');
+    // Registration signs the account in and profile completion is the mandatory next
+    // step for email/password creation and passport-photo upload.
+    navigate('/profile', { replace: true });
   };
 
   // Bhutan NDI proof request behind the modal. `keepPanelOnFailure` holds the

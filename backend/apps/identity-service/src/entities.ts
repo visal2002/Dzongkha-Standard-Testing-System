@@ -48,6 +48,13 @@ export class UserEntity {
   @Index({ unique: true }) @Column({ type: 'varchar', length: 4, nullable: true }) userId: string | null;
   @Column({ length: 160 }) fullName: string;
   @Column({ type: 'varchar', select: false, nullable: true }) passwordHash: string | null;
+  @Column({ default: true }) emailSet: boolean;
+  @Column({ default: true }) passwordSet: boolean;
+  @Column({ type: 'date', nullable: true }) dateOfBirth: string | null;
+  @Column({ type: 'varchar', length: 16, nullable: true }) gender: string | null;
+  @Column({ type: 'varchar', length: 32, nullable: true }) contactNumber: string | null;
+  @Column({ type: 'varchar', length: 64, nullable: true }) education: string | null;
+  @Column({ type: 'text', nullable: true }) photo: string | null;
   @Column({ default: 'ACTIVE' }) status: 'ACTIVE' | 'DISABLED' | 'LOCKED';
   @Column({ default: 0 }) failedLoginCount: number;
   @Column({ type: 'timestamptz', nullable: true }) lockedUntil: Date | null;

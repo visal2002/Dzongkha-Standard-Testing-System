@@ -14,13 +14,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import PageLoader from '@/components/ui/PageLoader';
-import { USE_MOCK_DATA } from '@/lib/env';
 import { canAccess } from './accessMatrix';
-
-// The "finish your profile first" gate is part of the mock onboarding flow (email,
-// password and photo are all collected post-registration there). A real backend
-// mandates email + password at registration, so the gate is scoped to mock builds.
-const PROFILE_GATE_ACTIVE = USE_MOCK_DATA;
 
 const rolesOf = user => (Array.isArray(user?.roles) ? user.roles : [user?.role]);
 
@@ -41,8 +35,7 @@ export function RouteGuard({ children, requiredRoles, requiredAccess }) {
   // it until their email, password and passport-size photo are all on file - none of
   // the three is collected at registration, so all three are completed on that page.
   if (
-    PROFILE_GATE_ACTIVE
-    && user?.role === 'test_taker'
+    user?.role === 'test_taker'
     && (!user?.photo || !user?.passwordSet || !user?.emailSet)
     && location.pathname !== '/profile'
   ) {

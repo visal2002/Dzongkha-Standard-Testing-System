@@ -4,12 +4,12 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { Body, Controller, Get, Headers, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Post, Put, Req, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { Public } from '@dzongjuk/security';
 import { AuthService } from './auth.service';
-import { LoginDto, NdiStatusDto, RefreshDto, RegisterDto } from './dtos';
+import { LoginDto, NdiStatusDto, RefreshDto, RegisterDto, UpdateAvatarDto, UpdateOwnProfileDto, UpdatePasswordDto } from './dtos';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -17,8 +17,10 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public() @Post('register')
-  register(@Body() dto: RegisterDto, @Req() request: Request) {
-    return this.auth.register(dto, this.context(request));
+  async register(@Body() dto: RegisterDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    const result = await this.auth.register(dto, this.context(request));
+    this.setRefreshCookie(response, result.refreshToken);
+    return { accessToken: result.accessToken, expiresIn: result.expiresIn, user: result.user };
   }
 
   @Public() @Post('login')
@@ -66,6 +68,21 @@ export class AuthController {
 
   @ApiBearerAuth() @Get('me')
   me(@Req() request: Request) { return request.user; }
+
+  @ApiBearerAuth() @Put('profile')
+  updateProfile(@Body() dto: UpdateOwnProfileDto, @Req() request: Request) {
+    return this.auth.updateProfile(request.user!.sub, dto, this.context(request));
+  }
+
+  @ApiBearerAuth() @Put('password')
+  updatePassword(@Body() dto: UpdatePasswordDto, @Req() request: Request) {
+    return this.auth.updatePassword(request.user!.sub, dto, this.context(request));
+  }
+
+  @ApiBearerAuth() @Put('avatar')
+  updateAvatar(@Body() dto: UpdateAvatarDto, @Req() request: Request) {
+    return this.auth.updateAvatar(request.user!.sub, dto.avatar, this.context(request));
+  }
 
   private context(request: Request) { return { requestId: request.id, ip: request.ip, userAgent: request.header('user-agent') }; }
   private refreshCookie(request: Request): string | undefined {

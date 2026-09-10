@@ -69,6 +69,10 @@ spec:
       hostAliases:
         - ip: "172.30.3.148"
           hostnames: ["birmsstagging.drc.gov.bt"]
+        - ip: "172.30.78.24"
+          hostnames: ["stg-sso.tech.gov.bt"]
+        - ip: "172.30.78.130"
+          hostnames: ["staging-datahub-apim.tech.gov.bt"]
       imagePullSecrets: [{ name: harbor-registry }]
       containers:
         - name: identity-service

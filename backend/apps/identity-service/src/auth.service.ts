@@ -14,7 +14,7 @@ import { IsNull, MoreThan, Not, Repository } from 'typeorm';
 import { AccessClaims, CanonicalRole } from '@dzongjuk/contracts';
 import { DomainException } from '@dzongjuk/common';
 import { AuditService } from './audit.service';
-import { LoginDto, RegisterDto } from './dtos';
+import { LoginDto, RegisterDto, UpdateOwnProfileDto, UpdatePasswordDto } from './dtos';
 import { LoginAttemptEntity, NdiLoginRequestEntity, RoleEntity, SessionEntity, UserEntity } from './entities';
 import { NdiProviderService } from './ndi-provider.service';
 
@@ -39,15 +39,65 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto, context: RequestContext) {
-    const duplicate = await this.users.findOne({ where: [{ email: dto.email.toLowerCase() }, { cid: dto.cid }] });
+    const chosenEmail = dto.email?.trim().toLowerCase();
+    const duplicate = await this.users.findOne({
+      where: chosenEmail ? [{ email: chosenEmail }, { cid: dto.cid }] : { cid: dto.cid },
+    });
     if (duplicate) throw new DomainException('USER_DUPLICATE', 'An account already exists for this email or CID.', 409);
     const role = await this.roles.findOneByOrFail({ code: CanonicalRole.TestTaker, active: true });
     const user = await this.users.save(this.users.create({
-      email: dto.email.toLowerCase(), cid: dto.cid, fullName: dto.fullName, userId: await this.allocateUserId(),
-      passwordHash: await bcrypt.hash(dto.password, 12), roles: [role], status: 'ACTIVE',
+      email: chosenEmail || `${dto.cid}@dsts.bt`, emailSet: Boolean(chosenEmail),
+      cid: dto.cid, fullName: dto.fullName.trim(), userId: await this.allocateUserId(),
+      passwordHash: dto.password ? await bcrypt.hash(dto.password, 12) : null,
+      passwordSet: Boolean(dto.password), dateOfBirth: dto.dateOfBirth || null,
+      gender: dto.gender || null, contactNumber: dto.contactNumber?.trim() || null,
+      education: dto.education?.trim() || null, photo: null,
+      roles: [role], status: 'ACTIVE',
     }));
     await this.audit.record({ action: 'USER_REGISTERED', resourceType: 'User', resourceId: user.id, actorUserId: user.id, requestId: context.requestId });
+    return this.createSession(user, 'LOCAL', context);
+  }
+
+  async updateProfile(userId: string, dto: UpdateOwnProfileDto, context: RequestContext) {
+    const user = await this.users.findOneBy({ id: userId });
+    if (!user) throw new DomainException('USER_NOT_FOUND', 'User account not found.', 404);
+    if (dto.email) {
+      const email = dto.email.trim().toLowerCase();
+      const duplicate = await this.users.findOne({ where: { email, id: Not(userId) } });
+      if (duplicate) throw new DomainException('EMAIL_ALREADY_USED', 'This email address is already registered.', 409);
+      user.email = email;
+      user.emailSet = true;
+    }
+    if (dto.contactNumber !== undefined) user.contactNumber = dto.contactNumber.trim() || null;
+    if (dto.education !== undefined) user.education = dto.education.trim() || null;
+    const photo = dto.photo ?? dto.avatar;
+    if (photo !== undefined) user.photo = this.validatedPhoto(photo);
+    await this.users.save(user);
+    await this.audit.record({
+      action: 'PROFILE_UPDATED', resourceType: 'User', resourceId: user.id,
+      actorUserId: user.id, requestId: context.requestId,
+      safeData: { fields: Object.keys(dto).filter((field) => !['photo', 'avatar'].includes(field)), photoUpdated: photo !== undefined },
+    });
     return this.publicUser(user);
+  }
+
+  async updatePassword(userId: string, dto: UpdatePasswordDto, context: RequestContext) {
+    const user = await this.users.createQueryBuilder('user').addSelect('user.passwordHash')
+      .leftJoinAndSelect('user.roles', 'role').leftJoinAndSelect('role.permissions', 'permission')
+      .where('user.id = :userId', { userId }).getOne();
+    if (!user) throw new DomainException('USER_NOT_FOUND', 'User account not found.', 404);
+    if (user.passwordSet && (!dto.currentPassword || !user.passwordHash || !(await bcrypt.compare(dto.currentPassword, user.passwordHash)))) {
+      throw new DomainException('CURRENT_PASSWORD_INVALID', 'The current password is incorrect.', 400);
+    }
+    user.passwordHash = await bcrypt.hash(dto.newPassword, 12);
+    user.passwordSet = true;
+    await this.users.save(user);
+    await this.audit.record({ action: 'PASSWORD_UPDATED', resourceType: 'User', resourceId: user.id, actorUserId: user.id, requestId: context.requestId });
+    return { passwordSet: true };
+  }
+
+  async updateAvatar(userId: string, photo: string, context: RequestContext) {
+    return this.updateProfile(userId, { photo }, context);
   }
 
   /**
@@ -319,6 +369,25 @@ export class AuthService {
     return typeof revealed === 'string' && revealed.trim() ? revealed.trim() : null;
   }
 
+  private validatedPhoto(value: string): string {
+    const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(value);
+    if (!match) throw new DomainException('PROFILE_PHOTO_INVALID', 'Upload a JPEG, PNG, or WebP image.', 400);
+    const bytes = Buffer.from(match[2], 'base64');
+    if (bytes.length === 0 || bytes.length > 3 * 1024 * 1024) {
+      throw new DomainException('PROFILE_PHOTO_INVALID', 'The passport photo must be 3 MB or smaller.', 400);
+    }
+    return value;
+  }
+
   private hash(value: string) { return createHash('sha256').update(value).digest('hex'); }
-  private publicUser(user: UserEntity) { return { id: user.id, userId: user.userId, email: user.email, cid: user.cid, fullName: user.fullName, status: user.status, roles: user.roles.map((role) => role.code) }; }
+  private publicUser(user: UserEntity) {
+    return {
+      id: user.id, userId: user.userId, email: user.emailSet ? user.email : null,
+      emailSet: user.emailSet, passwordSet: user.passwordSet,
+      cid: user.cid, fullName: user.fullName, dateOfBirth: user.dateOfBirth,
+      gender: user.gender, contactNumber: user.contactNumber, phone: user.contactNumber,
+      education: user.education, photo: user.photo, avatar: user.photo,
+      status: user.status, roles: user.roles.map((role) => role.code),
+    };
+  }
 }

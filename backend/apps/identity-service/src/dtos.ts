@@ -4,17 +4,36 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { IsArray, IsEmail, IsNumber, IsObject, IsOptional, IsString, Length, Max, Min, MinLength } from 'class-validator';
+import { IsArray, IsDateString, IsEmail, IsIn, IsNumber, IsObject, IsOptional, IsString, Length, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class RegisterDto {
-  @IsEmail() email: string;
+  @IsOptional() @IsEmail() email?: string;
   @IsString() @Length(5, 32) cid: string;
   @IsString() @Length(2, 160) fullName: string;
-  @IsString() @MinLength(12) password: string;
+  @IsOptional() @IsString() @MinLength(12) password?: string;
+  @IsOptional() @IsDateString() dateOfBirth?: string;
+  @IsOptional() @IsString() @IsIn(['Male', 'Female', 'Other']) gender?: string;
   // Captured on the non-NDI registration form. Optional so existing callers and the
   // NDI path (which has no such fields) still validate.
   @IsOptional() @IsString() @Length(0, 64) education?: string;
   @IsOptional() @IsString() @Length(0, 32) contactNumber?: string;
+}
+
+export class UpdateOwnProfileDto {
+  @IsOptional() @IsEmail() email?: string;
+  @IsOptional() @IsString() @Length(0, 32) contactNumber?: string;
+  @IsOptional() @IsString() @Length(0, 64) education?: string;
+  @IsOptional() @IsString() @MaxLength(4_200_000) photo?: string;
+  @IsOptional() @IsString() @MaxLength(4_200_000) avatar?: string;
+}
+
+export class UpdatePasswordDto {
+  @IsOptional() @IsString() currentPassword?: string;
+  @IsString() @MinLength(12) newPassword: string;
+}
+
+export class UpdateAvatarDto {
+  @IsString() @MaxLength(4_200_000) avatar: string;
 }
 
 export class LoginDto {
@@ -31,6 +50,8 @@ export class NdiStatusDto {
 }
 
 export class CreateUserDto extends RegisterDto {
+  @IsEmail() declare email: string;
+  @IsString() @MinLength(12) declare password: string;
   @IsArray() @IsString({ each: true }) roleCodes: string[];
 }
 

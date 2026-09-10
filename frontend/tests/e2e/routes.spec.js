@@ -100,7 +100,7 @@ test('a test taker can register without NDI and sign in', async ({ page }) => {
   await page.getByRole('button', { name: 'Save Changes' }).click();
 
   // 2. Create a password (no current password is needed for a brand-new account).
-  await page.getByPlaceholder('At least 8 characters').fill('Password!123');
+  await page.getByPlaceholder('At least 12 characters').fill('Password!123');
   await page.locator('input[type="password"]').nth(1).fill('Password!123');
   await page.getByRole('button', { name: 'Create Password' }).click();
 

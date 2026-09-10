@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, CreditCard, GraduationCap, Shield, Phone, Lock, Save, Edit2, X, Camera } from 'lucide-react';
+import { User, Mail, CreditCard, GraduationCap, Shield, Phone, Lock, Save, Edit2, X, Camera, Calendar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/features/auth/api';
 import toast from 'react-hot-toast';
@@ -108,7 +108,7 @@ function ChangePasswordForm({ onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (next !== confirm) return toast.error('New passwords do not match.');
-    if (next.length < 8) return toast.error('Password must be at least 8 characters.');
+    if (next.length < 12) return toast.error('Password must be at least 12 characters.');
     setLoading(true);
     try {
       const result = await authService.changePassword(current, next);
@@ -161,7 +161,7 @@ function CreatePasswordForm({ onDone }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (next.length < 8) return toast.error('Password must be at least 8 characters.');
+    if (next.length < 12) return toast.error('Password must be at least 12 characters.');
     if (next !== confirm) return toast.error('The passwords do not match.');
     setLoading(true);
     try {
@@ -181,11 +181,11 @@ function CreatePasswordForm({ onDone }) {
     <form onSubmit={handleSubmit} className="space-y-3 mt-4">
       <div>
         <label className="block text-xs text-text-muted mb-1.5 font-medium">New Password</label>
-        <input type="password" value={next} onChange={e => setNext(e.target.value)} required minLength={8} placeholder="At least 8 characters" className={inputCls} />
+        <input type="password" value={next} onChange={e => setNext(e.target.value)} required minLength={12} placeholder="At least 12 characters" className={inputCls} />
       </div>
       <div>
         <label className="block text-xs text-text-muted mb-1.5 font-medium">Confirm Password</label>
-        <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required minLength={8} className={inputCls} />
+        <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required minLength={12} className={inputCls} />
       </div>
       <button type="submit" disabled={loading} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-gold text-white text-sm font-medium hover:bg-brand-gold-dark disabled:opacity-60 transition-colors">
         <Lock size={14} /> {loading ? 'Saving…' : 'Create Password'}
@@ -363,6 +363,8 @@ export default function ProfilePage() {
               <InfoRow icon={Mail}       label="Email"         value={needsEmail ? null : user?.email} placeholder="Not set" />
               <InfoRow icon={CreditCard} label="User ID"       value={user?.userId} placeholder="Not assigned" />
               <InfoRow icon={CreditCard} label="CID"           value={user?.cid} placeholder="Not set" />
+              <InfoRow icon={Calendar}   label="Date of Birth" value={user?.dateOfBirth} placeholder="Not available from DCRC" />
+              <InfoRow icon={User}       label="Gender"        value={user?.gender} placeholder="Not available from DCRC" />
               <InfoRow icon={Phone}      label="Contact"       value={user?.phone || user?.contactNumber} placeholder="Not set" />
               <InfoRow icon={GraduationCap} label="Qualification" value={user?.education} placeholder="Not set" />
               <InfoRow icon={Shield}     label="Role"          value={user?.roleName} />

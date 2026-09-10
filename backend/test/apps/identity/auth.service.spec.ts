@@ -38,6 +38,13 @@ const makeUser = (overrides: Partial<UserEntity> = {}): UserEntity =>
     cid: '10701000001',
     fullName: 'Test User',
     passwordHash: null,
+    emailSet: true,
+    passwordSet: true,
+    dateOfBirth: null,
+    gender: null,
+    contactNumber: null,
+    education: null,
+    photo: null,
     status: 'ACTIVE',
     roles: [makeRole(CanonicalRole.TestTaker)],
     failedLoginCount: 0,
@@ -475,6 +482,38 @@ describe('AuthService — NDI status poll (BRD §2.9)', () => {
 // ─── registration tests ───────────────────────────────────────────────────────
 
 describe('AuthService — User registration (BRD §2.9)', () => {
+  it('creates an authenticated incomplete profile without collecting a password', async () => {
+    const usersRepo = makeRepo<UserEntity>();
+    const role = makeRole(CanonicalRole.TestTaker);
+    const rolesRepo = makeRepo<RoleEntity>([role]);
+    (rolesRepo.findOneByOrFail as jest.Mock).mockResolvedValue(role);
+    const service = buildService({ users: usersRepo, roles: rolesRepo });
+
+    const result = await service.register({
+      cid: '10701000009', fullName: 'Chimi Dema', dateOfBirth: '2000-01-01',
+      gender: 'Female', contactNumber: '17123456', education: 'Class XII',
+    }, ctx);
+
+    expect(result).toMatchObject({
+      accessToken: 'signed.access.token',
+      user: {
+        cid: '10701000009', email: null, emailSet: false, passwordSet: false,
+        dateOfBirth: '2000-01-01', gender: 'Female', contactNumber: '17123456',
+      },
+    });
+  });
+
+  it('sets the first password without requiring a temporary password', async () => {
+    const user = makeUser({ passwordSet: false, passwordHash: null });
+    const usersRepo = makeRepo<UserEntity>([user]);
+    const service = buildService({ users: usersRepo });
+
+    await expect(service.updatePassword(user.id, { newPassword: 'SecurePass!2026' }, ctx))
+      .resolves.toEqual({ passwordSet: true });
+    expect(user.passwordSet).toBe(true);
+    expect(user.passwordHash).toEqual(expect.any(String));
+  });
+
   it('blocks duplicate email or CID registration', async () => {
     const existing = makeUser();
     const usersRepo = makeRepo<UserEntity>([existing]);

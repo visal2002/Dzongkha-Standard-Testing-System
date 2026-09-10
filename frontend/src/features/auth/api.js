@@ -248,14 +248,12 @@ export const authService = {
 
     /** Register a test taker without Bhutan NDI. */
   register: async ({ fullName, cid, dateOfBirth, gender, contactNumber, education, email, password }) => {
-    // The registration form no longer collects an email or a password - the new Test
-    // Taker sets both from their profile after signing in. `emailSet` / `passwordSet`
-    // stay false until they do, and the profile gate holds them there. A CID-derived
-    // address is used internally only as an account key and login fallback; it is
-    // never shown as the user's email while `emailSet` is false.
+    // The registration form no longer collects an email or a password. The backend
+    // creates an authenticated onboarding session and the profile gate holds the new
+    // Test Taker on /profile until both are set and a passport photo is uploaded.
     const chosenEmail = String(email || '').trim().toLowerCase();
     const emailChosen = /.+@.+\..+/.test(chosenEmail);
-    const passwordChosen = Boolean(password && String(password).length >= 8);
+    const passwordChosen = Boolean(password && String(password).length >= 12);
     const normalized = {
       fullName: fullName.trim(),
       cid: cid.trim(),
@@ -303,12 +301,13 @@ export const authService = {
       const { data: envelope } = await apiClient.post('/auth/register', {
         fullName: normalized.fullName,
         cid: normalized.cid,
-        email: normalized.email,
+        dateOfBirth: normalized.dateOfBirth,
+        gender: normalized.gender,
         education: normalized.education,
         contactNumber: normalized.contactNumber,
-        password: normalized.password,
       });
-      return { success: true, user: envelope.data };
+      const { accessToken, expiresIn, user } = envelope.data;
+      return { success: true, user: normalizeUser(user, accessToken), token: accessToken, expiresIn };
     } catch (err) {
       return { success: false, error: err.message || 'Registration failed.' };
     }
