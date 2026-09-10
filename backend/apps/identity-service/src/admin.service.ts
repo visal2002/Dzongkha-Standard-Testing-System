@@ -36,8 +36,9 @@ export class AdminService {
     return { email: user.email, name: user.fullName };
   }
 
-  listUsers() {
-    return this.users.find({ order: { createdAt: 'DESC' }, take: 100 });
+  async listUsers() {
+    const users = await this.users.find({ order: { createdAt: 'DESC' }, take: 100 });
+    return users.map((user) => this.adminUser(user));
   }
 
   // A minimal projection - id, name and role only, no email or CID - for screens that
@@ -60,6 +61,21 @@ export class AdminService {
     const user = await this.users.findOneBy({ id });
     if (!user) throw new DomainException('USER_NOT_FOUND', 'User not found.', 404);
     return user;
+  }
+
+  async unlockUser(id: string, actorId: string, requestId: string) {
+    const user = await this.getUser(id);
+    const previous = { status: user.status, failedLoginCount: user.failedLoginCount, lockedUntil: user.lockedUntil };
+    user.failedLoginCount = 0;
+    user.lockedUntil = null;
+    if (user.status === 'LOCKED') user.status = 'ACTIVE';
+    const saved = await this.users.save(user);
+    await this.audit.record({
+      action: 'USER_ACCOUNT_UNLOCKED', resourceType: 'User', resourceId: id,
+      actorUserId: actorId, requestId,
+      safeData: { previousStatus: previous.status, failedLoginCount: previous.failedLoginCount, lockedUntil: previous.lockedUntil?.toISOString() ?? null },
+    });
+    return this.adminUser(saved);
   }
 
   async createUser(dto: CreateUserDto, actorId: string, requestId: string) {
@@ -162,5 +178,14 @@ export class AdminService {
     const saved = await this.roles.save(role);
     await this.audit.record({ action: 'ROLE_PERMISSIONS_UPDATED', resourceType: 'Role', resourceId: id, actorUserId: actorId, requestId, safeData: { permissions: dto.permissions } });
     return saved;
+  }
+
+  private adminUser(user: UserEntity) {
+    const locked = user.status === 'LOCKED' || Boolean(user.lockedUntil && user.lockedUntil > new Date());
+    return {
+      ...user,
+      lockReason: locked ? `Too many failed sign-in attempts (${user.failedLoginCount} invalid attempts).` : null,
+      lockReasonCode: locked ? 'TOO_MANY_FAILED_LOGIN_ATTEMPTS' : null,
+    };
   }
 }
