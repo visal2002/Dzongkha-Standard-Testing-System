@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Shield, Users, Link2, Mail, CreditCard, HardDrive,
+  Shield, Link2, Mail, CreditCard, HardDrive,
   Database, FileText, Wrench, Zap, Globe2, Code2,
   Languages, ShieldCheck, Monitor, ChevronDown, Save, RefreshCw,
   CheckCircle, XCircle, AlertTriangle, Eye, EyeOff, TestTube, Download,
@@ -94,7 +94,6 @@ function SectionHeader({ title, icon: Icon }) {
 // ─── Nav Sidebar ──────────────────────────────────────────────────────────────
 const SECTIONS = [
   { id: 'auth',        label: 'Authentication & Security', icon: Shield },
-  { id: 'users',       label: 'Users & Roles',             icon: Users },
   { id: 'ndi',         label: 'NDI & Integrations',        icon: Link2 },
   { id: 'email',       label: 'Email (SMTP)',               icon: Mail },
   { id: 'payment',     label: 'Payment Gateway',           icon: CreditCard },
@@ -619,27 +618,9 @@ function SysInfoSection() {
   );
 }
 
-// ─── Users Section (link to existing) ─────────────────────────────────────────
-function UsersSection() {
-  return (
-    <div className="p-5">
-      <p className="text-sm text-text-muted mb-4">User and role administration is managed in the dedicated modules.</p>
-      <div className="flex flex-col sm:flex-row gap-3">
-        <a href="/admin/users" className="flex items-center gap-2 px-4 py-3 rounded-xl border border-surface-border bg-surface-elevated hover:bg-surface-border/60 transition-colors text-sm text-text-secondary">
-          <Users size={16} className="text-brand-gold" /> User Management →
-        </a>
-        <a href="/admin/roles" className="flex items-center gap-2 px-4 py-3 rounded-xl border border-surface-border bg-surface-elevated hover:bg-surface-border/60 transition-colors text-sm text-text-secondary">
-          <Shield size={16} className="text-brand-gold" /> Role & Permission Matrix →
-        </a>
-      </div>
-    </div>
-  );
-}
-
 // ─── Section map ──────────────────────────────────────────────────────────────
 const SECTION_COMPONENTS = {
   auth:        AuthSection,
-  users:       UsersSection,
   ndi:         NDISection,
   email:       EmailSection,
   payment:     PaymentSection,
