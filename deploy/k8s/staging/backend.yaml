@@ -76,7 +76,7 @@ spec:
       imagePullSecrets: [{ name: harbor-registry }]
       containers:
         - name: identity-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:cc28b62
+          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:ea72c6d
           ports: [{ name: identity, containerPort: 8001 }]
           envFrom: &commonEnv
             - { configMapRef: { name: dzongjuk-backend-config } }

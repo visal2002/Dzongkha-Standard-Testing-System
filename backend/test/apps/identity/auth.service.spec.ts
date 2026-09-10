@@ -514,6 +514,20 @@ describe('AuthService — User registration (BRD §2.9)', () => {
     expect(user.passwordHash).toEqual(expect.any(String));
   });
 
+  it('accepts the legacy phone alias while saving profile completion fields', async () => {
+    const user = makeUser({ email: '10701000009@dsts.bt', emailSet: false, contactNumber: null });
+    const usersRepo = makeRepo<UserEntity>([user]);
+    (usersRepo.findOne as jest.Mock).mockResolvedValue(null);
+    const service = buildService({ users: usersRepo });
+
+    const result = await service.updateProfile(user.id, {
+      email: 'chimi@example.com', phone: '17123456',
+    }, ctx);
+
+    expect(result).toMatchObject({ email: 'chimi@example.com', emailSet: true, contactNumber: '17123456' });
+    expect((usersRepo.save as jest.Mock).mock.calls).toHaveLength(1);
+  });
+
   it('blocks duplicate email or CID registration', async () => {
     const existing = makeUser();
     const usersRepo = makeRepo<UserEntity>([existing]);
