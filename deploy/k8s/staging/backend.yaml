@@ -64,6 +64,11 @@ spec:
     metadata:
       labels: { app.kubernetes.io/name: dzongjuk-backend, app.kubernetes.io/part-of: dzongjuk }
     spec:
+      # The government staging hostname is private and is not resolved by the
+      # cluster DNS forwarder. Keep this mapping scoped to the UAT deployment.
+      hostAliases:
+        - ip: "172.30.3.148"
+          hostnames: ["birmsstagging.drc.gov.bt"]
       imagePullSecrets: [{ name: harbor-registry }]
       containers:
         - name: identity-service
