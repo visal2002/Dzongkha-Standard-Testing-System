@@ -41,7 +41,6 @@ function EditProfileForm({ user, onSave, onCancel, emailRequired }) {
     try {
       await onSave({
         email: email.trim(),
-        phone: phone.trim(),
         contactNumber: phone.trim(),
         education: qualification,
       });
@@ -227,7 +226,7 @@ export default function ProfilePage() {
     reader.onload = async (ev) => {
       const dataUrl = String(ev.target?.result || '');
       try {
-        await updateProfile({ photo: dataUrl, avatar: user?.avatar || dataUrl });
+        await updateProfile({ photo: dataUrl });
         toast.success(needsPassportPhoto ? 'Passport photo saved — you now have full access.' : 'Passport photo updated.');
       } catch {
         toast.error('Failed to save the passport photo.');
@@ -286,30 +285,12 @@ export default function ProfilePage() {
               {initials}
             </div>
           )}
-          <label className="mt-2 flex items-center gap-1 text-sm text-brand-gold cursor-pointer">
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = async (ev) => {
-                  const dataUrl = ev.target?.result;
-                  try {
-                    await authService.uploadProfilePicture(dataUrl);
-                    await updateProfile({ avatar: dataUrl });
-                    toast.success('Profile picture updated successfully!');
-                  } catch (err) {
-                    toast.error('Failed to upload profile picture');
-                  }
-                };
-                reader.readAsDataURL(file);
-              }}
-            />
-            <Camera size={16} className="text-brand-gold" /> Change Photo
-          </label>
+          {!isTestTaker && (
+            <label className="mt-2 flex items-center gap-1 text-sm text-brand-gold cursor-pointer">
+              <input type="file" accept="image/*" className="hidden" disabled={savingPhoto} onChange={handlePassportUpload} />
+              <Camera size={16} className="text-brand-gold" /> {savingPhoto ? 'Saving…' : 'Change Photo'}
+            </label>
+          )}
 
           {isTestTaker && (
             <label

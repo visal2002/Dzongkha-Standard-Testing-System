@@ -68,7 +68,8 @@ export class AuthService {
       user.email = email;
       user.emailSet = true;
     }
-    if (dto.contactNumber !== undefined) user.contactNumber = dto.contactNumber.trim() || null;
+    const contactNumber = dto.contactNumber ?? dto.phone;
+    if (contactNumber !== undefined) user.contactNumber = contactNumber.trim() || null;
     if (dto.education !== undefined) user.education = dto.education.trim() || null;
     const photo = dto.photo ?? dto.avatar;
     if (photo !== undefined) user.photo = this.validatedPhoto(photo);

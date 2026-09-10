@@ -11,9 +11,10 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true, bodyParser: false });
-  // Passport photos are submitted as validated image data URLs. Keep the larger
-  // parser limit scoped to identity-service; the API gateway already caps requests.
-  app.use(json({ limit: '5mb' }));
+  // Allow one transition release where an already-open frontend may still submit
+  // the passport image under both `photo` and `avatar`. Each individual image is
+  // still validated at a strict 3 MB maximum in AuthService.
+  app.use(json({ limit: '10mb' }));
   await bootstrapService(app, {
     name: 'Dzongjuk Identity Access Service',
     description: 'Identity, NDI boundary, sessions, users, roles and permissions.',

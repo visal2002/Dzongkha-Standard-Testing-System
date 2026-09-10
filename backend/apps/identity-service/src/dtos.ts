@@ -21,6 +21,7 @@ export class RegisterDto {
 
 export class UpdateOwnProfileDto {
   @IsOptional() @IsEmail() email?: string;
+  @IsOptional() @IsString() @Length(0, 32) phone?: string;
   @IsOptional() @IsString() @Length(0, 32) contactNumber?: string;
   @IsOptional() @IsString() @Length(0, 64) education?: string;
   @IsOptional() @IsString() @MaxLength(4_200_000) photo?: string;
