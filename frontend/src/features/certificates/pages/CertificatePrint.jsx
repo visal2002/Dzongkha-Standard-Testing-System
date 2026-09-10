@@ -43,6 +43,15 @@ const NAME_TEXT = {
   fontSize: '17px',
 };
 
+// Photo placeholder: upper-right area of the template that says "PHOTO".
+// Adjust these values if the photo sits slightly off the box on your template.
+const PHOTO_BOX = {
+  top: '20%',
+  right: '5.5%',
+  width: '14%',
+  height: '10.5%',
+};
+
 export default function CertificatePrint() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -112,6 +121,34 @@ export default function CertificatePrint() {
         >
           {cert.holderName}
         </div>
+
+        {/* Passport photo overlay */}
+        {cert.photo ? (
+          <img
+            className="cert-photo"
+            src={cert.photo}
+            alt="Certificate holder photo"
+            style={{
+              top: PHOTO_BOX.top,
+              right: PHOTO_BOX.right,
+              width: PHOTO_BOX.width,
+              height: PHOTO_BOX.height,
+            }}
+          />
+        ) : (
+          /* If no photo is available, paint a subtle placeholder so the box isn't empty */
+          <div
+            className="cert-photo-placeholder"
+            style={{
+              top: PHOTO_BOX.top,
+              right: PHOTO_BOX.right,
+              width: PHOTO_BOX.width,
+              height: PHOTO_BOX.height,
+            }}
+          >
+            <span>Photo</span>
+          </div>
+        )}
       </div>
 
       <style>{styles}</style>
@@ -157,6 +194,25 @@ const styles = `
     font-family: "Georgia", "Times New Roman", serif;
     color: #1c2b36; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     line-height: 1;
+  }
+
+  .cert-photo {
+    position: absolute;
+    object-fit: cover;
+    object-position: center top;
+    border: 1px solid #b0b8b0;
+  }
+
+  .cert-photo-placeholder {
+    position: absolute;
+    background: #f0f0ec;
+    border: 1px dashed #aab0aa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 0.6rem;
+    font-family: system-ui, sans-serif;
   }
 
   .cp-missing {
