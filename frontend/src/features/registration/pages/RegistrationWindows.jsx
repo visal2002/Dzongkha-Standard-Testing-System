@@ -166,14 +166,19 @@ function Info({ icon: Icon, label, value }) {
   return <div className="flex items-start gap-1.5 text-text-secondary"><Icon size={12} className="text-brand-gold mt-0.5 shrink-0" /><div className="min-w-0"><p className="text-text-muted text-[10px]">{label}</p><p className="font-medium truncate">{value}</p></div></div>;
 }
 
-function formatDate(value, year = true) {
+// Dates are shown in DD/MM/YYYY, the format used across DSTS examination paperwork.
+function formatDate(value) {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString('en-US', { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}) });
+  return new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Thimphu' });
 }
 
 function formatDateTime(value) {
   if (!value) return '—';
-  return new Date(value).toLocaleString('en-BT', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Thimphu' });
+  return new Date(value).toLocaleString('en-GB', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+    timeZone: 'Asia/Thimphu',
+  });
 }
 
 function toLocalInput(value) {
