@@ -248,8 +248,8 @@ export const authService = {
 
     /** Register a test taker without Bhutan NDI. */
   register: async ({ fullName, cid, dateOfBirth, gender, contactNumber, education, email, password }) => {
-    // Email and password are collected at registration. The backend creates an
-    // authenticated session and the profile gate allows the user in once set.
+    // Email and password are deliberately completed on the Profile page after
+    // registration, as required for the non-NDI onboarding flow.
     const chosenEmail = String(email || '').trim().toLowerCase();
     const emailChosen = /.+@.+\..+/.test(chosenEmail);
     const passwordChosen = Boolean(password && String(password).length >= 12);
@@ -297,19 +297,14 @@ export const authService = {
     }
 
     try {
-      const payload = {
-        fullName:      normalized.fullName,
-        cid:           normalized.cid,
-        email:         normalized.email,
-        password:      normalized.password,
-      };
-      // Only send optional fields that the deployed backend accepts.
-      // dateOfBirth and gender are omitted — older deployments reject them via
-      // forbidNonWhitelisted. They can be added back once the backend is updated.
-      if (normalized.education)     payload.education     = normalized.education;
-      if (normalized.contactNumber) payload.contactNumber = normalized.contactNumber;
-
-      const { data: envelope } = await apiClient.post('/auth/register', payload);
+      const { data: envelope } = await apiClient.post('/auth/register', {
+        fullName: normalized.fullName,
+        cid: normalized.cid,
+        dateOfBirth: normalized.dateOfBirth,
+        gender: normalized.gender,
+        education: normalized.education,
+        contactNumber: normalized.contactNumber,
+      });
       const { accessToken, expiresIn, user } = envelope.data;
       return { success: true, user: normalizeUser(user, accessToken), token: accessToken, expiresIn };
     } catch (err) {
