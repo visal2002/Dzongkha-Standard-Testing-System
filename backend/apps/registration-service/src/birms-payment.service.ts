@@ -185,7 +185,9 @@ export class BirmsPaymentService {
       signal: AbortSignal.timeout(15000),
     });
     const data = await this.json(response);
-    if (!response.ok) throw new DomainException('BIRMS_REQUEST_FAILED', this.providerMessage(data, `BIRMS returned HTTP ${response.status}.`), 502);
+    if (!response.ok || this.providerFailed(data)) {
+      throw new DomainException('BIRMS_REQUEST_FAILED', this.providerMessage(data, `BIRMS returned HTTP ${response.status}.`), 502);
+    }
     return data;
   }
 
@@ -198,7 +200,9 @@ export class BirmsPaymentService {
       signal: AbortSignal.timeout(15000),
     });
     const data = await this.json(response);
-    if (!response.ok) throw new DomainException('BIRMS_AUTHENTICATION_FAILED', this.providerMessage(data, 'Unable to authenticate with BIRMS.'), 502);
+    if (!response.ok || this.providerFailed(data)) {
+      throw new DomainException('BIRMS_AUTHENTICATION_FAILED', this.providerMessage(data, 'Unable to authenticate with BIRMS.'), 502);
+    }
     const content = this.content(data);
     const tokenDto = (content.tokenDto && typeof content.tokenDto === 'object' ? content.tokenDto : content) as JsonRecord;
     const token = this.stringValue(tokenDto.accessToken);
@@ -240,7 +244,15 @@ export class BirmsPaymentService {
   private referenceFor(id: string) { return `DSTS-${id.replace(/-/g, '').toUpperCase()}`; }
   private content(payload: JsonRecord): JsonRecord { return payload.content && typeof payload.content === 'object' ? payload.content as JsonRecord : payload; }
   private stringValue(value: unknown) { return typeof value === 'string' && value.trim() ? value.trim() : null; }
-  private providerMessage(payload: JsonRecord, fallback: string) { return this.stringValue(payload.message) || fallback; }
+  private providerFailed(payload: JsonRecord) {
+    const content = this.content(payload);
+    const code = Number(payload.statusCode ?? content.statusCode);
+    return Number.isFinite(code) && code >= 400;
+  }
+  private providerMessage(payload: JsonRecord, fallback: string) {
+    const content = this.content(payload);
+    return this.stringValue(payload.message ?? payload.statusDescription ?? content.message ?? content.statusDescription) || fallback;
+  }
   private profileString(profile: JsonRecord, keys: string[]) { for (const key of keys) { const value = this.stringValue(profile[key]); if (value) return value; } return null; }
   private receiptNumber(content: JsonRecord) {
     const direct = this.stringValue(content.receiptNo);

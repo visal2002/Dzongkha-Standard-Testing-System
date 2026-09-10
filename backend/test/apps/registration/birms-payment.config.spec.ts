@@ -133,6 +133,25 @@ describe('DSTS-05: BIRMS_BASE_URL has no staging fallback', () => {
     expect(calls.every((call) => call.startsWith('https://birms.example.gov.bt/api-services/'))).toBe(true);
   });
 
+  it('surfaces an application-level BIRMS failure returned with HTTP 200', async () => {
+    const respond = (body: unknown) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    global.fetch = jest.fn((input: RequestInfo | URL) => String(input).includes('logMeIn')
+      ? respond({ content: { tokenDto: { accessToken: 'stub-token' } } })
+      : respond({ statusCode: 404, status: 'Not Found', message: 'Payment Service is Down' })) as unknown as typeof fetch;
+
+    let failure: DomainException | undefined;
+    try {
+      await createAdvice(configFor({ BIRMS_BASE_URL: 'https://birms.example.gov.bt/api-services' }));
+    } catch (error) {
+      failure = error as DomainException;
+    }
+    expect(failure).toBeDefined();
+    expect(failure!.getStatus()).toBe(502);
+    expect(failure!.getResponse()).toMatchObject({
+      code: 'BIRMS_REQUEST_FAILED', message: 'Payment Service is Down',
+    });
+  });
+
   it('refuses the request when BIRMS_BASE_URL is missing, instead of falling back to staging', async () => {
     const calls = stubFetch(STAGING_HOST);
     expect(await rejectionOf(createAdvice(configFor({ BIRMS_BASE_URL: undefined })))).toEqual({

@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { AppealStatus } from '@dzongjuk/contracts';
+import { DomainException } from '@dzongjuk/common';
 import { AppealBirmsService } from '../../../apps/appeal-certificate-service/src/appeal-birms.service';
 import { AppealService } from '../../../apps/appeal-certificate-service/src/appeal.service';
 import { CertificateSourceClientService } from '../../../apps/appeal-certificate-service/src/certificate-source-client.service';
@@ -81,5 +82,39 @@ describe('AppealBirmsService', () => {
       payableAmount: '500.00',
     }]);
     expect(result).toMatchObject({ adviceNumber: 'PA-100', status: PaymentStatus.Initiated });
+  });
+
+  it('surfaces an application-level BIRMS failure returned with HTTP 200', async () => {
+    jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(response({ content: { tokenDto: { accessToken: 'test-token' } } }))
+      .mockResolvedValueOnce(response({
+        statusCode: 404,
+        status: 'Not Found',
+        message: "Can't Generate Payment Advice Number, Payment Service is Down",
+      }));
+    const service = new AppealBirmsService(
+      new ConfigService({
+        BIRMS_BASE_URL: 'https://birmsstagging.drc.gov.bt/api-services',
+        BIRMS_SERVICE_PATH: 'moha-service/api/v1',
+        BIRMS_USERNAME: 'configured-user', BIRMS_PASSWORD: 'configured-password',
+      }),
+      {} as CertificateSourceClientService,
+      {} as AppealService,
+      {} as Repository<AppealEntity>,
+      {} as Repository<PaymentEntity>,
+      {} as Repository<PaymentEventEntity>,
+    );
+    const request = (service as unknown as {
+      birmsRequest(method: 'GET' | 'POST', path: string, body?: Record<string, unknown>): Promise<unknown>;
+    }).birmsRequest('POST', '/paymentdetails/create', {});
+
+    let failure: DomainException | undefined;
+    try { await request; } catch (error) { failure = error as DomainException; }
+    expect(failure).toBeDefined();
+    expect(failure!.getStatus()).toBe(502);
+    expect(failure!.getResponse()).toMatchObject({
+      code: 'BIRMS_REQUEST_FAILED',
+      message: expect.stringContaining('Payment Service is Down'),
+    });
   });
 });

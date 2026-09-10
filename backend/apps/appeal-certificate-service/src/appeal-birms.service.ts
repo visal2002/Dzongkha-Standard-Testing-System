@@ -148,7 +148,9 @@ export class AppealBirmsService {
       signal: AbortSignal.timeout(15000),
     });
     const data = await this.json(response);
-    if (!response.ok) throw new DomainException('BIRMS_REQUEST_FAILED', this.text(data.message) || `BIRMS returned HTTP ${response.status}.`, 502);
+    if (!response.ok || this.providerFailed(data)) {
+      throw new DomainException('BIRMS_REQUEST_FAILED', this.providerMessage(data, `BIRMS returned HTTP ${response.status}.`), 502);
+    }
     return data;
   }
 
@@ -160,7 +162,9 @@ export class AppealBirmsService {
       signal: AbortSignal.timeout(15000),
     });
     const data = await this.json(response);
-    if (!response.ok) throw new DomainException('BIRMS_AUTHENTICATION_FAILED', this.text(data.message) || 'Unable to authenticate with BIRMS.', 502);
+    if (!response.ok || this.providerFailed(data)) {
+      throw new DomainException('BIRMS_AUTHENTICATION_FAILED', this.providerMessage(data, 'Unable to authenticate with BIRMS.'), 502);
+    }
     const content = this.content(data);
     const tokenDto = content.tokenDto && typeof content.tokenDto === 'object' ? content.tokenDto as JsonRecord : content;
     const token = this.text(tokenDto.accessToken);
@@ -199,6 +203,15 @@ export class AppealBirmsService {
   }
   private content(payload: JsonRecord) { return payload.content && typeof payload.content === 'object' ? payload.content as JsonRecord : payload; }
   private text(value: unknown) { return typeof value === 'string' && value.trim() ? value.trim() : null; }
+  private providerFailed(payload: JsonRecord) {
+    const content = this.content(payload);
+    const code = Number(payload.statusCode ?? content.statusCode);
+    return Number.isFinite(code) && code >= 400;
+  }
+  private providerMessage(payload: JsonRecord, fallback: string) {
+    const content = this.content(payload);
+    return this.text(payload.message ?? payload.statusDescription ?? content.message ?? content.statusDescription) || fallback;
+  }
   private mapStatus(value: unknown) {
     const status = String(value || 'PENDING').toUpperCase().replace(/\s+/g, '_');
     if (['PAID', 'SUCCESS', 'SUCCESSFUL', 'COMPLETED'].includes(status)) return PaymentStatus.Paid;
