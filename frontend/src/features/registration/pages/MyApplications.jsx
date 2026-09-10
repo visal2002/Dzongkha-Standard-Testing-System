@@ -283,7 +283,11 @@ export default function MyApplications() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs mb-4">
+                  <div>
+                    <p className="text-text-muted mb-0.5">Status</p>
+                    <StatusBadge status={app.status} />
+                  </div>
                   <div>
                     <p className="text-text-muted mb-0.5">Registration No.</p>
                     <p className="font-medium text-brand-gold">{app.registrationNumber || '—'}</p>
@@ -322,24 +326,37 @@ export default function MyApplications() {
                   )}
                 </div>
 
-                {app.remarks && (
+                {app.status === 'returned' && (
                   <div className="mb-4">
                     <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-xs text-amber-400">
-                      <span className="font-semibold">DCDD correction notes: </span>{app.remarks}
+                      <span className="font-semibold">Returned by DCDD — reason: </span>
+                      {app.remarks?.trim()
+                        || 'No specific reason was recorded. Please recheck every detail and document, then resubmit, or contact the DCDD office for clarification.'}
                     </div>
-                    {app.status === 'returned' && (
-                      resubmittingId === app.id ? (
-                        <ResubmitForm
-                          app={app}
-                          onCancel={() => setResubmittingId(null)}
-                          onResubmitted={async () => { setResubmittingId(null); await reloadApplications().catch(() => {}); }}
-                        />
-                      ) : (
-                        <Button size="xs" className="mt-2" icon={<Edit2 size={12} />} onClick={() => setResubmittingId(app.id)}>
-                          Edit &amp; Resubmit
-                        </Button>
-                      )
+                    {resubmittingId === app.id ? (
+                      <ResubmitForm
+                        app={app}
+                        onCancel={() => setResubmittingId(null)}
+                        onResubmitted={async () => { setResubmittingId(null); await reloadApplications().catch(() => {}); }}
+                      />
+                    ) : (
+                      <Button size="xs" className="mt-2" icon={<Edit2 size={12} />} onClick={() => setResubmittingId(app.id)}>
+                        Reopen &amp; Resubmit
+                      </Button>
                     )}
+                  </div>
+                )}
+
+                {app.status === 'rejected' && (
+                  <div className="mb-4 p-3 bg-red-500/5 border border-red-500/20 rounded-xl text-xs text-red-400">
+                    <span className="font-semibold">Rejected by DCDD — reason: </span>
+                    {app.remarks?.trim() || 'No specific reason was recorded. Please contact the DCDD office for details.'}
+                  </div>
+                )}
+
+                {app.remarks && !['returned', 'rejected'].includes(app.status) && (
+                  <div className="mb-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-xs text-amber-400">
+                    <span className="font-semibold">DCDD notes: </span>{app.remarks}
                   </div>
                 )}
 
@@ -383,7 +400,7 @@ export default function MyApplications() {
                           <div className="w-2 h-2 rounded-full bg-[#D4830A]" />
                           <div className="text-[9px] text-text-muted mt-1 text-center w-20">{h.status.replace(/_/g, ' ')}</div>
                         </div>
-                        {i < history.length - 1 && <div className="w-8 h-px bg-[var(--color-surface-border)] mb-3" />}
+                        {i < history.length - 1 && <div className="w-8 h-px bg-surface-border mb-3" />}
                       </div>
                     ))}
                   </div>

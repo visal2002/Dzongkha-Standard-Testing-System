@@ -114,7 +114,7 @@ export default function RegistrationWindows() {
                   <Info icon={MapPin} label="Venue" value={window.venue} />
                   <Info icon={Users} label="Capacity" value={`${registered}/${capacity}`} />
                 </div>
-                <div className="mt-4 h-1.5 bg-[var(--color-surface-border)] rounded-full overflow-hidden"><div className="h-full bg-[#F59E0B] rounded-full" style={{ width: `${Math.min(capacityPct, 100)}%` }} /></div>
+                <div className="mt-4 h-1.5 bg-surface-border rounded-full overflow-hidden"><div className="h-full bg-[#F59E0B] rounded-full" style={{ width: `${Math.min(capacityPct, 100)}%` }} /></div>
                 <p className="mt-2 text-xs text-text-muted">Code: {window.code} · Registration fee: Nu. {window.paymentAmount}</p>
                 {isAdmin && ['draft', 'published'].includes(window.status) && <p className="mt-2 text-xs text-amber-400">Test Takers cannot apply while this exam is {window.status === 'draft' ? 'a Draft' : 'only Published'}. Open registration to enable applications.</p>}
               </div>

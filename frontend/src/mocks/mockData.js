@@ -111,6 +111,42 @@ export const applications = [
     ]
   },
   {
+    id: 'APP-2026-0006',
+    examId: 'EXM-2026-002',
+    testTakerId: 'USR-006',
+    testTakerName: 'Pema Choden',
+    cid: '1006',
+    email: 'pema.choden@gmail.com',
+    phone: '+975-17123456',
+    dob: '1995-03-15',
+    gender: 'Female',
+    dzongkhag: 'Thimphu',
+    gewog: 'Kawang',
+    education: 'Bachelor of Arts',
+    institution: 'Sherubtse College',
+    employmentStatus: 'Employed',
+    organization: 'Ministry of Education',
+    registrationNumber: null,
+    status: 'returned',
+    paymentStatus: 'initiated',
+    paymentAmount: 500,
+    submittedAt: '2026-10-05T09:00:00Z',
+    verifiedAt: null,
+    verifiedBy: 'USR-002',
+    remarks: 'The uploaded passport photo is blurred and the education certificate is missing. Please re-upload a clear photo and attach the certificate, then resubmit.',
+    documents: [
+      { name: 'Citizenship ID Card', type: 'cid_card', status: 'verified', url: '#' },
+      { name: 'Passport Photo', type: 'photo', status: 'rejected', url: '#' },
+      { name: 'Education Certificate', type: 'education', status: 'pending', url: '#' }
+    ],
+    isWithinCapacity: true,
+    statusHistory: [
+      { status: 'submitted', timestamp: '2026-10-05T09:00:00Z', by: 'Pema Choden' },
+      { status: 'under_review', timestamp: '2026-10-06T10:00:00Z', by: 'Karma Wangchuk' },
+      { status: 'returned', timestamp: '2026-10-07T11:00:00Z', by: 'Karma Wangchuk', remarks: 'Photo blurred; certificate missing' }
+    ]
+  },
+  {
     id: 'APP-2026-0002',
     examId: 'EXM-2026-001',
     testTakerId: 'TT-002',

@@ -38,8 +38,19 @@ const writeMockStore = (list) => {
   }
 };
 
-/** Fixtures + runtime-created applications. */
-const allMockApplications = () => [...readMockStore(), ...mockApplications];
+/**
+ * Fixtures + runtime-created applications. Stored entries win over a fixture with the
+ * same id, so a mock mutation (resubmit, cancel) on a seeded application takes effect
+ * instead of being shadowed by the original fixture.
+ */
+const allMockApplications = () => {
+  const seen = new Set();
+  return [...readMockStore(), ...mockApplications].filter(application => {
+    if (seen.has(application.id)) return false;
+    seen.add(application.id);
+    return true;
+  });
+};
 
 /** Next registration number for an exam, continuing the existing series. */
 const nextRegistrationNumber = (examId) => {
@@ -257,5 +268,50 @@ export const applicationService = {
    * @param {string} id
    * @param {Record<string, unknown>} profileSnapshot
    */
-  resubmit: async (id, profileSnapshot) => (await apiClient.post(`/applications/${id}/resubmit`, { profileSnapshot })).data,
+  resubmit: async (id, profileSnapshot) => {
+    if (USE_MOCK_DATA) {
+      const now = new Date().toISOString();
+      const store = readMockStore();
+      const previous = store.find(a => a.id === id)
+        || allMockApplications().find(a => a.id === id);
+      if (previous) {
+        const updated = {
+          ...previous,
+          status: 'submitted',
+          remarks: '',
+          resubmittedAt: now,
+          profileSnapshot: { ...(previous.profileSnapshot || {}), ...profileSnapshot },
+          // Keep the top-level mirror fields in step so the card re-renders with the
+          // corrected values without waiting for a full reload.
+          testTakerName: profileSnapshot.fullName ?? previous.testTakerName,
+          email: profileSnapshot.email ?? previous.email,
+          phone: profileSnapshot.phone ?? previous.phone,
+          dob: profileSnapshot.dateOfBirth ?? previous.dob,
+          gender: profileSnapshot.gender ?? previous.gender,
+          dzongkhag: profileSnapshot.dzongkhag ?? previous.dzongkhag,
+          gewog: profileSnapshot.gewog ?? previous.gewog,
+          education: profileSnapshot.education ?? previous.education,
+          institution: profileSnapshot.institution ?? previous.institution,
+          employmentStatus: profileSnapshot.employmentStatus ?? previous.employmentStatus,
+          organization: profileSnapshot.organization ?? previous.organization,
+          statusHistory: [
+            ...(previous.statusHistory || []),
+            { status: 'submitted', timestamp: now, by: profileSnapshot.fullName || previous.testTakerName, note: 'Resubmitted after correction' },
+          ],
+        };
+        // Upsert: a fixture that was never in the store gets a stored override that
+        // now shadows it (see allMockApplications).
+        writeMockStore([updated, ...store.filter(a => a.id !== id)]);
+      }
+      recordAuditEvent({
+        action: 'Application Resubmitted',
+        source: 'registration-service',
+        resourceId: id,
+        status: 'Success',
+      });
+      return { data: { applicationId: id, status: 'submitted' } };
+    }
+
+    return (await apiClient.post(`/applications/${id}/resubmit`, { profileSnapshot })).data;
+  },
 };
