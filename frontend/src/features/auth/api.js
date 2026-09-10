@@ -248,9 +248,8 @@ export const authService = {
 
     /** Register a test taker without Bhutan NDI. */
   register: async ({ fullName, cid, dateOfBirth, gender, contactNumber, education, email, password }) => {
-    // The registration form no longer collects an email or a password. The backend
-    // creates an authenticated onboarding session and the profile gate holds the new
-    // Test Taker on /profile until both are set and a passport photo is uploaded.
+    // Email and password are collected at registration. The backend creates an
+    // authenticated session and the profile gate allows the user in once set.
     const chosenEmail = String(email || '').trim().toLowerCase();
     const emailChosen = /.+@.+\..+/.test(chosenEmail);
     const passwordChosen = Boolean(password && String(password).length >= 12);
@@ -299,12 +298,14 @@ export const authService = {
 
     try {
       const { data: envelope } = await apiClient.post('/auth/register', {
-        fullName: normalized.fullName,
-        cid: normalized.cid,
-        dateOfBirth: normalized.dateOfBirth,
-        gender: normalized.gender,
-        education: normalized.education,
-        contactNumber: normalized.contactNumber,
+        fullName:      normalized.fullName,
+        cid:           normalized.cid,
+        email:         normalized.email,
+        password:      normalized.password,
+        dateOfBirth:   normalized.dateOfBirth || undefined,
+        gender:        normalized.gender || undefined,
+        education:     normalized.education || undefined,
+        contactNumber: normalized.contactNumber || undefined,
       });
       const { accessToken, expiresIn, user } = envelope.data;
       return { success: true, user: normalizeUser(user, accessToken), token: accessToken, expiresIn };
@@ -312,6 +313,7 @@ export const authService = {
       return { success: false, error: err.message || 'Registration failed.' };
     }
   },
+
 
   /** Create a Bhutan NDI proof request for QR/deep-link login. */
   loginWithNDI: async () => {

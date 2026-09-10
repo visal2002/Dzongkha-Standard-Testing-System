@@ -9,7 +9,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Eye, EyeOff, ChevronLeft, User, Calendar,
-  ArrowLeft, CheckCircle2, Loader2, Lock, Phone,
+  ArrowLeft, CheckCircle2, Loader2, Lock, Phone, Mail,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,14 +59,18 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Register form state. Email and password are deliberately NOT collected here -
-  // the new Test Taker sets both from their profile after signing in.
-  const [regCid, setRegCid]         = useState('');
-  const [regName, setRegName]       = useState('');
-  const [regDob, setRegDob]         = useState('');
-  const [regGender, setRegGender]   = useState('');
-  const [regContact, setRegContact] = useState('');
-  const [regEducation, setRegEducation] = useState('');
+  // Register form state
+  const [regCid, setRegCid]               = useState('');
+  const [regName, setRegName]             = useState('');
+  const [regDob, setRegDob]               = useState('');
+  const [regGender, setRegGender]         = useState('');
+  const [regContact, setRegContact]       = useState('');
+  const [regEducation, setRegEducation]   = useState('');
+  const [regEmail, setRegEmail]           = useState('');
+  const [regPassword, setRegPassword]     = useState('');
+  const [regConfirmPw, setRegConfirmPw]   = useState('');
+  const [showRegPass, setShowRegPass]     = useState(false);
+  const [showRegConfirm, setShowRegConfirm] = useState(false);
   const [regCidLookup, setRegCidLookup] = useState({ status: 'idle', message: '', fields: [] });
 
   const { login, register, isLoading } = useAuth();
@@ -143,6 +147,14 @@ export default function LoginPage() {
   // ── Register handler ──
   const handleRegister = async (e) => {
     e.preventDefault();
+    if (regPassword !== regConfirmPw) {
+      toast.error('Passwords do not match. Please re-enter.');
+      return;
+    }
+    if (regPassword.length < 12) {
+      toast.error('Password must be at least 12 characters.');
+      return;
+    }
     const result = await register({
       fullName:         regName,
       cid:              regCid,
@@ -150,6 +162,8 @@ export default function LoginPage() {
       gender:           regGender,
       contactNumber:    regContact,
       education:        regEducation,
+      email:            regEmail,
+      password:         regPassword,
     });
     if (!result.success) {
       toast.error(result.error || t('auth.registration_failed'));
@@ -158,14 +172,13 @@ export default function LoginPage() {
     const assignedUserId = result.user?.userId;
     setRegCid(''); setRegName(''); setRegDob('');
     setRegGender(''); setRegContact(''); setRegEducation('');
+    setRegEmail(''); setRegPassword(''); setRegConfirmPw('');
     setRegCidLookup({ status: 'idle', message: '', fields: [] });
     if (assignedUserId) {
       toast.success(t('auth.welcome_userid', { userId: assignedUserId }), { duration: 8000 });
     } else {
       toast.success(t('auth.registration_success'));
     }
-    // Registration signs the account in and profile completion is the mandatory next
-    // step for email/password creation and passport-photo upload.
     navigate('/profile', { replace: true });
   };
 
@@ -547,9 +560,78 @@ export default function LoginPage() {
                           </select>
                         </div>
 
-                        <p className="md:col-span-2 xl:col-span-3 -mt-1 text-xs text-slate-500">
-                          {t('auth.profile_note')}
-                        </p>
+                        {/* Email */}
+                        <div>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">Email Address</label>
+                          <div className="relative">
+                            <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                              type="email"
+                              value={regEmail}
+                              onChange={e => setRegEmail(e.target.value)}
+                              placeholder="you@example.com"
+                              required
+                              className={INPUT_ICON_CLS}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Password */}
+                        <div>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">Password</label>
+                          <div className="relative">
+                            <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                              type={showRegPass ? 'text' : 'password'}
+                              value={regPassword}
+                              onChange={e => setRegPassword(e.target.value)}
+                              placeholder="Min. 12 characters"
+                              minLength={12}
+                              required
+                              className="w-full h-12 pl-10 pr-12 rounded-2xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowRegPass(s => !s)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                              aria-label={showRegPass ? 'Hide password' : 'Show password'}
+                            >
+                              {showRegPass ? <EyeOff size={17} /> : <Eye size={17} />}
+                            </button>
+                          </div>
+                          <p className="mt-1 text-xs text-slate-400">At least 12 characters with letters, numbers &amp; symbols.</p>
+                        </div>
+
+                        {/* Confirm Password */}
+                        <div>
+                          <label className="text-sm font-medium text-slate-700 block mb-1">Confirm Password</label>
+                          <div className="relative">
+                            <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                              type={showRegConfirm ? 'text' : 'password'}
+                              value={regConfirmPw}
+                              onChange={e => setRegConfirmPw(e.target.value)}
+                              placeholder="Re-enter password"
+                              required
+                              className={`w-full h-12 pl-10 pr-12 rounded-2xl border transition-colors text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
+                                regConfirmPw && regConfirmPw !== regPassword
+                                  ? 'border-red-400 bg-red-50'
+                                  : 'border-slate-300 bg-slate-50 text-slate-800'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowRegConfirm(s => !s)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                              aria-label={showRegConfirm ? 'Hide password' : 'Show password'}
+                            >
+                              {showRegConfirm ? <EyeOff size={17} /> : <Eye size={17} />}
+                            </button>
+                          </div>
+                          {regConfirmPw && regConfirmPw !== regPassword && (
+                            <p className="mt-1 text-xs text-red-500">Passwords do not match.</p>
+                          )}
+                        </div>
 
                         <Button
                           type="submit"
