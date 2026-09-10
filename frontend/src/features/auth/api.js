@@ -297,22 +297,26 @@ export const authService = {
     }
 
     try {
-      const { data: envelope } = await apiClient.post('/auth/register', {
+      const payload = {
         fullName:      normalized.fullName,
         cid:           normalized.cid,
         email:         normalized.email,
         password:      normalized.password,
-        dateOfBirth:   normalized.dateOfBirth || undefined,
-        gender:        normalized.gender || undefined,
-        education:     normalized.education || undefined,
-        contactNumber: normalized.contactNumber || undefined,
-      });
+      };
+      // Only send optional fields that the deployed backend accepts.
+      // dateOfBirth and gender are omitted — older deployments reject them via
+      // forbidNonWhitelisted. They can be added back once the backend is updated.
+      if (normalized.education)     payload.education     = normalized.education;
+      if (normalized.contactNumber) payload.contactNumber = normalized.contactNumber;
+
+      const { data: envelope } = await apiClient.post('/auth/register', payload);
       const { accessToken, expiresIn, user } = envelope.data;
       return { success: true, user: normalizeUser(user, accessToken), token: accessToken, expiresIn };
     } catch (err) {
       return { success: false, error: err.message || 'Registration failed.' };
     }
   },
+
 
 
   /** Create a Bhutan NDI proof request for QR/deep-link login. */
