@@ -96,6 +96,16 @@ const NAV_CONFIG = [
     ],
   },
   { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_head', 'test_taker'] },
+  // v2 sidebar decision reversal: Committee Head's Question Upload "Read" grant (see
+  // the approved matrix above) used to be treated as an unsurfaced situational-
+  // awareness entitlement, the same treatment DCDD's users/roles Read gets - excluded
+  // from the shared group above, reachable only by direct URL. It is now surfaced as
+  // its own read-only "Question Bank Archive" entry so the Committee can see what was
+  // actually asked when reviewing a re-evaluation. No access change: the shared
+  // /questions screen already renders metadata-only for this role - QuestionPapers.jsx
+  // hides View/Download behind `secure_read` (this role holds only `read`) and
+  // Upload/Delete behind `manage` (this role holds neither).
+  { label: 'Question Bank Archive', icon: BookOpen, to: '/questions', onlyRoles: ['committee_head'], access: ['questions', 'read'] },
   // v2 sidebar decision: BRD §5.4.2 defines exactly one function for this role -
   // uploading question papers and answer sheets (BR-1/BR-2) - so it gets a scoped
   // "Question Bank" upload workspace instead of the shared group above, which mixes
@@ -197,6 +207,7 @@ const NAV_LABEL_KEYS = {
   'Upload Papers': 'nav.upload_papers',
   'Sample Papers': 'nav.sample_papers',
   'Question Bank': 'nav.question_bank',
+  'Question Bank Archive': 'nav.question_bank_archive',
   'Exam Day Downloads': 'nav.exam_day_downloads',
   'Released Sample Papers': 'nav.released_sample_papers',
   'Band Score Entry': 'nav.band_score_entry',

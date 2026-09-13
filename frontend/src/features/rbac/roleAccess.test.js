@@ -150,7 +150,7 @@ describe('every approved role resolves a sidebar', () => {
     expect(navigationFor('dcdd').some(item => item.type === 'section' && item.label === 'Read-Only')).toBe(false);
   });
 
-  it('gives the Committee Head exactly four flat items and nothing else - v2 strict least-privilege', () => {
+  it('gives the Committee Head five flat items and nothing else - v2 strict least-privilege, plus the Question Bank Archive', () => {
     // Supersedes the earlier draft that kept Registration/Question Papers/Sample
     // Papers/Score History/Certificates/Reports visible under a demoted "Read-Only"
     // section. BRD §5.5-5.6 define this role's actual job as band score entry
@@ -161,10 +161,18 @@ describe('every approved role resolves a sidebar', () => {
     // Constituting the committee (§5.5.2 BR-1) is dropped too - a Committee Head
     // assembling and designating themselves does not make organisational sense;
     // see the 'committeeSetup' entry in outOfMatrix.js, now DCDD-only.
+    //
+    // Reversal: Question Upload "Read" (the approved matrix grant above) used to
+    // stay unsurfaced here, the same treatment DCDD's users/roles Read gets. It is
+    // now given its own dedicated "Question Bank Archive" entry so the Committee
+    // can see what was actually asked when reviewing a re-evaluation - no access
+    // change, since the shared /questions screen already renders metadata-only
+    // for a `read`-only role (View/Download need `secure_read`, Upload/Delete
+    // need `manage`, neither of which this role holds).
     const committeeHeadNav = navigationFor('committee_head');
     expect(committeeHeadNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
     expect(committeeHeadNav.map(item => item.label)).toEqual([
-      'Dashboard', 'Band Score Entry', 'Re-evaluation Panel', 'Revision Status Tracker',
+      'Dashboard', 'Question Bank Archive', 'Band Score Entry', 'Re-evaluation Panel', 'Revision Status Tracker',
     ]);
 
     [
