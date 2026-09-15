@@ -8,8 +8,7 @@
 import { useState, useEffect } from 'react';
 // ... (rest of imports unchanged)
 import { motion } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
-import { Sun, Moon, Globe, Bell, BellOff, LogOut, ChevronRight, Palette, Mail, Phone, Building2 } from 'lucide-react';
+import { Sun, Moon, Bell, BellOff, LogOut, ChevronRight, Palette, Mail, Phone, Building2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
@@ -55,16 +54,10 @@ function Toggle({ checked, onChange, label }) {
   );
 }
 
-const LANGUAGES = [
-  { code: 'en', label: 'English', native: 'English' },
-  { code: 'dz', label: 'Dzongkha', native: 'རྫོང་ཁ' },
-];
-
 export default function SettingsPage() {
   const { theme, toggleTheme, isDark } = useTheme();
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
 
   // Existing state hooks
   const [emailNotifs, setEmailNotifs] = useState(true);
@@ -98,20 +91,10 @@ export default function SettingsPage() {
     localStorage.setItem('system_contact_info', JSON.stringify(payload));
     toast.success('System contact information saved.');
   };
-  // Language — writes through i18next, which persists to localStorage
-  // ('dsts_language') so the whole app follows the choice.
-  const language = (i18n.resolvedLanguage || i18n.language || 'en').startsWith('dz') ? 'dz' : 'en';
-
   const handleLogout = async () => {
     await logout();
     navigate('/login');
     toast.success('Signed out successfully.');
-  };
-
-  const handleLanguageChange = (code) => {
-    if (code === language) return;
-    i18n.changeLanguage(code);
-    toast(`Language set to ${LANGUAGES.find(l => l.code === code)?.label}`, { icon: '🌐' });
   };
 
   return (
@@ -158,36 +141,6 @@ export default function SettingsPage() {
             </SettingRow>
           </motion.section>
 
-          {/* Language */}
-          <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="bg-surface-card border border-surface-border rounded-xl p-5"
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <Globe size={14} className="text-brand-gold" />
-              <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Language</h2>
-            </div>
-
-            <SettingRow
-              icon={Globe}
-              label="Display Language"
-              description="Choose the interface language"
-            >
-              <div className="flex items-center gap-1 bg-surface-bg border border-surface-border rounded-lg p-0.5">
-                {LANGUAGES.map(lang => (
-                  <button
-                    key={lang.code}
-                    onClick={() => handleLanguageChange(lang.code)}
-                    className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${language === lang.code ? 'bg-surface-card text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}
-                  >
-                    {lang.native}
-                  </button>
-                ))}
-              </div>
-            </SettingRow>
-          </motion.section>
         </div>
 
         {/* Right Column */}
