@@ -8,6 +8,10 @@ vi.mock('@/services/api', () => ({
   },
 }));
 
+// This contract only exercises the real-API branch of questionService.upload,
+// so mock data must be forced off regardless of the CI env's VITE_USE_MOCK_DATA.
+vi.mock('@/lib/env', () => ({ USE_MOCK_DATA: false }));
+
 describe('question paper upload contract', () => {
   beforeEach(() => {
     apiClient.post.mockReset();
