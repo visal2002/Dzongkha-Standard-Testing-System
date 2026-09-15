@@ -8,6 +8,10 @@ vi.mock('@/services/api', () => ({
   },
 }));
 
+vi.mock('@/lib/env', () => ({
+  USE_MOCK_DATA: false,
+}));
+
 describe('question paper upload contract', () => {
   beforeEach(() => {
     apiClient.post.mockReset();
