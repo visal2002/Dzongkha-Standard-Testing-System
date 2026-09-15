@@ -8,9 +8,8 @@
 import { useState, useEffect } from 'react';
 // ... (rest of imports unchanged)
 import { motion } from 'framer-motion';
-import { Sun, Moon, Bell, BellOff, LogOut, ChevronRight, Palette, Mail, Phone, Building2 } from 'lucide-react';
+import { Bell, BellOff, LogOut, ChevronRight, Mail, Phone } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -55,7 +54,6 @@ function Toggle({ checked, onChange, label }) {
 }
 
 export default function SettingsPage() {
-  const { theme, toggleTheme, isDark } = useTheme();
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -105,51 +103,12 @@ export default function SettingsPage() {
         <p className="text-sm text-text-muted">Manage your preferences and account settings</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Left Column */}
-        <div className="space-y-5">
-          {/* Appearance */}
-          <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-surface-card border border-surface-border rounded-xl p-5"
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <Palette size={14} className="text-brand-gold" />
-              <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Appearance</h2>
-            </div>
-
-            <SettingRow
-              icon={isDark ? Moon : Sun}
-              label="Theme"
-              description={isDark ? 'Dark mode is active' : 'Light mode is active'}
-            >
-              <div className="flex items-center gap-1 bg-surface-bg border border-surface-border rounded-lg p-0.5">
-                <button
-                  onClick={() => !isDark && toggleTheme()}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${isDark ? 'bg-surface-card text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}
-                >
-                  <Moon size={12} /> Dark
-                </button>
-                <button
-                  onClick={() => isDark && toggleTheme()}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${!isDark ? 'bg-surface-card text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}
-                >
-                  <Sun size={12} /> Light
-                </button>
-              </div>
-            </SettingRow>
-          </motion.section>
-
-        </div>
-
-        {/* Right Column */}
-        <div className="space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
           {/* Notifications */}
           <motion.section
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.05 }}
             className="bg-surface-card border border-surface-border rounded-xl p-5"
           >
             <div className="flex items-center gap-2 mb-3">
@@ -172,7 +131,7 @@ export default function SettingsPage() {
           <motion.section
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.1 }}
             className="bg-surface-card border border-surface-border rounded-xl p-5"
           >
             <div className="flex items-center gap-2 mb-3">
@@ -222,7 +181,7 @@ export default function SettingsPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="bg-surface-card border border-surface-border rounded-xl p-5"
+            className="bg-surface-card border border-surface-border rounded-xl p-5 lg:col-span-2"
           >
             <div className="flex items-center gap-2 mb-3">
               <LogOut size={14} className="text-red-400" />
@@ -240,7 +199,6 @@ export default function SettingsPage() {
               <ChevronRight size={14} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
           </motion.section>
-        </div>
       </div>
 
       <p className="text-center text-[11px] text-text-muted pb-2 pt-2">
