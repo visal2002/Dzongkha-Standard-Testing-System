@@ -110,6 +110,7 @@ export default function TestTakerDashboard() {
     : null;
   const latestAppExam = latestApp ? (examWindows || []).find(exam => exam.id === latestApp.examId) : null;
   const currentStepIndex = stepIndexFor(latestApp);
+  const isLatestApplicationWaitlisted = String(latestApp?.status || '').toLowerCase() === 'waitlisted';
 
   // Exams Taken counts applications that actually reached the exam stage, whether or
   // not the candidate sat it - "Taken" here means "the exam sitting happened", the
@@ -369,6 +370,13 @@ export default function TestTakerDashboard() {
                <StatusBadge status={latestApp.status} />
             </div>
 
+            {latestApp.status === 'waitlisted' && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-lg p-2 text-[10px] flex items-center gap-1.5 shrink-0 my-2">
+                <AlertCircle size={14} className="shrink-0" />
+                <span className="leading-tight">This exam window is at capacity. You're on the waitlist and will move to Submitted automatically if a seat opens up.</span>
+              </div>
+            )}
+
             {/* Horizontal Stepper — driven by the application's real status */}
             <div className="relative flex justify-between my-auto px-1 py-2">
               <div className="absolute top-3 left-0 right-0 h-1 bg-surface-border rounded-full -z-10">
@@ -395,6 +403,16 @@ export default function TestTakerDashboard() {
                 );
               })}
             </div>
+
+            {isLatestApplicationWaitlisted && (
+              <div
+                role="status"
+                className="mb-2 rounded-lg border border-blue-500/20 bg-blue-500/5 p-2 text-[10px] text-blue-700 dark:text-blue-300"
+              >
+                <span className="font-semibold">Waitlisted — awaiting a seat.</span>{' '}
+                Your application has been received, but verification will begin only after a seat becomes available. You will be moved to Submitted automatically; no action is needed now.
+              </div>
+            )}
 
             <div className="bg-purple-50 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300 rounded-lg p-2 text-[10px] flex items-center gap-1.5 shrink-0">
                <MessageCircle size={14} className="shrink-0" />

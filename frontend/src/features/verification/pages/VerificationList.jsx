@@ -177,6 +177,7 @@ export default function VerificationList() {
               <option value="approved">Approved</option>
               <option value="returned">Returned</option>
               <option value="rejected">Rejected</option>
+              <option value="waitlisted">Waitlisted</option>
               <option value="absent">Absent</option>
             </Select>
           }

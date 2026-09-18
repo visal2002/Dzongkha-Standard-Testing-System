@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { post } = vi.hoisted(() => ({ post: vi.fn() }));
 vi.mock('@/services/api', () => ({ default: { post } }));
 
-import { applicationService } from './api';
+import { applicationService, normalizeApplication } from './api';
 
 describe('applicationService DCRC lookup', () => {
   beforeEach(() => post.mockReset());
@@ -20,5 +20,11 @@ describe('applicationService DCRC lookup', () => {
 
     await expect(applicationService.lookupCitizen(profile.cid)).resolves.toEqual(profile);
     expect(post).toHaveBeenCalledWith('/applications/citizen-lookup', { cid: profile.cid });
+  });
+});
+
+describe('application status normalization', () => {
+  it('preserves the waitlisted state returned by the registration API', () => {
+    expect(normalizeApplication({ status: 'WAITLISTED' }).status).toBe('waitlisted');
   });
 });

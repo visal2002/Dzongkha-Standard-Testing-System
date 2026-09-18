@@ -354,7 +354,14 @@ export default function MyApplications() {
                   </div>
                 )}
 
-                {app.remarks && !['returned', 'rejected'].includes(app.status) && (
+                {app.status === 'waitlisted' && (
+                  <div className="mb-4 p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-xs text-blue-400">
+                    <span className="font-semibold">You're on the waitlist — </span>
+                    This exam window reached full capacity before your application could be confirmed a seat. You'll be moved to Submitted automatically if a seat opens up; no action is needed from you right now.
+                  </div>
+                )}
+
+                {app.remarks && !['returned', 'rejected', 'waitlisted'].includes(app.status) && (
                   <div className="mb-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-xs text-amber-400">
                     <span className="font-semibold">DCDD notes: </span>{app.remarks}
                   </div>
