@@ -245,8 +245,6 @@ docker compose -f backend/compose.yml logs gateway | grep "connect() failed"   #
 
 A `502` indicates a routing or DNS fault. A `503` carrying a JSON body such as `NDI_NOT_CONFIGURED` is a legitimate application response and means routing is working correctly.
 
-The Phase 1 QA test plan — module-by-module frontend, API, and database test cases, traceability to the endpoints and tables that exist today, and the list of coverage gaps still open — lives in [`docs/qa/QA-TEST-PLAN-PHASE-1.md`](docs/qa/QA-TEST-PLAN-PHASE-1.md).
-
 ---
 
 ## 📂 Project Architecture
@@ -314,12 +312,6 @@ backend/
 └── .gitlab-ci.yml          # Reference pipeline (not executed by GitHub)
 
 deploy/k8s/staging/         # Manifests staging actually runs (namespace: dzongjuk)
-
-docs/
-├── requirements/           # BRD, NFR, and TOR source documents plus text extracts
-├── rbac/                   # RBAC integration contract and the generated access matrix
-├── qa/                     # Phase 1 QA test plan and traceability
-└── audits/                 # Frontend and RBAC audit reports
 ```
 
 ---
@@ -412,14 +404,9 @@ The own-scoped levels (`create_own`, `read_own`, `submit_own`) never satisfy `re
 
 ### Backend integration
 
-[`docs/rbac/RBAC-INTEGRATION-CONTRACT.md`](docs/rbac/RBAC-INTEGRATION-CONTRACT.md) maps every API
-endpoint to the module and action the backend must require, and
-[`docs/rbac/access-matrix.json`](docs/rbac/access-matrix.json) is a generated, machine-readable copy of
-the matrix. Regenerate it after any change:
-
-```bash
-npm --prefix frontend run export:access-matrix
-```
+The backend must require the same module/action pair as the frontend for every API endpoint.
+`npm --prefix frontend run export:access-matrix` serialises `accessMatrix.js` to JSON for backend
+consumption.
 
 > **Frontend guards are a usability layer, not a security boundary.** Every rule above
 > has to be re-checked server side. A request made outside the browser bypasses all of it.
