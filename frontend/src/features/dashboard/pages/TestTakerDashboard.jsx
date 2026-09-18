@@ -141,7 +141,7 @@ export default function TestTakerDashboard() {
           background: 'linear-gradient(to right, #201e43 0%, #462c68 50%, #8b4c73 100%)',
         }}
       >
-        <div className="absolute inset-0 right-0 bg-no-repeat bg-right-bottom opacity-70 bg-contain" style={{ backgroundImage: 'url(/images/dashboard-bg.jpg)' }} />
+        <div className="absolute inset-0 right-0 bg-no-repeat bg-bottom-right opacity-70 bg-contain" style={{ backgroundImage: 'url(/images/dashboard-bg.jpg)' }} />
         
         <div className="relative z-10 w-full md:w-1/2">
           <p className="text-[9px] text-brand-gold uppercase tracking-widest font-semibold mb-1">MY DSTS PORTAL</p>
@@ -310,7 +310,7 @@ export default function TestTakerDashboard() {
               </div>
 
               {/* Radar Chart */}
-              <div className="w-full md:w-1/2 h-full flex flex-col justify-center min-h-[140px]">
+              <div className="w-full md:w-1/2 h-full flex flex-col justify-center min-h-35">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="58%" data={radarData}>
                     <PolarGrid strokeDasharray="3 3" stroke="var(--color-surface-border)" />
