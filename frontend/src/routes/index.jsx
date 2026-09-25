@@ -43,6 +43,7 @@ const QuestionPapers = lazy(() => import('@/features/questions/pages/QuestionPap
 const UploadQuestionPaper = lazy(() => import('@/features/questions/pages/UploadQuestionPaper'));
 const ExamDayDownloads = lazy(() => import('@/features/questions/pages/ExamDayDownloads'));
 const SamplePapers = lazy(() => import('@/features/questions/pages/SamplePapers'));
+const UploadSamplePaper = lazy(() => import('@/features/questions/pages/UploadSamplePaper'));
 const Reports = lazy(() => import('@/features/reports/pages/Reports'));
 const MyReports = lazy(() => import('@/features/reports/pages/MyReports'));
 const Notifications = lazy(() => import('@/features/notifications/pages/Notifications'));
@@ -104,6 +105,7 @@ export default function AppRoutes() {
               window 403s no matter how it was reached. */}
           <Route path="/questions/downloads" element={<PrivateRoute requiredAccess={{ module: 'questions', action: 'secure_read' }}><ExamDayDownloads /></PrivateRoute>} />
           <Route path="/questions/samples" element={<PrivateRoute requiredAccess={{ module: 'questions', action: 'sample' }}><SamplePapers /></PrivateRoute>} />
+          <Route path="/questions/samples/upload" element={<PrivateRoute requiredAccess={{ module: 'questions', action: 'create' }}><UploadSamplePaper /></PrivateRoute>} />
 
           {/* Scores */}
           <Route path="/scores" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'submit' }}><ScoreEntry /></PrivateRoute>} />

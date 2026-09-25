@@ -25,6 +25,33 @@ const MOCK_ROLES = Object.entries(ROLE_LABELS)
     permissions: [],
   }));
 
+// Roles that may only be held by a single active user at a time (mirrors backend SINGLETON_ROLES).
+const SINGLETON_ROLE_CODES = ['admin', 'dcdd', 'exam_head', 'committee_head'];
+
+/**
+ * Throws if any of `roleCodes` is a singleton already held by another active mock user.
+ * @param {string[]} roleCodes
+ * @param {string|null} excludeId  User ID of the account being edited (not a conflict with itself).
+ */
+function assertSingletonRoles(roleCodes, excludeId) {
+  for (const code of roleCodes) {
+    if (!SINGLETON_ROLE_CODES.includes(code)) continue;
+    const holder = mockUsers.find(u =>
+      u.id !== excludeId &&
+      u.status !== 'DISABLED' &&
+      u.roles.some(r => (typeof r === 'string' ? r : r.code) === code),
+    );
+    if (holder) {
+      const roleName = ROLE_LABELS[code] || code;
+      throw new Error(
+        `The role "${roleName}" is already assigned to ${holder.fullName}. ` +
+        `Only one active user may hold this role at a time. ` +
+        `Please remove it from the current holder before assigning it to another user.`,
+      );
+    }
+  }
+}
+
 const MOCK_PERMISSIONS = ACCESS_MODULES.map(({ key, label }, index) => ({
   id: `PERM-${String(index + 1).padStart(3, '0')}`,
   name: key,
@@ -128,6 +155,7 @@ export const adminService = {
   createUser: async (payload) => {
     if (USE_MOCK_DATA) {
       const roleCodes = payload.roleCodes?.length ? payload.roleCodes : ['test_taker'];
+      assertSingletonRoles(roleCodes, null);
       const created = {
         id: `USR-${String(mockUsers.length + 1).padStart(3, '0')}`,
         fullName: payload.fullName,
@@ -156,6 +184,7 @@ export const adminService = {
   updateUser: async (id, payload) => {
     if (USE_MOCK_DATA) {
       const roleCodes = payload.roleCodes?.length ? payload.roleCodes : null;
+      if (roleCodes) assertSingletonRoles(roleCodes, id);
       let updated = null;
       mockUsers = mockUsers.map(user => {
         if (user.id !== id) return user;

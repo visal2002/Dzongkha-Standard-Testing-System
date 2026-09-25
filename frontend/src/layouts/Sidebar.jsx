@@ -13,7 +13,7 @@ import {
   Award, BarChart3, Settings, ChevronDown,
   ChevronRight, Bookmark, BookOpen, UserCog, Home, FileSearch,
   GraduationCap, Scale, Server, FileCog, Download,
-  ClipboardCheck, FlaskConical, ScrollText
+  ClipboardCheck, FlaskConical, ScrollText, LibraryBig
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Badge from '@/components/ui/Badge';
@@ -120,6 +120,11 @@ const NAV_CONFIG = [
   // treatment DCDD's own situational-awareness grants get, but none of it is a
   // stated day-to-day task for this role so none of it is surfaced here.
   { label: 'Question Bank', icon: Upload, to: '/questions/upload', onlyRoles: ['exam_head'], access: ['questions', 'create'] },
+  // Upload Sample Paper is a separate workflow for the Exam Head: papers uploaded here
+  // go to the public sample archive for candidate practice, not the encrypted
+  // exam-day repository. The route, the form and the page are distinct from the
+  // Question Bank above so neither can be mistaken for the other.
+  { label: 'Upload Sample Paper', icon: LibraryBig, to: '/questions/samples/upload', onlyRoles: ['exam_head'], access: ['questions', 'create'] },
   { label: 'Exam Day Downloads', icon: Download, to: '/questions/downloads', onlyRoles: ['exam_head'], access: ['questions', 'secure_read'] },
   { label: 'Released Sample Papers', icon: FileSearch, to: '/questions/samples', onlyRoles: ['exam_head'], access: ['questions', 'sample'] },
   { label: 'Band Score Entry', icon: ClipboardList, to: '/scores', access: ['scores', 'submit'] },
@@ -208,6 +213,7 @@ const NAV_LABEL_KEYS = {
   'Sample Papers': 'nav.sample_papers',
   'Question Bank': 'nav.question_bank',
   'Question Bank Archive': 'nav.question_bank_archive',
+  'Upload Sample Paper': 'nav.upload_sample_paper',
   'Exam Day Downloads': 'nav.exam_day_downloads',
   'Released Sample Papers': 'nav.released_sample_papers',
   'Band Score Entry': 'nav.band_score_entry',

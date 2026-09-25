@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Edit2, Plus, Shield, ToggleLeft, ToggleRight, Trash2, Unlock, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -12,6 +13,23 @@ import { adminService } from '@/features/admin/api';
 import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccess } from '@/features/rbac/accessMatrix';
+
+// Singleton roles: each may be held by at most one active user at a time.
+const SINGLETON_ROLE_CODES = ['admin', 'dcdd', 'exam_head', 'committee_head'];
+
+/** Returns a conflict message if `selectedCodes` contains a singleton role already held by another user. */
+function checkSingletonConflict(selectedCodes, allUsers, excludeUserId) {
+  for (const code of selectedCodes) {
+    if (!SINGLETON_ROLE_CODES.includes(code)) continue;
+    const holder = allUsers.find(u =>
+      u.id !== excludeUserId &&
+      u.status === 'active' &&
+      (u.roles || []).includes(code),
+    );
+    if (holder) return `The "${holder.role?.split(',')[0] || code}" role is already assigned to ${holder.name}. Only one user may hold this role at a time.`;
+  }
+  return null;
+}
 
 const columnHelper = createColumnHelper();
 const emptyForm = { name: '', email: '', cid: '', password: '', roles: [] };
@@ -34,16 +52,21 @@ export default function UserManagement() {
     roles: previous.roles.includes(code) ? previous.roles.filter(value => value !== code) : [...previous.roles, code],
   }));
 
-  const validate = includePassword => {
+  const validate = (includePassword, excludeUserId = null) => {
     if (!form.name || !form.email || !form.cid || form.roles.length === 0 || (includePassword && form.password.length < 12)) {
       toast.error(`Name, email, User ID, ${includePassword ? 'a 12-character password, ' : ''}and at least one role are required`);
+      return false;
+    }
+    const conflict = checkSingletonConflict(form.roles, users, excludeUserId);
+    if (conflict) {
+      toast.error(conflict);
       return false;
     }
     return true;
   };
 
   const handleCreate = async () => {
-    if (!validate(true)) return;
+    if (!validate(true, null)) return;
     try {
       const response = await adminService.createUser({ fullName: form.name, email: form.email, cid: form.cid, password: form.password, roleCodes: form.roles });
       setUsers(previous => [response?.data || response, ...previous]);
@@ -61,7 +84,7 @@ export default function UserManagement() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingUser || !validate(false)) return;
+    if (!editingUser || !validate(false, editingUser.id)) return;
     try {
       const response = await adminService.updateUser(editingUser.id, { fullName: form.name, email: form.email, cid: form.cid, roleCodes: form.roles });
       const updated = response?.data || response;
@@ -124,7 +147,12 @@ export default function UserManagement() {
     return base;
   }, [canManage, systemRoles, unlockingId]);
 
-  const roleSelector = <div className="col-span-2 space-y-2"><label className="text-xs font-semibold text-text-secondary flex items-center gap-1"><Shield size={12} className="text-brand-gold" />Assign Role(s) <span className="text-red-400">*</span></label><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border border-surface-border rounded-xl p-3 bg-surface-bg">{systemRoles.map(role => <label key={role.code} className="flex items-center gap-2 cursor-pointer text-xs p-1.5 rounded"><input type="checkbox" checked={form.roles.includes(role.code)} onChange={() => toggleRole(role.code)} /><span className={form.roles.includes(role.code) ? 'font-semibold text-brand-gold' : 'text-text-primary'}>{role.name}</span></label>)}</div></div>;
+  // Inline conflict warning rendered inside the role-selector grid
+  const singletonWarning = useMemo(() => {
+    return checkSingletonConflict(form.roles, users, editingUser?.id ?? null);
+  }, [form.roles, users, editingUser]);
+
+  const roleSelector = <div className="col-span-2 space-y-2"><label className="text-xs font-semibold text-text-secondary flex items-center gap-1"><Shield size={12} className="text-brand-gold" />Assign Role(s) <span className="text-red-400">*</span></label><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border border-surface-border rounded-xl p-3 bg-surface-bg">{systemRoles.map(role => { const isSingleton = SINGLETON_ROLE_CODES.includes(role.code); const holder = isSingleton ? users.find(u => (u.roles || []).includes(role.code) && u.status === 'active' && u.id !== (editingUser?.id ?? null)) : null; return <label key={role.code} className="flex items-center gap-2 cursor-pointer text-xs p-1.5 rounded"><input type="checkbox" checked={form.roles.includes(role.code)} onChange={() => toggleRole(role.code)} /><span className={form.roles.includes(role.code) ? 'font-semibold text-brand-gold' : 'text-text-primary'}>{role.name}{isSingleton && <span className="ml-1 text-[9px] text-text-muted uppercase tracking-wide">Singleton</span>}</span>{holder && <span className="ml-auto flex items-center gap-1 text-[10px] text-amber-400"><AlertTriangle size={10}/> Taken by {holder.name}</span>}</label>; })}</div>{singletonWarning && <p className="flex items-start gap-1.5 text-xs text-amber-400 pt-1"><AlertTriangle size={12} className="shrink-0 mt-0.5" />{singletonWarning}</p>}</div>;
 
   return <div className="space-y-6">
     <PageHeader title="User Management" subtitle={canManage ? 'Create, update, assign roles, unblock, deactivate, and delete DSTS users' : 'Read-only user directory based on the approved access matrix'} breadcrumbs={[{ label: 'Administration' }, { label: 'Users' }]} icon={<Users size={18} />} action={canManage ? <Button onClick={() => { setForm(emptyForm); setShowCreate(true); }} icon={<Plus size={14} />}>Add User</Button> : null} />

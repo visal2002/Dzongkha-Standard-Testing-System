@@ -14,6 +14,10 @@ import { AuditService } from './audit.service';
 import { CreateRoleDto, CreateUserDto, UpdateRolePermissionsDto, UpdateUserDto, UpdateUserRolesDto } from './dtos';
 import { PermissionEntity, RoleEntity, UserEntity } from './entities';
 
+// Roles that may only be held by a single active user at a time.
+// Attempting to assign any of these to a second user raises ROLE_SINGLETON_CONFLICT.
+const SINGLETON_ROLES = ['admin', 'dcdd', 'exam_head', 'committee_head'] as const;
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -84,6 +88,7 @@ export class AdminService {
     }
     const roles = await this.roles.findBy({ code: In(dto.roleCodes), active: true });
     if (roles.length !== new Set(dto.roleCodes).size) throw new DomainException('ROLE_INVALID', 'One or more roles are invalid.');
+    await this.assertSingletonRoles(dto.roleCodes, null);
     const user = await this.users.save(this.users.create({
       email: dto.email.toLowerCase(), cid: dto.cid, fullName: dto.fullName, userId: await this.allocateUserId(),
       passwordHash: await bcrypt.hash(dto.password, 12), roles, status: 'ACTIVE',
@@ -132,6 +137,7 @@ export class AdminService {
     if (dto.roleCodes) {
       const roles = await this.roles.findBy({ code: In(dto.roleCodes), active: true });
       if (roles.length !== new Set(dto.roleCodes).size) throw new DomainException('ROLE_INVALID', 'One or more roles are invalid.');
+      await this.assertSingletonRoles(dto.roleCodes, id);
       user.roles = roles;
     }
     const saved = await this.users.save(user);
@@ -151,6 +157,7 @@ export class AdminService {
     const user = await this.getUser(id);
     const roles = await this.roles.findBy({ code: In(dto.roleCodes), active: true });
     if (roles.length !== new Set(dto.roleCodes).size) throw new DomainException('ROLE_INVALID', 'One or more roles are invalid.');
+    await this.assertSingletonRoles(dto.roleCodes, id);
     user.roles = roles;
     await this.users.save(user);
     await this.audit.record({ action: 'USER_ROLES_CHANGED', resourceType: 'User', resourceId: id, actorUserId: actorId, requestId, safeData: { roles: dto.roleCodes } });
@@ -178,6 +185,42 @@ export class AdminService {
     const saved = await this.roles.save(role);
     await this.audit.record({ action: 'ROLE_PERMISSIONS_UPDATED', resourceType: 'Role', resourceId: id, actorUserId: actorId, requestId, safeData: { permissions: dto.permissions } });
     return saved;
+  }
+
+  /**
+   * Guard singleton roles: exam_head, committee_head, dcdd, and admin may each be
+   * held by at most one active user at a time. Throws ROLE_SINGLETON_CONFLICT (409)
+   * if any of the requested role codes is already assigned to a *different* user.
+   *
+   * @param roleCodes  The codes being assigned.
+   * @param excludeId  The ID of the user being updated (their own current assignments
+   *                   are not treated as conflicts). Pass `null` for new users.
+   */
+  private async assertSingletonRoles(roleCodes: string[], excludeId: string | null) {
+    const singletonCodes = roleCodes.filter((code): code is typeof SINGLETON_ROLES[number] =>
+      (SINGLETON_ROLES as readonly string[]).includes(code),
+    );
+    if (!singletonCodes.length) return;
+
+    // Fetch every active user that currently holds any of the singleton roles being
+    // requested, then exclude the user being updated so their own re-assignment never
+    // self-conflicts.
+    const holders = await this.users.find({ where: { status: Not('DISABLED') } });
+    for (const code of singletonCodes) {
+      const existing = holders.find(
+        (u) => u.id !== excludeId && u.roles.some((r) => r.code === code),
+      );
+      if (existing) {
+        const roleName = existing.roles.find((r) => r.code === code)?.name ?? code;
+        throw new DomainException(
+          'ROLE_SINGLETON_CONFLICT',
+          `The role "${roleName}" is already assigned to ${existing.fullName}. ` +
+            `Only one active user may hold this role at a time. ` +
+            `Please remove it from the current holder before assigning it to another user.`,
+          409,
+        );
+      }
+    }
   }
 
   private adminUser(user: UserEntity) {
