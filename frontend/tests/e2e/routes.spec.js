@@ -134,8 +134,8 @@ test('a user created by the administrator can sign in', async ({ page }) => {
   await page.getByLabel('Email Address').fill('dechen.created@example.com');
   await page.getByLabel('User ID Number').fill('10999000001');
   await page.getByLabel('Temporary Password').fill('CreatedUser!2026');
-  // FIX 2: 'Chief of Examination' doesn't exist — ROLE_LABELS has 'Exam Head' for exam_head
-  await page.getByLabel('Exam Head').check();
+  // Chief of Examiner is not a singleton role, so we can create a new user with it.
+  await page.getByLabel('Chief of Examiner').check();
   await page.getByRole('button', { name: 'Create User' }).click();
   await expect(page.getByText('User "Dechen Wangmo" created successfully')).toBeVisible();
 
@@ -145,7 +145,7 @@ test('a user created by the administrator can sign in', async ({ page }) => {
   await page.getByPlaceholder('Enter your password').fill('CreatedUser!2026');
   await page.getByRole('button', { name: 'Sign in to DSTS' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByText('Welcome, Dechen!')).toBeVisible();
+  await expect(page.getByText('Good morning, Dechen!')).toBeVisible();
 });
 
 for (const account of roleRoutes) {

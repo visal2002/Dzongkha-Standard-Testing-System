@@ -121,7 +121,7 @@ describe('every approved role resolves a sidebar', () => {
     expect(menuFor('dcdd')).toContain('Master Configuration');
   });
 
-  it('gives the Exam Head exactly four flat items and nothing else - v2 strict least-privilege', () => {
+  it('gives the Exam Head exactly five flat items and nothing else - v2 strict least-privilege', () => {
     // Supersedes the earlier draft that kept Registration/Verification/Absentee/
     // Score History/Re-evaluation/Certificates/Reports visible under a demoted
     // "Read-Only" section. BRD §5.4.2 defines exactly one function for this role -
@@ -136,7 +136,7 @@ describe('every approved role resolves a sidebar', () => {
     const examHeadNav = navigationFor('exam_head');
     expect(examHeadNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
     expect(examHeadNav.map(item => item.label)).toEqual([
-      'Dashboard', 'Question Bank', 'Exam Day Downloads', 'Released Sample Papers',
+      'Dashboard', 'Question Bank', 'Upload Sample Paper', 'Exam Day Downloads', 'Released Sample Papers',
     ]);
 
     [
