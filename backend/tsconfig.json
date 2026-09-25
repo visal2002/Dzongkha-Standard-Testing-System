@@ -8,7 +8,6 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "target": "ES2022",
-    "baseUrl": "./",
     "sourceMap": true,
     "outDir": "./dist",
     "incremental": true,
@@ -17,6 +16,7 @@
     "strictPropertyInitialization": false,
     "forceConsistentCasingInFileNames": true,
     "paths": {
+      "*": ["./*"],
       "@dzongjuk/common": ["./libs/common/src"],
       "@dzongjuk/contracts": ["./libs/contracts/src"],
       "@dzongjuk/security": ["./libs/security/src"]

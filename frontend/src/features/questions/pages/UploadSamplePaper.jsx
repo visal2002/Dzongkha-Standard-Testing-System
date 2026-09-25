@@ -140,7 +140,7 @@ export default function UploadSamplePaper() {
         </div>
       ) : (
         <div>
-          <div className="w-10 h-10 bg-[var(--color-surface-border)] rounded-xl flex items-center justify-center mx-auto mb-2">
+          <div className="w-10 h-10 bg-surface-border rounded-xl flex items-center justify-center mx-auto mb-2">
             <Upload size={18} className="text-text-muted" />
           </div>
           <p className="text-sm font-medium text-text-primary mb-0.5">{label}</p>
