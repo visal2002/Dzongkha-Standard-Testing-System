@@ -66,8 +66,20 @@ function localizeTextNode(node, useDzongkha) {
   }
 
   const lastTranslation = translatedText.get(node);
-  if (node.nodeValue !== lastTranslation) originalText.set(node, node.nodeValue);
-  const original = originalText.get(node) ?? node.nodeValue;
+  if (node.nodeValue !== lastTranslation) {
+    const translatedCurrent = translateValue(node.nodeValue);
+    if (translatedCurrent === node.nodeValue) {
+      // Explicit i18next content has already arrived in Dzongkha. It is not a
+      // bridge-owned translation and must never be restored over the later
+      // English render.
+      originalText.delete(node);
+      translatedText.delete(node);
+      return;
+    }
+    originalText.set(node, node.nodeValue);
+  }
+  const original = originalText.get(node);
+  if (original === undefined) return;
   const translated = translateValue(original);
   translatedText.set(node, translated);
   if (translated !== node.nodeValue) node.nodeValue = translated;
@@ -95,7 +107,16 @@ function localizeAttributes(element, useDzongkha) {
       delete lastTranslations[attribute];
       continue;
     }
-    if (current !== lastTranslations[attribute]) originals[attribute] = current;
+    if (current !== lastTranslations[attribute]) {
+      const translatedCurrent = translateValue(current);
+      if (translatedCurrent === current) {
+        delete originals[attribute];
+        delete lastTranslations[attribute];
+        continue;
+      }
+      originals[attribute] = current;
+    }
+    if (originals[attribute] === undefined) continue;
     const translated = translateValue(originals[attribute]);
     lastTranslations[attribute] = translated;
     if (translated !== current) element.setAttribute(attribute, translated);

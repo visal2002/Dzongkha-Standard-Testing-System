@@ -1,6 +1,12 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import UiTranslationBridge from './UiTranslationBridge';
+
+function ExplicitI18nextLabel() {
+  const { t } = useTranslation();
+  return <span>{t('nav.dashboard')}</span>;
+}
 
 describe('UiTranslationBridge', () => {
   beforeEach(async () => {
@@ -15,6 +21,7 @@ describe('UiTranslationBridge', () => {
         <UiTranslationBridge />
         <h1>System Administration</h1>
         <p>Welcome, Aakash!</p>
+        <ExplicitI18nextLabel />
         <input aria-label="Search user" placeholder="Search user" />
       </>,
       { container: root },
@@ -24,6 +31,7 @@ describe('UiTranslationBridge', () => {
     await waitFor(() => {
       expect(screen.getByText('རིམ་ལུགས་བདག་སྐྱོང་།')).toBeInTheDocument();
       expect(screen.getByText('དགའ་བསུ་ཞུ། Aakash!')).toBeInTheDocument();
+      expect(screen.getByText('ལྟེ་གནས།')).toBeInTheDocument();
       expect(screen.getByRole('textbox')).not.toHaveAttribute('placeholder', 'Search user');
       expect(screen.getByRole('textbox')).not.toHaveAttribute('aria-label', 'Search user');
     });
@@ -33,6 +41,7 @@ describe('UiTranslationBridge', () => {
         <UiTranslationBridge />
         <h1>Total Users</h1>
         <p>Infrastructure Health</p>
+        <ExplicitI18nextLabel />
       </>,
     );
     await waitFor(() => {
@@ -44,6 +53,8 @@ describe('UiTranslationBridge', () => {
     await waitFor(() => {
       expect(screen.getByText('Total Users')).toBeInTheDocument();
       expect(screen.getByText('Infrastructure Health')).toBeInTheDocument();
+      expect(screen.getByText('Dashboard')).toBeInTheDocument();
+      expect(screen.queryByText('ལྟེ་གནས།')).not.toBeInTheDocument();
     });
   });
 });

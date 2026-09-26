@@ -27,4 +27,6 @@ test('Dzongkha selection translates dashboard and sidebar-route content and pers
   await page.getByRole('button', { name: 'EN', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByText('User Management', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Admin Dashboard', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('འཛིན་སྐྱོང་ལྟེ་གནས།', { exact: true })).toHaveCount(0);
 });
