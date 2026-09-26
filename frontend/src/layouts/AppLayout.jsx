@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import UiTranslationBridge from '@/i18n/UiTranslationBridge';
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -33,6 +34,7 @@ export default function AppLayout() {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-surface-bg">
+      <UiTranslationBridge />
       {mobileSidebarOpen && (
         <button
           type="button"

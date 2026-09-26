@@ -13,6 +13,7 @@
     "test:e2e": "npm run build:mock && playwright test",
     "test:e2e:local": "cross-env PLAYWRIGHT_CHANNEL=chrome npm run test:e2e",
     "test:e2e:ci": "npm run build:mock && playwright test --reporter=line",
+    "i18n:generate-ui": "node scripts/generate-ui-translation-map.mjs",
     "export:access-matrix": "node scripts/export-access-matrix.mjs"
   },
   "dependencies": {
