@@ -4,12 +4,22 @@
  * Phone: +975 - 1750 - 5267
  */
 
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const LANGS = [
   { code: 'en', short: 'EN' },
   { code: 'dz', short: 'རྫ' },
 ];
+
+const FONT_SIZES = ['normal', 'large', 'extra-large'];
+const FONT_SIZE_STORAGE_KEY = 'dsts_font_size';
+
+const getSavedFontSize = () => {
+  if (typeof window === 'undefined') return 'normal';
+  const saved = window.localStorage.getItem(FONT_SIZE_STORAGE_KEY);
+  return FONT_SIZES.includes(saved) ? saved : 'normal';
+};
 
 /**
  * App-wide English / Dzongkha switch. Writes through i18next, which persists the
@@ -22,11 +32,26 @@ const LANGS = [
  */
 export default function LanguageToggle({ tone = 'surface', className = '' }) {
   const { i18n, t } = useTranslation();
+  const [fontSize, setFontSize] = useState(getSavedFontSize);
   const current = i18n.resolvedLanguage || i18n.language || 'en';
   const active = current.startsWith('dz') ? 'dz' : 'en';
+  const fontSizeIndex = FONT_SIZES.indexOf(fontSize);
+
+  useEffect(() => {
+    document.documentElement.dataset.fontSize = fontSize;
+    window.localStorage.setItem(FONT_SIZE_STORAGE_KEY, fontSize);
+  }, [fontSize]);
 
   const setLang = (code) => {
     if (code !== active) i18n.changeLanguage(code);
+  };
+
+  const changeFontSize = (direction) => {
+    const nextIndex = Math.min(
+      FONT_SIZES.length - 1,
+      Math.max(0, fontSizeIndex + direction),
+    );
+    setFontSize(FONT_SIZES[nextIndex]);
   };
 
   const wrap = {
@@ -65,6 +90,29 @@ export default function LanguageToggle({ tone = 'surface', className = '' }) {
           {short}
         </button>
       ))}
+
+      <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-current opacity-15" />
+
+      <button
+        type="button"
+        onClick={() => changeFontSize(-1)}
+        disabled={fontSizeIndex === 0}
+        aria-label={t('common.decrease_font_size')}
+        title={t('common.decrease_font_size')}
+        className={`h-7 min-w-7 rounded-md px-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${btn(false)}`}
+      >
+        A−
+      </button>
+      <button
+        type="button"
+        onClick={() => changeFontSize(1)}
+        disabled={fontSizeIndex === FONT_SIZES.length - 1}
+        aria-label={t('common.increase_font_size')}
+        title={t('common.increase_font_size')}
+        className={`h-7 min-w-7 rounded-md px-1.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${btn(false)}`}
+      >
+        A+
+      </button>
     </div>
   );
 }

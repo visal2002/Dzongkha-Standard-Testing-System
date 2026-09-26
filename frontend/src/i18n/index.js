@@ -103,6 +103,8 @@ const resources = {
         english: 'English',
         dzongkha: 'Dzongkha',
         switch_language: 'Switch language',
+        decrease_font_size: 'Decrease font size',
+        increase_font_size: 'Increase font size',
       },
       my_applications: {
         title: 'My Applications',
@@ -304,6 +306,8 @@ const resources = {
         english: 'English',
         dzongkha: 'རྫོང་ཁ',
         switch_language: 'སྐད་ཡིག་བརྗེ་སྒྱུར།',
+        decrease_font_size: 'ཡིག་གཟུགས་ཆུང་ཀུ་བཟོ།',
+        increase_font_size: 'ཡིག་གཟུགས་སྦོམ་བཟོ།',
       },
       my_applications: {
         title: 'ངེའི་ཞུ་ཡིག་ཚུ།',

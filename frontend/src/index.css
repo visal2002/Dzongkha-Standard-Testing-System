@@ -549,6 +549,24 @@ html.lang-dz {
   font-size: 18px;
 }
 
+/* User-selectable interface sizing. Dzongkha keeps its extra two-pixel glyph
+   allowance at every level while the selected size persists across pages. */
+html[data-font-size='large'] {
+  font-size: 18px;
+}
+
+html[data-font-size='extra-large'] {
+  font-size: 20px;
+}
+
+html.lang-dz[data-font-size='large'] {
+  font-size: 20px;
+}
+
+html.lang-dz[data-font-size='extra-large'] {
+  font-size: 22px;
+}
+
 body {
   margin: 0;
   background-color: var(--color-surface-bg);

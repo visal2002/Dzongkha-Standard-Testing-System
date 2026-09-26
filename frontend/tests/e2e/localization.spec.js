@@ -19,8 +19,13 @@ test('Dzongkha selection translates dashboard and sidebar-route content and pers
   await expect(page.getByText('གཞི་རྟེན་ཞབས་ཏོག་གནས་སྟངས།', { exact: true })).toBeVisible();
   await expect(page.getByText('System Administration', { exact: true })).toHaveCount(0);
 
+  await page.getByRole('button', { name: 'ཡིག་གཟུགས་སྦོམ་བཟོ།' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-font-size', 'large');
+  await expect.poll(() => page.locator('html').evaluate(element => getComputedStyle(element).fontSize)).toBe('20px');
+
   await page.goto('/admin/users');
   await expect(page.locator('html')).toHaveAttribute('lang', 'dz');
+  await expect(page.locator('html')).toHaveAttribute('data-font-size', 'large');
   await expect(page.getByText('ལག་ལེན་པ་འཛིན་སྐྱོང་།', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('User Management', { exact: true })).toHaveCount(0);
 
