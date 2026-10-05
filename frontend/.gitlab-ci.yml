@@ -1,0 +1,33 @@
+stages:
+  - validate
+  - test
+  - build
+
+default:
+  image: node:22.19.0-alpine
+  cache:
+    key:
+      files: [package-lock.json]
+    paths: [.npm/]
+  before_script:
+    - npm ci --cache .npm --prefer-offline
+
+validate:
+  stage: validate
+  script:
+    - npm run build
+
+unit-test:
+  stage: test
+  script:
+    - npm run test
+
+container-build:
+  stage: build
+  image: docker:28.3.3
+  services: [docker:28.3.3-dind]
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHA" .
+    - docker push "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHA"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "UAT"'
