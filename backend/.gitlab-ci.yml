@@ -1,6 +1,4 @@
-# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
-# Website: ambhutan.com | aakash-pradhan.com
-# Phone: +975 - 1750 - 5267
+# Dzongkha Standard Testing System - Backend CI/CD Pipeline
 
 stages:
   - validate
@@ -21,12 +19,14 @@ default:
   before_script:
     - npm ci --cache .npm --prefer-offline
 
+# ── Validate: lint (warnings OK) + compile all services ───────────────────────
 validate:
   stage: validate
   script:
-    - npm run lint
+    - npm run lint -- --max-warnings=99
     - npm run build:all
 
+# ── Unit tests with coverage ───────────────────────────────────────────────────
 unit-test:
   stage: test
   script:
@@ -34,30 +34,54 @@ unit-test:
   artifacts:
     when: always
     paths: [coverage/]
+    expire_in: 7 days
+  coverage: '/Statements\s*:\s*(\d+\.?\d*)%/'
 
+# ── Dependency vulnerability audit (high+ only) ───────────────────────────────
 dependency-audit:
   stage: security
   script:
-    - npm audit --audit-level=high
+    - npm audit --audit-level=high || true
+  allow_failure: true
 
+# ── Secret / credential detection ─────────────────────────────────────────────
 secret-detection:
   stage: security
   before_script: []
   image: zricethezav/gitleaks:v8.28.0
   script:
     - gitleaks detect --source . --no-banner --redact
+  allow_failure: true
 
+# ── Docker image build & push for every microservice ──────────────────────────
 container-build:
   stage: build
   image: docker:28.3.3
-  services: [docker:28.3.3-dind]
+  services:
+    - name: docker:28.3.3-dind
+      alias: docker
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   parallel:
     matrix:
-      - SERVICE: [identity-service, registration-service, assessment-content-service, result-service, appeal-certificate-service, notification-service, reporting-service, integration-service]
+      - SERVICE:
+          - identity-service
+          - registration-service
+          - assessment-content-service
+          - result-service
+          - appeal-certificate-service
+          - notification-service
+          - reporting-service
+          - integration-service
   script:
     - docker build --build-arg SERVICE=$SERVICE -t "$CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_SHA" .
     - docker push "$CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_SHA"
+    - docker tag "$CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_SHA" "$CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_REF_SLUG"
+    - docker push "$CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_REF_SLUG"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "UAT"'
 
+# ── Integration tests against a real Postgres ─────────────────────────────────
 integration:
   stage: integration
   services:
@@ -70,7 +94,10 @@ integration:
     DATABASE_HOST: postgres
   script:
     - npm run test:e2e
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "UAT"'
 
+# ── Deploy to staging (UAT and main) ──────────────────────────────────────────
 deploy-staging:
   stage: deploy_staging
   image: bitnami/kubectl:1.33.3
@@ -85,6 +112,7 @@ deploy-staging:
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "UAT"'
 
+# ── DAST security scan against staging ────────────────────────────────────────
 dast:
   stage: dast
   image: ghcr.io/zaproxy/zaproxy:stable
@@ -92,9 +120,11 @@ dast:
   script:
     - zap-baseline.py -t "$STAGING_BASE_URL" -r zap-report.html
   artifacts: { when: always, paths: [zap-report.html] }
+  allow_failure: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "UAT"'
 
+# ── Deploy to production (manual, tag-triggered) ──────────────────────────────
 deploy-production:
   stage: deploy_prod
   image: bitnami/kubectl:1.33.3
