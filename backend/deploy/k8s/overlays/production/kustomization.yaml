@@ -15,3 +15,11 @@ images:
     newTag: production
   - name: registry.example.gov.bt/dzongjuk/result-service
     newTag: production
+  - name: registry.example.gov.bt/dzongjuk/integration-service
+    newTag: production
+  - name: registry.example.gov.bt/dzongjuk/reporting-service
+    newTag: production
+  - name: registry.example.gov.bt/dzongjuk/notification-service
+    newTag: production
+  - name: registry.example.gov.bt/dzongjuk/appeal-certificate-service
+    newTag: production

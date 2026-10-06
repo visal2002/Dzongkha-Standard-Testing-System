@@ -1,0 +1,49 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: integration-service }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: integration-service } }
+  template:
+    metadata: { labels: { app: integration-service } }
+    spec:
+      serviceAccountName: integration-service
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: integration-service
+          image: registry.example.gov.bt/dzongjuk/integration-service:replace
+          ports: [{ containerPort: 8008 }]
+          env: [{ name: DATABASE_NAME, value: dzongjuk_integration }]
+          envFrom: [{ configMapRef: { name: dzongjuk-config } }, { secretRef: { name: dzongjuk-secrets } }]
+          readinessProbe: { httpGet: { path: /health/ready, port: 8008 }, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8008 }, periodSeconds: 15 }
+          resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { cpu: 500m, memory: 256Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: integration-service }
+spec: { selector: { app: integration-service }, ports: [{ port: 8008, targetPort: 8008 }] }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: integration-service }
+automountServiceAccountToken: false
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: integration-service }
+spec: { minAvailable: 1, selector: { matchLabels: { app: integration-service } } }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: integration-service }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: integration-service }
+  minReplicas: 2
+  maxReplicas: 8
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }]

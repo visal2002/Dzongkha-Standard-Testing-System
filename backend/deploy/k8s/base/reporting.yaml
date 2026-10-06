@@ -1,0 +1,55 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: reporting-service }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: reporting-service } }
+  template:
+    metadata: { labels: { app: reporting-service } }
+    spec:
+      serviceAccountName: reporting-service
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      volumes:
+        - name: tmp-reports
+          emptyDir: {}
+      containers:
+        - name: reporting-service
+          image: registry.example.gov.bt/dzongjuk/reporting-service:replace
+          ports: [{ containerPort: 8007 }]
+          env: [{ name: DATABASE_NAME, value: dzongjuk_reporting }]
+          envFrom: [{ configMapRef: { name: dzongjuk-config } }, { secretRef: { name: dzongjuk-secrets } }]
+          volumeMounts:
+            - name: tmp-reports
+              mountPath: /tmp
+          readinessProbe: { httpGet: { path: /health/ready, port: 8007 }, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8007 }, periodSeconds: 15 }
+          resources: { requests: { cpu: 100m, memory: 192Mi }, limits: { cpu: 1000m, memory: 512Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: reporting-service }
+spec: { selector: { app: reporting-service }, ports: [{ port: 8007, targetPort: 8007 }] }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: reporting-service }
+automountServiceAccountToken: false
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: reporting-service }
+spec: { minAvailable: 1, selector: { matchLabels: { app: reporting-service } } }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: reporting-service }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: reporting-service }
+  minReplicas: 2
+  maxReplicas: 8
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }]

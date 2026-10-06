@@ -108,6 +108,10 @@ deploy-staging:
     - kubectl rollout status deployment/registration-service -n dzongjuk-staging --timeout=180s
     - kubectl rollout status deployment/assessment-content-service -n dzongjuk-staging --timeout=180s
     - kubectl rollout status deployment/result-service -n dzongjuk-staging --timeout=180s
+    - kubectl rollout status deployment/integration-service -n dzongjuk-staging --timeout=180s
+    - kubectl rollout status deployment/reporting-service -n dzongjuk-staging --timeout=180s
+    - kubectl rollout status deployment/notification-service -n dzongjuk-staging --timeout=180s
+    - kubectl rollout status deployment/appeal-certificate-service -n dzongjuk-staging --timeout=180s
   environment: { name: staging }
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "UAT"'
@@ -134,6 +138,10 @@ deploy-production:
     - kubectl rollout status deployment/identity-service -n dzongjuk-production --timeout=300s
     - kubectl rollout status deployment/assessment-content-service -n dzongjuk-production --timeout=300s
     - kubectl rollout status deployment/result-service -n dzongjuk-production --timeout=300s
+    - kubectl rollout status deployment/integration-service -n dzongjuk-production --timeout=300s
+    - kubectl rollout status deployment/reporting-service -n dzongjuk-production --timeout=300s
+    - kubectl rollout status deployment/notification-service -n dzongjuk-production --timeout=300s
+    - kubectl rollout status deployment/appeal-certificate-service -n dzongjuk-production --timeout=300s
   environment: { name: production }
   when: manual
   rules:

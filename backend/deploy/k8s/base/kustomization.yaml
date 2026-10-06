@@ -9,6 +9,10 @@ resources:
   - registration.yaml
   - assessment.yaml
   - result.yaml
+  - integration.yaml
+  - reporting.yaml
+  - notification.yaml
+  - appeal-certificate.yaml
   - network-policy.yaml
 configMapGenerator:
   - name: dzongjuk-config

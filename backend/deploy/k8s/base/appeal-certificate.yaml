@@ -1,0 +1,55 @@
+# Email: ambhutan@gmail.com | hello@aakash-pradhan.com
+# Website: ambhutan.com | aakash-pradhan.com
+# Phone: +975 - 1750 - 5267
+
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: appeal-certificate-service }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: appeal-certificate-service } }
+  template:
+    metadata: { labels: { app: appeal-certificate-service } }
+    spec:
+      serviceAccountName: appeal-certificate-service
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      volumes:
+        - name: font-cache
+          emptyDir: {}
+      containers:
+        - name: appeal-certificate-service
+          image: registry.example.gov.bt/dzongjuk/appeal-certificate-service:replace
+          ports: [{ containerPort: 8005 }]
+          env: [{ name: DATABASE_NAME, value: dzongjuk_appeal_certificate }]
+          envFrom: [{ configMapRef: { name: dzongjuk-config } }, { secretRef: { name: dzongjuk-secrets } }]
+          volumeMounts:
+            - name: font-cache
+              mountPath: /tmp
+          readinessProbe: { httpGet: { path: /health/ready, port: 8005 }, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8005 }, periodSeconds: 15 }
+          resources: { requests: { cpu: 200m, memory: 256Mi }, limits: { cpu: 1000m, memory: 768Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: appeal-certificate-service }
+spec: { selector: { app: appeal-certificate-service }, ports: [{ port: 8005, targetPort: 8005 }] }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: appeal-certificate-service }
+automountServiceAccountToken: false
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: appeal-certificate-service }
+spec: { minAvailable: 1, selector: { matchLabels: { app: appeal-certificate-service } } }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: appeal-certificate-service }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: appeal-certificate-service }
+  minReplicas: 2
+  maxReplicas: 8
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }]

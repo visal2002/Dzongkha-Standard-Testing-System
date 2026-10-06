@@ -15,3 +15,11 @@ images:
     newTag: staging
   - name: registry.example.gov.bt/dzongjuk/result-service
     newTag: staging
+  - name: registry.example.gov.bt/dzongjuk/integration-service
+    newTag: staging
+  - name: registry.example.gov.bt/dzongjuk/reporting-service
+    newTag: staging
+  - name: registry.example.gov.bt/dzongjuk/notification-service
+    newTag: staging
+  - name: registry.example.gov.bt/dzongjuk/appeal-certificate-service
+    newTag: staging
