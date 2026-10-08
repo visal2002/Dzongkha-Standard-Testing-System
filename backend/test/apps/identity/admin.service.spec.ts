@@ -40,4 +40,24 @@ describe('AdminService — account lock administration', () => {
     expect(save.mock.calls).toHaveLength(1);
     expect(auditRecord).toHaveBeenCalledWith(expect.objectContaining({ action: 'USER_ACCOUNT_UNLOCKED', resourceId: user.id }));
   });
+  it('only exposes Committee Head and Committee Member accounts to committee setup', async () => {
+    const usersList = [
+      Object.assign(new UserEntity(), { id: 'head', fullName: 'Actual Head', status: 'ACTIVE', roles: [{ code: 'committee_head', name: 'Committee Head' }] }),
+      Object.assign(new UserEntity(), { id: 'member', fullName: 'Member', status: 'ACTIVE', roles: [{ code: 'committee_member', name: 'Committee Member' }] }),
+      Object.assign(new UserEntity(), { id: 'admin', fullName: 'Administrator', status: 'ACTIVE', roles: [{ code: 'admin', name: 'System Administrator' }] }),
+    ];
+    const users = { find: jest.fn().mockResolvedValue(usersList) } as unknown as Repository<UserEntity>;
+    const service = new AdminService(
+      users,
+      {} as Repository<RoleEntity>,
+      {} as Repository<PermissionEntity>,
+      { record: jest.fn() } as unknown as AuditService,
+      new ConfigService(),
+    );
+
+    await expect(service.listCommitteeRosterCandidates()).resolves.toEqual([
+      { id: 'head', name: 'Actual Head', role: 'Committee Head', roleCode: 'committee_head' },
+      { id: 'member', name: 'Member', role: 'Committee Member', roleCode: 'committee_member' },
+    ]);
+  });
 });

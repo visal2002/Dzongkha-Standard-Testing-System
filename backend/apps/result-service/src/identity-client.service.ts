@@ -47,4 +47,21 @@ export class IdentityClientService {
     const entries = await Promise.all(unique.map(async (id) => [id, await this.nameFor(id)] as const));
     return new Map(entries.filter((entry): entry is [string, string] => entry[1] !== null));
   }
+
+  // Committee authority is derived from the user's active identity role, never from
+  // whichever committee role a caller happens to put in the request body.
+  async hasCommitteeRole(userId: string, committeeRole: 'HEAD' | 'MEMBER'): Promise<boolean> {
+    if (this.internalKey.length < 32) return false;
+    try {
+      const response = await fetch(`${this.baseUrl}/admin/users/${userId}/internal-contact`, {
+        headers: { 'x-internal-service-key': this.internalKey },
+      });
+      if (!response.ok) return false;
+      const payload = (await response.json()) as ApiEnvelope<{ roles?: string[]; status?: string }>;
+      const requiredRole = committeeRole === 'HEAD' ? 'committee_head' : 'committee_member';
+      return payload?.data?.status === 'ACTIVE' && Boolean(payload.data.roles?.includes(requiredRole));
+    } catch {
+      return false;
+    }
+  }
 }

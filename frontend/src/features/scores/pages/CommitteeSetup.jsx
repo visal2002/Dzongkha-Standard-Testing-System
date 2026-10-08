@@ -20,7 +20,6 @@ export default function CommitteeSetup() {
   const [saving, setSaving] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedUser, setSelectedUser] = useState('');
-  const [selectedRole, setSelectedRole] = useState('MEMBER');
   const users = usersData || [];
 
   useEffect(() => { if (!examId && exams?.length) setExamId(exams[0].id); }, [examId, exams]);
@@ -41,10 +40,12 @@ export default function CommitteeSetup() {
   const addMember = () => {
     if (!selectedUser) return toast.error('Select a user');
     if (members.some(member => member.userId === selectedUser)) return toast.error('User is already in this committee');
-    if (selectedRole === 'HEAD' && head) return toast.error('Only one Committee Head is allowed');
-    setMembers(current => [...current, { id: `new-${selectedUser}`, userId: selectedUser, role: selectedRole }]);
+    const selectedCandidate = users.find(user => user.id === selectedUser);
+    if (!selectedCandidate) return toast.error('Selected committee user is unavailable');
+    const role = selectedCandidate.roleCode === 'committee_head' ? 'HEAD' : 'MEMBER';
+    if (role === 'HEAD' && head) return toast.error('Only one Committee Head is allowed');
+    setMembers(current => [...current, { id: `new-${selectedUser}`, userId: selectedUser, role }]);
     setSelectedUser('');
-    setSelectedRole('MEMBER');
     setShowAdd(false);
   };
 
@@ -69,6 +70,6 @@ export default function CommitteeSetup() {
     <div className="max-w-md"><Select label="Examination Window" value={examId} onChange={event => setExamId(event.target.value)} disabled={loadingExams}><option value="">Select examination</option>{(exams || []).map(exam => <option key={exam.id} value={exam.id}>{exam.title} · {exam.code}</option>)}</Select></div>
     {!head && <Alert variant="warning" title="Committee Head Required">Add one Committee Head before saving. Score entry remains locked until the committee is configured.</Alert>}
     {loading ? <div className="py-12 text-center text-text-muted">Loading committee...</div> : <div className="space-y-3">{members.map(member => <div key={member.id || member.userId} className="flex items-center gap-4 p-4 bg-surface-card border border-surface-border rounded-xl"><div className={`w-10 h-10 rounded-full flex items-center justify-center ${member.role === 'HEAD' ? 'bg-brand-gold/10 text-brand-gold' : 'bg-blue-500/10 text-blue-400'}`}>{member.role === 'HEAD' ? <Crown size={18} /> : <Users size={18} />}</div><div className="flex-1"><p className="text-sm font-semibold text-text-primary">{userName(member.userId)}</p><p className="text-xs text-text-muted">{member.role === 'HEAD' ? 'Committee Head · can enter and submit scores' : 'Committee Member · view-only'}</p></div><Button variant="danger" size="xs" icon={<Trash2 size={12} />} onClick={() => setMembers(current => current.filter(item => item.userId !== member.userId))}>Remove</Button></div>)}{!members.length && <div className="p-12 text-center border border-dashed border-surface-border rounded-xl text-sm text-text-muted">No committee members assigned.</div>}</div>}
-    <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Add Committee Member" size="sm" footer={<><Button variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button><Button onClick={addMember}>Add Member</Button></>}><div className="space-y-4"><Select label="System User" value={selectedUser} onChange={event => setSelectedUser(event.target.value)}><option value="">Choose user</option>{users.filter(user => !members.some(member => member.userId === user.id)).map(user => <option key={user.id} value={user.id}>{user.name} · {user.role}</option>)}</Select><Select label="Committee Role" value={selectedRole} onChange={event => setSelectedRole(event.target.value)}><option value="HEAD">Committee Head</option><option value="MEMBER">Committee Member</option></Select></div></Modal>
+    <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Add Committee Member" size="sm" footer={<><Button variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button><Button onClick={addMember}>Add Member</Button></>}><div className="space-y-4"><Select label="System User" value={selectedUser} onChange={event => setSelectedUser(event.target.value)}><option value="">Choose user</option>{users.filter(user => !members.some(member => member.userId === user.id)).map(user => <option key={user.id} value={user.id}>{user.name} · {user.role}</option>)}</Select><p className="text-xs text-text-muted">The active system role determines the committee role.</p></div></Modal>
   </div>;
 }

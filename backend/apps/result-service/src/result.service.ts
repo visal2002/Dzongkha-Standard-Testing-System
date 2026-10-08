@@ -36,6 +36,12 @@ export class ResultService {
     const uniqueUsers = new Set(dto.members.map((member) => member.userId));
     if (uniqueUsers.size !== dto.members.length) throw new DomainException('COMMITTEE_MEMBER_DUPLICATE', 'A user may only appear once in a committee.');
     if (dto.members.filter((member) => member.role === CommitteeRole.Head).length !== 1) throw new DomainException('COMMITTEE_HEAD_REQUIRED', 'Exactly one active Committee Head is required.');
+    const validRoleAssignments = await Promise.all(
+      dto.members.map((member) => this.identityClient.hasCommitteeRole(member.userId, member.role)),
+    );
+    if (validRoleAssignments.some((valid) => !valid)) {
+      throw new DomainException('COMMITTEE_ROLE_MISMATCH', 'Committee Heads and members must be assigned from users holding the matching active system role.', 400);
+    }
     return this.dataSource.transaction(async (manager) => {
       let committee = await manager.findOne(CommitteeEntity, { where: { examId }, lock: { mode: 'pessimistic_write' } });
       if (committee && await manager.exists(ScoreSheetEntity, { where: { committeeId: committee.id } })) {
@@ -326,7 +332,6 @@ export class ResultService {
   }
 
   private async assertCommitteeHead(manager: EntityManager, committeeId: string, actor: AccessClaims) {
-    if (actor.permissions.includes('*')) return;
     if (!await manager.existsBy(CommitteeMemberEntity, { committeeId, userId: actor.sub, role: CommitteeRole.Head, removedAt: IsNull() })) {
       throw new DomainException('COMMITTEE_HEAD_REQUIRED', 'Only the designated Committee Head may enter or submit scores.', 403);
     }

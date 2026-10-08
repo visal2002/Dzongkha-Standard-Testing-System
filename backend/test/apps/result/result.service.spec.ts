@@ -120,6 +120,7 @@ const makeScoring = (): ScoringService =>
 const identityClient = {
   nameFor: jest.fn().mockResolvedValue(null),
   namesFor: jest.fn().mockResolvedValue(new Map()),
+  hasCommitteeRole: jest.fn().mockResolvedValue(true),
 } as unknown as IdentityClientService;
 
 const buildService = (
@@ -181,6 +182,18 @@ describe('ResultService — Committee formation (BRD §2.5)', () => {
         ],
       }, mfaActor(), 'req-1'),
     ).rejects.toMatchObject({ response: { code: 'COMMITTEE_HEAD_REQUIRED' } });
+  });
+
+  it('rejects a Head assignment when the user does not hold the Committee Head system role', async () => {
+    const roleCheck = identityClient.hasCommitteeRole as jest.Mock;
+    roleCheck.mockResolvedValueOnce(false);
+    const service = buildService();
+
+    await expect(
+      service.setCommittee(uuid(), {
+        members: [{ userId: uuid(), role: CommitteeRole.Head }],
+      }, mfaActor(), 'req-role-mismatch'),
+    ).rejects.toMatchObject({ response: { code: 'COMMITTEE_ROLE_MISMATCH' } });
   });
 
   it('locks committee once score entry has begun', async () => {
