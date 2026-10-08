@@ -113,7 +113,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8004 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: appeal-certificate-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/appeal-certificate-service:20414f7
+          image: dev-harbor.systems.gov.bt/dzongjuk/appeal-certificate-service:fcd05b8
           ports: [{ name: appeal, containerPort: 8005 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_appeal_certificate }, { name: APPEAL_PORT, value: "8005" }]
