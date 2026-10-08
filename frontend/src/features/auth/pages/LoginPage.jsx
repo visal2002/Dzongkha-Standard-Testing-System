@@ -488,8 +488,9 @@ export default function LoginPage() {
                               onChange={e => setRegDob(e.target.value)}
                               readOnly={regCidLookup.fields.includes('dateOfBirth')}
                               required
-                              className={INPUT_ICON_CLS}
+                              className={`${INPUT_ICON_CLS} date-input-with-icon`}
                             />
+                            <Calendar aria-hidden="true" size={16} className="date-picker-icon absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                           </div>
                         </div>
 

@@ -5,7 +5,7 @@
  */
 
 import { forwardRef, useId } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Calendar } from 'lucide-react';
 
 const Input = forwardRef(function Input(
   { label, error, hint, icon, iconRight, className = '', required, id, ...props },
@@ -13,6 +13,7 @@ const Input = forwardRef(function Input(
 ) {
   const generatedId = useId();
   const inputId = id || generatedId;
+  const isDate = props.type === 'date';
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
@@ -38,6 +39,7 @@ const Input = forwardRef(function Input(
             error ? 'border-red-500/60' : 'border-surface-border',
             icon ? 'pl-9' : '',
             iconRight ? 'pr-9' : '',
+            isDate ? 'date-input-with-icon' : '',
             className,
           ].join(' ')}
           {...props}
@@ -46,6 +48,9 @@ const Input = forwardRef(function Input(
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted">
             {iconRight}
           </span>
+        )}
+        {isDate && (
+          <Calendar aria-hidden="true" className="date-picker-icon absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" size={16} />
         )}
       </div>
       {error && (
