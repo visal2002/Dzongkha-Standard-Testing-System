@@ -181,8 +181,14 @@ export class ResultService {
     const candidates = await this.eligibility.find({ where: { examId, status: EligibilityStatus.Eligible }, order: { updatedAt: 'ASC' } });
     const sheets = candidates.length ? await this.sheets.findBy({ applicationId: In(candidates.map(candidate => candidate.applicationId)) }) : [];
     const sheetByApplication = new Map(sheets.map(sheet => [sheet.applicationId, sheet]));
+    const profiles = await this.identityClient.applicationProfilesFor(candidates.map((candidate) => candidate.applicationId));
     const names = await this.identityClient.namesFor(candidates.map((candidate) => candidate.testTakerUserId));
-    return candidates.map(candidate => ({ ...candidate, testTakerName: names.get(candidate.testTakerUserId) ?? null, scoreSheet: sheetByApplication.get(candidate.applicationId) ?? null }));
+    return candidates.map((candidate) => ({
+      ...candidate,
+      testTakerName: profiles.get(candidate.applicationId)?.name ?? names.get(candidate.testTakerUserId) ?? null,
+      identityKey: profiles.get(candidate.applicationId)?.cid ?? null,
+      scoreSheet: sheetByApplication.get(candidate.applicationId) ?? null,
+    }));
   }
 
   async myResults(userId: string) {

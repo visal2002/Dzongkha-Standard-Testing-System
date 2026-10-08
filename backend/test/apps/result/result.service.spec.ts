@@ -120,6 +120,7 @@ const makeScoring = (): ScoringService =>
 const identityClient = {
   nameFor: jest.fn().mockResolvedValue(null),
   namesFor: jest.fn().mockResolvedValue(new Map()),
+  applicationProfilesFor: jest.fn().mockResolvedValue(new Map()),
   hasCommitteeRole: jest.fn().mockResolvedValue(true),
 } as unknown as IdentityClientService;
 
@@ -355,7 +356,8 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     const eligibility = makeRepo([candidate]);
     const sheets = makeRepo<ScoreSheetEntity>([]);
     const namesFor = identityClient.namesFor as jest.Mock;
-    namesFor.mockResolvedValueOnce(new Map([[testTakerUserId, 'Pema Dorji']]));
+    (identityClient.applicationProfilesFor as jest.Mock).mockResolvedValueOnce(new Map([[candidate.applicationId, { name: 'Pema Dorji', cid: '11200000000' }]]));
+    namesFor.mockResolvedValueOnce(new Map([[testTakerUserId, 'Identity Fallback Name']]));
     const service = buildService(makeManager(), { eligibility, sheets });
 
     const candidates = await service.getCandidates(
@@ -364,7 +366,7 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     );
 
     expect(candidates).toHaveLength(1);
-    expect(candidates[0]).toMatchObject({ testTakerName: 'Pema Dorji', testTakerUserId });
+    expect(candidates[0]).toMatchObject({ testTakerName: 'Pema Dorji', identityKey: '11200000000', testTakerUserId });
     expect(namesFor).toHaveBeenCalledWith([testTakerUserId]);
   });
 });
