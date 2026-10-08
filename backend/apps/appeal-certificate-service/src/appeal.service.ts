@@ -33,6 +33,8 @@ import {
 import { ResultClientService } from './result-client.service';
 import { CertificateService } from './certificate.service';
 
+const APPEAL_FEE_SETTINGS_AUDIT_ID = '00000000-0000-4000-8000-000000000001';
+
 @Injectable()
 export class AppealService {
   private readonly internalServiceSecret: string;
@@ -409,7 +411,7 @@ export class AppealService {
       entity.waiveFees = dto.waiveFees;
       entity.updatedByUserId = actor.sub;
       const saved = await manager.save(AppealFeeSettingsEntity, entity);
-      await this.audit(manager, 'APPEAL_FEE_WAIVER_UPDATED', 'SYSTEM', actor.sub, requestId, { waiveFees: saved.waiveFees }, 'AppealFeeSettings');
+      await this.audit(manager, 'APPEAL_FEE_WAIVER_UPDATED', APPEAL_FEE_SETTINGS_AUDIT_ID, actor.sub, requestId, { waiveFees: saved.waiveFees }, 'AppealFeeSettings');
       return { waiveFees: saved.waiveFees, updatedAt: saved.updatedAt };
     });
   }
