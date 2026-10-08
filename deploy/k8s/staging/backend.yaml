@@ -105,7 +105,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8003 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: result-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/result-service:696ea40
+          image: dev-harbor.systems.gov.bt/dzongjuk/result-service:20414f7
           ports: [{ name: result, containerPort: 8004 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_result }, { name: RESULT_PORT, value: "8004" }]
@@ -113,7 +113,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8004 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: appeal-certificate-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/appeal-certificate-service:905dcf7
+          image: dev-harbor.systems.gov.bt/dzongjuk/appeal-certificate-service:20414f7
           ports: [{ name: appeal, containerPort: 8005 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_appeal_certificate }, { name: APPEAL_PORT, value: "8005" }]
