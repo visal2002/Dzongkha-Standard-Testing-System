@@ -36,6 +36,7 @@ configMapGenerator:
       - 0026_birms_appeal_payments.sql=../../../backend/database/migrations/0026_birms_appeal_payments.sql
       - 0027_master_configuration.sql=../../../backend/database/migrations/0027_master_configuration.sql
       - 0028_test_taker_profile_onboarding.sql=../../../backend/database/migrations/0028_test_taker_profile_onboarding.sql
+      - 0029_encrypted_score_columns.sql=../../../backend/database/migrations/0029_encrypted_score_columns.sql
   - name: api-gateway-config
     files:
       - nginx.conf=api-gateway.conf
