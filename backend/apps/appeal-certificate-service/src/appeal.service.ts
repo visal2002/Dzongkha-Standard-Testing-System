@@ -395,7 +395,8 @@ export class AppealService {
       this.activeFee(this.dataSource.manager),
       this.dataSource.manager.findOneBy(AppealFeeSettingsEntity, { id: 'SYSTEM' }),
     ]);
-    return { ...fee, waiveFees: settings?.waiveFees === true };
+    const waiveFees = settings?.waiveFees === true;
+    return { ...fee, amountPerSkill: waiveFees ? '0.00' : fee.amountPerSkill, waiveFees };
   }
 
   async getFeeWaiver() {
@@ -412,10 +413,40 @@ export class AppealService {
       entity.updatedByUserId = actor.sub;
       const saved = await manager.save(AppealFeeSettingsEntity, entity);
       await this.audit(manager, 'APPEAL_FEE_WAIVER_UPDATED', APPEAL_FEE_SETTINGS_AUDIT_ID, actor.sub, requestId, { waiveFees: saved.waiveFees }, 'AppealFeeSettings');
+      if (saved.waiveFees) await this.waiveAwaitingPayments(manager, actor, requestId);
       return { waiveFees: saved.waiveFees, updatedAt: saved.updatedAt };
     });
   }
 
+  private async waiveAwaitingPayments(manager: EntityManager, actor: AccessClaims, requestId: string) {
+    const payments = await manager.find(PaymentEntity, {
+      where: { status: In([PaymentStatus.Initiated, PaymentStatus.Failed]) },
+      lock: { mode: 'pessimistic_write' },
+    });
+    for (const payment of payments) {
+      // Do not supersede an issued BIRMS advice; the provider must reconcile or cancel it.
+      if (payment.paymentAdviceNo || payment.paymentRedirectUrl || payment.externalTransactionId) continue;
+      const appeal = await manager.findOne(AppealEntity, { where: { id: payment.referenceId }, lock: { mode: 'pessimistic_write' } });
+      if (!appeal || appeal.status !== AppealStatus.Submitted) continue;
+
+      payment.amount = '0.00';
+      payment.status = PaymentStatus.Waived;
+      payment.gateway = 'SYSTEM_WAIVER';
+      payment.paidAt = new Date();
+      payment.reconciliationStatus = ReconciliationStatus.Waived;
+      await manager.save(PaymentEntity, payment);
+      await manager.save(PaymentEventEntity, manager.create(PaymentEventEntity, {
+        paymentId: payment.id,
+        eventType: 'FEE_WAIVED',
+        externalTransactionId: null,
+        safeData: { waivedBy: actor.sub, amount: '0.00', currency: payment.currency, retroactive: true },
+      }));
+      await this.transition(manager, appeal, AppealStatus.PaymentCompleted, null, 'SYSTEM', requestId, 'Re-evaluation fee waived by System Admin.');
+      await this.transition(manager, appeal, AppealStatus.PendingCommittee, null, 'SYSTEM', requestId, 'Fee-waived appeal released to the Examination Committee.');
+      await this.audit(manager, 'APPEAL_FEE_WAIVED', appeal.id, actor.sub, requestId, { paymentId: payment.id, amount: '0.00', currency: payment.currency, retroactive: true });
+      await this.outbox(manager, DomainEventTypes.AppealPaymentCompleted, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, testTakerUserId: appeal.testTakerUserId, paymentId: payment.id, feeWaived: true });
+    }
+  }
   async createFee(dto: CreateFeeRuleDto, actor: AccessClaims, requestId: string) {
     const effectiveFrom = new Date(dto.effectiveFrom);
     const effectiveTo = dto.effectiveTo ? new Date(dto.effectiveTo) : null;

@@ -296,7 +296,13 @@ export default function AppealList() {
               ].map(([label, value]) => <div key={label}><p className="text-text-muted mb-0.5">{label}</p><p className="font-medium text-text-primary break-all">{value}</p></div>)}
             </div>
             <div className="p-3 bg-surface-bg rounded-xl border border-surface-border"><p className="text-xs text-text-muted mb-1">Reason for Re-evaluation</p><p className="text-sm text-text-primary">{selected.reason}</p></div>
-            {user?.role === 'test_taker' && (
+            {user?.role === 'test_taker' && selected.paymentStatus === 'WAIVED' && (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+                <p className="text-xs font-semibold text-emerald-400">Re-evaluation fee waived</p>
+                <p className="mt-1 text-[11px] text-text-muted">No payment is due. Your request has been sent to the Examination Committee; BIRMS is not required.</p>
+              </div>
+            )}
+            {user?.role === 'test_taker' && selected.paymentStatus !== 'WAIVED' && (
               <div className="rounded-xl border border-brand-gold/20 bg-brand-gold/5 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
