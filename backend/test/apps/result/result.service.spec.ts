@@ -345,6 +345,28 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     expect(result.status).toBe(ScoreSheetStatus.Submitted);
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.ScoreSubmitted)).toBe(true);
   });
+
+  it('returns identity names for eligible test takers', async () => {
+    const examId = uuid();
+    const testTakerUserId = uuid();
+    const candidate = Object.assign(new CandidateEligibilityEntity(), {
+      applicationId: uuid(), examId, testTakerUserId, status: EligibilityStatus.Eligible, sourceEventId: 'evt-name',
+    });
+    const eligibility = makeRepo([candidate]);
+    const sheets = makeRepo<ScoreSheetEntity>([]);
+    const namesFor = identityClient.namesFor as jest.Mock;
+    namesFor.mockResolvedValueOnce(new Map([[testTakerUserId, 'Pema Dorji']]));
+    const service = buildService(makeManager(), { eligibility, sheets });
+
+    const candidates = await service.getCandidates(
+      examId,
+      mfaActor({ permissions: ['*'] }),
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({ testTakerName: 'Pema Dorji', testTakerUserId });
+    expect(namesFor).toHaveBeenCalledWith([testTakerUserId]);
+  });
 });
 
 // ─── result declaration tests ─────────────────────────────────────────────────
