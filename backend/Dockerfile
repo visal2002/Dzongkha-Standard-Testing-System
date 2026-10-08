@@ -22,6 +22,7 @@ WORKDIR /app
 RUN addgroup -S dzongjuk && adduser -S dzongjuk -G dzongjuk
 COPY package*.json .npmrc* ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+RUN apk add --no-cache libreoffice ttf-liberation
 ARG SERVICE
 ENV SERVICE_NAME=${SERVICE}
 COPY --from=build /workspace/dist/apps/${SERVICE} ./dist
