@@ -28,7 +28,7 @@ const examHeadActor = (overrides: Partial<AccessClaims> = {}): AccessClaims => (
   sub: uuid(),
   sessionId: uuid(),
   roles: ['exam_head'],
-  permissions: ['question.upload', 'question.assignment.manage'],
+  permissions: ['question.secure.upload', 'question.secure.download', 'question.secure.publish'],
   assurance: 'NDI',
   ...overrides,
 });
@@ -125,6 +125,16 @@ const buildService = ({
 // ─── upload tests ─────────────────────────────────────────────────────────────
 
 describe('AssessmentService — Question paper upload (BRD §2.4)', () => {
+  it('rejects Question Bank access from a non-Exam Head even with wildcard permission', async () => {
+    const service = buildService();
+    const administrator = examHeadActor({ roles: ['admin'], permissions: ['*'] });
+
+    await expect(service.list(administrator)).rejects.toMatchObject({
+      response: { code: 'EXAM_HEAD_REQUIRED' },
+      status: 403,
+    });
+  });
+
   const validDto = {
     examId: uuid(),
     title: 'Dzongkha Writing Paper 2026',

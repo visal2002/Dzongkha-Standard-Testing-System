@@ -17,6 +17,7 @@ import { AuditService } from './audit.service';
 import { LoginDto, RegisterDto, UpdateOwnProfileDto, UpdatePasswordDto } from './dtos';
 import { LoginAttemptEntity, NdiLoginRequestEntity, RoleEntity, SessionEntity, UserEntity } from './entities';
 import { NdiProviderService } from './ndi-provider.service';
+import { validatePassportPhotoDataUrl } from './profile-photo';
 
 interface RequestContext {
   requestId: string;
@@ -72,7 +73,7 @@ export class AuthService {
     if (contactNumber !== undefined) user.contactNumber = contactNumber.trim() || null;
     if (dto.education !== undefined) user.education = dto.education.trim() || null;
     const photo = dto.photo ?? dto.avatar;
-    if (photo !== undefined) user.photo = this.validatedPhoto(photo);
+    if (photo !== undefined) user.photo = validatePassportPhotoDataUrl(photo);
     await this.users.save(user);
     await this.audit.record({
       action: 'PROFILE_UPDATED', resourceType: 'User', resourceId: user.id,
@@ -370,15 +371,6 @@ export class AuthService {
     return typeof revealed === 'string' && revealed.trim() ? revealed.trim() : null;
   }
 
-  private validatedPhoto(value: string): string {
-    const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(value);
-    if (!match) throw new DomainException('PROFILE_PHOTO_INVALID', 'Upload a JPEG, PNG, or WebP image.', 400);
-    const bytes = Buffer.from(match[2], 'base64');
-    if (bytes.length === 0 || bytes.length > 3 * 1024 * 1024) {
-      throw new DomainException('PROFILE_PHOTO_INVALID', 'The passport photo must be 3 MB or smaller.', 400);
-    }
-    return value;
-  }
 
   private hash(value: string) { return createHash('sha256').update(value).digest('hex'); }
   private publicUser(user: UserEntity) {

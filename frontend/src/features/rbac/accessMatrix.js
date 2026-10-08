@@ -52,7 +52,7 @@ export const ACCESS_MATRIX = {
   },
   dcdd: {
     users: 'read', roles: 'read', registration: 'full', verification: 'full',
-    attendance: 'full', questions: 'read', scores: 'read', appeals: 'read',
+    attendance: 'full', scores: 'read', appeals: 'read',
     certificates: 'full', reports: 'full',
   },
   exam_head: {
@@ -60,14 +60,14 @@ export const ACCESS_MATRIX = {
     scores: 'read', appeals: 'read', certificates: 'read', reports: 'read',
   },
   committee_head: {
-    registration: 'read', questions: 'read', scores: 'submit', appeals: 'process',
+    registration: 'read', scores: 'submit', appeals: 'process',
     certificates: 'read', reports: 'read',
   },
   committee_member: {
     registration: 'read', scores: 'read', appeals: 'read', reports: 'read',
   },
   chief_executive: {
-    registration: 'read', questions: 'read', scores: 'read', appeals: 'approve',
+    registration: 'read', scores: 'read', appeals: 'approve',
     certificates: 'read', reports: 'read',
   },
   test_taker: {

@@ -85,7 +85,7 @@ export const scoreService = {
       const { data: draftEnvelope } = await apiClient.put(`/score-sheets/${applicationId}/draft`, values);
       const draft = draftEnvelope?.data ?? draftEnvelope;
       const { data: submitEnvelope } = await apiClient.post(
-        `/score-sheets/${draft.id}/submit`, null,
+        `/score-sheets/${draft.id}/submit`, {},
         { headers: { 'Idempotency-Key': createUuid() } },
       );
       return submitEnvelope?.data ?? submitEnvelope;

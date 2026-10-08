@@ -150,7 +150,7 @@ describe('every approved role resolves a sidebar', () => {
     expect(navigationFor('dcdd').some(item => item.type === 'section' && item.label === 'Read-Only')).toBe(false);
   });
 
-  it('gives the Committee Head five flat items and nothing else - v2 strict least-privilege, plus the Question Bank Archive', () => {
+  it('gives the Committee Head four flat items and no Question Bank access', () => {
     // Supersedes the earlier draft that kept Registration/Question Papers/Sample
     // Papers/Score History/Certificates/Reports visible under a demoted "Read-Only"
     // section. BRD §5.5-5.6 define this role's actual job as band score entry
@@ -172,7 +172,7 @@ describe('every approved role resolves a sidebar', () => {
     const committeeHeadNav = navigationFor('committee_head');
     expect(committeeHeadNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
     expect(committeeHeadNav.map(item => item.label)).toEqual([
-      'Dashboard', 'Question Bank Archive', 'Band Score Entry', 'Re-evaluation Panel', 'Revision Status Tracker',
+      'Dashboard', 'Band Score Entry', 'Re-evaluation Panel', 'Revision Status Tracker',
     ]);
 
     [
@@ -245,7 +245,7 @@ describe('every approved role resolves a sidebar', () => {
     ].forEach(label => expect(menuFor('dcdd'), label).not.toContain(label));
   });
 
-  it('gives the System Administrator exactly seven flat items and nothing else - v2 strict least-privilege', () => {
+  it('gives the System Administrator exactly eight flat items and nothing else - v2 strict least-privilege', () => {
     // v2 sidebar decision: this supersedes an earlier draft that collapsed DCDD's
     // day-to-day screens (Exam Windows, Verification, Absentee) into a de-emphasised
     // "Admin Overrides" group for System Admin. This version removes them from the
@@ -261,6 +261,7 @@ describe('every approved role resolves a sidebar', () => {
       'Role Management',
       'Permission & Association Management',
       'Role Assignment',
+      'Committee Setup',
       'System Audit Logs',
       'Technical Settings',
     ]);
@@ -324,10 +325,10 @@ describe('route guards admit exactly the roles the matrix allows', () => {
   it('gives the Chief of Examiner read access plus the appeal queue', () => {
     const reachable = routesFor('chief_executive');
     expect(reachable).toEqual(expect.arrayContaining([
-      '/registration/windows', '/registration/applications', '/questions',
+      '/registration/windows', '/registration/applications',
       '/scores/view', '/scores/summary', '/appeals', '/certificates', '/reports',
     ]));
-    ['/verification', '/attendance', '/questions/upload', '/scores', '/appeals/new',
+    ['/verification', '/attendance', '/questions', '/questions/upload', '/scores', '/appeals/new',
       '/admin/users', '/admin/roles', '/scores/committee', '/masters',
     ].forEach(path => expect(reachable, path).not.toContain(path));
   });
@@ -347,8 +348,8 @@ describe('route guards admit exactly the roles the matrix allows', () => {
     // four-item sidebar no longer links to the rest, so those routes stay reachable
     // by direct URL, the same unsurfaced-entitlement treatment used everywhere else.
     const reachable = routesFor('committee_head');
-    expect(reachable).toEqual(expect.arrayContaining(['/scores', '/appeals', '/appeals/revisions', '/questions']));
-    ['/scores/committee', '/verification', '/attendance', '/questions/upload', '/questions/downloads', '/admin/users', '/admin/roles']
+    expect(reachable).toEqual(expect.arrayContaining(['/scores', '/appeals', '/appeals/revisions']));
+    ['/scores/committee', '/verification', '/attendance', '/questions', '/questions/upload', '/questions/downloads', '/admin/users', '/admin/roles']
       .forEach(path => expect(reachable, path).not.toContain(path));
   });
 
@@ -361,13 +362,13 @@ describe('route guards admit exactly the roles the matrix allows', () => {
     // own former grants, not just DCDD's.
     const reachable = routesFor('admin');
     expect(reachable).toEqual([
-      '/admin/users', '/admin/roles', '/admin/permissions', '/admin/role-assignment', '/admin/audit-logs',
+      '/admin/users', '/admin/roles', '/scores/committee', '/admin/permissions', '/admin/role-assignment', '/admin/audit-logs',
       '/admin/technical',
     ]);
     [
       '/registration/windows', '/my-applications', '/registration/apply/:examId', '/registration/applications',
       '/verification', '/attendance', '/questions', '/questions/upload', '/questions/samples',
-      '/scores', '/scores/view', '/scores/summary', '/scores/committee',
+      '/scores', '/scores/view', '/scores/summary',
       '/appeals', '/appeals/new', '/certificates', '/reports', '/reports/my',
       '/masters',
     ].forEach(path => expect(reachable, path).not.toContain(path));
@@ -457,15 +458,13 @@ describe('out-of-matrix operations are registered rather than hard-coded', () =>
     MATRIX_ROLES.forEach(role => expect(canPerform('operationalSettings', role), role).toBe(false));
   });
 
-  it('leaves committee setup with DCDD only - withdrawn from both the System Administrator and the Committee Head', () => {
-    // System Admin lost this under the v2 sidebar decision that withdrew every
-    // exam-workflow operation from that role. The Committee Head held it too, until
-    // the v2 Committee Head sidebar decision withdrew it as well - a Committee Head
-    // assembling and designating themselves does not make organisational sense.
-    // DCDD is left holding it as an unsurfaced grant pending an explicit ownership
-    // ratification (see outOfMatrix.js).
+  it('gives committee setup to DCDD and System Admin, but not the Exam Head or Committee Head', () => {
+    // System Admin owns the visible setup workflow. DCDD keeps its existing
+    // administrative entitlement, while the Exam Head and Committee Head are excluded.
     expect(canPerform('committeeSetup', 'dcdd')).toBe(true);
+    expect(canPerform('committeeSetup', 'admin')).toBe(true);
+    expect(canPerform('committeeSetup', 'exam_head')).toBe(false);
     expect(canPerform('committeeSetup', 'committee_head')).toBe(false);
-    expect(canPerform('committeeSetup', 'admin')).toBe(false);
+
   });
 });

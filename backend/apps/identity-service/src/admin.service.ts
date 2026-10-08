@@ -37,7 +37,10 @@ export class AdminService {
     assertInternalService(this.config, internalKey);
     const user = await this.users.findOneBy({ id });
     if (!user) throw new DomainException('USER_NOT_FOUND', 'User not found.', 404);
-    return { email: user.email, name: user.fullName };
+    return {
+      email: user.email, name: user.fullName, status: user.status,
+      roles: user.roles.map((role) => role.code),
+    };
   }
 
   async listUsers() {
@@ -53,12 +56,16 @@ export class AdminService {
   async listCommitteeRosterCandidates() {
     const users = await this.users.find({ where: { status: 'ACTIVE' }, order: { fullName: 'ASC' } });
     return users
-      .filter((user) => user.roles.some((role) => role.code !== 'test_taker'))
-      .map((user) => ({
-        id: user.id,
-        name: user.fullName,
-        role: user.roles.filter((role) => role.code !== 'test_taker').map((role) => role.name).join(', '),
-      }));
+      .filter((user) => user.roles.some((role) => ['committee_head', 'committee_member'].includes(role.code)))
+      .map((user) => {
+        const roleCode = user.roles.some((role) => role.code === 'committee_head') ? 'committee_head' : 'committee_member';
+        return {
+          id: user.id,
+          name: user.fullName,
+          role: user.roles.find((role) => role.code === roleCode)?.name ?? roleCode,
+          roleCode,
+        };
+      });
   }
 
   async getUser(id: string) {

@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { User, Mail, CreditCard, GraduationCap, Shield, Phone, Lock, Save, Edit2, X, Camera, Calendar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/features/auth/api';
+import { validatePassportPhotoFile } from '@/features/profile/passportPhoto';
 import toast from 'react-hot-toast';
 
 function InfoRow({ icon: Icon, label, value, placeholder = '—' }) {
@@ -215,12 +216,16 @@ export default function ProfilePage() {
   };
 
   // Passport-size photo: mandatory for Test Takers before the rest of the app unlocks.
-  const handlePassportUpload = (e) => {
+  const handlePassportUpload = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) return toast.error('The passport photo must be an image file.');
-    if (file.size > 3 * 1024 * 1024) return toast.error('The passport photo must be 3 MB or smaller.');
+    try {
+      await validatePassportPhotoFile(file);
+    } catch (error) {
+      toast.error(error?.message || 'The selected passport photo is invalid.');
+      return;
+    }
     setSavingPhoto(true);
     const reader = new FileReader();
     reader.onload = async (ev) => {
@@ -228,8 +233,8 @@ export default function ProfilePage() {
       try {
         await updateProfile({ photo: dataUrl });
         toast.success(needsPassportPhoto ? 'Passport photo saved — you now have full access.' : 'Passport photo updated.');
-      } catch {
-        toast.error('Failed to save the passport photo.');
+      } catch (error) {
+        toast.error(error?.message || 'Failed to save the passport photo.');
       } finally {
         setSavingPhoto(false);
       }
@@ -287,7 +292,7 @@ export default function ProfilePage() {
           )}
           {!isTestTaker && (
             <label className="mt-2 flex items-center gap-1 text-sm text-brand-gold cursor-pointer">
-              <input type="file" accept="image/*" className="hidden" disabled={savingPhoto} onChange={handlePassportUpload} />
+              <input type="file" accept="image/jpeg,image/png" className="hidden" disabled={savingPhoto} onChange={handlePassportUpload} />
               <Camera size={16} className="text-brand-gold" /> {savingPhoto ? 'Saving…' : 'Change Photo'}
             </label>
           )}
@@ -300,11 +305,15 @@ export default function ProfilePage() {
                   : 'border-surface-border text-text-secondary hover:bg-surface-border/60'
               }`}
             >
-              <input type="file" accept="image/*" className="hidden" disabled={savingPhoto} onChange={handlePassportUpload} />
+              <input type="file" accept="image/jpeg,image/png" className="hidden" disabled={savingPhoto} onChange={handlePassportUpload} />
               <Camera size={14} />
               {savingPhoto ? 'Saving…' : needsPassportPhoto ? 'Upload passport-size photo (required)' : 'Replace passport-size photo'}
             </label>
           )}
+
+          <p className="text-[10px] text-text-muted leading-relaxed max-w-52">
+            JPEG or PNG | portrait 35:45 | minimum 350 x 450 px | maximum 3 MB
+          </p>
 
           <div className="text-center">
             <p className="text-sm font-bold text-text-primary">{user?.name}</p>

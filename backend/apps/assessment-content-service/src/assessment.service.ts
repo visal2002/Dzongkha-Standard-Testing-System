@@ -105,13 +105,8 @@ export class AssessmentService {
   }
 
   async list(actor: AccessClaims, examId?: string) {
-    let where: { examId?: string | ReturnType<typeof In> } = examId ? { examId } : {};
-    if (!actor.permissions.includes('*') && !actor.permissions.includes('question.assignment.manage')) {
-      const assignments = await this.assignments.findBy({ userId: actor.sub, active: true });
-      const examIds = assignments.map((assignment) => assignment.examId);
-      if (examId && !examIds.includes(examId)) throw new DomainException('EXAM_CONTENT_ASSIGNMENT_REQUIRED', 'You are not assigned to this examination.', 403);
-      if (!examId) where = { examId: In(examIds.length ? examIds : ['00000000-0000-0000-0000-000000000000']) };
-    }
+    this.assertExamHead(actor);
+    const where: { examId?: string } = examId ? { examId } : {};
     const papers = await this.papers.find({ where: where as never, order: { createdAt: 'DESC' }, take: 100 });
     return this.withDocuments(papers);
   }
@@ -195,6 +190,7 @@ export class AssessmentService {
   // paper. `list()` only ever surfaces exams that already have a paper, so an
   // assignment with nothing uploaded yet is otherwise invisible to the caller.
   async myAssignments(actor: AccessClaims) {
+    this.assertExamHead(actor);
     const assignments = await this.assignments.findBy({ userId: actor.sub, active: true });
     const examIds = assignments.map((assignment) => assignment.examId);
     if (!examIds.length) return [];
@@ -207,6 +203,7 @@ export class AssessmentService {
   }
 
   async assignExam(dto: AssignExamContentDto, actor: AccessClaims, requestId: string) {
+    this.assertExamHead(actor);
     return this.dataSource.transaction(async (manager) => {
       await manager.upsert(ExamContentAssignmentEntity, { examId: dto.examId, userId: dto.userId, active: true, assignedByUserId: actor.sub }, ['examId', 'userId']);
       const assignment = await manager.findOneByOrFail(ExamContentAssignmentEntity, { examId: dto.examId, userId: dto.userId });
@@ -245,11 +242,14 @@ export class AssessmentService {
     return paper;
   }
 
-  private async assertAssigned(examId: string, actor: AccessClaims) {
-    if (actor.permissions.includes('*') || actor.permissions.includes('question.assignment.manage')) return;
-    if (!await this.assignments.existsBy({ examId, userId: actor.sub, active: true })) {
-      throw new DomainException('EXAM_CONTENT_ASSIGNMENT_REQUIRED', 'You are not assigned to manage classified content for this examination.', 403);
+  private assertExamHead(actor: AccessClaims) {
+    if (!actor.roles.includes('exam_head')) {
+      throw new DomainException('EXAM_HEAD_REQUIRED', 'Only the Exam Head may access the Question Bank.', 403);
     }
+  }
+
+  private async assertAssigned(_examId: string, actor: AccessClaims) {
+    this.assertExamHead(actor);
   }
 
   /**

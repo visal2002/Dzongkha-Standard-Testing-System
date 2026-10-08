@@ -36,6 +36,12 @@ export class ResultService {
     const uniqueUsers = new Set(dto.members.map((member) => member.userId));
     if (uniqueUsers.size !== dto.members.length) throw new DomainException('COMMITTEE_MEMBER_DUPLICATE', 'A user may only appear once in a committee.');
     if (dto.members.filter((member) => member.role === CommitteeRole.Head).length !== 1) throw new DomainException('COMMITTEE_HEAD_REQUIRED', 'Exactly one active Committee Head is required.');
+    const validRoleAssignments = await Promise.all(
+      dto.members.map((member) => this.identityClient.hasCommitteeRole(member.userId, member.role)),
+    );
+    if (validRoleAssignments.some((valid) => !valid)) {
+      throw new DomainException('COMMITTEE_ROLE_MISMATCH', 'Committee Heads and members must be assigned from users holding the matching active system role.', 400);
+    }
     return this.dataSource.transaction(async (manager) => {
       let committee = await manager.findOne(CommitteeEntity, { where: { examId }, lock: { mode: 'pessimistic_write' } });
       if (committee && await manager.exists(ScoreSheetEntity, { where: { committeeId: committee.id } })) {
@@ -109,14 +115,16 @@ export class ResultService {
         bandLabel: calculated.bandLabel, cefrLevel: calculated.cefrLevel, scoringRuleId: rule.id,
         source: 'ORIGINAL', createdByUserId: actor.sub,
       }));
-      sheet.status = ScoreSheetStatus.Submitted;
+      const publishedAt = new Date();
+      sheet.status = ScoreSheetStatus.Published;
       sheet.currentVersion = 1;
-      sheet.submittedAt = new Date();
+      sheet.submittedAt = publishedAt;
+      sheet.publishedAt = publishedAt;
       await manager.save(sheet);
       await this.audit(manager, 'SCORE_SUBMITTED', 'ScoreSheet', sheet.id, actor.sub, requestId, { version: 1, scoringRuleId: rule.id });
       await this.outbox(manager, DomainEventTypes.ScoreSubmitted, sheet.id, requestId, {
         scoreSheetId: sheet.id, examId: sheet.examId, applicationId: sheet.applicationId, testTakerUserId: candidate.testTakerUserId,
-        version: 1, overallScore: version.overallScore, bandLabel: version.bandLabel, cefrLevel: version.cefrLevel,
+        version: 1, scoreVersionNumber: 1, scores: version.scores, overallScore: version.overallScore, bandLabel: version.bandLabel, cefrLevel: version.cefrLevel,
         writing: version.scores.WRITING, reading: version.scores.READING, listening: version.scores.LISTENING,
         speaking: version.scores.SPEAKING, actorId: actor.sub,
       });
@@ -133,8 +141,9 @@ export class ResultService {
       const rule = await this.scoring.activeRule(manager);
       const eligibleCount = await manager.countBy(CandidateEligibilityEntity, { examId, status: EligibilityStatus.Eligible });
       if (!eligibleCount) throw new DomainException('NO_ELIGIBLE_CANDIDATES', 'There are no eligible candidates to declare.', 409);
-      const submitted = await manager.findBy(ScoreSheetEntity, { examId, status: ScoreSheetStatus.Submitted });
-      if (submitted.length !== eligibleCount) throw new DomainException('RESULTS_INCOMPLETE', `Results are incomplete: ${submitted.length} of ${eligibleCount} eligible candidates have submitted scores.`, 409);
+      const released = await manager.findBy(ScoreSheetEntity, { examId, status: In([ScoreSheetStatus.Submitted, ...RELEASED_STATUSES]) });
+      const submitted = released.filter((sheet) => sheet.status === ScoreSheetStatus.Submitted);
+      if (released.length !== eligibleCount) throw new DomainException('RESULTS_INCOMPLETE', `Results are incomplete: ${released.length} of ${eligibleCount} eligible candidates have submitted scores.`, 409);
       const declaration = await manager.save(ResultDeclarationEntity, manager.create(ResultDeclarationEntity, { examId, scoringRuleId: rule.id, declaredByUserId: actor.sub }));
       const publishedAt = new Date();
       for (const sheet of submitted) { sheet.status = ScoreSheetStatus.Published; sheet.publishedAt = publishedAt; }
@@ -175,7 +184,14 @@ export class ResultService {
     const candidates = await this.eligibility.find({ where: { examId, status: EligibilityStatus.Eligible }, order: { updatedAt: 'ASC' } });
     const sheets = candidates.length ? await this.sheets.findBy({ applicationId: In(candidates.map(candidate => candidate.applicationId)) }) : [];
     const sheetByApplication = new Map(sheets.map(sheet => [sheet.applicationId, sheet]));
-    return candidates.map(candidate => ({ ...candidate, scoreSheet: sheetByApplication.get(candidate.applicationId) ?? null }));
+    const profiles = await this.identityClient.applicationProfilesFor(candidates.map((candidate) => candidate.applicationId));
+    const names = await this.identityClient.namesFor(candidates.map((candidate) => candidate.testTakerUserId));
+    return candidates.map((candidate) => ({
+      ...candidate,
+      testTakerName: profiles.get(candidate.applicationId)?.name ?? names.get(candidate.testTakerUserId) ?? null,
+      identityKey: profiles.get(candidate.applicationId)?.cid ?? null,
+      scoreSheet: sheetByApplication.get(candidate.applicationId) ?? null,
+    }));
   }
 
   async myResults(userId: string) {
@@ -189,8 +205,7 @@ export class ResultService {
 
   async certificateResults(examId: string, internalKey: string | undefined) {
     assertInternalService(this.config, internalKey);
-    const declaration = await this.dataSource.getRepository(ResultDeclarationEntity).findOneBy({ examId });
-    if (!declaration) throw new DomainException('RESULTS_NOT_DECLARED', 'Results have not been declared.', 409);
+
     const sheets = await this.sheets.findBy({ examId, status: In(RELEASED_STATUSES) });
     const candidates = await this.eligibility.findBy({ examId, status: EligibilityStatus.Eligible });
     const candidateByApplication = new Map(candidates.map((candidate) => [candidate.applicationId, candidate]));
@@ -326,7 +341,6 @@ export class ResultService {
   }
 
   private async assertCommitteeHead(manager: EntityManager, committeeId: string, actor: AccessClaims) {
-    if (actor.permissions.includes('*')) return;
     if (!await manager.existsBy(CommitteeMemberEntity, { committeeId, userId: actor.sub, role: CommitteeRole.Head, removedAt: IsNull() })) {
       throw new DomainException('COMMITTEE_HEAD_REQUIRED', 'Only the designated Committee Head may enter or submit scores.', 403);
     }

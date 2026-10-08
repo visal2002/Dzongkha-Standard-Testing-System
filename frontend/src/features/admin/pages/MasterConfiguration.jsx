@@ -296,13 +296,20 @@ function TemplateTab() {
   const [approvingId, setApprovingId] = useState(null);
 
   const latest = useMemo(() => templates?.[0] || null, [templates]);
-  const active = useMemo(() => templates?.find(t => t.status === 'APPROVED') || null, [templates]);
+  const active = useMemo(() => {
+    const now = Date.now();
+    return templates
+      ?.filter(t => t.status === 'APPROVED'
+        && new Date(t.effectiveFrom).getTime() <= now
+        && (!t.effectiveTo || new Date(t.effectiveTo).getTime() > now))
+      .sort((a, b) => new Date(b.effectiveFrom) - new Date(a.effectiveFrom))[0] || null;
+  }, [templates]);
 
   const approve = async (id) => {
     setApprovingId(id);
     try {
       await certificateService.approveTemplate(id);
-      toast.success('Template approved — used for certificates generated from now on');
+      toast.success('Template approved — overlapping older versions were safely superseded');
       reload();
     } catch (error) {
       toast.error(error?.message || 'Failed to approve template');

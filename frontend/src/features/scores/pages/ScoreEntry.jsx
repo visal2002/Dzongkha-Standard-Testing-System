@@ -31,7 +31,7 @@ const columnHelper = createColumnHelper();
 
 export default function ScoreEntry() {
   const { user } = useAuth();
-  const canSubmit = canAccess(user?.role, 'scores', 'submit');
+  const hasSubmitPermission = canAccess(user?.role, 'scores', 'submit');
   const { data: exams, loading: loadingExams } = useApi(examService.getAll);
   const [selectedExamId, setSelectedExamId] = useState('');
   const [candidates, setCandidates] = useState([]);
@@ -67,6 +67,7 @@ export default function ScoreEntry() {
 
   const selectedExam = (exams || []).find(exam => exam.id === selectedExamId);
   const committeeMembers = committee?.members || [];
+  const canSubmit = hasSubmitPermission && committeeMembers.some((member) => member.isHead && member.userId === user?.id);
 
   const handleSubmit = async () => {
     if (Object.values(scores).some(value => !value)) {

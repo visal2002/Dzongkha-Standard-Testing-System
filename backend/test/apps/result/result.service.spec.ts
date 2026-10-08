@@ -120,6 +120,8 @@ const makeScoring = (): ScoringService =>
 const identityClient = {
   nameFor: jest.fn().mockResolvedValue(null),
   namesFor: jest.fn().mockResolvedValue(new Map()),
+  applicationProfilesFor: jest.fn().mockResolvedValue(new Map()),
+  hasCommitteeRole: jest.fn().mockResolvedValue(true),
 } as unknown as IdentityClientService;
 
 const buildService = (
@@ -181,6 +183,18 @@ describe('ResultService — Committee formation (BRD §2.5)', () => {
         ],
       }, mfaActor(), 'req-1'),
     ).rejects.toMatchObject({ response: { code: 'COMMITTEE_HEAD_REQUIRED' } });
+  });
+
+  it('rejects a Head assignment when the user does not hold the Committee Head system role', async () => {
+    const roleCheck = identityClient.hasCommitteeRole as jest.Mock;
+    roleCheck.mockResolvedValueOnce(false);
+    const service = buildService();
+
+    await expect(
+      service.setCommittee(uuid(), {
+        members: [{ userId: uuid(), role: CommitteeRole.Head }],
+      }, mfaActor(), 'req-role-mismatch'),
+    ).rejects.toMatchObject({ response: { code: 'COMMITTEE_ROLE_MISMATCH' } });
   });
 
   it('locks committee once score entry has begun', async () => {
@@ -329,8 +343,37 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     jest.spyOn(scoring, 'activeRule').mockResolvedValue(approvedRule);
     const service = new ResultService(ds, scoring, config, identityClient, makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo());
     const result = await service.submit(sheetId, mfaActor({ sub: headActor.sub }), 'req-1', 'idem-submit-1');
-    expect(result.status).toBe(ScoreSheetStatus.Submitted);
-    expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.ScoreSubmitted)).toBe(true);
+    expect(result.status).toBe(ScoreSheetStatus.Published);
+    const submittedEvent = outboxEvents.find((event) => event.eventType === DomainEventTypes.ScoreSubmitted);
+    expect(submittedEvent?.payload).toMatchObject({
+      scoreSheetId: sheetId,
+      applicationId,
+      scoreVersionNumber: 1,
+      scores: draftSheet.draftScores,
+    });
+  });
+
+  it('returns identity names for eligible test takers', async () => {
+    const examId = uuid();
+    const testTakerUserId = uuid();
+    const candidate = Object.assign(new CandidateEligibilityEntity(), {
+      applicationId: uuid(), examId, testTakerUserId, status: EligibilityStatus.Eligible, sourceEventId: 'evt-name',
+    });
+    const eligibility = makeRepo([candidate]);
+    const sheets = makeRepo<ScoreSheetEntity>([]);
+    const namesFor = identityClient.namesFor as jest.Mock;
+    (identityClient.applicationProfilesFor as jest.Mock).mockResolvedValueOnce(new Map([[candidate.applicationId, { name: 'Pema Dorji', cid: '11200000000' }]]));
+    namesFor.mockResolvedValueOnce(new Map([[testTakerUserId, 'Identity Fallback Name']]));
+    const service = buildService(makeManager(), { eligibility, sheets });
+
+    const candidates = await service.getCandidates(
+      examId,
+      mfaActor({ permissions: ['*'] }),
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({ testTakerName: 'Pema Dorji', identityKey: '11200000000', testTakerUserId });
+    expect(namesFor).toHaveBeenCalledWith([testTakerUserId]);
   });
 });
 

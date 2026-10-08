@@ -50,6 +50,7 @@ const NAV_CONFIG = [
   // none of it can leak back in here.
   { label: 'Permission & Association Management', icon: ClipboardCheck, to: '/admin/permissions', roles: rolesFor('permissionManagement') },
   { label: 'Role Assignment', icon: UserCog, to: '/admin/role-assignment', roles: rolesFor('roleAssignment') },
+  { label: 'Committee Setup', icon: Users, to: '/scores/committee', onlyRoles: ['admin'], roles: rolesFor('committeeSetup') },
   { label: 'System Audit Logs', icon: ScrollText, to: '/admin/audit-logs', roles: rolesFor('systemAuditLogs') },
   // System-level integration configuration (API keys, NDI credentials, SMS/email
   // gateways). Out of the matrix because no module describes infrastructure, but
@@ -96,16 +97,6 @@ const NAV_CONFIG = [
     ],
   },
   { label: 'Sample Papers', icon: FileSearch, to: '/questions/samples', access: ['questions', 'sample'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_head', 'test_taker'] },
-  // v2 sidebar decision reversal: Committee Head's Question Upload "Read" grant (see
-  // the approved matrix above) used to be treated as an unsurfaced situational-
-  // awareness entitlement, the same treatment DCDD's users/roles Read gets - excluded
-  // from the shared group above, reachable only by direct URL. It is now surfaced as
-  // its own read-only "Question Bank Archive" entry so the Committee can see what was
-  // actually asked when reviewing a re-evaluation. No access change: the shared
-  // /questions screen already renders metadata-only for this role - QuestionPapers.jsx
-  // hides View/Download behind `secure_read` (this role holds only `read`) and
-  // Upload/Delete behind `manage` (this role holds neither).
-  { label: 'Question Bank Archive', icon: BookOpen, to: '/questions', onlyRoles: ['committee_head'], access: ['questions', 'read'] },
   // v2 sidebar decision: BRD §5.4.2 defines exactly one function for this role -
   // uploading question papers and answer sheets (BR-1/BR-2) - so it gets a scoped
   // "Question Bank" upload workspace instead of the shared group above, which mixes
@@ -127,6 +118,7 @@ const NAV_CONFIG = [
   { label: 'Upload Sample Paper', icon: LibraryBig, to: '/questions/samples/upload', onlyRoles: ['exam_head'], access: ['questions', 'create'] },
   { label: 'Exam Day Downloads', icon: Download, to: '/questions/downloads', onlyRoles: ['exam_head'], access: ['questions', 'secure_read'] },
   { label: 'Released Sample Papers', icon: FileSearch, to: '/questions/samples', onlyRoles: ['exam_head'], access: ['questions', 'sample'] },
+
   { label: 'Band Score Entry', icon: ClipboardList, to: '/scores', access: ['scores', 'submit'] },
   // ViewScores only ever loads the caller's own results; every other role gets an
   // empty table. It is a personal screen, so it is offered to own-scoped roles only -
@@ -144,14 +136,9 @@ const NAV_CONFIG = [
   // shared Score History screen (built for the roles that also declare results)
   // does not offer, so this gets its own dedicated screen rather than a relabel.
   { label: 'View Band Scores', icon: BarChart3, to: '/scores/band-scores', onlyRoles: ['committee_member'] },
-  // BRD §5.5.2 BR-1: constituting the committee (add/remove members, designate the
-  // Head) is an out-of-matrix operation - see 'committeeSetup' in outOfMatrix.js. The
-  // Committee Head held this too, until the v2 Committee Head sidebar decision
-  // withdrew it - a Committee Head assembling and designating themselves does not
-  // make organisational sense. DCDD is left holding it as an unsurfaced grant pending
-  // an explicit ownership ratification (see outOfMatrix.js); no role currently has a
-  // sidebar entry for it, so none is declared here rather than pointing at a screen
-  // nobody can reach.
+  // BRD §5.5.2 BR-1: constituting the committee (add/remove members and designate
+  // the Head) is an out-of-matrix operation. System Admin owns the visible setup
+  // workflow; the Committee Head remains excluded so they cannot appoint themselves.
   { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_member', 'committee_head'] },
   { label: 'Revision Approvals Queue', icon: Scale, to: '/appeals', onlyRoles: ['chief_executive'] },
   // Same route as the generic 'Re-evaluation' entry above - the approved matrix
@@ -220,6 +207,7 @@ const NAV_LABEL_KEYS = {
   'My Results': 'nav.my_results',
   'Score History': 'nav.score_history',
   'View Band Scores': 'nav.view_band_scores',
+  'Committee Setup': 'nav.committee_setup',
   'Re-evaluation': 'nav.reevaluation',
   'Revision Approvals Queue': 'nav.revision_approvals_queue',
   'Re-evaluation Queue': 'nav.reevaluation_queue',

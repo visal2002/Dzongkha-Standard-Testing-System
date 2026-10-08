@@ -590,3 +590,24 @@ body {
 input, select, textarea {
   font-family: inherit;
 }
+
+/* Show one theme-safe calendar icon while preserving the browser's native date
+   picker's full click target underneath it. */
+.date-input-with-icon {
+  padding-right: 2.5rem;
+}
+
+.date-input-with-icon::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 2.75rem;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.date-input-with-icon:disabled::-webkit-calendar-picker-indicator,
+.date-input-with-icon[readonly]::-webkit-calendar-picker-indicator {
+  cursor: default;
+}
