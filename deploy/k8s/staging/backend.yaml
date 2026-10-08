@@ -97,7 +97,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8002 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: assessment-content-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/assessment-content-service:44b9619
+          image: dev-harbor.systems.gov.bt/dzongjuk/assessment-content-service:a533eab
           ports: [{ name: assessment, containerPort: 8003 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_assessment }, { name: ASSESSMENT_PORT, value: "8003" }]
