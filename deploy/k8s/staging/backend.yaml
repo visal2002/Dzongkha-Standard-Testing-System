@@ -76,7 +76,7 @@ spec:
       imagePullSecrets: [{ name: harbor-registry }]
       containers:
         - name: identity-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:43c7dcb
+          image: dev-harbor.systems.gov.bt/dzongjuk/identity-service:232a136
           ports: [{ name: identity, containerPort: 8001 }]
           envFrom: &commonEnv
             - { configMapRef: { name: dzongjuk-backend-config } }
@@ -105,7 +105,7 @@ spec:
           livenessProbe: { httpGet: { path: /health/live, port: 8003 }, initialDelaySeconds: 20, periodSeconds: 20 }
           resources: *resources
         - name: result-service
-          image: dev-harbor.systems.gov.bt/dzongjuk/result-service:f515a16
+          image: dev-harbor.systems.gov.bt/dzongjuk/result-service:232a136
           ports: [{ name: result, containerPort: 8004 }]
           envFrom: *commonEnv
           env: [{ name: DATABASE_NAME, value: dzongjuk_result }, { name: RESULT_PORT, value: "8004" }]
