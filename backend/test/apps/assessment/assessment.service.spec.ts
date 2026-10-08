@@ -28,7 +28,7 @@ const examHeadActor = (overrides: Partial<AccessClaims> = {}): AccessClaims => (
   sub: uuid(),
   sessionId: uuid(),
   roles: ['exam_head'],
-  permissions: ['question.upload', 'question.assignment.manage'],
+  permissions: ['question.secure.upload', 'question.secure.download', 'question.secure.publish'],
   assurance: 'NDI',
   ...overrides,
 });

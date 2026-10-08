@@ -106,13 +106,7 @@ export class AssessmentService {
 
   async list(actor: AccessClaims, examId?: string) {
     this.assertExamHead(actor);
-    let where: { examId?: string | ReturnType<typeof In> } = examId ? { examId } : {};
-    if (!actor.permissions.includes('*') && !actor.permissions.includes('question.assignment.manage')) {
-      const assignments = await this.assignments.findBy({ userId: actor.sub, active: true });
-      const examIds = assignments.map((assignment) => assignment.examId);
-      if (examId && !examIds.includes(examId)) throw new DomainException('EXAM_CONTENT_ASSIGNMENT_REQUIRED', 'You are not assigned to this examination.', 403);
-      if (!examId) where = { examId: In(examIds.length ? examIds : ['00000000-0000-0000-0000-000000000000']) };
-    }
+    const where: { examId?: string } = examId ? { examId } : {};
     const papers = await this.papers.find({ where: where as never, order: { createdAt: 'DESC' }, take: 100 });
     return this.withDocuments(papers);
   }
@@ -254,12 +248,8 @@ export class AssessmentService {
     }
   }
 
-  private async assertAssigned(examId: string, actor: AccessClaims) {
+  private async assertAssigned(_examId: string, actor: AccessClaims) {
     this.assertExamHead(actor);
-    if (actor.permissions.includes('*') || actor.permissions.includes('question.assignment.manage')) return;
-    if (!await this.assignments.existsBy({ examId, userId: actor.sub, active: true })) {
-      throw new DomainException('EXAM_CONTENT_ASSIGNMENT_REQUIRED', 'You are not assigned to manage classified content for this examination.', 403);
-    }
   }
 
   /**
