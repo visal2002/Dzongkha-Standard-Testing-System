@@ -25,6 +25,7 @@ import { CertificateStorageService } from './certificate-storage.service';
 import { CertificateRendererService } from './certificate-renderer.service';
 import { CertificateSourceClientService } from './certificate-source-client.service';
 import { AppealBirmsService } from './appeal-birms.service';
+import { ScoreSubmittedCertificateConsumer } from './score-submitted-certificate.consumer';
 const InfoController = createServiceInfoController('appeal-certificate-service', ['appeal-payment', 'committee-review', 'chief-decision', 'certificate-versioning', 'public-minimal-verification']);
 @Module({
   imports: [
@@ -39,6 +40,6 @@ const InfoController = createServiceInfoController('appeal-certificate-service',
     PlatformModule,
   ],
   controllers: [InfoController, AppealsController, AppealFeesController, CertificateTemplatesController, CertificatesController, PublicCertificatesController],
-  providers: [AppealService, AppealBirmsService, ResultClientService, AppealOutboxPublisher, CertificateService, CertificateEncryptionService, CertificateStorageService, CertificateRendererService, CertificateSourceClientService],
+  providers: [AppealService, AppealBirmsService, ResultClientService, AppealOutboxPublisher, CertificateService, CertificateEncryptionService, CertificateStorageService, CertificateRendererService, CertificateSourceClientService, ScoreSubmittedCertificateConsumer],
 })
 export class AppModule {}

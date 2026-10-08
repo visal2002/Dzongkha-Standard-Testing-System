@@ -115,14 +115,16 @@ export class ResultService {
         bandLabel: calculated.bandLabel, cefrLevel: calculated.cefrLevel, scoringRuleId: rule.id,
         source: 'ORIGINAL', createdByUserId: actor.sub,
       }));
-      sheet.status = ScoreSheetStatus.Submitted;
+      const publishedAt = new Date();
+      sheet.status = ScoreSheetStatus.Published;
       sheet.currentVersion = 1;
-      sheet.submittedAt = new Date();
+      sheet.submittedAt = publishedAt;
+      sheet.publishedAt = publishedAt;
       await manager.save(sheet);
       await this.audit(manager, 'SCORE_SUBMITTED', 'ScoreSheet', sheet.id, actor.sub, requestId, { version: 1, scoringRuleId: rule.id });
       await this.outbox(manager, DomainEventTypes.ScoreSubmitted, sheet.id, requestId, {
         scoreSheetId: sheet.id, examId: sheet.examId, applicationId: sheet.applicationId, testTakerUserId: candidate.testTakerUserId,
-        version: 1, overallScore: version.overallScore, bandLabel: version.bandLabel, cefrLevel: version.cefrLevel,
+        version: 1, scoreVersionNumber: 1, scores: version.scores, overallScore: version.overallScore, bandLabel: version.bandLabel, cefrLevel: version.cefrLevel,
         writing: version.scores.WRITING, reading: version.scores.READING, listening: version.scores.LISTENING,
         speaking: version.scores.SPEAKING, actorId: actor.sub,
       });
@@ -139,8 +141,9 @@ export class ResultService {
       const rule = await this.scoring.activeRule(manager);
       const eligibleCount = await manager.countBy(CandidateEligibilityEntity, { examId, status: EligibilityStatus.Eligible });
       if (!eligibleCount) throw new DomainException('NO_ELIGIBLE_CANDIDATES', 'There are no eligible candidates to declare.', 409);
-      const submitted = await manager.findBy(ScoreSheetEntity, { examId, status: ScoreSheetStatus.Submitted });
-      if (submitted.length !== eligibleCount) throw new DomainException('RESULTS_INCOMPLETE', `Results are incomplete: ${submitted.length} of ${eligibleCount} eligible candidates have submitted scores.`, 409);
+      const released = await manager.findBy(ScoreSheetEntity, { examId, status: In([ScoreSheetStatus.Submitted, ...RELEASED_STATUSES]) });
+      const submitted = released.filter((sheet) => sheet.status === ScoreSheetStatus.Submitted);
+      if (released.length !== eligibleCount) throw new DomainException('RESULTS_INCOMPLETE', `Results are incomplete: ${released.length} of ${eligibleCount} eligible candidates have submitted scores.`, 409);
       const declaration = await manager.save(ResultDeclarationEntity, manager.create(ResultDeclarationEntity, { examId, scoringRuleId: rule.id, declaredByUserId: actor.sub }));
       const publishedAt = new Date();
       for (const sheet of submitted) { sheet.status = ScoreSheetStatus.Published; sheet.publishedAt = publishedAt; }
@@ -202,8 +205,7 @@ export class ResultService {
 
   async certificateResults(examId: string, internalKey: string | undefined) {
     assertInternalService(this.config, internalKey);
-    const declaration = await this.dataSource.getRepository(ResultDeclarationEntity).findOneBy({ examId });
-    if (!declaration) throw new DomainException('RESULTS_NOT_DECLARED', 'Results have not been declared.', 409);
+
     const sheets = await this.sheets.findBy({ examId, status: In(RELEASED_STATUSES) });
     const candidates = await this.eligibility.findBy({ examId, status: EligibilityStatus.Eligible });
     const candidateByApplication = new Map(candidates.map((candidate) => [candidate.applicationId, candidate]));

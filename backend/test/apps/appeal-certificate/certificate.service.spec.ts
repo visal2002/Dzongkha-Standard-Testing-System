@@ -224,6 +224,32 @@ describe('CertificateService — Authorization (BRD §2.7)', () => {
   });
 });
 
+describe('CertificateService — automatic issuance after score submission', () => {
+  it('issues a certificate directly from the published score event', async () => {
+    const examId = uuid();
+    const applicationId = uuid();
+    const testTakerUserId = uuid();
+    const sources = makeSources(examId, applicationId, testTakerUserId);
+    const service = buildService({ sources });
+
+    const certificate = await service.issueSubmittedScore({
+      examId,
+      applicationId,
+      testTakerUserId,
+      scoreSheetId: uuid(),
+      scoreVersionNumber: 1,
+      scores: { WRITING: 41, READING: 41, LISTENING: 41, SPEAKING: 41 },
+      overallScore: '41.000',
+      bandLabel: '7',
+      cefrLevel: null,
+    }, uuid(), 'score-event-1');
+
+    expect(certificate.testTakerUserId).toBe(testTakerUserId);
+    expect(certificate.status).toBe(CertificateStatus.Active);
+    expect(sources.exam).toHaveBeenCalledWith(examId);
+    expect(sources.profile).toHaveBeenCalledWith(applicationId);
+  });
+});
 // ─── validity date calculation tests ─────────────────────────────────────────
 
 describe('CertificateService — Validity date calculation (BRD §2.7)', () => {

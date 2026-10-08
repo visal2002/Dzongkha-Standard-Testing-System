@@ -38,6 +38,7 @@ configMapGenerator:
       - 0028_test_taker_profile_onboarding.sql=../../../backend/database/migrations/0028_test_taker_profile_onboarding.sql
       - 0029_encrypted_score_columns.sql=../../../backend/database/migrations/0029_encrypted_score_columns.sql
       - 0030_exam_head_question_bank_only.sql=../../../backend/database/migrations/0030_exam_head_question_bank_only.sql
+      - 0031_publish_submitted_results.sql=../../../backend/database/migrations/0031_publish_submitted_results.sql
   - name: api-gateway-config
     files:
       - nginx.conf=api-gateway.conf

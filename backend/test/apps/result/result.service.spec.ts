@@ -343,8 +343,14 @@ describe('ResultService — Score entry (BRD §2.5)', () => {
     jest.spyOn(scoring, 'activeRule').mockResolvedValue(approvedRule);
     const service = new ResultService(ds, scoring, config, identityClient, makeRepo(), makeRepo(), makeRepo(), makeRepo(), makeRepo());
     const result = await service.submit(sheetId, mfaActor({ sub: headActor.sub }), 'req-1', 'idem-submit-1');
-    expect(result.status).toBe(ScoreSheetStatus.Submitted);
-    expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.ScoreSubmitted)).toBe(true);
+    expect(result.status).toBe(ScoreSheetStatus.Published);
+    const submittedEvent = outboxEvents.find((event) => event.eventType === DomainEventTypes.ScoreSubmitted);
+    expect(submittedEvent?.payload).toMatchObject({
+      scoreSheetId: sheetId,
+      applicationId,
+      scoreVersionNumber: 1,
+      scores: draftSheet.draftScores,
+    });
   });
 
   it('returns identity names for eligible test takers', async () => {

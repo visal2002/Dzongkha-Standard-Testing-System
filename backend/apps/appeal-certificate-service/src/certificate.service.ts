@@ -150,6 +150,18 @@ export class CertificateService {
     return response;
   }
 
+  async issueSubmittedScore(result: CertificateResultSource, actorId: string, requestId: string) {
+    const template = await this.activeTemplate();
+    const exam = await this.sources.exam(result.examId);
+    const actor: AccessClaims = {
+      sub: actorId,
+      sessionId: '00000000-0000-4000-8000-000000000000',
+      roles: ['committee_head'],
+      permissions: [],
+      assurance: 'MFA',
+    };
+    return this.issueOne(result, template, new Date(exam.examDate), actor, requestId);
+  }
   async listMine(userId: string) {
     const rows = await this.certificates.find({ where: { testTakerUserId: userId }, order: { issuedAt: 'DESC' } });
     return rows.map((row) => this.ownerView(this.refreshExpiry(row)));
