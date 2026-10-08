@@ -3,9 +3,9 @@ import { render, screen } from '@testing-library/react';
 import Input from './Input';
 
 describe('Input', () => {
-  it('shows a visible calendar icon for date fields', () => {
-    const { container } = render(<Input label="Date of Birth" type="date" />);
-    const input = screen.getByLabelText('Date of Birth');
+  it.each(['date', 'datetime-local'])('shows a visible calendar icon for %s fields', (type) => {
+    const { container } = render(<Input label="Date and Time" type={type} />);
+    const input = screen.getByLabelText('Date and Time');
 
     expect(input).toHaveClass('date-input-with-icon');
     expect(container.querySelector('.date-picker-icon')).toBeInTheDocument();

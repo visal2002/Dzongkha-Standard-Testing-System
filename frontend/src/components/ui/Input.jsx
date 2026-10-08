@@ -13,7 +13,7 @@ const Input = forwardRef(function Input(
 ) {
   const generatedId = useId();
   const inputId = id || generatedId;
-  const isDate = props.type === 'date';
+  const hasDatePicker = ['date', 'datetime-local'].includes(props.type);
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
@@ -39,7 +39,7 @@ const Input = forwardRef(function Input(
             error ? 'border-red-500/60' : 'border-surface-border',
             icon ? 'pl-9' : '',
             iconRight ? 'pr-9' : '',
-            isDate ? 'date-input-with-icon' : '',
+            hasDatePicker ? 'date-input-with-icon' : '',
             className,
           ].join(' ')}
           {...props}
@@ -49,7 +49,7 @@ const Input = forwardRef(function Input(
             {iconRight}
           </span>
         )}
-        {isDate && (
+        {hasDatePicker && (
           <Calendar aria-hidden="true" className="date-picker-icon absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" size={16} />
         )}
       </div>
