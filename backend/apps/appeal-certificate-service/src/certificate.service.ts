@@ -123,13 +123,35 @@ export class CertificateService {
       const template = await manager.findOne(CertificateTemplateEntity, { where: { id }, lock: { mode: 'pessimistic_write' } });
       if (!template) throw new DomainException('CERTIFICATE_TEMPLATE_NOT_FOUND', 'Certificate template not found.', 404);
       if (template.status !== CertificateTemplateStatus.Draft) throw new DomainException('CERTIFICATE_TEMPLATE_NOT_DRAFT', 'Only draft templates may be approved.', 409);
-      const approved = await manager.findBy(CertificateTemplateEntity, { code: template.code, status: CertificateTemplateStatus.Approved });
-      if (approved.some((other) => this.periodsOverlap(template, other))) throw new DomainException('CERTIFICATE_TEMPLATE_PERIOD_OVERLAP', 'An approved template already covers this effective period.', 409);
+      const approved = await manager.find(CertificateTemplateEntity, {
+        where: { status: CertificateTemplateStatus.Approved },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const superseded = approved.filter((other) => this.periodsOverlap(template, other));
+      for (const other of superseded) {
+        if (other.effectiveFrom < template.effectiveFrom) {
+          other.effectiveTo = template.effectiveFrom;
+        } else {
+          other.status = CertificateTemplateStatus.Retired;
+        }
+        await manager.save(other);
+        await this.audit(manager, 'CERTIFICATE_TEMPLATE_SUPERSEDED', other.id, actor.sub, requestId, {
+          replacementTemplateId: template.id,
+          replacementVersionNumber: template.versionNumber,
+          effectiveTo: other.effectiveTo,
+          status: other.status,
+        }, 'CertificateTemplate');
+      }
       template.status = CertificateTemplateStatus.Approved;
       template.approvedByUserId = actor.sub;
       template.approvedAt = new Date();
       await manager.save(template);
-      await this.audit(manager, 'CERTIFICATE_TEMPLATE_APPROVED', template.id, actor.sub, requestId, { code: template.code, versionNumber: template.versionNumber, testOnly: template.testOnly }, 'CertificateTemplate');
+      await this.audit(manager, 'CERTIFICATE_TEMPLATE_APPROVED', template.id, actor.sub, requestId, {
+        code: template.code,
+        versionNumber: template.versionNumber,
+        testOnly: template.testOnly,
+        supersededTemplateIds: superseded.map((other) => other.id),
+      }, 'CertificateTemplate');
       return this.serializeTemplate(template);
     });
   }

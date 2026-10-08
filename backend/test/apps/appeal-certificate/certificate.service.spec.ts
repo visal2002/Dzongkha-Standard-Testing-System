@@ -433,6 +433,52 @@ describe('CertificateService — Self-service download (downloadLatestOwn)', () 
   });
 });
 
+describe('CertificateService.approveTemplate - version handover', () => {
+  const draftTemplate = (effectiveFrom = '2027-01-01') => Object.assign(makeTemplate(), {
+    id: uuid(),
+    versionNumber: 2,
+    status: CertificateTemplateStatus.Draft,
+    effectiveFrom: new Date(effectiveFrom),
+    effectiveTo: null,
+    approvedByUserId: null,
+    approvedAt: null,
+  });
+
+  it('ends an older overlapping template when the replacement becomes effective', async () => {
+    const current = Object.assign(makeTemplate(), { code: 'LEGACY-CERTIFICATE', effectiveFrom: new Date('2026-01-01'), effectiveTo: null });
+    const replacement = draftTemplate('2027-01-01');
+    const manager = makeManager({
+      findOne: jest.fn().mockResolvedValue(replacement),
+      find: jest.fn().mockResolvedValue([current]),
+      save: jest.fn().mockImplementation(async (entityOrData: unknown, data?: unknown) => data ?? entityOrData),
+    });
+    const service = buildService({ manager });
+
+    await service.approveTemplate(replacement.id, mfaActor(), 'req-approve-1');
+
+    expect(current.status).toBe(CertificateTemplateStatus.Approved);
+    expect(current.effectiveTo).toEqual(replacement.effectiveFrom);
+    expect(replacement.status).toBe(CertificateTemplateStatus.Approved);
+    expect(replacement.approvedAt).toBeInstanceOf(Date);
+  });
+
+  it('retires an approved template that starts at the same time as its replacement', async () => {
+    const current = Object.assign(makeTemplate(), { effectiveFrom: new Date('2026-01-01'), effectiveTo: null });
+    const replacement = draftTemplate('2026-01-01');
+    const manager = makeManager({
+      findOne: jest.fn().mockResolvedValue(replacement),
+      find: jest.fn().mockResolvedValue([current]),
+      save: jest.fn().mockImplementation(async (entityOrData: unknown, data?: unknown) => data ?? entityOrData),
+    });
+    const service = buildService({ manager });
+
+    await service.approveTemplate(replacement.id, mfaActor(), 'req-approve-2');
+
+    expect(current.status).toBe(CertificateTemplateStatus.Retired);
+    expect(current.effectiveTo).toBeNull();
+    expect(replacement.status).toBe(CertificateTemplateStatus.Approved);
+  });
+});
 // ─── template creation: asset column extraction ────────────────────────────────
 // `createTemplate`'s per-asset `data`/`mimeType` fallback logic was extracted into
 // `assetColumns()` to bring the transaction's cyclomatic complexity from 22 under
