@@ -124,7 +124,7 @@ export class CertificateService {
       if (!template) throw new DomainException('CERTIFICATE_TEMPLATE_NOT_FOUND', 'Certificate template not found.', 404);
       if (template.status !== CertificateTemplateStatus.Draft) throw new DomainException('CERTIFICATE_TEMPLATE_NOT_DRAFT', 'Only draft templates may be approved.', 409);
       const approved = await manager.find(CertificateTemplateEntity, {
-        where: { status: CertificateTemplateStatus.Approved },
+        where: { code: template.code, status: CertificateTemplateStatus.Approved },
         lock: { mode: 'pessimistic_write' },
       });
       const superseded = approved.filter((other) => this.periodsOverlap(template, other));
