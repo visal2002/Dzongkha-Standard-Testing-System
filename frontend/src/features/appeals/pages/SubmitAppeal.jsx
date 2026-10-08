@@ -77,7 +77,7 @@ export default function SubmitAppeal() {
         skills: selectedSkills,
         reason,
       });
-      toast.success('Re-evaluation request submitted. Continue the payment through BIRMS from Re-evaluation.');
+      toast.success(feeRule?.waiveFees ? 'Re-evaluation submitted. The fee was waived and your request is with the committee.' : 'Re-evaluation request submitted. Continue the payment through BIRMS from Re-evaluation.');
       navigate('/appeals');
     } catch (requestError) {
       toast.error(requestError.message || 'Unable to submit the re-evaluation request.');
@@ -117,8 +117,8 @@ export default function SubmitAppeal() {
         icon={<Scale size={18} />}
       />
 
-      <Alert variant="info" title="Payment through BIRMS">
-        Submission creates a payment-pending re-evaluation request. Open the submitted request and pay securely through BIRMS before it is released to the Examination Committee.
+      <Alert variant={feeRule.waiveFees ? 'success' : 'info'} title={feeRule.waiveFees ? 'Re-evaluation fee waived' : 'Payment through BIRMS'}>
+        {feeRule.waiveFees ? 'No payment is required. After submission, your request will be sent directly to the Examination Committee.' : 'Submission creates a payment-pending re-evaluation request. Open the submitted request and pay securely through BIRMS before it is released to the Examination Committee.'}
       </Alert>
 
       <div className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export default function SubmitAppeal() {
             </Select>
             <div>
               <h3 className="text-base font-semibold text-text-primary mb-1">Select Skills for Re-evaluation</h3>
-              <p className="text-sm text-text-muted">Approved fee: {feeRule.currency} {Number(feeRule.amountPerSkill).toFixed(2)} per selected skill.</p>
+              <p className="text-sm text-text-muted">{feeRule.waiveFees ? 'The System Admin has waived the fee for new requests.' : <>Approved fee: {feeRule.currency} {Number(feeRule.amountPerSkill).toFixed(2)} per selected skill.</>}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {SKILLS.map(skill => {
@@ -163,7 +163,7 @@ export default function SubmitAppeal() {
             </div>
             <div className="p-3 bg-surface-bg rounded-xl border border-surface-border flex items-center justify-between">
               <span className="text-sm text-text-secondary">{selectedSkills.length} skill(s) selected</span>
-              <span className="text-lg font-bold text-brand-gold">{feeRule.currency} {fee.toFixed(2)}</span>
+              <span className="text-lg font-bold text-brand-gold">{feeRule.waiveFees ? 'WAIVED' : `${feeRule.currency} ${fee.toFixed(2)}`}</span>
             </div>
             <div className="flex justify-end"><Button disabled={!selectedSkills.length} onClick={() => setStep(1)}>Continue</Button></div>
           </div>
@@ -187,7 +187,7 @@ export default function SubmitAppeal() {
               <div className="flex flex-wrap gap-1.5">{selectedSkills.map(skill => <span key={skill} className="text-xs bg-brand-gold/10 text-brand-gold border border-brand-gold/20 rounded-full px-2 py-0.5">{skillLabel(skill)}</span>)}</div>
             </div>
             <div className="p-4 bg-surface-bg rounded-xl border border-surface-border"><p className="text-xs font-semibold text-text-muted uppercase mb-2">Reason</p><p className="text-sm text-text-primary">{reason}</p></div>
-            <div className="p-4 bg-[#D4830A]/5 border border-brand-gold/20 rounded-xl flex items-center justify-between"><span className="text-sm font-medium text-text-primary">Payment required after submission</span><span className="text-2xl font-bold text-brand-gold">{feeRule.currency} {fee.toFixed(2)}</span></div>
+            <div className="p-4 bg-[#D4830A]/5 border border-brand-gold/20 rounded-xl flex items-center justify-between"><span className="text-sm font-medium text-text-primary">{feeRule.waiveFees ? 'Fee waived' : 'Payment required after submission'}</span><span className="text-2xl font-bold text-brand-gold">{feeRule.waiveFees ? 'WAIVED' : `${feeRule.currency} ${fee.toFixed(2)}`}</span></div>
             <div className="flex justify-between"><Button variant="ghost" onClick={() => setStep(1)}>Back</Button><Button loading={submitting} onClick={handleSubmit} icon={<Scale size={13} />}>Submit Re-evaluation</Button></div>
           </div>
         )}

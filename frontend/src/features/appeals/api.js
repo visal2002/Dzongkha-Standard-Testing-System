@@ -56,6 +56,16 @@ export const appealService = {
     return data;
   },
 
+  getFeeWaiver: async () => {
+    const { data } = await apiClient.get('/appeal-fees/waiver');
+    return data?.data ?? data;
+  },
+
+  setFeeWaiver: async waiveFees => {
+    const { data } = await apiClient.patch('/appeal-fees/waiver', { waiveFees });
+    return data?.data ?? data;
+  },
+
   getConfig: async () => appealService.getActiveFee(),
 
   /**

@@ -15,6 +15,7 @@ import {
   ToggleLeft, ToggleRight, Info
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { appealService } from '@/features/appeals/api';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const load = (key, fallback) => {
@@ -36,7 +37,7 @@ function Field({ label, children }) {
   );
 }
 
-function Toggle({ checked, onChange, id }) {
+function Toggle({ checked, onChange, id, disabled = false }) {
   return (
     <button
       id={id}
@@ -44,6 +45,7 @@ function Toggle({ checked, onChange, id }) {
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
+      disabled={disabled}
       className={`relative w-10 h-5 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-gold/40 ${checked ? 'bg-brand-gold' : 'bg-surface-border'}`}
     >
       <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-5' : ''}`} />
@@ -51,14 +53,14 @@ function Toggle({ checked, onChange, id }) {
   );
 }
 
-function ToggleRow({ label, description, checked, onChange, id }) {
+function ToggleRow({ label, description, checked, onChange, id, disabled = false }) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-surface-border last:border-0">
       <div>
         <p className="text-sm text-text-primary font-medium">{label}</p>
         {description && <p className="text-xs text-text-muted mt-0.5">{description}</p>}
       </div>
-      <Toggle checked={checked} onChange={onChange} id={id} />
+      <Toggle checked={checked} onChange={onChange} id={id} disabled={disabled} />
     </div>
   );
 }
@@ -290,6 +292,32 @@ function EmailSection() {
 }
 
 function PaymentSection() {
+  const [waiveAppealFees, setWaiveAppealFees] = useState(false);
+  const [waiverLoaded, setWaiverLoaded] = useState(false);
+  const [savingWaiver, setSavingWaiver] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    appealService.getFeeWaiver()
+      .then(config => { if (active) setWaiveAppealFees(config?.waiveFees === true); })
+      .catch(error => { if (active) toast.error(error?.message || 'Unable to load re-evaluation fee waiver.'); })
+      .finally(() => { if (active) setWaiverLoaded(true); });
+    return () => { active = false; };
+  }, []);
+
+  const updateAppealFeeWaiver = async enabled => {
+    setSavingWaiver(true);
+    try {
+      const config = await appealService.setFeeWaiver(enabled);
+      setWaiveAppealFees(config?.waiveFees === true);
+      toast.success(enabled ? 'Re-evaluation fees waived for new requests.' : 'Re-evaluation fees restored for new requests.');
+    } catch (error) {
+      toast.error(error?.message || 'Unable to update re-evaluation fee waiver.');
+    } finally {
+      setSavingWaiver(false);
+    }
+  };
+
   return (
     <div className="p-5 space-y-4">
       <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
@@ -310,6 +338,19 @@ function PaymentSection() {
       </div>
       <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
         <AlertTriangle size={13} className="mt-0.5 shrink-0" /> Credentials, platform, agency code, and service code must be installed as protected backend environment values issued by the BIRMS team. They are intentionally not editable or stored in this browser.
+      </div>
+      <div className="rounded-lg border border-surface-border p-4 space-y-2">
+        <p className="text-sm font-semibold text-text-primary">Re-evaluation Fee Waiver</p>
+        <p className="text-xs text-text-muted">This System Administrator option applies to new re-evaluation requests. Existing requests that are waiting for payment are unchanged.</p>
+        <ToggleRow
+          id="ts-waive-appeal-fees"
+          label="Waive re-evaluation fees"
+          description={waiveAppealFees ? 'New requests skip BIRMS payment and go directly to the committee.' : 'New requests follow the approved fee and payment process.'}
+          checked={waiveAppealFees}
+          onChange={updateAppealFeeWaiver}
+          disabled={!waiverLoaded || savingWaiver}
+        />
+        {savingWaiver && <p className="text-xs text-text-muted">Saving fee waiver setting…</p>}
       </div>
     </div>
   );

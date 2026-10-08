@@ -13,7 +13,7 @@ import { AppealFeesController, AppealsController } from './appeal.controller';
 import { CertificatesController, CertificateTemplatesController, PublicCertificatesController } from './certificate.controller';
 import { AppealService } from './appeal.service';
 import {
-  AppealApprovalEntity, AppealAuditEntity, AppealCommitteeReviewEntity, AppealEntity, AppealHistoryEntity,
+  AppealApprovalEntity, AppealAuditEntity, AppealCommitteeReviewEntity, AppealEntity, AppealHistoryEntity, AppealFeeSettingsEntity,
   AppealIdempotencyEntity, AppealOutboxEntity, AppealSkillEntity, FeeRuleEntity, PaymentEntity, PaymentEventEntity,
   CertificateAccessEventEntity, CertificateEntity, CertificateFileEntity, CertificateTemplateEntity,
 } from './entities';
@@ -32,7 +32,7 @@ const InfoController = createServiceInfoController('appeal-certificate-service',
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({ inject: [ConfigService], useFactory: (c: ConfigService) => databaseOptions(c, 'appeal_certificate') }),
     TypeOrmModule.forFeature([
-      FeeRuleEntity, AppealEntity, AppealSkillEntity, PaymentEntity, PaymentEventEntity, AppealCommitteeReviewEntity,
+      FeeRuleEntity, AppealFeeSettingsEntity, AppealEntity, AppealSkillEntity, PaymentEntity, PaymentEventEntity, AppealCommitteeReviewEntity,
       AppealApprovalEntity, AppealHistoryEntity, AppealAuditEntity, AppealIdempotencyEntity, AppealOutboxEntity,
       CertificateTemplateEntity, CertificateFileEntity, CertificateEntity, CertificateAccessEventEntity,
     ]),

@@ -4,13 +4,13 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { Body, Controller, Get, Headers, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch, Post, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Permissions, Public } from '@dzongjuk/security';
 import { AppealService } from './appeal.service';
 import { AppealBirmsService } from './appeal-birms.service';
-import { ChiefDecisionDto, CommitteeReviewDto, ConfirmAppealPaymentDto, CreateAppealDto, CreateFeeRuleDto } from './dtos';
+import { ChiefDecisionDto, CommitteeReviewDto, ConfirmAppealPaymentDto, CreateAppealDto, CreateFeeRuleDto, SetAppealFeeWaiverDto } from './dtos';
 
 @ApiBearerAuth()
 @ApiTags('Appeals')
@@ -62,6 +62,8 @@ export class AppealFeesController {
   constructor(private readonly appeals: AppealService) {}
 
   @Get('active') active() { return this.appeals.getActiveFee(); }
+  @Permissions('admin.user.manage') @Get('waiver') waiver() { return this.appeals.getFeeWaiver(); }
+  @Permissions('admin.user.manage') @Patch('waiver') setWaiver(@Body() dto: SetAppealFeeWaiverDto, @Req() request: Request) { return this.appeals.setFeeWaiver(dto, request.user!, request.id); }
   @Permissions('appeal.fee.manage') @Get() list() { return this.appeals.listFees(); }
   @Permissions('appeal.fee.manage') @Post() create(@Body() dto: CreateFeeRuleDto, @Req() request: Request) { return this.appeals.createFee(dto, request.user!, request.id); }
   @Permissions('appeal.fee.manage') @Post(':id/approve') approve(@Param('id') id: string, @Req() request: Request) { return this.appeals.approveFee(id, request.user!, request.id); }

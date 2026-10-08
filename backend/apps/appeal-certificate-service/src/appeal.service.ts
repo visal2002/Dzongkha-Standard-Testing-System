@@ -10,7 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, IsNull, LessThanOrEqual, MoreThan, Not, Repository } from 'typeorm';
 import { AccessClaims, AppealStatus, DomainEventTypes, Skill } from '@dzongjuk/contracts';
 import { assertSharedSecret, DomainException } from '@dzongjuk/common';
-import { ChiefDecisionDto, CommitteeReviewDto, ConfirmAppealPaymentDto, CreateAppealDto, CreateFeeRuleDto } from './dtos';
+import { ChiefDecisionDto, CommitteeReviewDto, ConfirmAppealPaymentDto, CreateAppealDto, CreateFeeRuleDto, SetAppealFeeWaiverDto } from './dtos';
 import {
   AppealApprovalEntity,
   AppealAuditEntity,
@@ -18,6 +18,7 @@ import {
   AppealDecision,
   AppealEntity,
   AppealHistoryEntity,
+  AppealFeeSettingsEntity,
   AppealIdempotencyEntity,
   AppealOutboxEntity,
   AppealRecommendation,
@@ -71,6 +72,8 @@ export class AppealService {
       });
       if (existing) throw new DomainException('ACTIVE_APPEAL_EXISTS', 'An active appeal already exists for this application.', 409);
       const fee = await this.activeFee(manager);
+      const feeSettings = await manager.findOneBy(AppealFeeSettingsEntity, { id: 'SYSTEM' });
+      const waived = feeSettings?.waiveFees === true;
       const submittedAt = new Date();
       let appeal = await manager.save(AppealEntity, manager.create(AppealEntity, {
         applicationId: dto.applicationId,
@@ -92,7 +95,7 @@ export class AppealService {
         return manager.create(AppealSkillEntity, { appealId: appeal.id, skill, originalScore: String(originalScore), proposedScore: null, finalScore: null });
       });
       await manager.save(AppealSkillEntity, skills);
-      const amount = (Number(fee.amountPerSkill) * selectedSkills.length).toFixed(2);
+      const amount = waived ? '0.00' : (Number(fee.amountPerSkill) * selectedSkills.length).toFixed(2);
       const payment = await manager.save(PaymentEntity, manager.create(PaymentEntity, {
         userId: actor.sub,
         referenceType: 'APPEAL',
@@ -100,19 +103,28 @@ export class AppealService {
         feeRuleId: fee.id,
         amount,
         currency: fee.currency,
-        status: PaymentStatus.Initiated,
-        gateway: null,
+        status: waived ? PaymentStatus.Waived : PaymentStatus.Initiated,
+        gateway: waived ? 'SYSTEM_WAIVER' : null,
         externalTransactionId: null,
         initiatedAt: submittedAt,
-        paidAt: null,
+        paidAt: waived ? submittedAt : null,
         failedAt: null,
-        reconciliationStatus: ReconciliationStatus.Pending,
+        reconciliationStatus: waived ? ReconciliationStatus.Waived : ReconciliationStatus.Pending,
       }));
       appeal.paymentId = payment.id;
       appeal = await manager.save(AppealEntity, appeal);
-      await this.history(manager, appeal.id, null, AppealStatus.Submitted, actor.sub, 'USER', requestId, 'Appeal submitted; payment pending.');
+      await this.history(manager, appeal.id, null, AppealStatus.Submitted, actor.sub, 'USER', requestId, waived ? 'Appeal submitted; re-evaluation fee waived by System Admin.' : 'Appeal submitted; payment pending.');
+      if (waived) {
+        await manager.save(PaymentEventEntity, manager.create(PaymentEventEntity, { paymentId: payment.id, eventType: 'FEE_WAIVED', externalTransactionId: null, safeData: { waivedBy: feeSettings?.updatedByUserId ?? null, amount: '0.00', currency: fee.currency } }));
+      }
       await this.audit(manager, 'APPEAL_SUBMITTED', appeal.id, actor.sub, requestId, { examId: appeal.examId, applicationId: appeal.applicationId, skills: selectedSkills, amount, currency: fee.currency });
       await this.outbox(manager, DomainEventTypes.AppealSubmitted, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, applicationId: appeal.applicationId, testTakerUserId: actor.sub, skills: selectedSkills, paymentStatus: payment.status });
+      if (waived) {
+        await this.transition(manager, appeal, AppealStatus.PaymentCompleted, null, 'SYSTEM', requestId, 'Re-evaluation fee waived by System Admin.');
+        await this.transition(manager, appeal, AppealStatus.PendingCommittee, null, 'SYSTEM', requestId, 'Fee-waived appeal released to the Examination Committee.');
+        await this.audit(manager, 'APPEAL_FEE_WAIVED', appeal.id, feeSettings?.updatedByUserId ?? null, requestId, { paymentId: payment.id, amount: '0.00', currency: fee.currency });
+        await this.outbox(manager, DomainEventTypes.AppealPaymentCompleted, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, testTakerUserId: actor.sub, paymentId: payment.id, feeWaived: true });
+      }
       const response = await this.detail(manager, appeal.id);
       await manager.save(AppealIdempotencyEntity, manager.create(AppealIdempotencyEntity, { scope, key: idempotencyKey, response }));
       return response;
@@ -376,7 +388,31 @@ export class AppealService {
   }
 
   listFees() { return this.fees.find({ order: { effectiveFrom: 'DESC' } }); }
-  getActiveFee() { return this.activeFee(this.dataSource.manager); }
+  async getActiveFee() {
+    const [fee, settings] = await Promise.all([
+      this.activeFee(this.dataSource.manager),
+      this.dataSource.manager.findOneBy(AppealFeeSettingsEntity, { id: 'SYSTEM' }),
+    ]);
+    return { ...fee, waiveFees: settings?.waiveFees === true };
+  }
+
+  async getFeeWaiver() {
+    const settings = await this.dataSource.manager.findOneBy(AppealFeeSettingsEntity, { id: 'SYSTEM' });
+    return { waiveFees: settings?.waiveFees === true, updatedAt: settings?.updatedAt ?? null };
+  }
+
+  async setFeeWaiver(dto: SetAppealFeeWaiverDto, actor: AccessClaims, requestId: string) {
+    this.assertPrivileged(actor);
+    return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+      const settings = await manager.findOne(AppealFeeSettingsEntity, { where: { id: 'SYSTEM' }, lock: { mode: 'pessimistic_write' } });
+      const entity = settings ?? manager.create(AppealFeeSettingsEntity, { id: 'SYSTEM', waiveFees: false, updatedByUserId: null });
+      entity.waiveFees = dto.waiveFees;
+      entity.updatedByUserId = actor.sub;
+      const saved = await manager.save(AppealFeeSettingsEntity, entity);
+      await this.audit(manager, 'APPEAL_FEE_WAIVER_UPDATED', 'SYSTEM', actor.sub, requestId, { waiveFees: saved.waiveFees }, 'AppealFeeSettings');
+      return { waiveFees: saved.waiveFees, updatedAt: saved.updatedAt };
+    });
+  }
 
   async createFee(dto: CreateFeeRuleDto, actor: AccessClaims, requestId: string) {
     const effectiveFrom = new Date(dto.effectiveFrom);

@@ -5,14 +5,21 @@
  */
 
 import { AppealStatus, CertificateStatus, Skill } from '@dzongjuk/contracts';
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Unique, UpdateDateColumn, VersionColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, PrimaryGeneratedColumn, Unique, UpdateDateColumn, VersionColumn } from 'typeorm';
 
-export enum PaymentStatus { Initiated = 'INITIATED', Paid = 'PAID', Failed = 'FAILED' }
-export enum ReconciliationStatus { Pending = 'PENDING', Matched = 'MATCHED', Exception = 'EXCEPTION' }
+export enum PaymentStatus { Initiated = 'INITIATED', Paid = 'PAID', Failed = 'FAILED', Waived = 'WAIVED' }
+export enum ReconciliationStatus { Pending = 'PENDING', Matched = 'MATCHED', Exception = 'EXCEPTION', Waived = 'WAIVED' }
 export enum AppealRecommendation { NoChange = 'NO_CHANGE', Revise = 'REVISE' }
 export enum AppealDecision { Approved = 'APPROVED', Rejected = 'REJECTED' }
 export enum FeeRuleStatus { Draft = 'DRAFT', Approved = 'APPROVED', Retired = 'RETIRED' }
 
+@Entity('appeal_fee_settings')
+export class AppealFeeSettingsEntity {
+  @PrimaryColumn({ type: 'varchar', length: 32 }) id: string;
+  @Column({ default: false }) waiveFees: boolean;
+  @Column({ type: 'uuid', nullable: true }) updatedByUserId: string | null;
+  @UpdateDateColumn({ type: 'timestamptz' }) updatedAt: Date;
+}
 @Entity('fee_rules')
 export class FeeRuleEntity {
   @PrimaryGeneratedColumn('uuid') id: string;

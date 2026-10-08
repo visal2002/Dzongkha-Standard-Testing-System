@@ -46,6 +46,9 @@ export class ConfirmAppealPaymentDto {
   @IsDateString() paidAt: string;
 }
 
+export class SetAppealFeeWaiverDto {
+  @IsBoolean() waiveFees: boolean;
+}
 export class CreateFeeRuleDto {
   @IsString() @Length(2, 80) code: string;
   @IsNumber({ maxDecimalPlaces: 2 }) @Min(0.01) amountPerSkill: number;
