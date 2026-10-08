@@ -150,7 +150,7 @@ describe('every approved role resolves a sidebar', () => {
     expect(navigationFor('dcdd').some(item => item.type === 'section' && item.label === 'Read-Only')).toBe(false);
   });
 
-  it('gives the Committee Head five flat items and nothing else - v2 strict least-privilege, plus the Question Bank Archive', () => {
+  it('gives the Committee Head four flat items and no Question Bank access', () => {
     // Supersedes the earlier draft that kept Registration/Question Papers/Sample
     // Papers/Score History/Certificates/Reports visible under a demoted "Read-Only"
     // section. BRD §5.5-5.6 define this role's actual job as band score entry
@@ -172,7 +172,7 @@ describe('every approved role resolves a sidebar', () => {
     const committeeHeadNav = navigationFor('committee_head');
     expect(committeeHeadNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
     expect(committeeHeadNav.map(item => item.label)).toEqual([
-      'Dashboard', 'Question Bank Archive', 'Band Score Entry', 'Re-evaluation Panel', 'Revision Status Tracker',
+      'Dashboard', 'Band Score Entry', 'Re-evaluation Panel', 'Revision Status Tracker',
     ]);
 
     [
@@ -324,10 +324,10 @@ describe('route guards admit exactly the roles the matrix allows', () => {
   it('gives the Chief of Examiner read access plus the appeal queue', () => {
     const reachable = routesFor('chief_executive');
     expect(reachable).toEqual(expect.arrayContaining([
-      '/registration/windows', '/registration/applications', '/questions',
+      '/registration/windows', '/registration/applications',
       '/scores/view', '/scores/summary', '/appeals', '/certificates', '/reports',
     ]));
-    ['/verification', '/attendance', '/questions/upload', '/scores', '/appeals/new',
+    ['/verification', '/attendance', '/questions', '/questions/upload', '/scores', '/appeals/new',
       '/admin/users', '/admin/roles', '/scores/committee', '/masters',
     ].forEach(path => expect(reachable, path).not.toContain(path));
   });
@@ -347,8 +347,8 @@ describe('route guards admit exactly the roles the matrix allows', () => {
     // four-item sidebar no longer links to the rest, so those routes stay reachable
     // by direct URL, the same unsurfaced-entitlement treatment used everywhere else.
     const reachable = routesFor('committee_head');
-    expect(reachable).toEqual(expect.arrayContaining(['/scores', '/appeals', '/appeals/revisions', '/questions']));
-    ['/scores/committee', '/verification', '/attendance', '/questions/upload', '/questions/downloads', '/admin/users', '/admin/roles']
+    expect(reachable).toEqual(expect.arrayContaining(['/scores', '/appeals', '/appeals/revisions']));
+    ['/scores/committee', '/verification', '/attendance', '/questions', '/questions/upload', '/questions/downloads', '/admin/users', '/admin/roles']
       .forEach(path => expect(reachable, path).not.toContain(path));
   });
 

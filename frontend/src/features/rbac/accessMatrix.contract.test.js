@@ -16,7 +16,7 @@ const APPROVED = {
   registration: ['none',  'full',  'read',    'read',         'read',           'read',          'create_own'],
   verification: ['none',  'full',  'read',    'none',         'none',           'none',          'none'],
   attendance:   ['none',  'full',  'read',    'none',         'none',           'none',          'none'],
-  questions:    ['none',  'read',  'full',    'read',         'none',           'read',          'sample'],
+  questions:    ['none',  'none',  'full',    'none',         'none',           'none',          'sample'],
   scores:       ['none',  'read',  'read',    'submit',       'read',           'read',          'read_own'],
   appeals:      ['none',  'read',  'read',    'process',      'read',           'approve',       'submit_own'],
   certificates: ['none',  'full',  'read',    'read',         'none',           'read',          'read_own'],
@@ -61,7 +61,7 @@ describe('approved access matrix', () => {
   });
 
   it('gives the Chief of Examiner the reads and the approval the document grants', () => {
-    ['registration', 'questions', 'scores', 'certificates', 'reports']
+    ['registration', 'scores', 'certificates', 'reports']
       .forEach(module => expect(getAccessLevel('chief_executive', module), module).toBe('read'));
     expect(getAccessLevel('chief_executive', 'appeals')).toBe('approve');
     // Still no administration, verification, or absentee access.
@@ -110,9 +110,9 @@ describe('question paper metadata is separate from the encrypted document', () =
       .forEach(role => expect(canAccess(role, 'questions', 'secure_read'), role).toBe(false));
   });
 
-  it('still lets the Read roles see the repository listing', () => {
+  it('refuses the Question Bank listing to every non-Exam Head role', () => {
     ['dcdd', 'committee_head', 'chief_executive']
-      .forEach(role => expect(canAccess(role, 'questions', 'read'), role).toBe(true));
+      .forEach(role => expect(canAccess(role, 'questions', 'read'), role).toBe(false));
   });
 });
 

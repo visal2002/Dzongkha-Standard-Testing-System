@@ -20,7 +20,7 @@ import { DocumentType, ExamContentAssignmentEntity, QuestionDocumentEntity, Ques
 
 const uuid = () => `40000000-0000-4000-8000-${Math.random().toString().slice(2, 14).padEnd(12, '0')}`;
 
-const managerActor: AccessClaims = { sub: uuid(), sessionId: uuid(), roles: ['identity_admin'], permissions: ['*'], assurance: 'MFA' };
+const managerActor: AccessClaims = { sub: uuid(), sessionId: uuid(), roles: ['exam_head'], permissions: ['*'], assurance: 'MFA' };
 
 const paper = (id: string, examId: string, status = QuestionPaperStatus.Ready) =>
   Object.assign(new QuestionPaperEntity(), {
