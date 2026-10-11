@@ -8,6 +8,8 @@ import { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { AlertCircle, BarChart3 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import RecordReference from '@/components/ui/RecordReference';
+import { referenceSearch } from '@/lib/recordReferences';
 import DataTable from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/Badge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,9 +71,9 @@ export default function ViewScores() {
   }, [user?.id, user?.role]);
 
   const columns = [
-    columnHelper.accessor('applicationId', {
-      header: 'Application',
-      cell: info => <span className="font-mono text-xs font-medium text-brand-gold">{info.getValue()}</span>,
+    columnHelper.accessor(row => referenceSearch(row.applicationId, 'APP', scores.map(item => item.applicationId)), {
+      id: 'applicationId', header: 'Application reference',
+      cell: info => <RecordReference id={info.row.original.applicationId} ids={scores.map(item => item.applicationId)} className="font-mono text-xs font-medium text-brand-gold" />,
     }),
     columnHelper.accessor('writing', { header: 'Writing Total', cell: info => <ScoreCell value={info.getValue()} /> }),
     columnHelper.accessor('reading', { header: 'Reading Total', cell: info => <ScoreCell value={info.getValue()} /> }),

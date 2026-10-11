@@ -42,9 +42,8 @@ const ROUTES = [
   { path: '/admin/users', access: ['users', 'read'] },
   { path: '/admin/roles', access: ['roles', 'read'] },
   { path: '/scores/committee', operation: 'committeeSetup' },
-  // BRD §5.6.2 Committee BR-2: only the Committee Head runs the committee review
-  // step that produces a revision request, so 'process' is what actually
-  // distinguishes this route from the broader 'read' every appeals-facing role holds.
+  // The committee review step submits a recommendation; only the Chief Executive
+  // has the separate 'approve' action for the final decision.
   { path: '/appeals/revisions', access: ['appeals', 'process'] },
   { path: '/admin/permissions', operation: 'permissionManagement' },
   { path: '/admin/role-assignment', operation: 'roleAssignment' },
@@ -73,7 +72,7 @@ describe('every approved role resolves a sidebar', () => {
     // personal registration record of its own. Only the Test Taker registers for
     // exams, so it is the only role with a real "Register / My Profile" screen. This
     // was fixed per-role (System Admin, then a second role) before being caught a
-    // third time on Exam Head; the entry was removed from the shared Registration
+    // third time on Chief of Examination; the entry was removed from the shared Registration
     // menu entirely rather than excluding one more role, so this holds for every
     // role covered by the matrix, present and future.
     MATRIX_ROLES.filter(role => role !== 'test_taker').forEach(role => {
@@ -90,7 +89,7 @@ describe('every approved role resolves a sidebar', () => {
     // System Administrator held Reports too until the v2 sidebar decision withdrew
     // every exam-workflow module from that role. DCDD sees its own flattened
     // "Reports & Analytics" entry and Chief Executive its own "Executive Reports"
-    // instead of the generic "Reports" label, and Exam Head's, Committee Member's
+    // instead of the generic "Reports" label, and Chief of Examination's, Committee Member's
     // and Committee Head's own v2 strict-least-privilege menus drop Reports from
     // the sidebar entirely (the matrix grant stays real and reachable by direct URL
     // in every case, just unsurfaced) - see the six-item, four-item and three-item
@@ -121,7 +120,7 @@ describe('every approved role resolves a sidebar', () => {
     expect(menuFor('dcdd')).toContain('Master Configuration');
   });
 
-  it('gives the Exam Head exactly five flat items and nothing else - v2 strict least-privilege', () => {
+  it('gives the Chief of Examination its classified-content tools and final approval queue', () => {
     // Supersedes the earlier draft that kept Registration/Verification/Absentee/
     // Score History/Re-evaluation/Certificates/Reports visible under a demoted
     // "Read-Only" section. BRD §5.4.2 defines exactly one function for this role -
@@ -136,7 +135,7 @@ describe('every approved role resolves a sidebar', () => {
     const examHeadNav = navigationFor('exam_head');
     expect(examHeadNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
     expect(examHeadNav.map(item => item.label)).toEqual([
-      'Dashboard', 'Question Bank', 'Upload Sample Paper', 'Exam Day Downloads', 'Released Sample Papers',
+      'Dashboard', 'Question Bank', 'Upload Sample Paper', 'Exam Day Downloads', 'Released Sample Papers', 'Revision Approvals Queue',
     ]);
 
     [
@@ -157,7 +156,7 @@ describe('every approved role resolves a sidebar', () => {
     // (§5.5.2 BR-1/BR-2) and re-evaluation processing (§5.6.1-5.6.2 Committee
     // BR-1/BR-2) - nothing else is a stated day-to-day task, so v2 drops every
     // other module from the sidebar rather than demoting it into a secondary
-    // section, the same treatment Exam Head and Committee Member already carry.
+    // section, the same treatment Chief of Examination and Committee Member already carry.
     // Constituting the committee (§5.5.2 BR-1) is dropped too - a Committee Head
     // assembling and designating themselves does not make organisational sense;
     // see the 'committeeSetup' entry in outOfMatrix.js, now DCDD-only.
@@ -188,14 +187,13 @@ describe('every approved role resolves a sidebar', () => {
   });
 
   it('gives the Committee Member exactly three flat items and nothing else - v2 strict least-privilege', () => {
-    // BRD §5.5.2/§5.6.1 define this role's whole job as viewing submitted band
-    // scores and tracking re-evaluation requests after they clear payment - a pure
-    // read surface, not a defined day-to-day task beyond looking. Registration and
+    // The Committee Member role may review re-evaluation requests and view submitted
+    // band scores. Registration and
     // Reports are "Read" in the matrix by default, the same situational-awareness
     // grant every other v2-reduced role holds, so v2 drops them from the sidebar
     // entirely rather than demoting them into a secondary section - the matrix
     // grant stays real and reachable by direct URL (see the route-guard test
-    // below), the same unsurfaced-entitlement treatment DCDD's and Exam Head's own
+    // below), the same unsurfaced-entitlement treatment DCDD's and Chief of Examination's own
     // situational-awareness grants get.
     const memberNav = navigationFor('committee_member');
     expect(memberNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
@@ -229,6 +227,7 @@ describe('every approved role resolves a sidebar', () => {
     expect(dcddNav.every(item => !item.children && item.type !== 'section'), 'flat, no sections or groups').toBe(true);
     expect(dcddNav.map(item => item.label)).toEqual([
       'Dashboard',
+      'Committee Setup',
       'Registration Windows',
       'Application Verification',
       'Absentee Management',
@@ -333,8 +332,10 @@ describe('route guards admit exactly the roles the matrix allows', () => {
     ].forEach(path => expect(reachable, path).not.toContain(path));
   });
 
-  it('keeps the Committee Member out of every write surface', () => {
+  it('keeps Committee Members out of score and admin write routes while granting review actions', () => {
     const reachable = routesFor('committee_member');
+    expect(canAccess('committee_member', 'appeals', 'process')).toBe(true);
+    expect(canAccess('committee_member', 'appeals', 'approve')).toBe(false);
     expect(reachable).toEqual(expect.arrayContaining(['/appeals', '/scores/summary', '/scores/band-scores', '/reports']));
     ['/scores', '/scores/committee', '/verification', '/attendance', '/questions',
       '/certificates', '/admin/users', '/admin/roles',
@@ -383,7 +384,7 @@ describe('route guards admit exactly the roles the matrix allows', () => {
     expect(canPerform('systemAuditLogs', 'admin')).toBe(true);
   });
 
-  it('gives the Exam Head the question repository but no administration', () => {
+  it('gives the Chief of Examination the question repository but no administration', () => {
     // The matrix (accessMatrix.js) is unchanged for this role under v2 - only the
     // sidebar was reduced to four items. /verification and /attendance remain
     // reachable by direct URL as an unsurfaced entitlement, same as DCDD's.
@@ -396,7 +397,7 @@ describe('route guards admit exactly the roles the matrix allows', () => {
 });
 
 describe('encrypted question documents stay with the roles that hold Full access', () => {
-  it('opens the document controls to the Exam Head only', () => {
+  it('opens the document controls to the Chief of Examination only', () => {
     // System Administrator held this too until the v2 sidebar decision withdrew
     // question-paper access from the role entirely.
     expect(canAccess('exam_head', 'questions', 'secure_read')).toBe(true);
@@ -458,9 +459,9 @@ describe('out-of-matrix operations are registered rather than hard-coded', () =>
     MATRIX_ROLES.forEach(role => expect(canPerform('operationalSettings', role), role).toBe(false));
   });
 
-  it('gives committee setup to DCDD and System Admin, but not the Exam Head or Committee Head', () => {
+  it('gives committee setup to DCDD and System Admin, but not the Chief of Examination or Committee Head', () => {
     // System Admin owns the visible setup workflow. DCDD keeps its existing
-    // administrative entitlement, while the Exam Head and Committee Head are excluded.
+    // administrative entitlement, while the Chief of Examination and Committee Head are excluded.
     expect(canPerform('committeeSetup', 'dcdd')).toBe(true);
     expect(canPerform('committeeSetup', 'admin')).toBe(true);
     expect(canPerform('committeeSetup', 'exam_head')).toBe(false);

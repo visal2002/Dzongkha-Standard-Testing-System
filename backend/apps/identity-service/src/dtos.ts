@@ -4,7 +4,8 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { IsArray, IsDateString, IsEmail, IsIn, IsNumber, IsObject, IsOptional, IsString, Length, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { Matches, IsUUID, ValidateNested, IsArray, IsDateString, IsEmail, IsIn, IsNumber, IsObject, IsOptional, IsString, Length, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsOptional() @IsEmail() email?: string;
@@ -20,6 +21,7 @@ export class RegisterDto {
 }
 
 export class UpdateOwnProfileDto {
+  @IsOptional() @IsString() @MaxLength(160) @Matches(/^[\u0F00-\u0FFF\s]*$/, { message: 'Dzongkha name must use Dzongkha script.' }) fullNameDz?: string;
   @IsOptional() @IsEmail() email?: string;
   @IsOptional() @IsString() @Length(0, 32) phone?: string;
   @IsOptional() @IsString() @Length(0, 32) contactNumber?: string;
@@ -89,4 +91,18 @@ export class UpdateMasterConfigurationDto {
   @IsOptional() @IsArray() bandLevels?: Record<string, unknown>[];
   @IsOptional() @IsObject() certificateTemplate?: Record<string, unknown>;
   @IsOptional() @IsObject() notificationTemplates?: Record<string, string>;
+}
+
+export class NewHandoverUserDto {
+ @IsString() @Length(2, 160) fullName: string;
+ @IsEmail() email: string;
+ @IsString() @Length(5, 32) cid: string;
+ @IsString() @MinLength(12) password: string;
+}
+export class AdminResetPasswordDto {
+ @IsString() @Length(12, 72) password: string;
+}
+export class TransferUserDto {
+ @IsOptional() @IsUUID() targetUserId?: string;
+ @IsOptional() @ValidateNested() @Type(() => NewHandoverUserDto) newUser?: NewHandoverUserDto;
 }

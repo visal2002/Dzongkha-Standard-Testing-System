@@ -10,6 +10,7 @@ import Input, { Select } from '@/components/ui/Input';
 import { examService } from '@/features/exams/api';
 import { useApi } from '@/hooks/useApi';
 import toast from 'react-hot-toast';
+import { sortWindowsLatestFirst } from '../sortWindows';
 
 const emptyForm = { code: '', title: '', examDate: '', venue: '', registrationStart: '', registrationEnd: '', maxCapacity: '', paymentAmount: '' };
 
@@ -97,7 +98,7 @@ export default function RegistrationWindows() {
       {loading ? <div className="py-12 flex justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
         : error ? <div className="bg-surface-card border border-red-500/20 rounded-xl py-12 text-center"><p className="text-sm text-red-400 mb-3">{error}</p><Button size="sm" onClick={() => execute()}>Try Again</Button></div>
         : !(windows || []).length ? <div className="bg-surface-card border border-surface-border rounded-xl py-16 text-center"><Calendar size={32} className="mx-auto text-text-muted mb-3" /><h3 className="text-base font-semibold text-text-primary">No examination windows yet</h3><p className="text-sm text-text-muted mt-1">Create the first window to begin accepting registrations.</p>{isAdmin && <Button className="mt-4" onClick={() => setShowCreate(true)} icon={<Plus size={14} />}>Create Exam Window</Button>}</div>
-        : <div className="grid gap-4">{windows.map(window => {
+        : <div className="grid gap-4">{sortWindowsLatestFirst(windows).map(window => {
           const capacity = Number(window.maxCapacity || 0);
           const registered = Number(window.currentRegistrations || 0);
           const capacityPct = capacity ? registered / capacity * 100 : 0;

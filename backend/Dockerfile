@@ -27,5 +27,7 @@ ARG SERVICE
 ENV SERVICE_NAME=${SERVICE}
 COPY --from=build /workspace/dist/apps/${SERVICE} ./dist
 COPY --from=build /workspace/apps/${SERVICE}/assets ./assets
+RUN if [ -f /app/assets/NotoSerifTibetan-Regular.ttf ]; then mkdir -p /usr/share/fonts/truetype/noto; cp /app/assets/NotoSerifTibetan-*.ttf /usr/share/fonts/truetype/noto/; fc-cache -f; fi
+RUN if [ -f /app/assets/DDC_Uchen.ttf ]; then mkdir -p /usr/share/fonts/truetype/ddc; cp /app/assets/DDC_*.ttf /usr/share/fonts/truetype/ddc/; fc-cache -f; fi
 USER dzongjuk
 CMD ["node", "dist/main.js"]

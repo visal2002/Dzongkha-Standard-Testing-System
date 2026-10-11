@@ -68,6 +68,7 @@ export class CreateCertificateTemplateDto {
   @IsString() @Length(2, 180) chiefExecutiveTitle: string;
   @IsEnum(CertificatePaperSize) paperSize: CertificatePaperSize;
   @IsEnum(CertificateOrientation) orientation: CertificateOrientation;
+  @IsOptional() @IsIn(['DDC Uchen', 'DDC Joyig']) dzongkhaFont?: 'DDC Uchen' | 'DDC Joyig';
   @IsInt() @Min(1) @Max(240) validityMonths: number;
   @IsOptional() @IsBoolean() testOnly?: boolean;
   @IsDateString() effectiveFrom: string;
@@ -75,6 +76,7 @@ export class CreateCertificateTemplateDto {
   @IsOptional() @ValidateNested() @Type(() => CertificateTemplateAssetDto) leftLogo?: CertificateTemplateAssetDto;
   @IsOptional() @ValidateNested() @Type(() => CertificateTemplateAssetDto) rightLogo?: CertificateTemplateAssetDto;
   @IsOptional() @ValidateNested() @Type(() => CertificateTemplateAssetDto) borderImage?: CertificateTemplateAssetDto;
+  @IsOptional() @ValidateNested() @Type(() => CertificateTemplateAssetDto) examinationSignatureImage?: CertificateTemplateAssetDto;
   @IsOptional() @ValidateNested() @Type(() => CertificateTemplateAssetDto) signatureImage?: CertificateTemplateAssetDto;
   @IsOptional() @ValidateNested() @Type(() => CertificateTemplateAssetDto) sealImage?: CertificateTemplateAssetDto;
 }
@@ -85,4 +87,8 @@ export class GenerateCertificatesDto {
 
 export class RevokeCertificateDto {
   @IsString() @Length(10, 1000) reason: string;
+}
+
+export class TransliterateNameDto {
+  @IsString() @Length(1, 160) @Matches(/^[A-Za-z \u0F00-\u0FFF.’'\-]+$/) englishName: string;
 }

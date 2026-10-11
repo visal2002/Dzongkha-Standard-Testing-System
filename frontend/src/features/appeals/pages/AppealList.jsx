@@ -13,10 +13,13 @@ import { canAccess } from '@/features/rbac/accessMatrix';
 import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/Badge';
+import { humanizeStatus } from '@/lib/statusLabels';
+import { shortReferences } from '@/lib/recordReferences';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Stepper from '@/components/ui/Stepper';
-import { Textarea } from '@/components/ui/Input';
+import DecisionRemarks from '../DecisionRemarks';
+import { addAppealReferences } from '../shortReferences';
 import Alert from '@/components/ui/Alert';
 import { appealService } from '@/features/appeals/api';
 import toast from 'react-hot-toast';
@@ -27,9 +30,11 @@ const SCORE_OPTIONS = Array.from({ length: 19 }, (_, index) => (index * 0.5 + 1)
 // Re-evaluation pipeline, mirrored from the AppealStatus states the backend can return
 // (backend/libs/contracts/src/index.ts). Purely presentational - the request's real
 // status still drives every actual decision.
-const PIPELINE_STEPS = ['Payment', 'Committee Review', 'Chief of Examiner Approval', 'Outcome'];
+const PIPELINE_STEPS = ['Payment', 'Committee Review', 'Chief of Examination Approval', 'Outcome'];
+const isOutcomeComplete = status => ['NO_CHANGE', 'REJECTED', 'COMPLETED'].includes(status);
 const pipelineStepIndex = status => {
-  if (['NO_CHANGE', 'REJECTED', 'APPROVED_PENDING_SCORE_UPDATE', 'COMPLETED'].includes(status)) return 3;
+  if (isOutcomeComplete(status)) return PIPELINE_STEPS.length;
+  if (status === 'APPROVED_PENDING_SCORE_UPDATE') return 3;
   if (status === 'PENDING_CHIEF_APPROVAL') return 2;
   if (['PAYMENT_COMPLETED', 'PENDING_COMMITTEE', 'REVISION_REQUESTED'].includes(status)) return 1;
   return 0;
@@ -39,7 +44,8 @@ const normalizeAppeal = appeal => ({
   ...appeal,
   skills: (appeal.skills || []).map(skill => skill.skill),
   originalScores: Object.fromEntries((appeal.skills || []).map(skill => [skill.skill, Number(skill.originalScore)])),
-  proposedScores: Object.fromEntries((appeal.skills || []).filter(skill => skill.proposedScore !== null).map(skill => [skill.skill, Number(skill.proposedScore)])),
+  proposedScores: Object.fromEntries((appeal.skills || []).filter(skill => skill.proposedScore != null && Number.isFinite(Number(skill.proposedScore))).map(skill => [skill.skill, Number(skill.proposedScore)])),
+  finalScores: Object.fromEntries((appeal.skills || []).filter(skill => skill.finalScore != null && Number.isFinite(Number(skill.finalScore))).map(skill => [skill.skill, Number(skill.finalScore)])),
   paymentAmount: appeal.payment?.amount || '0.00',
   paymentCurrency: appeal.payment?.currency || 'BTN',
   paymentStatus: appeal.payment?.status || 'UNKNOWN',
@@ -65,13 +71,11 @@ export default function AppealList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [paymentBusy, setPaymentBusy] = useState(false);
-  // Derived from the approved matrix, never from a role name. `approve` is the
-  // Chief of Examiner's final decision and `process` the Committee Head's review
-  // step; the two are separate actions, so a Committee Member - View only on
-  // Re-evaluation - reaches neither, and neither role can perform the other's step.
-  const canApprove = canAccess(user?.role, 'appeals', 'approve');
-  const canProcess = canAccess(user?.role, 'appeals', 'process');
-  const canSubmit = canAccess(user?.role, 'appeals', 'submit_own');
+  // Derived from the access matrix, never from a role name. Committee Heads and
+  // Members can submit committee reviews; only the Chief of Examination can approve.
+  const canApprove = canAccess(user, 'appeals', 'approve');
+  const canProcess = canAccess(user, 'appeals', 'process');
+  const canSubmit = canAccess(user, 'appeals', 'submit_own');
   const decisionsComplete = selected?.skills?.every(skill => skillDecisions[skill]) ?? false;
   const reviseChanged = selected?.skills?.some(skill => proposedScores[skill] !== undefined && Number(proposedScores[skill]) !== selected.originalScores[skill]) ?? false;
   const isCommitteeMember = user?.role === 'committee_member';
@@ -82,10 +86,10 @@ export default function AppealList() {
     setError('');
     try {
       // Only a role that may read everyone's appeals gets the organisation-wide list.
-      const response = canAccess(user?.role, 'appeals', 'read_all')
+      const response = canAccess(user, 'appeals', 'read_all')
         ? await appealService.getAll()
         : await appealService.getByUser(user.id);
-      setData((response.data || []).map(normalizeAppeal));
+      setData(addAppealReferences((response.data || []).map(normalizeAppeal)));
     } catch (requestError) {
       setError(requestError.message || 'Unable to load re-evaluation requests.');
     } finally {
@@ -93,7 +97,7 @@ export default function AppealList() {
     }
   };
 
-  useEffect(() => { load(); }, [user?.id, user?.role]);
+  useEffect(() => { load(); }, [user?.id, user?.role, canAccess(user, 'appeals', 'read_all')]);
 
   const openAppeal = appeal => {
     setSelected(appeal);
@@ -116,7 +120,7 @@ export default function AppealList() {
     try {
       await appealService.decide(id, skillDecisions, remarks || 'Re-evaluation reviewed after privileged review.');
       const anyApproved = Object.values(skillDecisions).includes('APPROVED');
-      toast.success(anyApproved ? 'Re-evaluation decision recorded; approved skills will be revised.' : 'Re-evaluation rejected for every appealed skill.');
+      toast.success(anyApproved ? (selected?.committeeRecommendation === 'NO_CHANGE' ? 'No-change recommendation approved; published scores remain unchanged.' : 'Re-evaluation decision recorded; approved skills will be revised.') : 'Re-evaluation rejected for every appealed skill.');
       closeModal();
       await load();
     } catch (requestError) {
@@ -128,7 +132,7 @@ export default function AppealList() {
     if (remarks.length < 3) return;
     try {
       await appealService.submitRevision(id, { recommendation: 'NO_CHANGE', remarks });
-      toast.success('No-change review completed.');
+      toast.success('No-change recommendation sent to the Chief of Examination for approval.');
       closeModal();
       await load();
     } catch (requestError) {
@@ -141,7 +145,7 @@ export default function AppealList() {
     try {
       const numericScores = Object.fromEntries(Object.entries(proposedScores).map(([skill, value]) => [skill, Number(value)]));
       await appealService.submitRevision(id, { recommendation: 'REVISE', remarks, proposedScores: numericScores });
-      toast.success('Revision request submitted for Chief of Examiner approval. The published score stays locked until then.');
+      toast.success('Revision request submitted for Chief of Examination approval. The published score stays locked until then.');
       closeModal();
       await load();
     } catch (requestError) {
@@ -211,8 +215,8 @@ export default function AppealList() {
   };
 
   const columns = [
-    columnHelper.accessor('id', { header: 'Request ID', cell: info => <span className="font-mono text-xs text-text-muted">{info.getValue()}</span> }),
-    columnHelper.accessor('applicationId', { header: 'Application', cell: info => <span className="font-mono text-xs text-brand-gold">{info.getValue()}</span> }),
+    columnHelper.accessor(row => `${row.requestReference} ${row.id}`, { id: 'id', header: 'Request reference', cell: info => <span title={`Full request ID: ${info.row.original.id}`} className="font-mono text-xs font-medium text-text-secondary whitespace-nowrap">{info.row.original.requestReference}</span> }),
+    columnHelper.accessor(row => `${row.applicationReference} ${row.applicationId}`, { id: 'applicationId', header: 'Application reference', cell: info => <span title={`Full application ID: ${info.row.original.applicationId}`} className="font-mono text-xs font-medium text-brand-gold whitespace-nowrap">{info.row.original.applicationReference}</span> }),
     columnHelper.accessor('skills', { header: 'Skills', cell: info => <span className="text-xs text-text-secondary">{info.getValue().join(', ')}</span> }),
     // BRD §5.6.1: the Committee Member's queue must show the candidate's original
     // score alongside the flagged skill(s) and submission date without opening the
@@ -232,17 +236,17 @@ export default function AppealList() {
     columnHelper.accessor('submittedAt', { header: 'Submitted', cell: info => <span className="text-xs text-text-muted">{new Date(info.getValue()).toLocaleDateString()}</span> }),
     columnHelper.display({
       id: 'actions',
-      cell: ({ row }) => <Button variant="ghost" size="xs" icon={<Eye size={12} />} onClick={() => openAppeal(row.original)}>View</Button>,
+      cell: ({ row }) => <Button variant="ghost" size="xs" icon={<Eye size={12} />} onClick={() => openAppeal(row.original)}>{canApprove && row.original.status === 'PENDING_CHIEF_APPROVAL' ? 'Review & Decide' : 'View'}</Button>,
     }),
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={isCommitteeMember ? 'Re-evaluation Queue' : 'Re-evaluation'}
+        title={canApprove ? 'Chief of Examination Approval' : isCommitteeMember ? 'Re-evaluation Queue' : 'Re-evaluation'}
         subtitle={
-          canApprove ? 'Review privileged score-revision requests'
-          : isCommitteeMember ? 'View only - track payment, committee review, and outcome status for every request'
+          canApprove ? 'Approve or reject committee-reviewed re-evaluations, including no-change recommendations'
+          : isCommitteeMember ? 'Review requests and submit committee recommendations; final approval remains with the Chief of Examination'
           : 'Track payment, committee review, and final outcomes'
         }
         breadcrumbs={[{ label: isCommitteeMember ? 'Re-evaluation Queue' : 'Re-evaluation' }]}
@@ -256,24 +260,29 @@ export default function AppealList() {
       {canApprove && data.some(appeal => appeal.status === 'PENDING_CHIEF_APPROVAL') && (
         <Alert variant="warning" title="Approval Required">One or more committee revision requests require a privileged decision.</Alert>
       )}
+      {canApprove && !loading && !error && !data.some(appeal => appeal.status === 'PENDING_CHIEF_APPROVAL') && (
+        <Alert variant="info" title="No requests awaiting Chief approval">
+          {pendingCommitteeCount > 0 ? 'Requests are still awaiting committee review. They will appear for your decision after the committee submits a revision or no-change recommendation.' : 'All committee-reviewed requests have already been decided, or no requests have been submitted.'}
+        </Alert>
+      )}
       {isCommitteeMember && pendingCommitteeCount > 0 && (
         <Alert variant="warning" title="Newly routed for committee review">
-          {pendingCommitteeCount} re-evaluation request{pendingCommitteeCount === 1 ? '' : 's'} cleared payment and now await{pendingCommitteeCount === 1 ? 's' : ''} the Committee Head's review.
+          {pendingCommitteeCount} re-evaluation request{pendingCommitteeCount === 1 ? '' : 's'} cleared payment and await{pendingCommitteeCount === 1 ? 's' : ''} committee review.
         </Alert>
       )}
 
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
-        <DataTable data={data} columns={columns} loading={loading} searchPlaceholder="Search by request or application ID..." emptyMessage="No re-evaluation requests found" />
+        <DataTable data={data} columns={columns} loading={loading} searchPlaceholder="Search reference or full ID..." emptyMessage="No re-evaluation requests found" />
       </div>
 
       <Modal
         isOpen={!!selected}
         onClose={closeModal}
-        title={`Re-evaluation Details - ${selected?.id || ''}`}
+        title={`Re-evaluation Details - ${selected?.requestReference || ''}`}
         size="lg"
         footer={
           canApprove && selected?.status === 'PENDING_CHIEF_APPROVAL' ? (
-            <Button variant="success" disabled={!decisionsComplete} onClick={() => handleDecision(selected.id)} icon={<CheckCircle size={13} />}>Submit Decision</Button>
+            <Button variant="success" disabled={!decisionsComplete || (remarks.length > 0 && remarks.length < 3)} onClick={() => handleDecision(selected.id)} icon={<CheckCircle size={13} />}>Submit Decision</Button>
           ) : canApprove && selected?.status === 'APPROVED_PENDING_SCORE_UPDATE' ? (
             <Button variant="outline" onClick={() => handleRetryApply(selected.id)} icon={<RotateCcw size={13} />}>Retry Applying Revision</Button>
           ) : <Button variant="ghost" onClick={closeModal}>Close</Button>
@@ -285,14 +294,17 @@ export default function AppealList() {
               <p className="text-xs font-semibold text-text-muted uppercase mb-2">Progress</p>
               <Stepper steps={PIPELINE_STEPS} currentStep={pipelineStepIndex(selected.status)} />
             </div>
+            {canApprove && selected.status === 'PENDING_COMMITTEE' && (
+              <Alert variant="info" title="Committee review required">The committee must submit its recommendation before Chief approval is available.</Alert>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               {[
-                ['Application', selected.applicationId],
-                ['Examination', selected.examId],
-                ['Skills', selected.skills.join(', ')],
-                ['Payment', `${selected.paymentCurrency} ${Number(selected.paymentAmount).toFixed(2)} (${selected.paymentStatus})`],
+                ['Application', <span title={`Full application ID: ${selected.applicationId}`}>{selected.applicationReference}</span>],
+                ['Examination', selected.examTitle || selected.examCode || shortReferences(data.map(item => item.examId), 'EXAM')[selected.examId] || 'Not available'],
+                ['Skills', selected.skills.map(humanizeStatus).join(', ')],
+                ['Payment', `${selected.paymentCurrency === 'BTN' ? 'Nu.' : selected.paymentCurrency} ${Number(selected.paymentAmount).toFixed(2)} (${humanizeStatus(selected.paymentStatus)})`],
                 ['Submitted', new Date(selected.submittedAt).toLocaleDateString()],
-                ['Status', selected.status],
+                ['Status', humanizeStatus(selected.status)],
               ].map(([label, value]) => <div key={label}><p className="text-text-muted mb-0.5">{label}</p><p className="font-medium text-text-primary break-all">{value}</p></div>)}
             </div>
             <div className="p-3 bg-surface-bg rounded-xl border border-surface-border"><p className="text-xs text-text-muted mb-1">Reason for Re-evaluation</p><p className="text-sm text-text-primary">{selected.reason}</p></div>
@@ -330,12 +342,18 @@ export default function AppealList() {
               <p className="text-xs font-semibold text-text-muted uppercase mb-2">Selected-skill score snapshot</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 bg-surface-bg border border-surface-border rounded-xl">
-                  <p className="text-[10px] text-text-muted mb-1 font-medium">Published scores</p>
+                  <p className="text-[10px] text-text-muted mb-1 font-medium">Original score snapshot</p>
                   {Object.entries(selected.originalScores).map(([skill, value]) => <div key={skill} className="flex justify-between text-xs"><span>{skill}</span><strong>{value.toFixed(3)}</strong></div>)}
                 </div>
-                {Object.keys(selected.proposedScores).length > 0 && (
+                {isOutcomeComplete(selected.status) && Object.keys(selected.finalScores).length > 0 ? (
+                  <div className="p-3 bg-emerald-500/5 border border-emerald-500/30 rounded-xl">
+                    <p className="text-[10px] text-emerald-400 mb-1 font-medium">Final scores · outcome completed</p>
+                    {Object.entries(selected.finalScores).map(([skill, value]) => <div key={skill} className="flex justify-between text-xs"><span>{skill}</span><strong>{value.toFixed(3)}</strong></div>)}
+                    <p className="mt-2 text-[11px] text-text-muted">{selected.status === 'COMPLETED' && selected.committeeRecommendation !== 'NO_CHANGE' && selected.chiefDecision !== 'REJECTED' ? 'The final decision has been applied to the published result.' : 'The review is complete. Published scores remain unchanged.'}</p>
+                  </div>
+                ) : Object.keys(selected.proposedScores).length > 0 && (
                   <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
-                    <p className="text-[10px] text-amber-400 mb-1 font-medium">Committee proposal, not yet applied</p>
+                    <p className="text-[10px] text-amber-400 mb-1 font-medium">{isOutcomeComplete(selected.status) ? 'Committee proposal (review completed)' : selected.status === 'APPROVED_PENDING_SCORE_UPDATE' ? 'Approved revision, awaiting score update' : 'Committee proposal, not yet applied'}</p>
                     {Object.entries(selected.proposedScores).map(([skill, value]) => <div key={skill} className="flex justify-between text-xs"><span>{skill}</span><strong>{value.toFixed(3)}</strong></div>)}
                   </div>
                 )}
@@ -344,14 +362,14 @@ export default function AppealList() {
             {canApprove && selected.status === 'PENDING_CHIEF_APPROVAL' && (
               <div>
                 <p className="text-xs font-semibold text-text-muted uppercase mb-2">Decision per skill</p>
-                <p className="text-xs text-text-muted mb-2">Choose Approve or Reject for every skill before submitting. Only approved skills receive the proposed score.</p>
+                <p className="text-xs text-text-muted mb-2">{selected.committeeRecommendation === 'NO_CHANGE' ? 'The committee recommends no change. Approve or reject this recommendation for each skill. Published scores will remain unchanged.' : 'Choose Approve or Reject for every skill before submitting. Only approved skills receive the proposed score.'}</p>
                 <div className="space-y-2">
                   {selected.skills.map(skill => (
                     <div key={skill} className="flex items-center justify-between gap-3 p-2.5 bg-surface-bg border border-surface-border rounded-lg">
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-text-primary">{skill}</p>
                         <p className="text-[10px] text-text-muted">
-                          {selected.originalScores[skill]?.toFixed(3)} &rarr; {selected.proposedScores[skill]?.toFixed(3)}
+                          {selected.originalScores[skill]?.toFixed(3)} &rarr; {(selected.committeeRecommendation === 'NO_CHANGE' ? selected.originalScores[skill] : selected.proposedScores[skill])?.toFixed(3)}
                         </p>
                       </div>
                       <div className="flex gap-1.5 shrink-0">
@@ -382,7 +400,7 @@ export default function AppealList() {
                 <p className="text-xs font-semibold text-text-muted uppercase mb-2">Propose a revised score per skill</p>
                 <p className="text-xs text-text-muted mb-2">
                   Adjust at least one appealed skill to submit a revision recommendation. The published score stays
-                  locked - it only changes once the Chief of Examiner approves.
+                  locked - it only changes once the Chief of Examination approves.
                 </p>
                 <div className="space-y-2">
                   {selected.skills.map(skill => (
@@ -404,11 +422,11 @@ export default function AppealList() {
               </div>
             )}
             {(canProcess && selected.status === 'PENDING_COMMITTEE') || (canApprove && selected.status === 'PENDING_CHIEF_APPROVAL') ? (
-              <Textarea label="Decision remarks" rows={3} value={remarks} onChange={event => setRemarks(event.target.value)} placeholder="Record the review rationale..." />
+              <DecisionRemarks required={canProcess && selected.status === 'PENDING_COMMITTEE'} value={remarks} onChange={event => setRemarks(event.target.value)} />
             ) : null}
             {canProcess && selected.status === 'PENDING_COMMITTEE' && (
               <div className="flex flex-wrap gap-2">
-                <Button variant="ghost" disabled={remarks.length < 3} onClick={() => handleNoChange(selected.id)}>Complete as No Change</Button>
+                <Button variant="ghost" disabled={remarks.length < 3} onClick={() => handleNoChange(selected.id)}>Recommend No Change</Button>
                 <Button disabled={remarks.length < 3 || !reviseChanged} onClick={() => handleReviseSubmit(selected.id)} icon={<Send size={13} />}>Submit Revision Request</Button>
               </div>
             )}

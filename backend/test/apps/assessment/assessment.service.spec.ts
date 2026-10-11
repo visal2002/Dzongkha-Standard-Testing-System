@@ -125,7 +125,7 @@ const buildService = ({
 // ─── upload tests ─────────────────────────────────────────────────────────────
 
 describe('AssessmentService — Question paper upload (BRD §2.4)', () => {
-  it('rejects Question Bank access from a non-Exam Head even with wildcard permission', async () => {
+  it('rejects Question Bank access from a non-Chief of Examination even with wildcard permission', async () => {
     const service = buildService();
     const administrator = examHeadActor({ roles: ['admin'], permissions: ['*'] });
 
@@ -372,7 +372,7 @@ describe('AssessmentService — Sample publication (BRD §2.4)', () => {
 
 // ─── dashboard pending-upload support ─────────────────────────────────────────
 
-describe('AssessmentService — Exam Head assignments and pending uploads (BRD §5.4.2 BR-1/BR-2)', () => {
+describe('AssessmentService — Chief of Examination assignments and pending uploads (BRD §5.4.2 BR-1/BR-2)', () => {
   it('reports no assignments as an empty list, not every exam', async () => {
     const service = buildService({ assignments: makeRepo<ExamContentAssignmentEntity>([]) });
     await expect(service.myAssignments(examHeadActor())).resolves.toEqual([]);

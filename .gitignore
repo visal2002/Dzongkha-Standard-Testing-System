@@ -22,6 +22,11 @@ build/
 !*.env.example
 
 # Logs
+# Local QA artifacts and personal-data backups are never release source.
+/tmp/
+/output/
+/share/
+
 *.log
 npm-debug.log*
 yarn-debug.log*

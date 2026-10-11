@@ -10,9 +10,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { In, IsNull, Not, Repository } from 'typeorm';
 import { assertInternalService, DomainException } from '@dzongjuk/common';
+import { AccessClaims } from '@dzongjuk/contracts';
 import { AuditService } from './audit.service';
 import { CreateRoleDto, CreateUserDto, UpdateRolePermissionsDto, UpdateUserDto, UpdateUserRolesDto } from './dtos';
-import { PermissionEntity, RoleEntity, UserEntity } from './entities';
+import { AuditEventEntity, PermissionEntity, RoleEntity, SessionEntity, UserEntity } from './entities';
+import { AdminResetPasswordDto } from './dtos';
 
 // Roles that may only be held by a single active user at a time.
 // Attempting to assign any of these to a second user raises ROLE_SINGLETON_CONFLICT.
@@ -43,9 +45,37 @@ export class AdminService {
     };
   }
 
+  async internalCertificatePhoto(id: string, key: string | undefined) {
+    assertInternalService(this.config, key);
+    const user = await this.users.findOne({ where: { id, deletedAt: IsNull() }, select: ['id', 'photo', 'fullNameDz'], loadEagerRelations: false });
+    if (!user) throw new DomainException('USER_NOT_FOUND', 'Certificate holder profile is unavailable.', 404);
+    return { photo: user.photo ?? null, fullNameDz: user.fullNameDz ?? null };
+  }
+
   async listUsers() {
-    const users = await this.users.find({ order: { createdAt: 'DESC' }, take: 100 });
-    return users.map((user) => this.adminUser(user));
+    // Directory consumers need account/role metadata, not embedded photos or the
+    // nested permission graph. Large photos multiplied by eager role joins can
+    // make this small directory exceed the browser's request timeout.
+    const users = await this.users.find({
+      where: { deletedAt: IsNull() }, order: { createdAt: 'DESC' }, take: 100,
+      loadEagerRelations: false, relations: { roles: true },
+      select: ['id', 'email', 'cid', 'userId', 'fullName', 'status', 'failedLoginCount',
+        'lockedUntil', 'ndiLinkedAt', 'createdAt', 'updatedAt', 'deletedAt',
+        'handoverPending', 'requiresRoleTransfer'],
+    });
+    if (!users.length) return [];
+    // Session creation records successful LOCAL and NDI sign-ins. Include expired
+    // and revoked sessions: logging out does not erase a user's last login, and
+    // lastActivityAt changes on refresh so must not be used as the login time.
+    const logins = await this.users.manager.getRepository(SessionEntity)
+      .createQueryBuilder('session')
+      .select('session.userId', 'userId')
+      .addSelect('MAX(session.createdAt)', 'lastLogin')
+      .where('session.userId IN (:...userIds)', { userIds: users.map(user => user.id) })
+      .groupBy('session.userId')
+      .getRawMany<{ userId: string; lastLogin: Date | string }>();
+    const lastLogins = new Map(logins.map(login => [login.userId, new Date(login.lastLogin).toISOString()]));
+    return users.map((user) => ({ ...this.adminUser(user), lastLogin: lastLogins.get(user.id) ?? null }));
   }
 
   // A minimal projection - id, name and role only, no email or CID - for screens that
@@ -69,13 +99,14 @@ export class AdminService {
   }
 
   async getUser(id: string) {
-    const user = await this.users.findOneBy({ id });
+    const user = await this.users.findOneBy({ id, deletedAt: IsNull() });
     if (!user) throw new DomainException('USER_NOT_FOUND', 'User not found.', 404);
     return user;
   }
 
   async unlockUser(id: string, actorId: string, requestId: string) {
     const user = await this.getUser(id);
+    if (user.handoverPending) throw new DomainException('HANDOVER_IN_PROGRESS', 'Resume the pending handover before changing this user.', 409);
     const previous = { status: user.status, failedLoginCount: user.failedLoginCount, lockedUntil: user.lockedUntil };
     user.failedLoginCount = 0;
     user.lockedUntil = null;
@@ -98,7 +129,8 @@ export class AdminService {
     await this.assertSingletonRoles(dto.roleCodes, null);
     const user = await this.users.save(this.users.create({
       email: dto.email.toLowerCase(), cid: dto.cid, fullName: dto.fullName, userId: await this.allocateUserId(),
-      passwordHash: await bcrypt.hash(dto.password, 12), roles, status: 'ACTIVE',
+      dateOfBirth: dto.dateOfBirth || null, gender: dto.gender || null, contactNumber: dto.contactNumber?.trim() || null,
+      passwordHash: await bcrypt.hash(dto.password, 12), roles, status: 'ACTIVE', requiresRoleTransfer: roles.some(role => role.code !== 'test_taker'),
     }));
     await this.audit.record({ action: 'USER_CREATED', resourceType: 'User', resourceId: user.id, actorUserId: actorId, requestId, safeData: { roles: dto.roleCodes } });
     return user;
@@ -122,6 +154,7 @@ export class AdminService {
 
   async setStatus(id: string, status: 'ACTIVE' | 'DISABLED', actorId: string, requestId: string) {
     const user = await this.getUser(id);
+    if (user.handoverPending) throw new DomainException('HANDOVER_IN_PROGRESS', 'Resume the pending handover before changing this user.', 409);
     user.status = status;
     await this.users.save(user);
     await this.audit.record({ action: 'USER_STATUS_CHANGED', resourceType: 'User', resourceId: id, actorUserId: actorId, requestId, safeData: { status } });
@@ -130,6 +163,7 @@ export class AdminService {
 
   async updateUser(id: string, dto: UpdateUserDto, actorId: string, requestId: string) {
     const user = await this.getUser(id);
+    if (user.handoverPending) throw new DomainException('HANDOVER_IN_PROGRESS', 'Resume the pending handover before changing this user.', 409);
     if (dto.email) {
       const existing = await this.users.findOneBy({ email: dto.email.toLowerCase() });
       if (existing && existing.id !== id) throw new DomainException('USER_DUPLICATE', 'This email is already assigned to another account.', 409);
@@ -145,6 +179,7 @@ export class AdminService {
       const roles = await this.roles.findBy({ code: In(dto.roleCodes), active: true });
       if (roles.length !== new Set(dto.roleCodes).size) throw new DomainException('ROLE_INVALID', 'One or more roles are invalid.');
       await this.assertSingletonRoles(dto.roleCodes, id);
+      user.requiresRoleTransfer = user.requiresRoleTransfer || user.roles.some(role => role.code !== 'test_taker') || roles.some(role => role.code !== 'test_taker');
       user.roles = roles;
     }
     const saved = await this.users.save(user);
@@ -152,9 +187,34 @@ export class AdminService {
     return saved;
   }
 
+  async resetPassword(id: string, dto: AdminResetPasswordDto, actor: AccessClaims, requestId: string) {
+    if (!actor.roles.includes('admin') || !actor.permissions.some(permission => ['admin.user.manage', '*'].includes(permission))) {
+      throw new DomainException('PASSWORD_RESET_FORBIDDEN', 'Only a System Administrator with user-management access can reset passwords.', 403);
+    }
+    if (typeof dto.password !== 'string' || dto.password.trim().length < 12 || Buffer.byteLength(dto.password, 'utf8') > 72) {
+      throw new DomainException('PASSWORD_INVALID', 'Use a password with at least 12 characters and no more than 72 bytes.');
+    }
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    return this.users.manager.transaction(async manager => {
+      const user = await manager.findOne(UserEntity, { where: { id, deletedAt: IsNull() }, lock: { mode: 'pessimistic_write' }, loadEagerRelations: false });
+      if (!user) throw new DomainException('USER_NOT_FOUND', 'User not found.', 404);
+      if (user.handoverPending) throw new DomainException('HANDOVER_IN_PROGRESS', 'Complete the pending handover before resetting this password.', 409);
+      await manager.update(UserEntity, { id }, { passwordHash, passwordSet: true });
+      await manager.update(SessionEntity, { user: { id }, revokedAt: IsNull() }, { revokedAt: new Date() });
+      await manager.save(AuditEventEntity, manager.create(AuditEventEntity, {
+        action: 'ADMIN_PASSWORD_RESET', resourceType: 'User', resourceId: id, actorUserId: actor.sub, requestId,
+        safeData: { refreshSessionsRevoked: true },
+      }));
+      // Never return or audit the password/hash, and do not alter status, roles or profile data.
+      return { passwordReset: true };
+    });
+  }
+
   async deleteUser(id: string, actorId: string, requestId: string) {
     if (id === actorId) throw new DomainException('SELF_DELETE_FORBIDDEN', 'You cannot delete your own account.', 400);
     const user = await this.getUser(id);
+    if (user.handoverPending) throw new DomainException('HANDOVER_IN_PROGRESS', 'Resume the pending handover before changing this user.', 409);
+    if (user.requiresRoleTransfer || user.roles.length !== 1 || user.roles[0].code !== 'test_taker') throw new DomainException('ROLE_TRANSFER_REQUIRED', 'Use the role-transfer wizard before deleting a non-Test Taker user.', 409);
     await this.users.remove(user);
     await this.audit.record({ action: 'USER_DELETED', resourceType: 'User', resourceId: id, actorUserId: actorId, requestId, safeData: {} });
     return { deleted: true };
@@ -162,9 +222,11 @@ export class AdminService {
 
   async setRoles(id: string, dto: UpdateUserRolesDto, actorId: string, requestId: string) {
     const user = await this.getUser(id);
+    if (user.handoverPending) throw new DomainException('HANDOVER_IN_PROGRESS', 'Resume the pending handover before changing this user.', 409);
     const roles = await this.roles.findBy({ code: In(dto.roleCodes), active: true });
     if (roles.length !== new Set(dto.roleCodes).size) throw new DomainException('ROLE_INVALID', 'One or more roles are invalid.');
     await this.assertSingletonRoles(dto.roleCodes, id);
+    user.requiresRoleTransfer = user.requiresRoleTransfer || user.roles.some(role => role.code !== 'test_taker') || roles.some(role => role.code !== 'test_taker');
     user.roles = roles;
     await this.users.save(user);
     await this.audit.record({ action: 'USER_ROLES_CHANGED', resourceType: 'User', resourceId: id, actorUserId: actorId, requestId, safeData: { roles: dto.roleCodes } });

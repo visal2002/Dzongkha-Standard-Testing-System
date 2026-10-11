@@ -8,7 +8,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { createServiceInfoController, databaseOptions, PlatformModule } from '@dzongjuk/common';
-import { SecurityModule } from '@dzongjuk/security';
+import { SecurityModule, createStaffTransferController } from '@dzongjuk/security';
+const StaffTransferController = createStaffTransferController('reporting');
 import { AuditController, DashboardController, ReportsController } from './reporting.controller';
 import { DashboardConfigEntity, ReportJobEntity, ReportResourceProjectionEntity, ReportingAuditEventEntity, ReportingProcessedEventEntity, SavedReportEntity } from './entities';
 import { ReportingService } from './reporting.service';
@@ -22,7 +23,7 @@ const InfoController = createServiceInfoController('reporting-service', ['role-d
     TypeOrmModule.forFeature([ReportResourceProjectionEntity, ReportingAuditEventEntity, ReportingProcessedEventEntity, SavedReportEntity, ReportJobEntity, DashboardConfigEntity]),
     SecurityModule, PlatformModule,
   ],
-  controllers: [InfoController, ReportsController, DashboardController, AuditController],
+  controllers: [StaffTransferController, InfoController, ReportsController, DashboardController, AuditController],
   providers: [ReportingService, ReportingEventConsumer, ReportJobWorker],
 })
 export class AppModule {}

@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import dzUiTranslations from './dzUiTranslations';
 
 const canonicalTranslations = {
+  'Good afternoon,': 'ཉིན་མ་བདེ་ལེགས།',
+  'Good evening,': 'ཕྱི་རུ་བདེ་ལེགས།',
   'System Administration': 'རིམ་ལུགས་བདག་སྐྱོང་།',
   'Welcome,': 'དགའ་བསུ་ཞུ།',
   'Live administration data is connected to the staging backend.': 'ཐད་ཀར་བདག་སྐྱོང་གནས་སྡུད་འདི་ ཚོད་བལྟའི་རྒྱབ་ལྗོངས་ལུ་མཐུད་ཡོད།',
@@ -25,7 +27,7 @@ const canonicalTranslations = {
   'Test Taker': 'ཡིག་རྒྱུགས་པ།',
   'Committee Member': 'ཚོགས་ཆུང་འཐུས་མི།',
   'Committee Head': 'ཚོགས་ཆུང་འགོ་འཛིན།',
-  'Exam Head': 'ཡིག་རྒྱུགས་འགོ་འཛིན།',
+  'Chief of Examination': 'ཡིག་རྒྱུགས་འགོ་འཛིན།',
   'DCDD Administrator': 'DCDD བདག་སྐྱོང་པ།',
 };
 

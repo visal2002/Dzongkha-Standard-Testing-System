@@ -12,6 +12,7 @@ import { DataSource, Repository } from 'typeorm';
 import { ReportQueryDto } from './dtos';
 import { ReportFormat, ReportJobEntity, ReportJobStatus } from './entities';
 import { ReportingService } from './reporting.service';
+import { displayReportReferences } from './display-references';
 
 @Injectable()
 export class ReportJobWorker implements OnModuleInit, OnApplicationShutdown {
@@ -40,7 +41,7 @@ export class ReportJobWorker implements OnModuleInit, OnApplicationShutdown {
       if (!job) return;
       try {
         const result = await this.reporting.query(job.definition as unknown as ReportQueryDto);
-        const artifact = await this.render(job.format, result.fields, result.rows);
+        const artifact = await this.render(job.format, result.fields, displayReportReferences(result.dataset, result.rows));
         job.artifact = artifact.bytes;
         job.fileName = `dzongjuk-${result.dataset}-${job.id}.${artifact.extension}`;
         job.mimeType = artifact.mimeType;

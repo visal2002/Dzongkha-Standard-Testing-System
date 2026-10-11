@@ -4,13 +4,14 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { Body, Controller, Get, Headers, Param, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Post, Req, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { RawResponse } from '@dzongjuk/common';
+import { DomainException, RawResponse } from '@dzongjuk/common';
 import { AnyPermissions, Permissions, Public } from '@dzongjuk/security';
+import { transliterateName } from './name-transliteration';
 import { CertificateService } from './certificate.service';
-import { CreateCertificateTemplateDto, GenerateCertificatesDto, RevokeCertificateDto } from './dtos';
+import { CreateCertificateTemplateDto, GenerateCertificatesDto, RevokeCertificateDto, TransliterateNameDto } from './dtos';
 
 @ApiBearerAuth()
 @ApiTags('Certificate templates')
@@ -19,6 +20,8 @@ export class CertificateTemplatesController {
   constructor(private readonly certificates: CertificateService) {}
   @Permissions('certificate.template.manage') @Get() list() { return this.certificates.listTemplates(); }
   @Permissions('certificate.template.manage') @Post() create(@Body() dto: CreateCertificateTemplateDto, @Req() request: Request) { return this.certificates.createTemplate(dto, request.user!, request.id); }
+  @Permissions('certificate.template.manage') @Delete(':id') remove(@Param('id') id: string, @Req() request: Request) { return this.certificates.retireTemplate(id, request.user!, request.id); }
+  @Permissions('certificate.template.manage') @Post(':id/activate') activate(@Param('id') id: string, @Req() request: Request) { return this.certificates.activateTemplate(id, request.user!, request.id); }
   @Permissions('certificate.template.manage') @Post(':id/approve') approve(@Param('id') id: string, @Req() request: Request) { return this.certificates.approveTemplate(id, request.user!, request.id); }
 }
 
@@ -27,6 +30,13 @@ export class CertificateTemplatesController {
 @Controller('certificates')
 export class CertificatesController {
   constructor(private readonly certificates: CertificateService) {}
+  @AnyPermissions('certificate.view_own', 'certificate.manage', 'certificate.issue')
+  @Post('names/transliterate')
+  transliterate(@Body() dto: TransliterateNameDto, @Res({ passthrough: true }) response: Response) {
+    response.setHeader('cache-control', 'private, no-store');
+    try { return transliterateName(dto.englishName); }
+    catch { throw new DomainException('NAME_TRANSLITERATION_INVALID', 'Enter a valid English name with 1 to 160 characters.', 400); }
+  }
   @Permissions('certificate.issue') @Post('generate') generate(@Body() dto: GenerateCertificatesDto, @Headers('idempotency-key') key: string, @Req() request: Request) { return this.certificates.generate(dto.examId, request.user!, request.id, key); }
   @Permissions('certificate.manage') @Get() list() { return this.certificates.listAll(); }
   @Permissions('certificate.view_own') @Get('my') my(@Req() request: Request) { return this.certificates.listMine(request.user!.sub); }

@@ -47,6 +47,7 @@ export class UserEntity {
   // NDI/admin provisioning; nullable so legacy rows created before this column remain valid.
   @Index({ unique: true }) @Column({ type: 'varchar', length: 4, nullable: true }) userId: string | null;
   @Column({ length: 160 }) fullName: string;
+  @Column({ type: 'varchar', length: 160, nullable: true }) fullNameDz: string | null;
   @Column({ type: 'varchar', select: false, nullable: true }) passwordHash: string | null;
   @Column({ default: true }) emailSet: boolean;
   @Column({ default: true }) passwordSet: boolean;
@@ -55,6 +56,9 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 32, nullable: true }) contactNumber: string | null;
   @Column({ type: 'varchar', length: 64, nullable: true }) education: string | null;
   @Column({ type: 'text', nullable: true }) photo: string | null;
+  @Column({ type: 'timestamptz', nullable: true }) deletedAt: Date | null;
+  @Column({ default: false }) handoverPending: boolean;
+  @Column({ default: false }) requiresRoleTransfer: boolean;
   @Column({ default: 'ACTIVE' }) status: 'ACTIVE' | 'DISABLED' | 'LOCKED';
   @Column({ default: 0 }) failedLoginCount: number;
   @Column({ type: 'timestamptz', nullable: true }) lockedUntil: Date | null;
@@ -126,4 +130,19 @@ export class MasterConfigurationEntity {
   @VersionColumn() version: number;
   @CreateDateColumn({ type: 'timestamptz' }) createdAt: Date;
   @UpdateDateColumn({ type: 'timestamptz' }) updatedAt: Date;
+}
+
+@Entity('user_handovers')
+export class UserHandoverEntity {
+ @PrimaryGeneratedColumn('uuid') id: string;
+ @Index({ unique: true }) @Column({ type: 'uuid' }) sourceUserId: string;
+ @Column({ type: 'uuid' }) targetUserId: string;
+ @Column({ type: 'uuid' }) actorUserId: string;
+ @Column({ type: 'jsonb' }) roleCodes: string[];
+ @Column({ default: false }) createdTarget: boolean;
+ @Column({ type: 'text' }) targetEmail: string;
+ @Column({ length: 20, default: 'PENDING' }) status: 'PENDING' | 'COMPLETED';
+ @Column({ type: 'text', nullable: true }) lastError: string | null;
+ @CreateDateColumn() createdAt: Date;
+ @Column({ type: 'timestamptz', nullable: true }) completedAt: Date | null;
 }

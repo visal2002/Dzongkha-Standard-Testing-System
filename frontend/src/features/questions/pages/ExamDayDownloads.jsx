@@ -26,7 +26,7 @@ const formatWindowTime = value => {
   return Number.isNaN(date.getTime()) ? null : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 };
 
-// BRD §5.4.2 BR-3: the Exam Head may access, view and download question papers only
+// BRD §5.4.2 BR-3: the Chief of Examination may access, view and download question papers only
 // during the scheduled exam time set at upload. The server is the binding check (it
 // rejects a download outside the window with 403 QUESTION_ACCESS_WINDOW_CLOSED) - this
 // mirrors that window here so the controls reflect it before a click round-trips, and

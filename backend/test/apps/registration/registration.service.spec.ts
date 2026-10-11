@@ -68,6 +68,7 @@ const application = (overrides: Partial<ApplicationEntity> = {}): ApplicationEnt
 
 const makeManager = (overrides: Partial<EntityManager> = {}): EntityManager =>
   ({
+    query: jest.fn().mockImplementation(async (sql: string) => sql.startsWith('SELECT next_sequence') ? [{ next_sequence: 1 }] : []),
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     findOneByOrFail: jest.fn(),
@@ -206,6 +207,50 @@ describe('RegistrationService — Exam management (BRD §2.2)', () => {
       service.updateExam(exam.id, { title: 'New Title' }, 'actor-1', 'req-1'),
     ).rejects.toMatchObject({ response: { code: 'EXAM_EDIT_BLOCKED' } });
   });
+
+  it('reopens a closed exam when its edited schedule includes the current time', async () => {
+    const exam = openExam({ status: ExamStatus.RegistrationClosed });
+    const manager = makeManager({ findOne: jest.fn().mockResolvedValue(exam) });
+    const service = buildService({ manager });
+    const result = await service.updateExam(exam.id, { registrationEnd: new Date(Date.now() + 3600000).toISOString() }, 'actor-1', 'req-1');
+    expect(result.status).toBe(ExamStatus.RegistrationOpen);
+    expect(manager.create).toHaveBeenCalledWith(OutboxEventEntity, expect.objectContaining({ eventType: DomainEventTypes.ExamStatusChanged, payload: expect.objectContaining({ previousStatus: ExamStatus.RegistrationClosed, status: ExamStatus.RegistrationOpen }) }));
+  });
+
+  it('treats 8:07 AM Bhutan time as before the edited 8:10 AM deadline', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-10T02:07:00Z'));
+    try {
+      const exam = openExam({ status: ExamStatus.RegistrationClosed, registrationStart: new Date('2026-10-09T05:40:00Z'), registrationEnd: new Date('2026-10-10T02:00:00Z'), examDate: new Date('2026-10-10T02:30:00Z') });
+      const service = buildService({ manager: makeManager({ findOne: jest.fn().mockResolvedValue(exam) }) });
+      expect((await service.updateExam(exam.id, { registrationEnd: '2026-10-10T08:10:00+06:00' }, 'actor-1','req-1')).status).toBe(ExamStatus.RegistrationOpen);
+      expect(exam.registrationEnd.toISOString()).toBe('2026-10-10T02:10:00.000Z');
+    } finally { jest.useRealTimers(); }
+  });
+
+  it.each([ExamStatus.Draft, ExamStatus.Published])('does not publish %s merely by editing dates', async status => {
+    const exam = openExam({ status });
+    const service = buildService({ manager: makeManager({ findOne: jest.fn().mockResolvedValue(exam) }) });
+    expect((await service.updateExam(exam.id, { registrationEnd: new Date(Date.now()+3600000).toISOString() }, 'actor-1','req-1')).status).toBe(status);
+  });
+
+  it('preserves a manually closed exam when only its title changes', async () => {
+    const exam = openExam({ status: ExamStatus.RegistrationClosed });
+    const service = buildService({ manager: makeManager({ findOne: jest.fn().mockResolvedValue(exam) }) });
+    expect((await service.updateExam(exam.id, { title: 'Updated title' }, 'actor-1','req-1')).status).toBe(ExamStatus.RegistrationClosed);
+  });
+
+  it('keeps an expired edited window closed and rejects reopening without extending its deadline', async () => {
+    const exam = openExam({ status: ExamStatus.RegistrationClosed, registrationEnd: new Date(Date.now()-60000) });
+    const service = buildService({ manager: makeManager({ findOne: jest.fn().mockResolvedValue(exam) }) });
+    expect((await service.updateExam(exam.id, { registrationEnd: exam.registrationEnd.toISOString() }, 'actor-1','req-1')).status).toBe(ExamStatus.RegistrationClosed);
+    await expect(service.setExamStatus(exam.id, ExamStatus.RegistrationOpen, 'actor-1','req-1')).rejects.toMatchObject({ response: { code: 'EXAM_WINDOW_EXPIRED' } });
+  });
+
+  it('permits explicit reopening of a closed window with an unexpired deadline', async () => {
+    const exam = openExam({ status: ExamStatus.RegistrationClosed });
+    const service = buildService({ manager: makeManager({ findOne: jest.fn().mockResolvedValue(exam) }) });
+    expect((await service.setExamStatus(exam.id, ExamStatus.RegistrationOpen, 'actor-1','req-1')).status).toBe(ExamStatus.RegistrationOpen);
+  });
 });
 
 describe('RegistrationService — Application submission (BRD §2.2 BR-1)', () => {
@@ -307,6 +352,17 @@ describe('RegistrationService — Application submission (BRD §2.2 BR-1)', () =
     await expect(service.submit(uuid(), dto, 'user-1', 'req-1', '')).rejects
       .toMatchObject({ response: { code: 'IDEMPOTENCY_KEY_REQUIRED' } });
   });
+
+  it('retries a serialization conflict without allocating on an idempotency replay', async () => {
+    const cachedResponse = { applicationId: uuid(), status: ApplicationStatus.Submitted, registrationNumber: 'ཀ-༢༦-༠༠༡' };
+    const manager = makeManager({ findOne: jest.fn().mockResolvedValue({ response: cachedResponse }) });
+    const ds = makeDataSource(manager);
+    (ds.transaction as jest.Mock).mockRejectedValueOnce({ driverError: { code: '40001' } });
+    const service = new RegistrationService(ds, config, makeRepo(), makeRepo(), makeRepo(), dcrc);
+    expect(await service.submit(uuid(), dto, 'user-1', 'req-1', idempotencyKey)).toEqual(cachedResponse);
+    expect(ds.transaction).toHaveBeenCalledTimes(2);
+    expect(manager.query).not.toHaveBeenCalled();
+  });
 });
 
 describe('RegistrationService — Cancellation & waitlist promotion (BRD §2.2)', () => {
@@ -380,12 +436,20 @@ describe('RegistrationService — Verify & registration number (BRD §2.2)', () 
     expect(verified.dcrcVerifiedAt).toBeInstanceOf(Date);
   });
 
-  it('generates a unique registration number matching DSTS-YYYY-XXXXXXXX', async () => {
+  it('allocates a Dzongkha number for a legacy unnumbered application at verification', async () => {
     const app = application({ status: ApplicationStatus.UnderReview });
     const manager = makeManager({ findOne: jest.fn().mockResolvedValue(app) });
     const service = buildService({ manager, applications: makeRepo([app]) });
     const verified = await service.verify(app.id, 'actor-1', 'req-1');
-    expect(verified.registrationNumber).toMatch(/^DSTS-\d{4}-[A-F0-9]{8}$/);
+    expect(verified.registrationNumber).toMatch(/^ཀ-[༠-༩]{2}-༠༠༡$/);
+  });
+
+  it('keeps an already allocated number unchanged during verification', async () => {
+    const app = application({ status: ApplicationStatus.UnderReview, registrationNumber: 'ཁ-༢༦-༡༠༡' });
+    const manager = makeManager({ findOne: jest.fn().mockResolvedValue(app) });
+    const service = buildService({ manager, applications: makeRepo([app]) });
+    expect((await service.verify(app.id, 'actor-1', 'req-1')).registrationNumber).toBe('ཁ-༢༦-༡༠༡');
+    expect(manager.query).not.toHaveBeenCalled();
   });
 
   it('emits ApplicationVerified outbox event after successful verify', async () => {
@@ -416,9 +480,10 @@ describe('RegistrationService — Attendance / absent marking (BRD §2.3)', () =
   });
 
   it('marking ANY single skill absent sets overall status to ABSENT and transitions application', async () => {
-    const app = application({ status: ApplicationStatus.Verified });
+    const app = application({ status: ApplicationStatus.Verified, registrationNumber: 'ཀ-༢༦-༠༠༡' });
     let savedStatus: string | undefined;
     const manager = makeManager({
+      query: jest.fn().mockImplementation(async (sql: string) => sql.startsWith('UPDATE registration.dsts_number_slots') ? [{ year: 2026, sequence: 1, number: 'ཀ-༢༦-༠༠༡' }] : []),
       findOneBy: jest.fn().mockImplementation(async (entity: unknown) => {
         if (entity === AttendanceEntity) return null;
         return app;
@@ -434,6 +499,9 @@ describe('RegistrationService — Attendance / absent marking (BRD §2.3)', () =
     const attendance = await service.markAttendance(app.id, { absentSkills: [Skill.Writing] }, 'actor-1', 'req-1');
     expect(attendance.overallStatus).toBe('ABSENT');
     expect(savedStatus).toBe(ApplicationStatus.Absent);
+    expect(app.registrationNumber).toBeNull();
+    expect(app.releasedRegistrationNumber).toBe('ཀ-༢༦-༠༠༡');
+    expect(manager.query).toHaveBeenCalledWith(expect.stringContaining('dsts_number_history'), [2026, 1, 'ཀ-༢༦-༠༠༡', app.id, 'RELEASED', 'actor-1', 'req-1']);
   });
 
   it('marking zero skills absent keeps overall status as PRESENT and does not change application status', async () => {
@@ -497,7 +565,7 @@ describe('RegistrationService — Certificate profile internal endpoint (BRD §2
     const correctKey = 'a'.repeat(32);
     const app = application({
       registrationNumber: 'DSTS-2026-ABCD1234',
-      profileSnapshot: { fullName: 'Test Taker', cid: 'CID-10701000001', dateOfBirth: '1998-05-01' },
+      profileSnapshot: { fullName: 'Test Taker', fullNameDz: 'བཀྲ་ཤིས་', cid: 'CID-10701000001', dateOfBirth: '1998-05-01' },
     });
     const applications = makeRepo<ApplicationEntity>([app]);
     const correctKeyConfig = new ConfigService({ INTERNAL_SERVICE_SECRET: correctKey });
@@ -505,6 +573,7 @@ describe('RegistrationService — Certificate profile internal endpoint (BRD §2
     const service = new RegistrationService(ds, correctKeyConfig, makeRepo(), applications, makeRepo(), dcrc);
     const profile = await service.certificateProfile(app.id, correctKey);
     expect(profile.registrationNumber).toBe('DSTS-2026-ABCD1234');
+    expect(profile.fullNameDz).toBe('བཀྲ་ཤིས་');
     expect(profile.applicationId).toBe(app.id);
   });
 });

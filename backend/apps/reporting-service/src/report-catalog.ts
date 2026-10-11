@@ -7,7 +7,7 @@
 import { ReportDataset, ReportResourceType } from './entities';
 
 export interface ReportDatasetDefinition {
-  resourceType: ReportResourceType;
+  resourceType: ReportResourceType | null;
   defaultFields: string[];
   fields: string[];
 }
@@ -15,6 +15,7 @@ export interface ReportDatasetDefinition {
 const common = ['resourceId', 'examId', 'status', 'occurredAt'];
 
 export const REPORT_CATALOG: Record<ReportDataset, ReportDatasetDefinition> = {
+  [ReportDataset.Summary]: { resourceType: null, defaultFields: ['metric', 'value'], fields: ['metric', 'value'] },
   [ReportDataset.Applications]: { resourceType: ReportResourceType.Application, defaultFields: common, fields: [...common, 'applicationId'] },
   [ReportDataset.Scores]: { resourceType: ReportResourceType.Score, defaultFields: [...common, 'overallScore', 'bandLabel', 'cefrLevel'], fields: [...common, 'applicationId', 'version', 'overallScore', 'bandLabel', 'cefrLevel', 'writing', 'reading', 'listening', 'speaking'] },
   [ReportDataset.Appeals]: { resourceType: ReportResourceType.Appeal, defaultFields: common, fields: [...common, 'appealId', 'applicationId', 'outcome', 'skills'] },

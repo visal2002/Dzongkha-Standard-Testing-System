@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { CheckCircle, ClipboardList, Save } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import RecordReference from '@/components/ui/RecordReference';
+import { referenceSearch } from '@/lib/recordReferences';
 import DataTable from '@/components/ui/Table';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -31,7 +33,7 @@ const columnHelper = createColumnHelper();
 
 export default function ScoreEntry() {
   const { user } = useAuth();
-  const hasSubmitPermission = canAccess(user?.role, 'scores', 'submit');
+  const hasSubmitPermission = canAccess(user, 'scores', 'submit');
   const { data: exams, loading: loadingExams } = useApi(examService.getAll);
   const [selectedExamId, setSelectedExamId] = useState('');
   const [candidates, setCandidates] = useState([]);
@@ -93,7 +95,7 @@ export default function ScoreEntry() {
   };
 
   const columns = [
-    columnHelper.accessor('applicationId', { header: 'Application ID', cell: info => <span className="font-mono text-xs text-brand-gold">{info.getValue().slice(0, 12)}</span> }),
+    columnHelper.accessor(row => referenceSearch(row.applicationId, 'APP', candidates.map(item => item.applicationId)), { id: 'applicationId', header: 'Application reference', cell: info => <RecordReference id={info.row.original.applicationId} ids={candidates.map(item => item.applicationId)} className="font-mono text-xs text-brand-gold" /> }),
     columnHelper.accessor('testTakerName', { header: 'Test Taker' }),
     columnHelper.accessor('cid', { header: 'Identity', cell: info => <span className="font-mono text-xs text-text-muted">{String(info.getValue()).slice(0, 16)}</span> }),
     columnHelper.accessor('status', { header: 'Eligibility', cell: info => <span className="text-xs text-emerald-400 capitalize">{info.getValue()}</span> }),
@@ -152,7 +154,7 @@ export default function ScoreEntry() {
 
       <Modal isOpen={!!scoring} onClose={() => setScoring(null)} title={`Enter Skill Totals — ${scoring?.testTakerName}`} size="md" footer={<><Button variant="ghost" onClick={() => setScoring(null)}>Cancel</Button>{canSubmit && <Button onClick={handleSubmit} loading={submitting} icon={<Save size={13} />}>Submit Scores</Button>}</>}>
         <div className="space-y-4">
-          <div className="p-3 bg-surface-bg rounded-xl border border-surface-border text-xs"><p className="text-text-muted">Application ID</p><p className="font-mono text-brand-gold">{scoring?.applicationId}</p></div>
+          <div className="p-3 bg-surface-bg rounded-xl border border-surface-border text-xs"><p className="text-text-muted">Application reference</p><p className="font-mono text-brand-gold"><RecordReference id={scoring?.applicationId} ids={candidates.map(item => item.applicationId)} /></p></div>
           <p className="text-xs text-text-muted">Enter total marks from 1.0 to 50.0 in increments of 0.5. Each total is converted to DSTS Standard 1–10.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {SKILLS.map(skill => <div key={skill}><label className="text-sm font-medium text-text-secondary block mb-1.5">{SKILL_LABELS[skill]} Total</label><select value={scores[skill]} onChange={event => setScores(current => ({ ...current, [skill]: event.target.value }))} className="w-full h-9 px-3 rounded-lg bg-surface-bg border border-surface-border text-text-primary text-sm"><option value="">Select total</option>{SCORES.map(score => <option key={score} value={score}>{score} — Standard {dstsStandardForTotal(Number(score))}</option>)}</select></div>)}

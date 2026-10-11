@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle, Scale } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import { shortReferences } from '@/lib/recordReferences';
 import Button from '@/components/ui/Button';
 import { Select, Textarea } from '@/components/ui/Input';
 import Alert from '@/components/ui/Alert';
@@ -59,6 +60,7 @@ export default function SubmitAppeal() {
   }, [user?.id]);
 
   const selectedResult = results.find(result => result.applicationId === selectedApplicationId);
+  const applicationReferences = shortReferences(results.map(result => result.applicationId), 'APP');
   const fee = selectedSkills.length * Number(feeRule?.amountPerSkill || 0);
 
   const toggleSkill = skill => {
@@ -137,7 +139,7 @@ export default function SubmitAppeal() {
         {step === 0 && (
           <div className="space-y-5">
             <Select label="Published result" value={selectedApplicationId} onChange={event => { setSelectedApplicationId(event.target.value); setSelectedSkills([]); }}>
-              {results.map(result => <option key={result.applicationId} value={result.applicationId}>{result.applicationId} / {result.examId}</option>)}
+              {results.map(result => <option key={result.applicationId} value={result.applicationId} title={`Full application ID: ${result.applicationId}`}>{applicationReferences[result.applicationId]}</option>)}
             </Select>
             <div>
               <h3 className="text-base font-semibold text-text-primary mb-1">Select Skills for Re-evaluation</h3>

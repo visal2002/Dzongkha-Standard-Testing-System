@@ -13,7 +13,7 @@ export enum ReportResourceType {
 }
 
 export enum ReportDataset {
-  Applications = 'applications', Scores = 'scores', Appeals = 'appeals',
+  Summary = 'summary', Applications = 'applications', Scores = 'scores', Appeals = 'appeals',
   Certificates = 'certificates', Examinations = 'examinations', Committees = 'committees',
 }
 

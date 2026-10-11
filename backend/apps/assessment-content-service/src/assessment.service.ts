@@ -244,7 +244,7 @@ export class AssessmentService {
 
   private assertExamHead(actor: AccessClaims) {
     if (!actor.roles.includes('exam_head')) {
-      throw new DomainException('EXAM_HEAD_REQUIRED', 'Only the Exam Head may access the Question Bank.', 403);
+      throw new DomainException('EXAM_HEAD_REQUIRED', 'Only the Chief of Examination may access the Question Bank.', 403);
     }
   }
 

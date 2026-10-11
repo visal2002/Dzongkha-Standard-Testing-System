@@ -198,7 +198,7 @@ export const questionService = {
   getPapers: async () => questionService.getAll(),
 
   /**
-   * The Exam Head's own assignments, split into skills already uploaded and
+   * The Chief of Examination's own assignments, split into skills already uploaded and
    * skills still pending, per assigned exam. Powers the dashboard's live
    * pending-upload status - `getAll()` only ever returns exams that already have
    * a paper, so an assignment with nothing uploaded yet is otherwise invisible.
@@ -244,7 +244,7 @@ export const questionService = {
         accessAllowedFrom: new Date(payload.accessAllowedFrom).toISOString(),
         accessAllowedUntil: new Date(payload.accessAllowedUntil).toISOString(),
         createdAt: now,
-        uploadedByName: me?.name || 'Exam Head',
+        uploadedByName: me?.name || 'Chief of Examination',
         documents: [
           { id: `${id}-question`, type: 'QUESTION_PAPER', originalName: paperFile?.name || `${id}.pdf`, sizeBytes: paperFile?.size || 0, encrypted: true, scanStatus: 'CLEAN' },
           ...(answerSheetFile ? [{ id: `${id}-answer`, type: 'ANSWER_SHEET', originalName: answerSheetFile.name, sizeBytes: answerSheetFile.size || 0, encrypted: true, scanStatus: 'CLEAN' }] : []),
@@ -258,7 +258,7 @@ export const questionService = {
         source: 'assessment-content-service',
         resourceId: id,
         actorUserId: me?.userId || me?.id,
-        role: me?.roleName || 'Exam Head',
+        role: me?.roleName || 'Chief of Examination',
         status: 'Success',
       });
       return { data: normalizeQuestionPaper(created) };

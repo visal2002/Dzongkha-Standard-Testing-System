@@ -17,6 +17,8 @@ import { Tabs, TabList, Tab, TabPanel } from '@/components/ui/Tabs';
 import { appealService } from '@/features/appeals/api';
 import { certificateService } from '@/features/certificates/api';
 import { useApi } from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
+import { hasExplicitPermissions, hasGrantedPermission } from '@/features/rbac/runtimePermissions';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -87,6 +89,7 @@ function FeeTab() {
   const { data: fees, loading, execute: reloadFees } = useApi(appealService.listFees);
   const [showForm, setShowForm] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
+
 
   const reload = () => { reloadActive(); reloadFees(); };
 
@@ -159,7 +162,7 @@ function FeeTab() {
 // ─── Certificate Template ───────────────────────────────────────────────────────
 
 const RENDERED_ASSET_NOTE = 'Appears on the printed certificate, in the blank space above the Chief Executive signature line.';
-const SEAL_ASSET_NOTE = 'Appears on the printed certificate, between the two signature blocks.';
+const SEAL_ASSET_NOTE = 'Appears between the two signatures. Uses the transparent Dzongjuk logo by default; upload a transparent PNG to override it.';
 const STORED_ONLY_NOTE = 'Stored in the template record. The approved DSTS certificate uses one fixed, pre-printed bilingual layout with its own logo/border already on it, so this image does not yet appear on the printed certificate.';
 
 function ImageField({ label, note, rendered, onChange }) {
@@ -172,17 +175,17 @@ function ImageField({ label, note, rendered, onChange }) {
       <label className="flex items-center gap-2 h-9 px-3 rounded-lg border border-dashed border-surface-border bg-surface-bg cursor-pointer hover:border-brand-gold/50 transition-colors text-xs text-text-muted">
         <Upload size={13} />
         <span>Click to upload PNG or JPEG…</span>
-        <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={e => onChange(e.target.files?.[0] ?? null)} />
+        <input type="file" aria-label={label} accept="image/png,image/jpeg" className="hidden" onChange={e => onChange(e.target.files?.[0] ?? null)} />
       </label>
       <p className="text-[11px] text-text-muted">{note}</p>
     </div>
   );
 }
 
-function TemplateForm({ latest, onCancel, onSaved }) {
+export function TemplateForm({ latest, nextVersion, onCancel, onSaved }) {
   const [form, setForm] = useState({
     code: latest?.code || 'DSTS-STANDARD',
-    versionNumber: (latest?.versionNumber || 0) + 1,
+    versionNumber: nextVersion || (latest?.versionNumber || 0) + 1,
     title: latest?.title || 'Dzongkha Standard Testing System Certificate',
     declarationText: latest?.declarationText || 'This is to certify that the above-named candidate has completed the Dzongkha Standard Testing System examination conducted by the Department of Culture and Dzongkha Development (DCDD).',
     signatoryName: latest?.signatoryName || '',
@@ -191,12 +194,13 @@ function TemplateForm({ latest, onCancel, onSaved }) {
     chiefExecutiveTitle: latest?.chiefExecutiveTitle || 'Chief Executive, DSTS',
     paperSize: latest?.paperSize || 'A4',
     orientation: latest?.orientation || 'PORTRAIT',
+    dzongkhaFont: latest?.dzongkhaFont || 'DDC Uchen',
     validityMonths: latest?.validityMonths || 24,
     effectiveFrom: todayIso(),
     effectiveTo: '',
     testOnly: false,
   });
-  const [assets, setAssets] = useState({ leftLogo: null, rightLogo: null, borderImage: null, signatureImage: null, sealImage: null });
+  const [assets, setAssets] = useState({ leftLogo: null, rightLogo: null, borderImage: null, signatureImage: null, examinationSignatureImage: null, sealImage: null });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -211,9 +215,10 @@ function TemplateForm({ latest, onCancel, onSaved }) {
         code: form.code, versionNumber: Number(form.versionNumber), title: form.title, declarationText: form.declarationText,
         signatoryName: form.signatoryName, signatoryTitle: form.signatoryTitle,
         chiefExecutiveName: form.chiefExecutiveName, chiefExecutiveTitle: form.chiefExecutiveTitle,
-        paperSize: form.paperSize, orientation: form.orientation, validityMonths: Number(form.validityMonths),
+        paperSize: form.paperSize, orientation: form.orientation, dzongkhaFont: form.dzongkhaFont, validityMonths: Number(form.validityMonths),
         effectiveFrom: new Date(form.effectiveFrom).toISOString(), effectiveTo: form.effectiveTo ? new Date(form.effectiveTo).toISOString() : undefined,
         testOnly: form.testOnly,
+        ...Object.fromEntries(Object.keys(assets).filter(key => latest?.[key]).map(key => { const match = /^data:(image\/(?:png|jpeg));base64,(.+)$/s.exec(latest[key]); return [key, match ? { mimeType: match[1], dataBase64: match[2] } : undefined]; })),
         ...Object.fromEntries(assetEntries),
       });
       toast.success('Draft template version created — approve it to make it active');
@@ -244,9 +249,9 @@ function TemplateForm({ latest, onCancel, onSaved }) {
             <Input label="Certificate Title" value={form.title} onChange={e => set('title', e.target.value)} />
             <Textarea label="Declaration Statement" rows={3} value={form.declarationText} onChange={e => set('declarationText', e.target.value)} />
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Authorized Signatory Name" required value={form.signatoryName} onChange={e => set('signatoryName', e.target.value)} hint="Rendered on the certificate's signature line" />
+              <Input label="Authorized Signatory Name" required value={form.signatoryName} onChange={e => set('signatoryName', e.target.value)} hint="Stored for administration; the name is not printed on the certificate" />
               <Input label="Signatory Title" value={form.signatoryTitle} onChange={e => set('signatoryTitle', e.target.value)} />
-              <Input label="Chief Executive Name" required value={form.chiefExecutiveName} onChange={e => set('chiefExecutiveName', e.target.value)} hint="Rendered on the certificate's signature line" />
+              <Input label="Chief Executive Name" required value={form.chiefExecutiveName} onChange={e => set('chiefExecutiveName', e.target.value)} hint="Stored for administration; the name is not printed on the certificate" />
               <Input label="Chief Executive Title" value={form.chiefExecutiveTitle} onChange={e => set('chiefExecutiveTitle', e.target.value)} />
             </div>
           </div>
@@ -273,11 +278,16 @@ function TemplateForm({ latest, onCancel, onSaved }) {
         <div>
           <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5"><ImageIcon size={13} /> Logos, Signature & Seal</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <ImageField label="Left Logo" note={STORED_ONLY_NOTE} rendered={false} onChange={file => setAssets(a => ({ ...a, leftLogo: file }))} />
-            <ImageField label="Right Logo" note={STORED_ONLY_NOTE} rendered={false} onChange={file => setAssets(a => ({ ...a, rightLogo: file }))} />
+            <ImageField label="Left Logo" note="Appears at the top left; uses the new Dzongjuk logo when no image is uploaded." rendered onChange={file => setAssets(a => ({ ...a, leftLogo: file }))} />
+            <ImageField label="Right Logo" note="Appears at the top right; preserves the original government emblem when no image is uploaded." rendered onChange={file => setAssets(a => ({ ...a, rightLogo: file }))} />
             <ImageField label="Certificate Border Image" note={STORED_ONLY_NOTE} rendered={false} onChange={file => setAssets(a => ({ ...a, borderImage: file }))} />
-            <ImageField label="Authorized Signature Image" note={RENDERED_ASSET_NOTE} rendered onChange={file => setAssets(a => ({ ...a, signatureImage: file }))} />
+            <ImageField label="Chief of Examination Signature" note="Appears above the left signature line." rendered onChange={file => setAssets(a => ({ ...a, examinationSignatureImage: file }))} />
+            <ImageField label="Chief Executive Signature" note={RENDERED_ASSET_NOTE} rendered onChange={file => setAssets(a => ({ ...a, signatureImage: file }))} />
             <ImageField label="Official Seal Image" note={SEAL_ASSET_NOTE} rendered onChange={file => setAssets(a => ({ ...a, sealImage: file }))} />
+            <Select label="Dzongkha Font" value={form.dzongkhaFont} onChange={e => set('dzongkhaFont', e.target.value)} hint="Used for Dzongkha text in the generated PDF">
+              <option value="DDC Uchen">DDC Uchen</option>
+              <option value="DDC Joyig">DDC Joyig</option>
+            </Select>
           </div>
         </div>
 
@@ -290,19 +300,35 @@ function TemplateForm({ latest, onCancel, onSaved }) {
   );
 }
 
-function TemplateTab() {
+export function TemplateTab() {
   const { data: templates, loading, execute: reload } = useApi(certificateService.listTemplates);
   const [showForm, setShowForm] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
 
+  const [activatingTemplate, setActivatingTemplate] = useState(null);
+  const [activating, setActivating] = useState(false);
+  const setActive = async () => {
+    setActivating(true);
+    try { await certificateService.activateTemplate(activatingTemplate.id); toast.success('Default certificate template updated'); setActivatingTemplate(null); reload(); }
+    catch (error) { toast.error(error?.message || 'Failed to set active template'); }
+    finally { setActivating(false); }
+  };
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [deletingTemplate, setDeletingTemplate] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const remove = async () => {
+    setDeleting(true);
+    try { await certificateService.deleteTemplate(deletingTemplate.id); toast.success('Template retired; existing certificates are preserved'); setDeletingTemplate(null); reload(); }
+    catch (error) { toast.error(error?.message || 'Failed to retire template'); }
+    finally { setDeleting(false); }
+  };
   const latest = useMemo(() => templates?.[0] || null, [templates]);
   const active = useMemo(() => {
     const now = Date.now();
-    return templates
-      ?.filter(t => t.status === 'APPROVED'
-        && new Date(t.effectiveFrom).getTime() <= now
-        && (!t.effectiveTo || new Date(t.effectiveTo).getTime() > now))
-      .sort((a, b) => new Date(b.effectiveFrom) - new Date(a.effectiveFrom))[0] || null;
+    const effective = (templates || []).filter(t => t.status === 'APPROVED'
+      && new Date(t.effectiveFrom).getTime() <= now
+      && (!t.effectiveTo || new Date(t.effectiveTo).getTime() > now));
+    return effective.find(t => t.isDefault) || (effective.length === 1 ? effective[0] : null);
   }, [templates]);
 
   const approve = async (id) => {
@@ -321,7 +347,7 @@ function TemplateTab() {
   return (
     <div className="space-y-5">
       <Alert variant="info" title="Propagation">
-        Approving a template version here changes which template certificate generation picks up the next time a certificate is issued for an exam — the same table the certificate PDF renderer already reads from, not a separate settings copy.
+        Set Active selects the default approved template for new certificates. Existing certificates keep the template version they were issued with. Older approved templates can be reactivated after confirmation.
       </Alert>
 
       <div className="bg-surface-card border border-surface-border rounded-xl p-5">
@@ -335,13 +361,13 @@ function TemplateTab() {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-text-muted">No approved template is currently active — certificate generation will fail until one is approved.</p>
+          <p className="text-sm text-text-muted">No unique active template is selected — approve a template or use Set Active on an effective approved version.</p>
         )}
       </div>
 
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-text-primary">Template Versions</p>
-        <Button size="sm" icon={<Plus size={14} />} onClick={() => setShowForm(true)}>New Template Version</Button>
+        <Button size="sm" icon={<Plus size={14} />} onClick={() => { setEditingTemplate(null); setShowForm(true); }}>New Template Version</Button>
       </div>
 
       <div className="bg-surface-card border border-surface-border rounded-xl overflow-hidden">
@@ -358,19 +384,26 @@ function TemplateTab() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-text-primary">{template.code} · v{template.versionNumber}</span>
                       <StatusBadge status={template.status} />
+                      {active?.id === template.id && <Badge variant="success" size="sm">Active / Default</Badge>}
                       {template.testOnly && <Badge variant="warning" size="sm">Test Only</Badge>}
                     </div>
-                    <p className="text-xs text-text-muted mt-0.5">{template.signatoryName} / {template.chiefExecutiveName} · validity {template.validityMonths}mo</p>
+                    <p className="text-xs text-text-muted mt-0.5">{template.signatoryName} / {template.chiefExecutiveName} · validity {template.validityMonths}mo · {template.dzongkhaFont || 'DDC Uchen'}</p>
                   </div>
+                  <div className="flex items-center gap-2">
+                    {template.status === 'APPROVED' && active?.id !== template.id && <Button size="xs" variant="success" onClick={() => setActivatingTemplate(template)}>Set Active</Button>}
+                    <Button size="xs" variant="secondary" onClick={() => { setEditingTemplate(template); setShowForm(true); }}>Edit</Button>
+                    {template.status !== 'RETIRED' && <Button size="xs" variant="danger" onClick={() => setDeletingTemplate(template)}>Delete</Button>}
                   {template.status === 'DRAFT' && (
                     <Button size="xs" variant="success" icon={<CheckCircle size={12} />} loading={approvingId === template.id} onClick={() => approve(template.id)}>Approve</Button>
                   )}
+                  </div>
                 </div>
-                {(template.signatureImage || template.sealImage || template.leftLogo || template.rightLogo || template.borderImage) && (
+                {(template.signatureImage || template.examinationSignatureImage || template.sealImage || template.leftLogo || template.rightLogo || template.borderImage) && (
                   <div className="flex items-center gap-2 mt-3">
                     {template.leftLogo && <img src={template.leftLogo} alt="Left logo" className="h-8 w-8 object-contain rounded border border-surface-border bg-white" />}
                     {template.rightLogo && <img src={template.rightLogo} alt="Right logo" className="h-8 w-8 object-contain rounded border border-surface-border bg-white" />}
                     {template.borderImage && <img src={template.borderImage} alt="Border" className="h-8 w-8 object-contain rounded border border-surface-border bg-white" />}
+                    {template.examinationSignatureImage && <img src={template.examinationSignatureImage} alt="Chief of Examination signature" className="h-8 w-16 object-contain rounded border border-surface-border bg-white" />}
                     {template.signatureImage && <img src={template.signatureImage} alt="Signature" className="h-8 w-16 object-contain rounded border border-surface-border bg-white" />}
                     {template.sealImage && <img src={template.sealImage} alt="Seal" className="h-8 w-8 object-contain rounded border border-surface-border bg-white" />}
                   </div>
@@ -381,7 +414,9 @@ function TemplateTab() {
         )}
       </div>
 
-      {showForm && <TemplateForm latest={latest} onCancel={() => setShowForm(false)} onSaved={() => { setShowForm(false); reload(); }} />}
+      {activatingTemplate && <Modal isOpen title="Set Default Certificate Template" onClose={() => !activating && setActivatingTemplate(null)} footer={<><Button variant="ghost" disabled={activating} onClick={() => setActivatingTemplate(null)}>Cancel</Button><Button variant="success" loading={activating} onClick={setActive}>Confirm Set Active</Button></>}><p>Use {activatingTemplate.code} · v{activatingTemplate.versionNumber} as the default for new certificates? If its effective period has ended or has not started, it will start again now with no end date. Existing certificates and QR verification remain unchanged.</p></Modal>}
+      {deletingTemplate && <Modal isOpen title="Delete Certificate Template" onClose={() => !deleting && setDeletingTemplate(null)} footer={<><Button variant="ghost" disabled={deleting} onClick={() => setDeletingTemplate(null)}>Cancel</Button><Button variant="danger" loading={deleting} onClick={remove}>Delete (Retire)</Button></>}><p>This will retire {deletingTemplate.code} · v{deletingTemplate.versionNumber} and stop its use for new certificates. Existing certificates and QR verification remain available. This does not delete issued certificates.</p></Modal>}
+      {showForm && <TemplateForm latest={editingTemplate || latest} nextVersion={Math.max(0, ...(templates || []).filter(t => t.code === (editingTemplate || latest)?.code).map(t => t.versionNumber)) + 1} onCancel={() => setShowForm(false)} onSaved={() => { setShowForm(false); reload(); }} />}
     </div>
   );
 }
@@ -389,6 +424,9 @@ function TemplateTab() {
 // ─── Page ───────────────────────────────────────────────────────────────────────
 
 export default function MasterConfiguration() {
+  const { user } = useAuth();
+  const canFees = !hasExplicitPermissions(user) || hasGrantedPermission(user, 'appeal.fee.manage');
+  const canTemplates = !hasExplicitPermissions(user) || hasGrantedPermission(user, 'certificate.template.manage');
   return (
     <div className="space-y-6">
       <PageHeader
@@ -398,14 +436,14 @@ export default function MasterConfiguration() {
         icon={<Settings size={18} />}
       />
 
-      <Tabs defaultValue="fee">
+      <Tabs key={String(canFees) + String(canTemplates)} defaultValue={canFees ? "fee" : "template"}>
         <TabList>
-          <Tab value="fee" icon={<CreditCard size={13} />}>Re-evaluation Fee</Tab>
-          <Tab value="template" icon={<Award size={13} />}>Certificate Template</Tab>
+          {canFees && <Tab value="fee" icon={<CreditCard size={13} />}>Re-evaluation Fee</Tab>}
+          {canTemplates && <Tab value="template" icon={<Award size={13} />}>Certificate Template</Tab>}
         </TabList>
         <div className="mt-4">
-          <TabPanel value="fee"><FeeTab /></TabPanel>
-          <TabPanel value="template"><TemplateTab /></TabPanel>
+          {canFees && <TabPanel value="fee"><FeeTab /></TabPanel>}
+          {canTemplates && <TabPanel value="template"><TemplateTab /></TabPanel>}
         </div>
       </Tabs>
     </div>

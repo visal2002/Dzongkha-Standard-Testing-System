@@ -11,6 +11,8 @@ import {
   TrendingUp, Calendar, ArrowRight, BarChart3, Activity
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import useTimeGreeting from '@/hooks/useTimeGreeting';
+import RecordReference from '@/components/ui/RecordReference';
 import { StatCard } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
 import { scoreService } from '@/features/scores/api';
@@ -54,6 +56,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function DCDDDashboard() {
+  const greeting = useTimeGreeting();
   const { user } = useAuth();
   const { data: stats, loading: loadingStats } = useApi(getDCDDStats);
   const { data: applications, loading: loadingApps } = useApi(applicationService.getAll);
@@ -104,7 +107,7 @@ export default function DCDDDashboard() {
         <div className="absolute right-0 top-0 w-48 h-48 bg-[#F59E0B]/5 rounded-full -translate-y-1/2 translate-x-1/4 blur-2xl" />
         <div className="relative">
           <p className="text-xs text-brand-gold font-medium uppercase tracking-wider mb-1">DCDD Administration</p>
-          <h1 className="text-xl font-bold text-white mb-1">Good morning, {user?.name?.split(' ')[0]}!</h1>
+          <h1 className="text-xl font-bold text-white mb-1">{`${greeting},`} {user?.name?.split(' ')[0]}!</h1>
           <p className="text-sm text-[#94A3C8]">
             {pendingApps > 0
               ? `You have ${pendingApps} application${pendingApps > 1 ? 's' : ''} pending verification today.`
@@ -216,7 +219,7 @@ export default function DCDDDashboard() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-text-primary truncate">{app.testTakerName}</p>
-                    <p className="text-[10px] text-text-muted">{app.id}</p>
+                    <p className="text-[10px] text-text-muted"><RecordReference id={app.id} ids={(applications || []).map(item => item.id)} /></p>
                   </div>
                 </div>
                 <StatusBadge status={app.status} />

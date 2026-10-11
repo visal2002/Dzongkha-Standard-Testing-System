@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { FileText, Plus, Calendar, MapPin, CreditCard, Download, ExternalLink, RefreshCw, XCircle, Edit2, User, Mail, Phone, Save, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import PageHeader from '@/components/ui/PageHeader';
+import RecordReference from '@/components/ui/RecordReference';
 import Button from '@/components/ui/Button';
 import Input, { Select } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
@@ -271,7 +272,7 @@ export default function MyApplications() {
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
                     <p className="text-base font-semibold text-text-primary">{exam?.title || app.examId}</p>
-                    <p className="text-xs text-text-muted mt-0.5">Application ID: {app.id}</p>
+                    <p className="text-xs text-text-muted mt-0.5">Application reference: <RecordReference id={app.id} ids={myApps.map(item => item.id)} /></p>
                   </div>
                   <div className="flex items-center gap-2">
                     <StatusBadge status={app.status} />

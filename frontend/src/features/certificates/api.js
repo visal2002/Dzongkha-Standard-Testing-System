@@ -8,8 +8,9 @@
  * @fileoverview Certificates Service
  * Certificate generation, listing, and QR verification.
  */
+import axios from 'axios';
 import apiClient from '@/services/api';
-import { USE_MOCK_DATA } from '@/lib/env';
+import { USE_MOCK_DATA, API_BASE_URL } from '@/lib/env';
 import { readSessionUser } from '@/lib/session';
 import { createUuid } from '@/utils/uuid';
 import {
@@ -170,7 +171,8 @@ export const certificateService = {
       };
     }
 
-    const { data } = await apiClient.get(`/public/certificates/verify/${encodeURIComponent(token)}`);
+    // Public QR checks must not attach a session or redirect to login on failure.
+    const { data } = await axios.get(`${API_BASE_URL.replace(/\/$/, '')}/public/certificates/verify/${encodeURIComponent(token)}`, { timeout: 30000, withCredentials: false });
     return data;
   },
 
@@ -181,10 +183,10 @@ export const certificateService = {
    * rendered client-side on the print route, so this is a no-op there.
    * @param {string} id
    */
-  download: async (id) => {
+  download: async (id, options = {}) => {
     if (USE_MOCK_DATA) return { data: null };
 
-    return apiClient.get(`/certificates/${id}/file`, { responseType: 'blob' });
+    return apiClient.get(`/certificates/${id}/file`, { responseType: 'blob', timeout: 60000 });
   },
 
   recordDownload: async (id) => certificateService.download(id),
@@ -201,7 +203,7 @@ export const certificateService = {
     if (USE_MOCK_DATA) {
       throw new Error('Certificate PDF download needs the live backend. In demo mode, open the print view instead.');
     }
-    const response = await apiClient.get('/certificates/download', { responseType: 'blob' });
+    const response = await apiClient.get('/certificates/download', { responseType: 'blob', timeout: 60000 });
     return {
       blob: response.data,
       filename: filenameFromContentDisposition(response.headers?.['content-disposition']) || 'Certificate.pdf',
@@ -231,6 +233,10 @@ export const certificateService = {
   },
 
   /** @param {string} id */
+  deleteTemplate: async (id) => { const { data } = await apiClient.delete(`/certificate-templates/${id}`); return data; },
+
+  activateTemplate: async (id) => { const { data } = await apiClient.post(`/certificate-templates/${id}/activate`); return data; },
+
   approveTemplate: async (id) => {
 
     const { data } = await apiClient.post(`/certificate-templates/${id}/approve`);

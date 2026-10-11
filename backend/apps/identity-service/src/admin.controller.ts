@@ -4,11 +4,13 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Put, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Patch, Post, Put, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { IsIn } from 'class-validator';
 import { Request } from 'express';
 import { Permissions, Public } from '@dzongjuk/security';
+import { StaffHandoverService } from './staff-handover.service';
+import { AdminResetPasswordDto, TransferUserDto } from './dtos';
 import { AdminService } from './admin.service';
 import { CreateRoleDto, CreateUserDto, UpdateRolePermissionsDto, UpdateUserDto, UpdateUserRolesDto } from './dtos';
 
@@ -20,7 +22,7 @@ class SetStatusDto {
 @ApiTags('User administration')
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(private readonly admin: AdminService, private readonly handover: StaffHandoverService) {}
 
   @Permissions('admin.user.read') @Get('users') listUsers() { return this.admin.listUsers(); }
   // Declared ahead of 'users/:id' - a literal segment must win over the param route,
@@ -32,9 +34,14 @@ export class AdminController {
   internalContact(@Param('id') id: string, @Headers('x-internal-service-key') key: string | undefined) {
     return this.admin.internalContactEmail(id, key);
   }
+  @Public() @Get('users/:id/certificate-photo')
+  certificatePhoto(@Param('id') id: string, @Headers('x-internal-service-key') key: string | undefined) { return this.admin.internalCertificatePhoto(id, key); }
   @Permissions('admin.user.read') @Get('users/:id') getUser(@Param('id') id: string) { return this.admin.getUser(id); }
   @Permissions('admin.user.manage') @Post('users') createUser(@Body() dto: CreateUserDto, @Req() req: Request) { return this.admin.createUser(dto, req.user!.sub, req.id); }
   @Permissions('admin.user.manage') @Put('users/:id') updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req: Request) { return this.admin.updateUser(id, dto, req.user!.sub, req.id); }
+  @Permissions('admin.user.manage') @Post('users/:id/reset-password') resetPassword(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: AdminResetPasswordDto, @Req() req: Request) { return this.admin.resetPassword(id, dto, req.user!, req.id); }
+  @Permissions('admin.user.manage') @Get('users/:id/transfer-plan') transferPlan(@Param('id') id: string) { return this.handover.plan(id); }
+  @Permissions('admin.user.manage') @Post('users/:id/transfer-and-delete') transferUser(@Param('id') id: string, @Body() dto: TransferUserDto, @Req() req: Request) { return this.handover.transfer(id, dto, req.user!.sub, req.id); }
   @Permissions('admin.user.manage') @Delete('users/:id') deleteUser(@Param('id') id: string, @Req() req: Request) { return this.admin.deleteUser(id, req.user!.sub, req.id); }
   @Permissions('admin.user.manage') @Patch('users/:id/status') setStatus(@Param('id') id: string, @Body() dto: SetStatusDto, @Req() req: Request) { return this.admin.setStatus(id, dto.status, req.user!.sub, req.id); }
   @Permissions('admin.user.manage') @Patch('users/:id/unlock') unlockUser(@Param('id') id: string, @Req() req: Request) { return this.admin.unlockUser(id, req.user!.sub, req.id); }

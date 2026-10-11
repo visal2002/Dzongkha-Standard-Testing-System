@@ -1,0 +1,13 @@
+ARG RUNTIME_IMAGE
+FROM ${RUNTIME_IMAGE}
+USER root
+ARG SERVICE
+ENV SERVICE_NAME=${SERVICE}
+COPY main.js /app/dist/main.js
+COPY assets/ /app/assets/
+RUN mkdir -p /usr/share/fonts/truetype/dsts && find /app/assets -name '*.ttf' -exec cp {} /usr/share/fonts/truetype/dsts/ \; && fc-cache -f
+ARG REVISION
+ARG VERSION
+LABEL org.opencontainers.image.revision=$REVISION org.opencontainers.image.version=$VERSION
+USER dzongjuk
+CMD ["node", "dist/main.js"]

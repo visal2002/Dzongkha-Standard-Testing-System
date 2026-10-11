@@ -13,6 +13,7 @@ import { assertInternalService, DomainException } from '@dzongjuk/common';
 import { CreateExamDto, MarkAttendanceDto, RecordRegistrationPaymentDto, ResubmitApplicationDto, ReturnApplicationDto, snapshotColumn, SubmitApplicationDto, UpdateExamDto } from './dtos';
 import { ApplicationEntity, ApplicationHistoryEntity, AttendanceEntity, ExamEntity, IdempotencyRecordEntity, OutboxEventEntity, RegistrationPaymentStatus, WaitlistEntryEntity } from './entities';
 import { DcrcClientService } from './dcrc-client.service';
+import { allocateDstsNumber, releaseDstsNumber } from './dsts-number';
 
 /**
  * Statuses that occupy a seat once the capacity check has admitted an applicant.
@@ -122,11 +123,14 @@ export class RegistrationService {
         [ExamStatus.Draft]: [ExamStatus.Published, ExamStatus.Cancelled],
         [ExamStatus.Published]: [ExamStatus.RegistrationOpen, ExamStatus.Cancelled],
         [ExamStatus.RegistrationOpen]: [ExamStatus.RegistrationClosed, ExamStatus.Cancelled],
-        [ExamStatus.RegistrationClosed]: [ExamStatus.InProgress, ExamStatus.Cancelled],
+        [ExamStatus.RegistrationClosed]: [ExamStatus.RegistrationOpen, ExamStatus.InProgress, ExamStatus.Cancelled],
         [ExamStatus.InProgress]: [ExamStatus.ResultsDeclared],
         [ExamStatus.ResultsDeclared]: [ExamStatus.Archived],
       };
       if (!allowed[exam.status]?.includes(status)) throw new DomainException('EXAM_TRANSITION_INVALID', `Cannot change examination from ${exam.status} to ${status}.`, 409);
+      if (exam.status === ExamStatus.RegistrationClosed && status === ExamStatus.RegistrationOpen && new Date() > exam.registrationEnd) {
+        throw new DomainException('EXAM_WINDOW_EXPIRED', 'Update the registration closing time before reopening this expired window.', 409);
+      }
       const previousStatus = exam.status;
       exam.status = status;
       await manager.save(exam);
@@ -137,7 +141,7 @@ export class RegistrationService {
 
   async submit(examId: string, dto: SubmitApplicationDto, userId: string, requestId: string, idempotencyKey: string) {
     if (!idempotencyKey) throw new DomainException('IDEMPOTENCY_KEY_REQUIRED', 'Idempotency-Key header is required.', 400);
-    return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+    return this.serializable(async (manager) => {
       const scope = `application.submit:${userId}`;
       const existing = await manager.findOne(IdempotencyRecordEntity, { where: { scope, key: idempotencyKey } });
       if (existing) return existing.response;
@@ -147,9 +151,11 @@ export class RegistrationService {
       this.assertRegistrationOpen(exam, now);
       await this.assertNotDuplicate(manager, examId, dto.identityKey);
       const application = await this.createApplication(manager, exam, dto, userId, now);
+      application.registrationNumber = await allocateDstsNumber(manager, application.id, now, userId, requestId);
+      await manager.save(application);
       await this.transitionLog(manager, application.id, null, application.status, userId, requestId, null);
       await this.outbox(manager, application.status === ApplicationStatus.Waitlisted ? DomainEventTypes.ApplicationWaitlisted : DomainEventTypes.ApplicationSubmitted, application.id, requestId, { applicationId: application.id, examId, testTakerUserId: userId });
-      const response = { applicationId: application.id, status: application.status };
+      const response = { applicationId: application.id, status: application.status, registrationNumber: application.registrationNumber };
       await manager.save(IdempotencyRecordEntity, manager.create(IdempotencyRecordEntity, { scope, key: idempotencyKey, response }));
       return response;
     });
@@ -158,6 +164,16 @@ export class RegistrationService {
   private assertRegistrationOpen(exam: ExamEntity, now: Date) {
     if (exam.status !== ExamStatus.RegistrationOpen || now < exam.registrationStart || now > exam.registrationEnd) {
       throw new DomainException('REGISTRATION_CLOSED', 'The registration window is not open.', 409);
+    }
+  }
+
+  private async serializable<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+      try { return await this.dataSource.transaction('SERIALIZABLE', work); }
+      catch (error) {
+        const code = (error as { code?: string; driverError?: { code?: string } }).driverError?.code ?? (error as { code?: string }).code;
+        if (attempt >= 3 || !['40001', '40P01'].includes(code ?? '')) throw error;
+      }
     }
   }
 
@@ -214,9 +230,19 @@ export class RegistrationService {
       });
       if (capacity < reserved) throw new DomainException('EXAM_CAPACITY_INVALID', `Capacity cannot be lower than the ${reserved} confirmed registrations.`, 409);
 
+      const previousStatus = exam.status;
+      const scheduleEdited = dto.registrationStart !== undefined || dto.registrationEnd !== undefined;
       Object.assign(exam, dto, { registrationStart, registrationEnd, examDate, capacity });
+      // Saving an extended registration schedule must not retain the old closed
+      // state. Future openings remain time-gated by assertRegistrationOpen.
+      if (scheduleEdited && previousStatus === ExamStatus.RegistrationClosed && new Date() <= registrationEnd) {
+        exam.status = ExamStatus.RegistrationOpen;
+      }
       const updated = await manager.save(exam);
       await this.outbox(manager, 'EXAM_UPDATED', exam.id, requestId, { examId: exam.id, actorId, changedFields: Object.keys(dto) });
+      if (exam.status !== previousStatus) {
+        await this.outbox(manager, DomainEventTypes.ExamStatusChanged, exam.id, requestId, { examId: exam.id, previousStatus, status: exam.status, actorId });
+      }
       return updated;
     });
   }
@@ -301,12 +327,17 @@ export class RegistrationService {
     const dcrc = this.dcrc.isRequired() ? await this.dcrc.verify(candidate, actorId, requestId) : null;
     return this.transition(id, [ApplicationStatus.UnderReview], ApplicationStatus.Verified, actorId, requestId, null, (application) => {
       application.verifiedAt = new Date();
-      application.registrationNumber = `DSTS-${new Date().getUTCFullYear()}-${application.id.slice(0, 8).toUpperCase()}`;
       if (dcrc) {
         application.dcrcLookupId = dcrc.lookupId;
         application.dcrcVerifiedAt = new Date();
       }
-    }, DomainEventTypes.ApplicationVerified, (manager, application) => this.verificationNotificationPayload(manager, application));
+    }, DomainEventTypes.ApplicationVerified, async (manager, application) => {
+      if (!application.registrationNumber) {
+        application.registrationNumber = await allocateDstsNumber(manager, application.id, new Date(), actorId, requestId);
+        await manager.save(application);
+      }
+      return this.verificationNotificationPayload(manager, application);
+    });
   }
 
   // BRD §5.2.2 item 3: sendable any time after verification, not only once at the
@@ -365,6 +396,7 @@ export class RegistrationService {
 
   async markAttendance(id: string, dto: MarkAttendanceDto, actorId: string, requestId: string) {
     return this.dataSource.transaction(async (manager) => {
+      await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [id]);
       const application = await manager.findOneBy(ApplicationEntity, { id });
       if (!application) throw new DomainException('APPLICATION_NOT_FOUND', 'Application not found.', 404);
       if (application.status !== ApplicationStatus.Verified) throw new DomainException('ATTENDANCE_NOT_ELIGIBLE', 'Only verified candidates are eligible for attendance.', 409);
@@ -375,6 +407,8 @@ export class RegistrationService {
       await manager.save(attendance);
       if (overallStatus === 'ABSENT') {
         const previous = application.status;
+        const released = await releaseDstsNumber(manager, id, actorId, requestId);
+        if (released) { application.releasedRegistrationNumber = released; application.registrationNumber = null; }
         application.status = ApplicationStatus.Absent;
         await manager.save(application);
         await this.transitionLog(manager, id, previous, application.status, actorId, requestId, `Absent skills: ${absentSkills.join(', ')}`);
@@ -393,7 +427,7 @@ export class RegistrationService {
   async certificateProfile(id: string, internalKey: string | undefined) {
     assertInternalService(this.config, internalKey);
     const application = await this.applications.findOneBy({ id });
-    if (!application || !application.registrationNumber) throw new DomainException('CERTIFICATE_PROFILE_UNAVAILABLE', 'A verified registration profile is unavailable.', 409);
+    if (!application || !(application.registrationNumber || application.releasedRegistrationNumber)) throw new DomainException('CERTIFICATE_PROFILE_UNAVAILABLE', 'A verified registration profile is unavailable.', 409);
     const fullName = application.profileSnapshot.fullName;
     if (typeof fullName !== 'string' || !fullName.trim()) throw new DomainException('CERTIFICATE_PROFILE_INCOMPLETE', 'The verified profile has no holder name.', 409);
     const cid = application.profileSnapshot.cid;
@@ -402,7 +436,8 @@ export class RegistrationService {
     if (typeof dateOfBirth !== 'string' || !dateOfBirth.trim()) throw new DomainException('CERTIFICATE_PROFILE_INCOMPLETE', 'The verified profile has no date of birth.', 409);
     return {
       applicationId: application.id, examId: application.examId, testTakerUserId: application.testTakerUserId,
-      registrationNumber: application.registrationNumber, fullName: fullName.trim(), cid: cid.trim(), dateOfBirth: dateOfBirth.trim(),
+      registrationNumber: application.registrationNumber || application.releasedRegistrationNumber!, fullName: fullName.trim(),
+      fullNameDz: this.profileString(application.profileSnapshot, ['fullNameDz']) || null, cid: cid.trim(), dateOfBirth: dateOfBirth.trim(),
       email: this.profileString(application.profileSnapshot, ['email']) || '',
       phone: this.profileString(application.profileSnapshot, ['phone', 'contactNo', 'mobileNo']) || '',
     };

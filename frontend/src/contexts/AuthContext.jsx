@@ -4,11 +4,12 @@
  * Phone: +975 - 1750 - 5267
  */
 
-import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { authService } from '@/features/auth/api';
 import { recordAuditEvent } from '@/services/audit';
 import * as sessionStore from '@/lib/session';
+import { USE_MOCK_DATA } from '@/lib/env';
 
 const AuthContext = createContext(null);
 
@@ -31,6 +32,7 @@ const normalizeUserSession = (user) => {
     role: primaryRole,
     roleName: user.roleName || primaryRole.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase()),
     permissions,
+    permissionsAuthoritative: user.permissionsAuthoritative ?? !USE_MOCK_DATA,
   };
 };
 
@@ -67,6 +69,40 @@ const clearSession = sessionStore.clearSession;
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => readSession()?.user ?? null);
   const [isLoading, setIsLoading] = useState(true);
+  const refreshingAccess = useRef(null);
+
+  const refreshAccess = useCallback(() => {
+    const current = readSession();
+    if (!current?.user || current.user.permissionsAuthoritative === false) return Promise.resolve(null);
+    if (refreshingAccess.current) return refreshingAccess.current;
+    refreshingAccess.current = (async () => {
+      const result = await authService.refreshToken();
+      if (!result?.user || readSession()?.user?.id !== current.user.id) return null;
+      const updated = normalizeUserSession({ ...current.user, ...result.user });
+      saveSession(updated, result.token, result.expiresIn);
+      setUser(previous => previous?.id === updated.id
+        ? (JSON.stringify(previous) === JSON.stringify(updated) ? previous : updated) : previous);
+      return updated;
+    })().finally(() => { refreshingAccess.current = null; });
+    return refreshingAccess.current;
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.permissionsAuthoritative === false) return undefined;
+    const refresh = () => { if (document.visibilityState !== 'hidden') void refreshAccess(); };
+    refresh();
+    const interval = setInterval(refresh, 60000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('dsts:permissions-changed', refresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('dsts:permissions-changed', refresh);
+    };
+  }, [user?.id, user?.permissionsAuthoritative, refreshAccess]);
+
 
   useEffect(() => {
     const session = readSession();

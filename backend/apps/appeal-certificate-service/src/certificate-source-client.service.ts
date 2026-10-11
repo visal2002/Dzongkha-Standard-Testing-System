@@ -11,10 +11,10 @@ import { DomainException } from '@dzongjuk/common';
 interface Envelope<T> { success: boolean; data: T; error?: { code?: string; message?: string } }
 export interface CertificateResultSource {
   examId: string; applicationId: string; testTakerUserId: string; scoreSheetId: string; scoreVersionNumber: number;
-  scores: Record<string, number>; overallScore: string; bandLabel: string; cefrLevel: string | null;
+  scores: Record<string, number>; skillStandards?: Record<string, number>; overallScore: string; bandLabel: string; cefrLevel: string | null;
 }
 export interface CertificateProfileSource {
-  applicationId: string; examId: string; testTakerUserId: string; registrationNumber: string; fullName: string;
+  applicationId: string; examId: string; testTakerUserId: string; registrationNumber: string; fullName: string; fullNameDz?: string | null;
   cid: string; dateOfBirth: string; email: string; phone: string;
 }
 export interface CertificateExamSource {
@@ -25,12 +25,24 @@ export interface CertificateExamSource {
 export class CertificateSourceClientService {
   private readonly resultUrl: string;
   private readonly registrationUrl: string;
+  private readonly identityUrl: string;
   private readonly internalKey: string;
 
   constructor(config: ConfigService) {
     this.resultUrl = config.get<string>('RESULT_SERVICE_URL', 'http://result-service:8004/api/v1');
     this.registrationUrl = config.get<string>('REGISTRATION_SERVICE_URL', 'http://registration-service:8002/api/v1');
+    this.identityUrl = config.get<string>('IDENTITY_SERVICE_URL', 'http://identity-service:8001/api/v1');
     this.internalKey = config.get<string>('INTERNAL_SERVICE_SECRET', '');
+  }
+
+  async photo(userId: string): Promise<{ photo: string | null; fullNameDz?: string | null }> {
+    try { return await this.get<{ photo: string | null; fullNameDz?: string | null }>(`${this.identityUrl}/admin/users/${userId}/certificate-photo`); }
+    catch (error) {
+      // Historical certificates remain downloadable after a holder is archived.
+      // A missing optional photo is not a missing certified identity/result.
+      if (error instanceof DomainException && error.getStatus() === 404) return { photo: null };
+      throw error;
+    }
   }
 
   results(examId: string) {
@@ -48,7 +60,7 @@ export class CertificateSourceClientService {
   private async get<T>(url: string): Promise<T> {
     if (this.internalKey.length < 32) throw new DomainException('CERTIFICATE_SOURCE_UNAVAILABLE', 'Certificate source integration is not configured.', 503);
     let response: Response;
-    try { response = await fetch(url, { headers: { 'x-internal-service-key': this.internalKey } }); }
+    try { response = await fetch(url, { headers: { 'x-internal-service-key': this.internalKey }, signal: AbortSignal.timeout(15000) }); }
     catch { throw new DomainException('CERTIFICATE_SOURCE_UNAVAILABLE', 'Certificate source service is unavailable.', 503); }
     const payload = await response.json() as Envelope<T>;
     if (!response.ok || !payload.success) {

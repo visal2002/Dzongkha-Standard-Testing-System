@@ -14,7 +14,7 @@ import {
   BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend
 } from 'recharts';
-import { reportService } from '@/features/reports/api';
+import { reportService, getReportQuery } from '@/features/reports/api';
 import { examService } from '@/features/exams/api';
 import { applicationService } from '@/features/registration/api';
 import { appealService } from '@/features/appeals/api';
@@ -54,7 +54,7 @@ const PREDEFINED_REPORTS = [
 
 export default function Reports() {
   const { user } = useAuth();
-  const canGenerate = canAccess(user?.role, 'reports', 'manage');
+  const canGenerate = canAccess(user, 'reports', 'manage');
   const { data: summary, loading } = useApi(reportService.getSummary);
   const { data: examWindowsData } = useApi(examService.getAll);
   const { data: applications } = useApi(applicationService.getAll);
@@ -62,27 +62,20 @@ export default function Reports() {
   const { data: scoreReport } = useApi(reportService.getScoreDistribution);
   const examWindows = examWindowsData || [];
   const [exporting, setExporting] = useState(false);
+  const [selectedExamId, setSelectedExamId] = useState('');
 
-  const handleExport = async (format, dataset = 'summary', label = 'report') => {
+  const handleExport = async (format, reportId = 'summary', label = 'report') => {
+    setExporting(true);
     try {
-      setExporting(true);
       toast.loading(`Generating ${label} (${format.toUpperCase()})...`, { id: 'export-job' });
-      // In this system, we use createExport and then download it.
-      const job = await reportService.createExport(format, { dataset, fields: [] });
-      
-      // If the backend has a worker, we'd poll here. We will attempt a slight delay then download.
-      setTimeout(async () => {
-        try {
-          await reportService.downloadExport(job.id, `${label.replace(/\s+/g, '_').toLowerCase()}.${format}`);
-          toast.success(`${label} downloaded successfully!`, { id: 'export-job' });
-        } catch (downloadErr) {
-          toast.error(`Export failed: ${downloadErr.message}`, { id: 'export-job' });
-        } finally {
-          setExporting(false);
-        }
-      }, 1500);
+      const query = getReportQuery(reportId, reportId === 'registration' ? selectedExamId : undefined);
+      const job = await reportService.createExport(format, query);
+      await reportService.waitForExport(job.id);
+      await reportService.downloadExport(job.id, `${label.replace(/\s+/g, '_').toLowerCase()}.${format.toLowerCase()}`);
+      toast.success(`${label} downloaded successfully!`, { id: 'export-job' });
     } catch (err) {
       toast.error(`Export failed: ${err.message}`, { id: 'export-job' });
+    } finally {
       setExporting(false);
     }
   };
@@ -112,14 +105,14 @@ export default function Reports() {
 
   // Every chart below is aggregated from records the API returned. When an environment
   // has no data the chart says so rather than drawing a representative curve.
-  const registrationMonthly = useMemo(() => monthlyCounts(applications, {
+  const registrationMonthly = useMemo(() => monthlyCounts(selectedExamId ? (applications || []).filter(application => application.examId === selectedExamId) : applications, {
     dateOf: application => application.submittedAt || application.createdAt,
     series: {
       applications: () => true,
       verified: application => ['verified', 'approved'].includes(application.status),
       approved: application => application.status === 'approved',
     },
-  }), [applications]);
+  }), [applications, selectedExamId]);
 
   const skillAvgMonthly = useMemo(() => monthlyAverages(applications, {
     dateOf: application => application.scoredAt || application.updatedAt || application.createdAt,
@@ -248,7 +241,7 @@ export default function Reports() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-text-primary">Application Status Breakdown</h3>
                 <div className="flex gap-2">
-                  <Select style={{ width: 140, height: 32 }}><option>All Windows</option>{examWindows.map(e => <option key={e.id}>{e.title}</option>)}</Select>
+                  <Select aria-label="Registration report examination" value={selectedExamId} onChange={event => setSelectedExamId(event.target.value)} style={{ width: 140, height: 32 }}><option value="">All Windows</option>{examWindows.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}</Select>
                   {canGenerate && <Button variant="secondary" size="sm" disabled={exporting} icon={<Download size={13} />} onClick={() => handleExport('csv', 'registration', 'Registration Status')}>CSV</Button>}
                 </div>
               </div>

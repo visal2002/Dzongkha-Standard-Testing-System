@@ -8,3 +8,4 @@ export * from './security.module';
 export * from './security.decorators';
 export * from './security.guards';
 export * from './encryption.transformer';
+export * from './staff-transfer.controller';

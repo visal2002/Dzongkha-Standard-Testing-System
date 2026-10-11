@@ -22,6 +22,7 @@
  * single combined history, not a third place to browse the same records.
  */
 import { useState } from 'react';
+import { humanizeStatus } from '@/lib/statusLabels';
 import { pdf } from '@react-pdf/renderer';
 import { Award, BarChart3, Download, FileSpreadsheet, FileText, Scale } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
@@ -32,6 +33,7 @@ import Alert from '@/components/ui/Alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { applicationService } from '@/features/registration/api';
+import { shortReferences } from '@/lib/recordReferences';
 import { scoreService } from '@/features/scores/api';
 import { appealService } from '@/features/appeals/api';
 import { certificateService } from '@/features/certificates/api';
@@ -55,7 +57,7 @@ const downloadBlob = (blob, filename) => {
 const toCsv = rows => {
   const header = ['Date', 'Type', 'Reference', 'Status'];
   const escape = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
-  return [header, ...rows.map(row => [row.date, row.type, row.reference, row.status])]
+  return [header, ...rows.map(row => [row.date, row.type, row.reference, humanizeStatus(row.status)])]
     .map(row => row.map(escape).join(','))
     .join('\r\n');
 };
@@ -72,6 +74,8 @@ export default function MyReports() {
   const myResults = asList(results);
   const myAppeals = asList(appeals);
   const myCertificates = asList(certificates);
+  const applicationReferences = shortReferences([...myApplications.map(item => item.id), ...myResults.map(item => item.applicationId)], 'APP');
+  const requestReferences = shortReferences(myAppeals.map(item => item.id), 'RE');
 
   const loading = loadingApps || loadingResults || loadingAppeals || loadingCerts;
   const publishedResults = myResults.filter(result => String(result.status || '').toLowerCase() === 'published');
@@ -80,19 +84,22 @@ export default function MyReports() {
     ...myApplications.map(application => ({
       date: application.submittedAt || application.createdAt,
       type: 'Application',
-      reference: application.registrationNumber || application.id,
+      reference: application.registrationNumber || applicationReferences[application.id],
+      fullReference: application.id,
       status: application.status,
     })),
     ...publishedResults.map(result => ({
       date: result.publishedAt || result.updatedAt || result.createdAt,
       type: 'Result',
-      reference: result.applicationId,
+      reference: applicationReferences[result.applicationId],
+      fullReference: result.applicationId,
       status: result.status,
     })),
     ...myAppeals.map(appeal => ({
       date: appeal.submittedAt || appeal.createdAt,
       type: 'Re-evaluation',
-      reference: appeal.id,
+      reference: requestReferences[appeal.id],
+      fullReference: appeal.id,
       status: appeal.status,
     })),
     ...myCertificates.map(certificate => ({
@@ -179,7 +186,7 @@ export default function MyReports() {
                   <tr key={index} className="border-b border-surface-border/40">
                     <td className="py-3 pr-4 text-xs text-text-muted">{formatDate(row.date)}</td>
                     <td className="py-3 pr-4 text-text-primary">{row.type}</td>
-                    <td className="py-3 pr-4 font-mono text-xs text-brand-gold">{row.reference}</td>
+                    <td title={row.fullReference} className="py-3 pr-4 font-mono text-xs text-brand-gold">{row.reference}</td>
                     <td className="py-3"><StatusBadge status={row.status} /></td>
                   </tr>
                 ))}

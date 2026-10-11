@@ -206,10 +206,7 @@ export class AppealService {
       }));
       appeal.committeeRecommendation = dto.recommendation;
       if (dto.recommendation === AppealRecommendation.NoChange) {
-        await this.transition(manager, appeal, AppealStatus.NoChange, actor.sub, 'USER', requestId, dto.remarks);
-        appeal.completedAt = new Date();
-        await this.transition(manager, appeal, AppealStatus.Completed, actor.sub, 'USER', requestId, 'Committee completed the appeal with no score change.');
-        await this.outbox(manager, DomainEventTypes.AppealCompleted, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, testTakerUserId: appeal.testTakerUserId, outcome: AppealRecommendation.NoChange });
+        await this.transition(manager, appeal, AppealStatus.PendingChiefApproval, actor.sub, 'USER', requestId, 'Committee recommends no score change; awaiting Chief of Examination approval.');
       } else {
         for (const skill of skills) skill.proposedScore = String(dto.proposedScores![skill.skill]);
         await manager.save(AppealSkillEntity, skills);
@@ -227,8 +224,8 @@ export class AppealService {
     const decided = await this.dataSource.transaction('SERIALIZABLE', async (manager) => {
       const appeal = await manager.findOne(AppealEntity, { where: { id: appealId }, lock: { mode: 'pessimistic_write' } });
       if (!appeal) throw new DomainException('APPEAL_NOT_FOUND', 'Appeal not found.', 404);
-      if (appeal.status !== AppealStatus.PendingChiefApproval || appeal.committeeRecommendation !== AppealRecommendation.Revise) {
-        throw new DomainException('APPEAL_DECISION_STATE_INVALID', 'Only a committee revision request may receive a Chief decision.', 409);
+      if (appeal.status !== AppealStatus.PendingChiefApproval || !appeal.committeeRecommendation) {
+        throw new DomainException('APPEAL_DECISION_STATE_INVALID', 'Only a committee-reviewed request may receive a Chief decision.', 409);
       }
       const skills = await manager.findBy(AppealSkillEntity, { appealId });
       this.validateSkillDecisions(dto, skills);
@@ -247,7 +244,14 @@ export class AppealService {
         remarks: dto.remarks,
       }));
       appeal.chiefDecision = decision;
-      if (decision === AppealDecision.Approved) {
+      if (decision === AppealDecision.Approved && appeal.committeeRecommendation === AppealRecommendation.NoChange) {
+        for (const skill of skills) skill.finalScore = skill.originalScore;
+        await manager.save(AppealSkillEntity, skills);
+        appeal.completedAt = new Date();
+        await this.transition(manager, appeal, AppealStatus.Completed, actor.sub, 'USER', requestId, 'Chief approved the committee no-change recommendation; published scores remain unchanged.');
+        await this.outbox(manager, DomainEventTypes.AppealApproved, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, testTakerUserId: appeal.testTakerUserId, approvedSkills, rejectedSkills, recommendation: AppealRecommendation.NoChange });
+        await this.outbox(manager, DomainEventTypes.AppealCompleted, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, testTakerUserId: appeal.testTakerUserId, outcome: AppealRecommendation.NoChange });
+      } else if (decision === AppealDecision.Approved) {
         await this.transition(manager, appeal, AppealStatus.ApprovedPendingScoreUpdate, actor.sub, 'USER', requestId, dto.remarks);
         await this.outbox(manager, DomainEventTypes.AppealApproved, appeal.id, requestId, { appealId: appeal.id, examId: appeal.examId, scoreSheetId: appeal.scoreSheetId, scoreVersionNumber: appeal.scoreVersionNumber, testTakerUserId: appeal.testTakerUserId, approvedSkills, rejectedSkills });
       } else {
@@ -269,7 +273,7 @@ export class AppealService {
     // A failure here does not undo the recorded decision - the appeal simply stays at
     // ApprovedPendingScoreUpdate, and POST :id/apply-revision (also Chief-only) stays
     // available to retry it.
-    if (decided.chiefDecision !== AppealDecision.Approved) return decided;
+    if (decided.chiefDecision !== AppealDecision.Approved || decided.committeeRecommendation === AppealRecommendation.NoChange) return decided;
     try {
       return await this.applyApprovedRevision(appealId, actor, requestId, `auto-apply:${requestId}`);
     } catch (error) {
@@ -626,11 +630,11 @@ export class AppealService {
   }
 
   private assertElevated(actor: AccessClaims) {
-    // `appeal.review` and `appeal.approve` carry write authority (the committee-review
-    // and Chief decision steps) as well as this organisation-wide read. `appeal.view`
-    // is the read-only counterpart, held by a role - Committee Member - authorised to
-    // see every re-evaluation request but neither of those decisions. See
-    // docs/rbac/RBAC-INTEGRATION-CONTRACT.md §5.4.
+    // `appeal.review` and `appeal.approve` carry write authority (committee review
+    // and Chief decision steps) as well as organisation-wide read. `appeal.view` is
+    // a separate read-only permission for roles that must list requests without either
+    // write action. Committee Members now hold both appeal.view and appeal.review;
+    // only the Chief Executive holds appeal.approve. See RBAC integration contract §5.4.
     if (actor.permissions.includes('*') || actor.permissions.includes('appeal.review') || actor.permissions.includes('appeal.approve') || actor.permissions.includes('appeal.view')) return;
     throw new DomainException('APPEAL_ACCESS_DENIED', 'Appeal review, approval, or view permission is required.', 403);
   }

@@ -9,6 +9,7 @@
  * Band score entry and retrieval for examination committees.
  */
 import apiClient from '@/services/api';
+import { shortReference } from '@/lib/recordReferences';
 import { createUuid } from '@/utils/uuid';
 
 const normalizeExamScore = sheet => {
@@ -24,7 +25,7 @@ const normalizeExamScore = sheet => {
     bandLabel: latest.bandLabel || 'Pending',
     cefrLevel: latest.cefrLevel || 'Pending',
     status: String(sheet.status || '').toLowerCase(),
-    testTakerName: sheet.testTakerName || `Application ${sheet.applicationId.slice(0, 8)}`,
+    testTakerName: sheet.testTakerName || shortReference(sheet.applicationId),
   };
 };
 
@@ -55,7 +56,7 @@ export const scoreService = {
       ...candidate,
       applicationId: String(candidate.applicationId || candidate.id || ''),
       id: candidate.applicationId || candidate.id,
-      testTakerName: candidate.testTakerName || (candidate.applicationId ? `Candidate ${candidate.applicationId.slice(0, 8)}` : `Candidate ${candidate.id}`),
+      testTakerName: candidate.testTakerName || (candidate.applicationId ? shortReference(candidate.applicationId) : shortReference(candidate.id)),
       cid: candidate.identityKey || candidate.testTakerUserId,
       status: String(candidate.status || '').toLowerCase(),
       scoreStatus: String(candidate.scoreSheet?.status || 'PENDING').toLowerCase(),

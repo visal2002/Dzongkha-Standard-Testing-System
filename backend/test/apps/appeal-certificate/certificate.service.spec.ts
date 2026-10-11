@@ -137,6 +137,7 @@ const makeRenderer = (): CertificateRendererService =>
 
 const makeSources = (examId: string, applicationId: string, testTakerUserId: string): CertificateSourceClientService =>
   ({
+    photo: jest.fn().mockResolvedValue({ photo: null }),
     exam: jest.fn().mockResolvedValue({ id: examId, examDate: new Date().toISOString() }),
     results: jest.fn().mockResolvedValue([{
       examId, applicationId, testTakerUserId,
@@ -147,7 +148,7 @@ const makeSources = (examId: string, applicationId: string, testTakerUserId: str
     profile: jest.fn().mockResolvedValue({
       applicationId, examId, testTakerUserId,
       registrationNumber: 'DSTS-2026-ABCD1234',
-      fullName: 'Karma Wangchuk',
+      fullName: 'Karma Wangchuk', cid: '11111111111', dateOfBirth: '1990-01-01',
     }),
   } as unknown as CertificateSourceClientService);
 
@@ -541,7 +542,7 @@ describe('CertificateService.createTemplate - asset columns', () => {
 
     await service.createTemplate({
       ...baseDto(),
-      leftLogo: asset(1), rightLogo: asset(2), borderImage: asset(3), signatureImage: asset(4), sealImage: asset(5),
+      leftLogo: asset(1), rightLogo: asset(2), borderImage: asset(3), signatureImage: asset(4), sealImage: asset(5), examinationSignatureImage: asset(6),
     }, mfaActor({ roles: ['identity_admin'], permissions: ['*'] }), 'req-tpl-2');
 
     const row = saved as unknown as Record<string, unknown>;
@@ -550,6 +551,7 @@ describe('CertificateService.createTemplate - asset columns', () => {
     expect((row.borderImageData as Buffer).equals(Buffer.from([3, 3, 3]))).toBe(true);
     expect((row.signatureImageData as Buffer).equals(Buffer.from([4, 4, 4]))).toBe(true);
     expect((row.sealImageData as Buffer).equals(Buffer.from([5, 5, 5]))).toBe(true);
+    expect((row.examinationSignatureImageData as Buffer).equals(Buffer.from([6, 6, 6]))).toBe(true);
   });
 
   it('still rejects an oversized asset before any column is built', async () => {
@@ -558,5 +560,108 @@ describe('CertificateService.createTemplate - asset columns', () => {
     await expect(
       service.createTemplate({ ...baseDto(), leftLogo: oversized }, mfaActor({ roles: ['identity_admin'], permissions: ['*'] }), 'req-tpl-3'),
     ).rejects.toMatchObject({ response: { code: 'CERTIFICATE_TEMPLATE_ASSET_INVALID' } });
+  });
+});
+
+
+describe('template retirement', () => {
+ it('retires approved templates without deleting certificate records', async () => {
+  const template=makeTemplate(), manager=makeManager({findOne:jest.fn().mockResolvedValue(template)});
+  const service=buildService({manager});
+  const result=await service.retireTemplate(template.id,mfaActor(),'retire-qa');
+  expect(result.retired).toBe(true);expect(template.status).toBe(CertificateTemplateStatus.Retired);
+  expect(manager.save).toHaveBeenCalledWith(template);
+ });
+ it('rejects insufficient assurance before any write',async()=>{
+  const manager=makeManager();const service=buildService({manager});
+  await expect(service.retireTemplate(uuid(),mfaActor({assurance:'PASSWORD'} as never),'req')).rejects.toBeDefined();
+  expect(manager.save).not.toHaveBeenCalled();
+ });
+ it('returns not found for missing templates',async()=>{
+  await expect(buildService().retireTemplate(uuid(),mfaActor(),'req')).rejects.toMatchObject({response:{code:'CERTIFICATE_TEMPLATE_NOT_FOUND'}});
+ });
+});
+
+describe('default certificate template selection',()=>{
+ it('switches the default atomically without retiring approved templates',async()=>{
+  const target=makeTemplate(),previous=Object.assign(makeTemplate(),{isDefault:true});
+  const manager=makeManager({query:jest.fn().mockResolvedValue([]),findOne:jest.fn().mockResolvedValue(target),find:jest.fn().mockResolvedValue([previous])});
+  const result=await buildService({manager}).activateTemplate(target.id,mfaActor(),'activate');
+  expect(result.isDefault).toBe(true);expect(previous.isDefault).toBe(false);
+  expect(previous.status).toBe(CertificateTemplateStatus.Approved);
+  expect(manager.save).toHaveBeenCalledWith(previous);expect(manager.save).toHaveBeenCalledWith(target);
+ });
+ it.each(['draft','retired'])('rejects %s without changing the previous default',async kind=>{
+  const target=makeTemplate();
+  if(kind==='draft')target.status=CertificateTemplateStatus.Draft;
+  if(kind==='retired')target.status=CertificateTemplateStatus.Retired;
+  const manager=makeManager({query:jest.fn().mockResolvedValue([]),findOne:jest.fn().mockResolvedValue(target)});
+  await expect(buildService({manager}).activateTemplate(target.id,mfaActor(),'req')).rejects.toBeDefined();
+  expect(manager.save).not.toHaveBeenCalled();
+ });
+ it('uses the selected effective default when multiple approved templates exist',async()=>{
+  const selected=Object.assign(makeTemplate(),{isDefault:true});const service=buildService({templates:makeRepo([makeTemplate(),selected])});
+  expect(await (service as unknown as {activeTemplate:()=>Promise<CertificateTemplateEntity>}).activeTemplate()).toBe(selected);
+ });
+ it('does not use an expired default',async()=>{
+  const expired=Object.assign(makeTemplate(),{isDefault:true,effectiveTo:new Date(Date.now()-86400000)}),current=makeTemplate();
+  const service=buildService({templates:makeRepo([expired,current])});
+  expect(await (service as unknown as {activeTemplate:()=>Promise<CertificateTemplateEntity>}).activeTemplate()).toBe(current);
+ });
+});
+
+it.each(['expired','future'])('reactivates an approved %s template immediately',async kind=>{
+ const target=makeTemplate();
+ if(kind==='expired')target.effectiveTo=new Date(Date.now()-86400000);
+ else target.effectiveFrom=new Date(Date.now()+86400000);
+ const previous=Object.assign(makeTemplate(),{isDefault:true});
+ const manager=makeManager({query:jest.fn().mockResolvedValue([]),findOne:jest.fn().mockResolvedValue(target),find:jest.fn().mockResolvedValue([previous])});
+ const before=Date.now();await buildService({manager}).activateTemplate(target.id,mfaActor(),'reactivate');
+ expect(target.isDefault).toBe(true);expect(target.effectiveFrom.getTime()).toBeGreaterThanOrEqual(before);
+ expect(target.effectiveTo).toBeNull();expect(previous.isDefault).toBe(false);
+ expect(previous.status).toBe(CertificateTemplateStatus.Approved);
+});
+
+describe('CertificateService — both current signatures on existing copies', () => {
+  it.each(['default', 'only-effective', 'missing', 'chief-only', 'executive-only', 'expired', 'draft', 'test-only', 'different-code', 'ambiguous'])('handles %s without rewriting the issued certificate', async mode => {
+    const ownerId = uuid();
+    const original = makeTemplate();
+    original.examinationSignatureImageData = Buffer.from('original-signature');
+    original.examinationSignatureImageMimeType = 'image/png';
+    original.signatureImageData = Buffer.from('original-executive-signature');
+    original.signatureImageMimeType = 'image/png';
+    const current: CertificateTemplateEntity = Object.assign(makeTemplate(), {
+      versionNumber: 7, isDefault: mode !== 'only-effective' && mode !== 'ambiguous',
+      examinationSignatureImageData: Buffer.from('new-chief-signature'), examinationSignatureImageMimeType: 'image/png',
+      signatureImageData: Buffer.from('new-executive-signature'), signatureImageMimeType: 'image/png',
+    });
+    if (mode === 'missing' || mode === 'executive-only') current.examinationSignatureImageData = null;
+    if (mode === 'missing' || mode === 'chief-only') current.signatureImageData = null;
+    if (mode === 'expired') current.effectiveTo = new Date('2020-01-01');
+    if (mode === 'draft') current.status = CertificateTemplateStatus.Draft;
+    if (mode === 'test-only') current.testOnly = true;
+    if (mode === 'different-code') current.code = 'OTHER';
+    const cert = makeCertificate({ testTakerUserId: ownerId, templateId: original.id });
+    const snapshot = { ...cert };
+    const templates = makeRepo([original]);
+    templates.findBy = jest.fn().mockResolvedValue(mode === 'ambiguous' ? [current, makeTemplate()] : [current]);
+    const certificates = makeRepo([cert]);
+    const render = jest.fn().mockResolvedValue(Buffer.from('%PDF-current-copy'));
+    const service = new CertificateService(makeDataSource(makeManager()), new ConfigService({
+      CERTIFICATE_VERIFICATION_SECRET: verificationSecret, PRIVILEGED_ASSURANCE_LEVELS: 'MFA,NDI', NODE_ENV: 'test',
+    }), makeEncryption(), makeStorage(), { render } as unknown as CertificateRendererService,
+    makeSources(cert.examId, cert.applicationId, ownerId), templates, certificates, makeRepo());
+    await service.downloadLatestOwn(mfaActor({ sub: ownerId, assurance: 'LOCAL', permissions: [] }), 'signature-copy');
+    const [renderedTemplate, data] = render.mock.calls[0];
+    expect(renderedTemplate.examinationSignatureImageData).toEqual(Buffer.from(['default', 'only-effective', 'chief-only'].includes(mode) ? 'new-chief-signature' : 'original-signature'));
+    expect(renderedTemplate.signatureImageData).toEqual(Buffer.from(['default', 'only-effective', 'executive-only'].includes(mode) ? 'new-executive-signature' : 'original-executive-signature'));
+    expect(renderedTemplate.id).toBe(original.id);
+    expect(renderedTemplate.versionNumber).toBe(original.versionNumber);
+    expect(data.scores).toEqual(cert.scoreSnapshot.scores);
+    expect(data.validUntil).toBe(cert.validUntil);
+    expect(original.examinationSignatureImageData).toEqual(Buffer.from('original-signature'));
+    expect(original.signatureImageData).toEqual(Buffer.from('original-executive-signature'));
+    expect(cert).toEqual(snapshot);
+    expect(templates.save).not.toHaveBeenCalled();
   });
 });

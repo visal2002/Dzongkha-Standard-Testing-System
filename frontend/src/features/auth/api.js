@@ -211,6 +211,15 @@ export const registerMockAccount = ({ email, cid, fullName, roles = ['test_taker
   return user;
 };
 
+export const resetMockAccountPassword = (email, password) => {
+  const entry = mockAccounts.get(String(email || '').trim().toLowerCase());
+  if (!entry) throw new Error('User account not found.');
+  entry.password = password;
+  entry.user = { ...entry.user, passwordSet: true };
+  persistAccount(entry);
+  return { passwordReset: true };
+};
+
 const decodeClaims = (token) => {
   try {
     const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -395,7 +404,8 @@ export const authService = {
   refreshToken: async () => {
     try {
       const { data: envelope } = await apiClient.post('/auth/refresh');
-      return { token: envelope.data.accessToken };
+      const { accessToken, expiresIn, user } = envelope.data;
+      return { token: accessToken, expiresIn, user: normalizeUser(user, accessToken) };
     } catch {
       return null;
     }

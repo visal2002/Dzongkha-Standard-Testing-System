@@ -100,12 +100,12 @@ export default function UploadQuestionPaper() {
   };
 
   // BRD §5.4.2 BR-4 describes sample papers as an automatic transition once results
-  // are declared for an exam - not an Exam Head action. There is currently no
+  // are declared for an exam - not an action for the Chief of Examination. There is currently no
   // automatic trigger anywhere in the system; the only way a Ready paper ever
   // becomes a released sample is this manual publish call. It is kept here (rather
   // than removed and leaving papers stuck Ready forever) but is a deliberate
   // addition beyond what the BRD describes, pending DCDD confirming whether the
-  // Exam Head should hold a manual override or whether an automatic trigger should
+  // Chief of Examination should hold a manual override or whether an automatic trigger should
   // be built instead.
   const handlePublishSample = async paper => {
     setWorking(`publish-${paper.id}`);

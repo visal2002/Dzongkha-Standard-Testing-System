@@ -119,6 +119,21 @@ const buildService = ({
 
 // ─── local credential tests ───────────────────────────────────────────────────
 
+describe('AuthService — password-reset safe session refresh', () => {
+  const session = () => Object.assign(new SessionEntity(), { id: uuid(), user: makeUser(), assurance: 'LOCAL', revokedAt: null, lastActivityAt: new Date(), expiresAt: new Date(Date.now()+60_000) });
+  it('rotates only a still-valid refresh token without writing revokedAt', async () => {
+    const stored=session(),sessions=makeRepo<SessionEntity>([stored]);
+    const result=await buildService({sessions}).refresh('old-refresh',ctx);
+    expect(result.refreshToken).toBeDefined();expect(sessions.save).not.toHaveBeenCalled();
+    expect(sessions.update).toHaveBeenCalledWith(expect.objectContaining({id:stored.id,revokedAt:expect.anything(),refreshTokenHash:expect.any(String)}),{refreshTokenHash:expect.any(String),lastActivityAt:expect.any(Date)});
+  });
+  it('refuses to issue new tokens when a reset revokes a session during refresh', async () => {
+    const sessions=makeRepo<SessionEntity>([session()]);(sessions.update as jest.Mock).mockResolvedValue({affected:0});
+    await expect(buildService({sessions}).refresh('old-refresh',ctx)).rejects.toMatchObject({response:{code:'SESSION_INVALID'}});
+    expect(sessions.save).not.toHaveBeenCalled();
+  });
+});
+
 describe('AuthService — Local credential login (BRD §2.9)', () => {
   const PLAIN = 'Password!123';
   let passwordHash: string;
@@ -521,10 +536,10 @@ describe('AuthService — User registration (BRD §2.9)', () => {
     const service = buildService({ users: usersRepo });
 
     const result = await service.updateProfile(user.id, {
-      email: 'chimi@example.com', phone: '17123456',
+      email: 'chimi@example.com', phone: '17123456', fullNameDz: 'བཀྲ་ཤིས་',
     }, ctx);
 
-    expect(result).toMatchObject({ email: 'chimi@example.com', emailSet: true, contactNumber: '17123456' });
+    expect(result).toMatchObject({ email: 'chimi@example.com', emailSet: true, contactNumber: '17123456', fullNameDz: 'བཀྲ་ཤིས་' });
     expect((usersRepo.save as jest.Mock).mock.calls).toHaveLength(1);
   });
 

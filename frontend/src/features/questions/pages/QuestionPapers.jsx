@@ -30,7 +30,7 @@ const formatWindowTime = value => {
   return Number.isNaN(date.getTime()) ? null : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 };
 
-// BRD §5.4.2 BR-3: the Exam Head may access, view and download question papers only
+// BRD §5.4.2 BR-3: the Chief of Examination may access, view and download question papers only
 // during the scheduled exam time set at upload. The server is the binding check (it
 // rejects a download outside the window with 403 QUESTION_ACCESS_WINDOW_CLOSED) - this
 // mirrors that window in the list so the buttons reflect it before a click round-trips.
@@ -68,13 +68,13 @@ export default function QuestionPapers() {
   const [working, setWorking] = useState(null);
   // Reaching this page at all already requires Question Upload `read`, enforced by
   // the route guard, so the listing itself needs no further check.
-  const canManage = canAccess(user?.role, 'questions', 'manage');
+  const canManage = canAccess(user, 'questions', 'manage');
   // Reading the repository is not the same as opening what is in it. Question Upload
   // "Read" shows the paper's metadata; only a role with Full access may open the
   // encrypted question paper or answer sheet, which the BRD reserves for the Exam
   // Head until the scheduled window. This hides the control - the binding check is
   // `question.secure.download` on the server.
-  const canOpenDocument = canAccess(user?.role, 'questions', 'secure_read');
+  const canOpenDocument = canAccess(user, 'questions', 'secure_read');
 
   const handleDelete = async () => {
     try {
@@ -129,7 +129,7 @@ export default function QuestionPapers() {
       />
 
       <Alert variant="warning" title="Classified Documents">
-        Question papers are encrypted at rest. Access is restricted to the Exam Head during the examination period only.
+        Question papers are encrypted at rest. Access is restricted to the Chief of Examination during the examination period only.
       </Alert>
 
       {/* Stats */}

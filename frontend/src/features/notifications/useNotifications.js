@@ -24,58 +24,94 @@ import { notificationService } from '@/features/notifications/api';
  *   refresh: () => void,
  * }}
  */
-export function useNotifications() {
+export function useNotifications(limit = 20) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [error, setError] = useState('');
 
   const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
     try {
       setLoading(true);
-      const result = await notificationService.getUserNotifications(user.id);
+      setError('');
+      const [result, total] = await Promise.all([notificationService.getUserNotifications(user.id, limit), notificationService.getUnreadCount()]);
+      setHasMore((result?.data ?? []).length === limit);
+      setUnreadCount(Number(total?.data?.unreadCount ?? 0));
       setNotifications((result?.data ?? []).map(item => ({ ...item, read: Boolean(item.readAt), type: notificationType(item.eventType) })));
     } catch {
-      // Silently fail — notifications are non-critical
+      setError('Could not load notifications. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, limit]);
+
+  const loadMore = useCallback(async () => {
+    if (loading || !user?.id) return;
+    setLoading(true);
+    setError('');
+    try {
+      const result = await notificationService.getUserNotifications(user.id, limit, notifications.length);
+      const items = result?.data ?? [];
+      setHasMore(items.length === limit);
+      setNotifications(previous => [...previous, ...items.filter(item => !previous.some(n => n.id === item.id)).map(item => ({ ...item, read: Boolean(item.readAt), type: notificationType(item.eventType) }))]);
+    } catch { setError('Could not load more notifications. Please try again.'); }
+    finally { setLoading(false); }
+  }, [loading, user?.id, limit, notifications.length]);
 
   useEffect(() => {
+    setNotifications([]);
+    setUnreadCount(0);
     fetchNotifications();
+    // Keep the full-page list stable while the user browses older pages.
+    const timer = limit === 20 ? setInterval(fetchNotifications, 30000) : null;
+    window.addEventListener('notifications-changed', fetchNotifications);
+    return () => { if (timer) clearInterval(timer); window.removeEventListener('notifications-changed', fetchNotifications); };
   }, [fetchNotifications]);
 
   const markAsRead = useCallback(async (id) => {
+    const wasUnread = notifications.some(item => item.id === id && !item.read);
+    if (wasUnread) setUnreadCount(count => Math.max(0, count - 1));
     setNotifications(prev =>
       prev.map(n => n.id === id ? { ...n, read: true } : n)
     );
     try {
       await notificationService.markAsRead(id);
+      window.dispatchEvent(new Event('notifications-changed'));
     } catch {
+      if (wasUnread) setUnreadCount(count => count + 1);
+      setError('Could not mark the notification as read. Please try again.');
       // Revert on failure
       setNotifications(prev =>
         prev.map(n => n.id === id ? { ...n, read: false } : n)
       );
     }
-  }, []);
+  }, [notifications]);
 
   const markAllAsRead = useCallback(async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
     try {
       await notificationService.markAllAsRead(user?.id);
+      window.dispatchEvent(new Event('notifications-changed'));
+      return true;
     } catch {
       // Refetch to get accurate state
-      fetchNotifications();
+      await fetchNotifications();
+      setError('Could not mark notifications as read. Please try again.');
+      return false;
     }
   }, [user?.id, fetchNotifications]);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   return {
     notifications,
     unreadCount,
     loading,
+    error,
+    hasMore,
+    loadMore,
     markAsRead,
     markAllAsRead,
     refresh: fetchNotifications,

@@ -18,9 +18,9 @@ import { useNotifications } from '@/features/notifications/useNotifications';
 import Badge from '@/components/ui/Badge';
 import LanguageToggle from '@/components/LanguageToggle';
 
-function NotificationPanel({ notifications: items = [], onClose }) {
+function NotificationPanel({ notifications: items = [], unreadCount, onClose }) {
   const { t } = useTranslation();
-  const unread = items.filter(n => !n.read);
+  const navigate = useNavigate();
 
   return (
     <motion.div
@@ -32,7 +32,7 @@ function NotificationPanel({ notifications: items = [], onClose }) {
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">
         <p className="text-sm font-semibold text-text-primary">{t('header.notifications_title')}</p>
-        {unread.length > 0 && <Badge variant="gold" size="sm">{t('header.new_badge', { count: unread.length })}</Badge>}
+        {unreadCount > 0 && <Badge variant="gold" size="sm">{t('header.new_badge', { count: unreadCount })}</Badge>}
       </div>
       <div className="max-h-72 overflow-y-auto">
         {items.length === 0 ? (
@@ -48,7 +48,7 @@ function NotificationPanel({ notifications: items = [], onClose }) {
         ))}
       </div>
       <div className="px-4 py-2">
-        <button className="text-xs text-brand-gold hover:text-brand-gold-light transition-colors" onClick={onClose}>
+        <button className="text-xs text-brand-gold hover:text-brand-gold-light transition-colors" onClick={() => { onClose(); navigate('/notifications'); }}>
           {t('header.view_all_notifications')}
         </button>
       </div>
@@ -191,16 +191,16 @@ export default function Header({ collapsed, setCollapsed, isDesktop, onOpenMobil
           <button
             type="button"
             onClick={() => { setShowNotifs(s => !s); setShowUser(false); }}
-            aria-label={t('header.open_notifications')}
+            aria-label={`${t('header.open_notifications')}${unreadCount > 0 ? `: ${t('header.new_badge', { count: unreadCount })}` : ''}`}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-border transition-colors relative"
           >
             <Bell size={15} />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-brand-gold rounded-full" />
+              <span aria-hidden="true" className="absolute -top-1 -right-1 min-w-4 h-4 px-1 flex items-center justify-center bg-brand-gold text-[#101729] text-[10px] leading-none font-bold tabular-nums rounded-full ring-2 ring-surface-card">{unreadCount}</span>
             )}
           </button>
           <AnimatePresence>
-            {showNotifs && <NotificationPanel notifications={userNotifs.slice(0, 6)} onClose={() => setShowNotifs(false)} />}
+            {showNotifs && <NotificationPanel notifications={userNotifs.slice(0, 6)} unreadCount={unreadCount} onClose={() => setShowNotifs(false)} />}
           </AnimatePresence>
         </div>
 

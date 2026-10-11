@@ -17,8 +17,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Badge from '@/components/ui/Badge';
-import { canAccess, isOwnScoped } from '@/features/rbac/accessMatrix';
-import { rolesFor } from '@/features/rbac/outOfMatrix';
+import { canAccess, isOwnScoped, MATRIX_ROLES } from '@/features/rbac/accessMatrix';
+import { rolesFor, canPerform } from '@/features/rbac/outOfMatrix';
+import { hasExplicitPermissions, hasGrantedPermission } from '@/features/rbac/runtimePermissions';
 
 // `access: [module, action]`  shown when the matrix grants that action.
 // `ownScoped: module`         shown only to roles that may read their own records in
@@ -50,7 +51,7 @@ const NAV_CONFIG = [
   // none of it can leak back in here.
   { label: 'Permission & Association Management', icon: ClipboardCheck, to: '/admin/permissions', roles: rolesFor('permissionManagement') },
   { label: 'Role Assignment', icon: UserCog, to: '/admin/role-assignment', roles: rolesFor('roleAssignment') },
-  { label: 'Committee Setup', icon: Users, to: '/scores/committee', onlyRoles: ['admin'], roles: rolesFor('committeeSetup') },
+  { label: 'Committee Setup', icon: Users, to: '/scores/committee', roles: rolesFor('committeeSetup') },
   { label: 'System Audit Logs', icon: ScrollText, to: '/admin/audit-logs', roles: rolesFor('systemAuditLogs') },
   // System-level integration configuration (API keys, NDI credentials, SMS/email
   // gateways). Out of the matrix because no module describes infrastructure, but
@@ -66,7 +67,7 @@ const NAV_CONFIG = [
       // `read` access level it holds for organisation-wide oversight, not a real
       // personal screen. That incidental grant kept satisfying an `access:
       // ['registration', 'read_own']` check here, so this leaked into System Admin's
-      // menu, then a second role's, before being caught a third time on Exam Head -
+      // menu, then a second role's, before being caught a third time on Chief of Examination -
       // removing the entry instead of excluding one more role closes it for good.
     ],
   },
@@ -111,7 +112,7 @@ const NAV_CONFIG = [
   // treatment DCDD's own situational-awareness grants get, but none of it is a
   // stated day-to-day task for this role so none of it is surfaced here.
   { label: 'Question Bank', icon: Upload, to: '/questions/upload', onlyRoles: ['exam_head'], access: ['questions', 'create'] },
-  // Upload Sample Paper is a separate workflow for the Exam Head: papers uploaded here
+  // Upload Sample Paper is a separate workflow for the Chief of Examination: papers uploaded here
   // go to the public sample archive for candidate practice, not the encrypted
   // exam-day repository. The route, the form and the page are distinct from the
   // Question Bank above so neither can be mistaken for the other.
@@ -130,8 +131,8 @@ const NAV_CONFIG = [
   { label: 'Score History', icon: BarChart3, to: '/scores/summary', access: ['scores', 'read_all'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_member', 'committee_head'] },
   // Committee Member's own three-item strict least-privilege menu (Dashboard, View
   // Band Scores, Re-evaluation Queue) - BRD §5.5.2/§5.6.1 define this role's whole
-  // job as viewing submitted band scores and tracking re-evaluation requests after
-  // they clear payment. It is genuinely read-only: BR-2/BR-3 require searching by
+  // job as viewing submitted band scores and reviewing re-evaluation requests after
+  // they clear payment. Members cannot enter scores; BR-2/BR-3 require searching by
   // Exam ID or Registration Number and the reviewing committee's names, which the
   // shared Score History screen (built for the roles that also declare results)
   // does not offer, so this gets its own dedicated screen rather than a relabel.
@@ -140,10 +141,10 @@ const NAV_CONFIG = [
   // the Head) is an out-of-matrix operation. System Admin owns the visible setup
   // workflow; the Committee Head remains excluded so they cannot appoint themselves.
   { label: 'Re-evaluation', icon: Scale, to: '/appeals', access: ['appeals', 'read'], excludeRoles: ['dcdd', 'exam_head', 'chief_executive', 'committee_member', 'committee_head'] },
-  { label: 'Revision Approvals Queue', icon: Scale, to: '/appeals', onlyRoles: ['chief_executive'] },
+  { label: 'Revision Approvals Queue', icon: Scale, to: '/appeals', onlyRoles: ['chief_executive', 'exam_head'], access: ['appeals', 'approve'] },
   // Same route as the generic 'Re-evaluation' entry above - the approved matrix
-  // gives Committee Member View only (not Process), so the page renders read-only
-  // for this role; see AppealList.jsx's canProcess/canApprove checks. A dedicated
+  // lets Committee Members submit recommendations while reserving final approval
+  // for the Chief Executive; see AppealList.jsx's canProcess/canApprove checks. A dedicated
   // label keeps that distinction visible in the sidebar itself, not just on the page.
   { label: 'Re-evaluation Queue', icon: Scale, to: '/appeals', onlyRoles: ['committee_member'] },
   // v2 Committee Head sidebar decision: BRD §5.6.1-5.6.2 give this role exactly two
@@ -213,6 +214,7 @@ const NAV_LABEL_KEYS = {
   'Re-evaluation Queue': 'nav.reevaluation_queue',
   'Re-evaluation Panel': 'nav.reevaluation_panel',
   'Revision Status Tracker': 'nav.revision_status_tracker',
+  'Submit Re-evaluation': 'nav.submit_reevaluation',
   'Certificates': 'nav.certificates',
   'Sample Question Papers': 'nav.sample_question_papers',
   'Reports': 'nav.reports',
@@ -242,16 +244,80 @@ function permitted(item, role) {
 // with a strict four-item menu (Dashboard, Band Score Entry, Re-evaluation Panel,
 // Revision Status Tracker) that drops its read-only modules from the sidebar entirely
 // instead of merely demoting them - see the `excludeRoles: [..., 'committee_head']`
-// entries above, the same treatment Exam Head, Committee Member, Chief Executive,
+// entries above, the same treatment Chief of Examination, Committee Member, Chief Executive,
 // DCDD and System Administrator already carry. Every role now resolves its menu from
 // flat `excludeRoles`/`onlyRoles` carve-outs, so `navigationFor` no longer needs a
 // per-role section-splitting pass.
-export function navigationFor(role) {
+// Canonical destinations for saved permission associations. Role names only choose
+// familiar labels; they do not suppress a granted module or add a missing grant.
+function permissionNavigation(user) {
+  const entry = label => NAV_CONFIG.find(item => item.label === label);
+  const links = [];
+  const add = (label, allowed) => { if (allowed) links.push(entry(label)); };
+  add(user.role === 'admin' ? 'Admin Dashboard' : 'Dashboard', true);
+  add('User Management', canAccess(user, 'users'));
+  add('Role Management', canAccess(user, 'roles'));
+  add('Permission & Association Management', canPerform('permissionManagement', user));
+  add('Role Assignment', canPerform('roleAssignment', user));
+  add('Committee Setup', canPerform('committeeSetup', user));
+  add('System Audit Logs', canPerform('systemAuditLogs', user));
+  add('Technical Settings', canPerform('technicalSettings', user));
+  // System Admin navigation stays administration-only, even with wildcard grants.
+  if (user.role === 'admin') return links.filter(Boolean);
+  add('Registration Windows', hasGrantedPermission(user, 'exam.window.manage'));
+  add('Register / My Profile', canAccess(user, 'registration', 'read_own'));
+  add('Application Verification', canAccess(user, 'verification'));
+  add('Absentee Management', canAccess(user, 'attendance'));
+  add('Master Configuration', canPerform('examConfiguration', user));
+  add('Question Bank', canAccess(user, 'questions', 'create'));
+  add('Upload Sample Paper', canAccess(user, 'questions', 'create'));
+  add('Exam Day Downloads', canAccess(user, 'questions', 'secure_read'));
+  add('Band Score Entry', canAccess(user, 'scores', 'submit'));
+  add(user.role === 'committee_member' ? 'View Band Scores' : 'Score History', canAccess(user, 'scores', 'read_all'));
+  add('My Results', canAccess(user, 'scores', 'read_own'));
+  const appealLabel = canAccess(user, 'appeals', 'approve') ? 'Revision Approvals Queue' : ({ chief_executive: 'Revision Approvals Queue', committee_member: 'Re-evaluation Queue', committee_head: 'Re-evaluation Panel' })[user.role] || 'Re-evaluation';
+  add(appealLabel, canAccess(user, 'appeals'));
+  if (canAccess(user, 'appeals', 'submit_own')) links.push({ label: 'Submit Re-evaluation', icon: Scale, to: '/appeals/new' });
+  add('Revision Status Tracker', canAccess(user, 'appeals', 'process'));
+  add('Certificates', canAccess(user, 'certificates'));
+  add('Reports', canAccess(user, 'reports', 'read_all'));
+  add(user.role === 'test_taker' ? 'Sample Question Papers' : 'Released Sample Papers', true);
+  return links.filter(Boolean);
+}
+
+function roleNavigation(role) {
   return NAV_CONFIG.filter(item => permitted(item, role)).map(item => {
     if (!item.children) return item;
     const children = item.children.filter(child => permitted(child, role));
     return { ...item, children };
   }).filter(item => !item.children || item.children.length > 0);
+}
+
+export function navigationFor(user) {
+  if (!user) return [];
+  const primaryRole = typeof user === 'string' ? user : user.role;
+  const assignedRoles = typeof user === 'string' ? [user]
+    : [...new Set(user.roles?.length ? user.roles : [primaryRole])].filter(Boolean);
+  // Keep the established administration-only workspace for the primary System Admin.
+  const roles = primaryRole === 'admin' ? ['admin'] : assignedRoles;
+  const seen = new Set();
+  const items = [];
+  for (const role of roles) {
+    const scopedUser = typeof user === 'object' ? { ...user, role } : user;
+    const runtime = hasExplicitPermissions(user);
+    const grantedPaths = runtime ? new Set(permissionNavigation(scopedUser).map(item => item.to)) : null;
+    const candidates = MATRIX_ROLES.includes(role) ? roleNavigation(role)
+      : runtime ? permissionNavigation(scopedUser) : [];
+    for (const item of candidates) {
+      const links = item.children || [item];
+      const children = links.filter(link => (!runtime || (grantedPaths.has(link.to)
+        && (!link.access || canAccess(scopedUser, link.access[0], link.access[1])))) && !seen.has(link.to));
+      if (!children.length) continue;
+      children.forEach(link => seen.add(link.to));
+      items.push(item.children ? { ...item, children } : item);
+    }
+  }
+  return items;
 }
 
 function NavItem({ item, collapsed }) {
@@ -266,16 +332,16 @@ function NavItem({ item, collapsed }) {
         <button
           onClick={() => setOpen(o => !o)}
           className={[
-            'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
+            'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[15px] font-semibold leading-5 transition-all duration-150 sidebar-link',
             isActive
-              ? 'bg-brand-gold/10 text-brand-gold'
-              : 'text-text-muted hover:text-text-secondary hover:bg-surface-border/60',
+              ? 'sidebar-link-active'
+              : 'hover:bg-surface-border/60',
           ].join(' ')}
         >
-          <item.icon size={16} className="shrink-0" />
+          <item.icon size={18} className="shrink-0" />
           {!collapsed && (
             <>
-              <span className="flex-1 text-left truncate">{navLabel(item.label)}</span>
+              <span className="flex-1 text-left">{navLabel(item.label)}</span>
               <ChevronDown size={13} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
             </>
           )}
@@ -295,14 +361,14 @@ function NavItem({ item, collapsed }) {
                     key={child.to}
                     to={child.to}
                     className={({ isActive }) => [
-                      'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150',
+                      'flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm font-medium leading-5 transition-all duration-150 sidebar-link',
                       isActive
-                        ? 'bg-brand-gold/10 text-brand-gold'
-                        : 'text-text-muted hover:text-text-secondary hover:bg-surface-border/40',
+                        ? 'sidebar-link-active'
+                        : 'hover:bg-surface-border/40',
                     ].join(' ')}
                   >
-                    <child.icon size={13} className="shrink-0" />
-                    <span className="truncate">{navLabel(child.label)}</span>
+                    <child.icon size={16} className="shrink-0" />
+                    <span>{navLabel(child.label)}</span>
                   </NavLink>
                 ))}
               </div>
@@ -318,42 +384,42 @@ function NavItem({ item, collapsed }) {
       to={item.to}
       title={collapsed ? navLabel(item.label) : undefined}
       className={({ isActive }) => [
-        'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
+        'flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[15px] font-semibold leading-5 transition-all duration-150 sidebar-link',
         isActive
-          ? 'bg-brand-gold/10 text-brand-gold shadow-sm'
-          : 'text-text-muted hover:text-text-secondary hover:bg-surface-border/60',
+          ? 'sidebar-link-active shadow-sm'
+          : 'hover:bg-surface-border/60',
       ].join(' ')}
     >
-      <item.icon size={16} className="shrink-0" />
-      {!collapsed && <span className="flex-1 truncate">{navLabel(item.label)}</span>}
+      <item.icon size={18} className="shrink-0" />
+      {!collapsed && <span className="flex-1">{navLabel(item.label)}</span>}
     </NavLink>
   );
 }
 
 export default function Sidebar({ collapsed, isDesktop, mobileOpen }) {
   const { user } = useAuth();
-  const navItems = navigationFor(user?.role);
+  const navItems = navigationFor(user);
 
   return (
     <motion.aside
       initial={false}
       animate={isDesktop ? { width: collapsed ? 60 : 220, x: 0 } : { width: 260, x: mobileOpen ? 0 : -260 }}
       transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-      className="fixed inset-y-0 left-0 z-50 flex flex-col h-full bg-surface-card border-r border-surface-border shrink-0 overflow-hidden lg:relative lg:z-auto"
+      className="portal-sidebar fixed inset-y-0 left-0 z-50 flex flex-col h-full bg-surface-card border-r border-surface-border shrink-0 overflow-hidden lg:relative lg:z-auto"
     >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 h-13 border-b border-surface-border shrink-0">
         <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 shadow-sm bg-white flex items-center justify-center">
           <img
-            src="/images/Dzongjuk logo.png"
+            src="/images/dzongjuk-default.png"
             alt="Dzongjuk Logo"
             className="w-full h-full object-contain p-0.5"
           />
         </div>
         {!collapsed && (
           <div className="min-w-0 flex flex-col justify-center">
-            <p className="text-sm font-bold text-white leading-none mb-0.5 tracking-wide">Dzongjuk</p>
-            <p className="text-[10px] text-[#64748b] leading-none uppercase font-medium tracking-wider">DSTS &middot; DCDD</p>
+            <p className="text-base font-bold text-text-primary leading-none mb-0.5 tracking-wide">Dzongjuk</p>
+            <p className="text-xs text-text-secondary leading-none uppercase font-medium tracking-wider">DSTS &middot; DCDD</p>
           </div>
         )}
       </div>
@@ -363,7 +429,7 @@ export default function Sidebar({ collapsed, isDesktop, mobileOpen }) {
         {navItems.map((item, i) => (
           item.type === 'section'
             ? (!collapsed && (
-                <p key={i} className="px-3 pt-3 pb-1 text-[10px] font-bold text-text-muted uppercase tracking-wider select-none">
+                <p key={i} className="px-3 pt-3 pb-1 text-xs font-bold text-text-secondary uppercase tracking-wider select-none">
                   {item.label}
                 </p>
               ))

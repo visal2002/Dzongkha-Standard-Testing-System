@@ -27,6 +27,15 @@ if (process.env.NODE_ENV === 'production' && (!configuredKey || (configuredKey =
 }
 const scoreTransformer = new AesGcmEncryptionTransformer(configuredKey || DEVELOPMENT_ENCRYPTION_KEY);
 
+// Legacy imports sometimes stored an encrypted envelope inside another envelope.
+// Unwrap only for certificate reads; never rewrite historical result records.
+export function certificateScoreValues(value: unknown): ScoreValues {
+  for (let depth = 0; depth < 3 && typeof value === 'string' && value.startsWith('enc:v1:'); depth++) value = scoreTransformer.from(value);
+  const scores = value as ScoreValues;
+  if (!scores || ['WRITING', 'READING', 'LISTENING', 'SPEAKING'].some(skill => !Number.isFinite(scores[skill as keyof ScoreValues]))) throw new Error('Published certificate skill scores are incomplete.');
+  return scores;
+}
+
 export enum CommitteeRole { Head = 'HEAD', Member = 'MEMBER' }
 export enum EligibilityStatus { Eligible = 'ELIGIBLE', Absent = 'ABSENT', Ineligible = 'INELIGIBLE' }
 export enum ScoringRuleStatus { Draft = 'DRAFT', Approved = 'APPROVED', Retired = 'RETIRED' }

@@ -9,6 +9,7 @@ import Card from '@/components/ui/Card';
 import Input, { Select } from '@/components/ui/Input';
 import Stepper from '@/components/ui/Stepper';
 import PageHeader from '@/components/ui/PageHeader';
+import RecordReference from '@/components/ui/RecordReference';
 import { useAuth } from '@/contexts/AuthContext';
 import { applicationService } from '@/features/registration/api';
 import { examService } from '@/features/exams/api';
@@ -142,7 +143,7 @@ export default function ApplicationForm() {
     <div className="min-h-[60vh] flex items-center justify-center"><Card className="max-w-lg w-full text-center py-10">
       <CheckCircle2 size={56} className="mx-auto text-emerald-400 mb-4" /><h2 className="text-xl font-bold text-text-primary">Application Submitted</h2>
       <p className="text-sm text-text-secondary mt-2">Your application for {exam.title} was received.</p>
-      <div className="mt-5 p-4 bg-surface-bg border border-surface-border rounded-xl"><p className="text-xs text-text-muted">Application ID</p><p className="font-mono text-sm text-brand-gold mt-1 break-all">{submission.applicationId}</p><p className="text-xs text-text-secondary mt-2">Status: {String(submission.status).replace(/_/g, ' ')}</p></div>
+      <div className="mt-5 p-4 bg-surface-bg border border-surface-border rounded-xl"><p className="text-xs text-text-muted">Application reference</p><p className="font-mono text-sm text-brand-gold mt-1"><RecordReference id={submission.applicationId} /></p><p className="text-xs text-text-secondary mt-2">Status: {String(submission.status).replace(/_/g, ' ')}</p></div>
       <Button className="mt-5" onClick={() => navigate('/my-applications')}>View My Applications</Button>
     </Card></div>
   );

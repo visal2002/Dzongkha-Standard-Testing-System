@@ -10,6 +10,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseOptions, PlatformModule } from '@dzongjuk/common';
 import { SecurityModule } from '@dzongjuk/security';
 import { AdminController } from './admin.controller';
+import { StaffHandoverService } from './staff-handover.service';
+import { UserHandoverEntity } from './entities';
 import { AdminService } from './admin.service';
 import { AuditService } from './audit.service';
 import { AuthController } from './auth.controller';
@@ -24,11 +26,11 @@ import { MasterConfigurationService } from './master-configuration.service';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({ inject: [ConfigService], useFactory: (config: ConfigService) => databaseOptions(config, 'identity') }),
-    TypeOrmModule.forFeature([UserEntity, RoleEntity, PermissionEntity, SessionEntity, LoginAttemptEntity, NdiLoginRequestEntity, AuditEventEntity, MasterConfigurationEntity]),
+    TypeOrmModule.forFeature([UserHandoverEntity, UserEntity, RoleEntity, PermissionEntity, SessionEntity, LoginAttemptEntity, NdiLoginRequestEntity, AuditEventEntity, MasterConfigurationEntity]),
     SecurityModule,
     PlatformModule,
   ],
   controllers: [AuthController, AdminController, MasterConfigurationController],
-  providers: [AuthService, NdiProviderService, AdminService, AuditService, MasterConfigurationService],
+  providers: [StaffHandoverService, AuthService, NdiProviderService, AdminService, AuditService, MasterConfigurationService],
 })
 export class AppModule {}

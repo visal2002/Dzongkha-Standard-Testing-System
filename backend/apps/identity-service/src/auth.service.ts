@@ -69,11 +69,12 @@ export class AuthService {
       user.email = email;
       user.emailSet = true;
     }
+    if (dto.fullNameDz !== undefined) user.fullNameDz = dto.fullNameDz.trim() || null;
     const contactNumber = dto.contactNumber ?? dto.phone;
     if (contactNumber !== undefined) user.contactNumber = contactNumber.trim() || null;
     if (dto.education !== undefined) user.education = dto.education.trim() || null;
     const photo = dto.photo ?? dto.avatar;
-    if (photo !== undefined) user.photo = validatePassportPhotoDataUrl(photo);
+    if (photo !== undefined) user.photo = await validatePassportPhotoDataUrl(photo);
     await this.users.save(user);
     await this.audit.record({
       action: 'PROFILE_UPDATED', resourceType: 'User', resourceId: user.id,
@@ -162,7 +163,12 @@ export class AuthService {
     const rawRefresh = randomBytes(48).toString('base64url');
     session.refreshTokenHash = this.hash(rawRefresh);
     session.lastActivityAt = now;
-    await this.sessions.save(session);
+    // A reset may revoke the session after lookup. Never save a stale entity
+    // with revokedAt=null over that revocation; rotate only a still-valid token.
+    const rotation = await this.sessions.update({
+      id: session.id, refreshTokenHash: this.hash(refreshToken), revokedAt: IsNull(), expiresAt: MoreThan(now),
+    }, { refreshTokenHash: session.refreshTokenHash, lastActivityAt: now });
+    if (rotation.affected !== 1) throw new DomainException('SESSION_INVALID', 'The session is invalid or expired.', 401);
     await this.audit.record({ action: 'SESSION_REFRESHED', resourceType: 'Session', resourceId: session.id, actorUserId: session.user.id, requestId: context.requestId });
     return { ...this.tokens(session), refreshToken: rawRefresh };
   }
@@ -377,7 +383,7 @@ export class AuthService {
     return {
       id: user.id, userId: user.userId, email: user.emailSet ? user.email : null,
       emailSet: user.emailSet, passwordSet: user.passwordSet,
-      cid: user.cid, fullName: user.fullName, dateOfBirth: user.dateOfBirth,
+      cid: user.cid, fullName: user.fullName, fullNameDz: user.fullNameDz ?? null, dateOfBirth: user.dateOfBirth,
       gender: user.gender, contactNumber: user.contactNumber, phone: user.contactNumber,
       education: user.education, photo: user.photo, avatar: user.photo,
       status: user.status, roles: user.roles.map((role) => role.code),

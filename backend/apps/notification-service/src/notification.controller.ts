@@ -14,7 +14,8 @@ import { NotificationService } from './notification.service';
 @Controller('notifications')
 export class NotificationController {
   constructor(private readonly notifications: NotificationService) {}
-  @Get() list(@Req() request: Request, @Query('limit') limit?: string) { return this.notifications.list(request.user!.sub, Number(limit ?? 30)); }
+  @Get() list(@Req() request: Request, @Query('limit') limit?: string, @Query('offset') offset?: string) { return this.notifications.list(request.user!.sub, Number(limit ?? 30), Number(offset ?? 0)); }
+  @Get('unread-count') unreadCount(@Req() request: Request) { return this.notifications.unreadCount(request.user!.sub); }
   @Patch(':id/read') read(@Param('id') id: string, @Req() request: Request) { return this.notifications.read(id, request.user!.sub); }
   @Post('read-all') readAll(@Req() request: Request) { return this.notifications.readAll(request.user!.sub); }
   @Delete(':id') archive(@Param('id') id: string, @Req() request: Request) { return this.notifications.archive(id, request.user!.sub); }

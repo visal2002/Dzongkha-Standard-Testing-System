@@ -61,16 +61,14 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     PERMS.EXAM_WINDOW_MANAGE, PERMS.COMMITTEE_MANAGE,
     PERMS.CERTIFICATE_MANAGE, PERMS.REPORT_VIEW,
   ],
-  exam_head: [
+  exam_head: [PERMS.APPEAL_VIEW, PERMS.APPEAL_APPROVE,
     PERMS.APPLICATION_VERIFY, PERMS.QUESTION_UPLOAD,
-    PERMS.QUESTION_SECURE_DOWNLOAD, PERMS.COMMITTEE_MANAGE,
+    PERMS.QUESTION_SECURE_DOWNLOAD,
     PERMS.SCORE_VIEW, PERMS.REPORT_VIEW,
   ],
-  // migration 0022_committee_member_appeal_view_only.sql: this role holds View, not
-  // Process, on Re-evaluation - `appeal.view` grants the organisation-wide read
-  // (POST /appeals/:id/committee-review stays on `appeal.review`, which this role no
-  // longer holds).
-  committee_member: [PERMS.SCORE_VIEW, PERMS.APPEAL_VIEW, PERMS.REPORT_VIEW],
+  // Committee Members can submit committee recommendations; only the Chief Executive
+  // can approve, and Committee Heads retain the separate score-entry permission.
+  committee_member: [PERMS.SCORE_VIEW, PERMS.APPEAL_VIEW, PERMS.APPEAL_REVIEW, PERMS.REPORT_VIEW],
   committee_head: [PERMS.SCORE_SUBMIT, PERMS.SCORE_VIEW, PERMS.APPEAL_REVIEW, PERMS.REPORT_VIEW],
   chief_executive: [PERMS.APPEAL_APPROVE, PERMS.REPORT_VIEW],
   admin: ['*'],
@@ -146,8 +144,13 @@ describe('RBAC permission matrix — all 14 permissions × 7 roles (BRD §2.9)',
     expect(() => guardFor(PERMS.APPEAL_APPROVE).canActivate(ctx(ROLE_PERMISSIONS.committee_head))).toThrow();
   });
 
-  it('exam_head cannot approve appeals (appeal.approve — Chief Executive only)', () => {
-    expect(() => guardFor(PERMS.APPEAL_APPROVE).canActivate(ctx(ROLE_PERMISSIONS.exam_head))).toThrow();
+  it('committee_member can review but cannot approve appeals', () => {
+    expect(guardFor(PERMS.APPEAL_REVIEW).canActivate(ctx(ROLE_PERMISSIONS.committee_member))).toBe(true);
+    expect(() => guardFor(PERMS.APPEAL_APPROVE).canActivate(ctx(ROLE_PERMISSIONS.committee_member))).toThrow();
+  });
+
+  it('Chief of Examination can approve committee-reviewed appeals', () => {
+    expect(guardFor(PERMS.APPEAL_APPROVE).canActivate(ctx(ROLE_PERMISSIONS.exam_head))).toBe(true);
   });
 
   it('chief_executive cannot submit scores (score.submit — Committee Head only)', () => {

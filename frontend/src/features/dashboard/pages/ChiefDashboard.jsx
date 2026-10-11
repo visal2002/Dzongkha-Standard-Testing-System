@@ -8,14 +8,17 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Scale, CheckCircle, XCircle, Clock, ArrowRight, Users, Award, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import useTimeGreeting from '@/hooks/useTimeGreeting';
 import { StatCard } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
 import { appealService } from '@/features/appeals/api';
 import { reportService } from '@/features/reports/api';
 import { useApi } from '@/hooks/useApi';
 import Button from '@/components/ui/Button';
+import RecordReference from '@/components/ui/RecordReference';
 
 export default function ChiefDashboard() {
+  const greeting = useTimeGreeting();
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -59,7 +62,7 @@ export default function ChiefDashboard() {
       >
         <div className="relative">
           <p className="text-xs text-emerald-400 font-medium uppercase tracking-wider mb-1">Chief Executive Portal</p>
-          <h1 className="text-xl font-bold text-white mb-1">Good morning, {user?.name?.split(' ')[0]}!</h1>
+          <h1 className="text-xl font-bold text-white mb-1">{`${greeting},`} {user?.name?.split(' ')[0]}!</h1>
           <p className="text-sm text-[#94A3C8]">
             {pending.length > 0
               ? `${pending.length} score revision request${pending.length > 1 ? 's' : ''} awaiting your approval.`
@@ -93,8 +96,8 @@ export default function ChiefDashboard() {
               <div key={appeal.id} className="p-4 bg-surface-bg border border-amber-500/20 rounded-xl mb-3">
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
-                    <p className="text-sm font-semibold text-text-primary font-mono">{appeal.id}</p>
-                    <p className="text-xs text-text-muted">Application {appeal.applicationId}</p>
+                    <p className="text-sm font-semibold text-text-primary font-mono"><RecordReference id={appeal.id} prefix="RE" ids={appealData.map(item => item.id)} /></p>
+                    <p className="text-xs text-text-muted">Application <RecordReference id={appeal.applicationId} ids={appealData.map(item => item.applicationId)} /></p>
                   </div>
                   <StatusBadge status={appeal.status} />
                 </div>

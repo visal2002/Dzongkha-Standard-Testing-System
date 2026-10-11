@@ -39,6 +39,11 @@ const toWireShape = (fixture) => ({
 let mockNotifications = MOCK_DATA_ALLOWED ? notificationFixtures.map(toWireShape) : [];
 
 export const notificationService = {
+  getUnreadCount: async () => {
+    if (USE_MOCK_DATA) return { data: { unreadCount: mockNotifications.filter(item => !item.readAt).length } };
+    const { data } = await apiClient.get('/notifications/unread-count');
+    return data;
+  },
   getAll: async (limit = 50) => notificationService.getUserNotifications(undefined, limit),
 
   /**
@@ -46,12 +51,12 @@ export const notificationService = {
    * @param {string} userId
    * @param {number} [limit=20]
    */
-  getUserNotifications: async (userId, limit = 20) => {
+  getUserNotifications: async (userId, limit = 20, offset = 0) => {
     if (USE_MOCK_DATA) {
-      return { data: mockNotifications.slice(0, limit) };
+      return { data: mockNotifications.slice(offset, offset + limit) };
     }
 
-    const { data } = await apiClient.get(`/notifications?limit=${limit}`);
+    const { data } = await apiClient.get(`/notifications?limit=${limit}&offset=${offset}`);
     return data;
   },
 

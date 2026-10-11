@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { humanizeStatus } from '@/lib/statusLabels';
 import { useNavigate } from 'react-router-dom';
 import { Award, Download, Plus, QrCode, Search, Shield } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -14,8 +15,8 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import { certificateService } from '@/features/certificates/api';
+import { searchCertificates } from '../certificateSearch';
 import { examService } from '@/features/exams/api';
-import { API_BASE_URL } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccess } from '@/features/rbac/accessMatrix';
 import { Select } from '@/components/ui/Input';
@@ -29,12 +30,11 @@ function CertificateCard({ cert }) {
   const scores = cert.scoreSnapshot?.scores ?? {};
   const status = String(cert.status || 'UNKNOWN').toUpperCase();
   const active = status === 'ACTIVE' && new Date(cert.validUntil) > new Date();
-  const verificationUrl = `${API_BASE_URL}/public/certificates/verify/${encodeURIComponent(cert.verificationToken || '')}`;
+  const verificationUrl = cert.verificationUrl || new URL(`/verify-certificate/${encodeURIComponent(cert.verificationToken || '')}`, window.location.origin).href;
 
   // Opens the official-template certificate on its own print-ready page (same tab, so
   // the session is kept); the holder saves it as a PDF from the browser's print dialog.
   const openCertificate = () => {
-    certificateService.recordDownload(cert.id).catch(() => undefined);
     navigate(`/certificates/print/${cert.id}`);
   };
 
@@ -107,10 +107,10 @@ function CertificateCard({ cert }) {
 
 export default function CertificateList() {
   const { user } = useAuth();
-  // Matrix: Certificates is Full for admin/DCDD and Read for Exam Head and
+  // Matrix: Certificates is Full for admin/DCDD and Read for Chief of Examination and
   // Committee Head, so those two must see every certificate, not their own.
-  const canReadAll = canAccess(user?.role, 'certificates', 'read_all');
-  const canManage = canAccess(user?.role, 'certificates', 'manage');
+  const canReadAll = canAccess(user, 'certificates', 'read_all');
+  const canManage = canAccess(user, 'certificates', 'manage');
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -142,9 +142,7 @@ export default function CertificateList() {
     finally { setGenerating(false); }
   };
 
-  const searchTerm = search.trim().toLowerCase();
-  const filtered = certificates.filter(cert => [cert.holderName, cert.registrationNumber, cert.certificateNumber]
-    .some(value => String(value || '').toLowerCase().includes(searchTerm)));
+  const filtered = searchCertificates(certificates, search);
 
   const verify = async () => {
     const token = verifyInput.trim().split('/').filter(Boolean).at(-1);
@@ -170,14 +168,14 @@ export default function CertificateList() {
         {verifyResult !== undefined && (
           <div className={`mt-3 p-3 rounded-xl border text-sm ${verifyResult?.valid ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
             {verifyResult?.valid
-              ? `${verifyResult.certificateNumber}: ${verifyResult.status}. Valid until ${new Date(verifyResult.validUntil).toLocaleDateString()}.`
+              ? `${verifyResult.certificateNumber}: ${humanizeStatus(verifyResult.status)}. Valid until ${new Date(verifyResult.validUntil).toLocaleDateString()}.`
               : 'No active certificate matches this signed verification token.'}
           </div>
         )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="w-full sm:w-72"><Input placeholder="Search certificates" value={search} onChange={event => setSearch(event.target.value)} icon={<Search size={14} />} /></div>
+        <div className="w-full sm:w-96"><Input aria-label="Search certificates by CID or User ID" placeholder="Search CID, User ID, name or certificate" value={search} onChange={event => setSearch(event.target.value)} icon={<Search size={14} />} /></div>
         <p className="text-xs text-text-muted ml-auto">{filtered.length} certificate{filtered.length !== 1 ? 's' : ''}</p>
       </div>
 

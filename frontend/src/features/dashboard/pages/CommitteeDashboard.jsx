@@ -75,7 +75,7 @@ export default function CommitteeDashboard() {
   const hasScoreDist = hasChartData(scoreDistData, ['count']);
 
   // Re-evaluation requests that have cleared payment and are awaiting the Committee
-  // Head's review - the moment they become the committee's concern. Status casing
+  // review - the moment they become the committee's concern. Status casing
   // ('PENDING_COMMITTEE') mirrors AppealList.jsx and the real AppealStatus values the
   // backend returns.
   const pendingCommitteeCount = useMemo(
@@ -142,7 +142,7 @@ export default function CommitteeDashboard() {
           </p>
           <h1 className="text-xl font-bold text-white mb-1">Hello, {user?.name?.split(' ')[0]}!</h1>
           <p className="text-sm text-[#94A3C8]">
-            {isHead ? 'Manage band score entry and review appeal requests.' : 'View submitted band scores for your exam committee.'}
+            {isHead ? 'Manage band score entry and review appeal requests.' : 'Review re-evaluation requests and view submitted band scores.'}
           </p>
         </div>
       </motion.div>
@@ -150,7 +150,7 @@ export default function CommitteeDashboard() {
       {/* Alerts */}
       {!isHead && pendingCommitteeCount > 0 && (
         <Alert variant="warning" title="Newly routed for committee review">
-          {pendingCommitteeCount} re-evaluation request{pendingCommitteeCount === 1 ? '' : 's'} cleared payment and now await{pendingCommitteeCount === 1 ? 's' : ''} the Committee Head's review.
+          {pendingCommitteeCount} re-evaluation request{pendingCommitteeCount === 1 ? '' : 's'} cleared payment and await{pendingCommitteeCount === 1 ? 's' : ''} committee review.
         </Alert>
       )}
 
@@ -161,12 +161,19 @@ export default function CommitteeDashboard() {
         {!isHead && <StatCard title="Scores Entered" value={bandScores?.length ?? 0} icon={<ClipboardList size={18} />} color="gold" />}
         {!isHead && <StatCard title="Published" value={bandScores?.filter(b => b.status === 'published').length ?? 0} icon={<CheckCircle size={18} />} color="success" />}
         <StatCard title="Committee Members" value={committeeMembers.length} icon={<Users size={18} />} color="info" />
-        <StatCard
-          title={isHead ? 'Active Re-evaluations' : 'Pending Committee Review'}
-          value={isHead ? activeAppealsCount : pendingCommitteeCount}
-          icon={<Scale size={18} />}
-          color="warning"
-        />
+        <Link
+          to="/appeals"
+          aria-label={isHead ? 'Open re-evaluation queue' : 'Open re-evaluation review queue'}
+          className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+        >
+          <StatCard
+            title={isHead ? 'Active Re-evaluations' : 'Pending Committee Review'}
+            value={isHead ? activeAppealsCount : pendingCommitteeCount}
+            subtitle={isHead ? 'Open review queue' : 'Open re-evaluation review queue'}
+            icon={<Scale size={18} />}
+            color="warning"
+          />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-4">

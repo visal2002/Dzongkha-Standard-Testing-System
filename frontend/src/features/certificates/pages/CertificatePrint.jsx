@@ -1,230 +1,53 @@
-/*
- * Email: ambhutan@gmail.com | hello@aakash-pradhan.com
- * Website: ambhutan.com | aakash-pradhan.com
- * Phone: +975 - 1750 - 5267
- */
-
-/**
- * Print-ready certificate: the official template image is shown full-bleed on an A4
- * page and only the test taker's (English) name is overlaid on the Name field.
- * Nothing else is drawn - the artwork, Dzongkha text and all other labels come
- * straight from the template image itself.
- *
- * The template file must exist at one of:
- *   frontend/public/images/certificate-template.png   (preferred)
- *   frontend/public/images/certificate-template.jpg
- * Portrait A4 proportions. Adjust NAME_BOX below if the name sits slightly off the
- * printed field.
- */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Printer } from 'lucide-react';
 import { certificateService } from '@/features/certificates/api';
+import { ArrowLeft, Download, FileCheck2, RefreshCw, ShieldCheck, AlertCircle } from 'lucide-react';
+import './CertificatePrint.css';
 
-const TEMPLATE_SOURCES = [
-  '/images/certificate-template.png',
-  '/images/certificate-template.jpg',
-  '/images/certificate-template.jpeg',
-];
-
-// The supplied template already has a sample name ("Sonam Rinchen") printed in the
-// English Name field, so we paint a white patch over it and draw the real name on
-// top. All values are shares of the A4 sheet - nudge them if the patch/name are off.
-const NAME_COVER = {
-  top: '29.4%',
-  left: '18%',
-  width: '49%',
-  height: '3.9%',
-};
-const NAME_TEXT = {
-  top: '31.3%',   // vertical centre of the field
-  left: '19%',
-  width: '47%',
-  fontSize: '17px',
-};
-
-// Photo placeholder: upper-right area of the template that says "PHOTO".
-// Adjust these values if the photo sits slightly off the box on your template.
-const PHOTO_BOX = {
-  top: '20%',
-  right: '5.5%',
-  width: '14%',
-  height: '10.5%',
-};
-
-export default function CertificatePrint() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [cert, setCert] = useState(undefined);
-  const [srcIndex, setSrcIndex] = useState(0);
-  const imgError = srcIndex >= TEMPLATE_SOURCES.length;
-
-  useEffect(() => { document.title = 'DSTS Certificate'; }, []);
-
-  useEffect(() => {
-    let active = true;
-    certificateService.getById(id)
-      .then((res) => { if (active) setCert(res?.data ?? res ?? null); })
-      .catch(() => { if (active) setCert(null); });
-    return () => { active = false; };
-  }, [id]);
-
-  if (cert === undefined) {
-    return <div className="cp-msg">Loading certificate…<style>{styles}</style></div>;
-  }
-  if (cert === null) {
-    return (
-      <div className="cp-msg">
-        <p>This certificate could not be found.</p>
-        <button type="button" onClick={() => navigate(-1)}>Go back</button>
-        <style>{styles}</style>
-      </div>
-    );
-  }
-
-  return (
-    <div className="cp-root">
-      <div className="cp-toolbar">
-        <button type="button" className="cp-btn ghost" onClick={() => navigate(-1)}>
-          <ArrowLeft size={15} /> Back
-        </button>
-        <span className="cp-hint">Choose <strong>Save as PDF</strong> as the destination in the print dialog.</span>
-        <button type="button" className="cp-btn" onClick={() => window.print()}>
-          <Printer size={15} /> Save / Print
-        </button>
-      </div>
-
-      <div className="sheet">
-        {imgError ? (
-          <div className="cp-missing">
-            <p><strong>Certificate template image not found.</strong></p>
-            <p>Add the template artwork at <code>frontend/public/images/certificate-template.png</code> (portrait A4). The name below is still positioned correctly.</p>
-          </div>
-        ) : (
-          <img
-            className="template"
-            src={TEMPLATE_SOURCES[srcIndex]}
-            alt="DSTS certificate"
-            onError={() => setSrcIndex((i) => i + 1)}
-          />
-        )}
-
-        {!imgError && (
-          <div
-            className="name-cover"
-            style={{ top: NAME_COVER.top, left: NAME_COVER.left, width: NAME_COVER.width, height: NAME_COVER.height }}
-          />
-        )}
-        <div
-          className="holder-name"
-          style={{ top: NAME_TEXT.top, left: NAME_TEXT.left, width: NAME_TEXT.width, fontSize: NAME_TEXT.fontSize }}
-        >
-          {cert.holderName}
-        </div>
-
-        {/* Passport photo overlay */}
-        {cert.photo ? (
-          <img
-            className="cert-photo"
-            src={cert.photo}
-            alt="Certificate holder photo"
-            style={{
-              top: PHOTO_BOX.top,
-              right: PHOTO_BOX.right,
-              width: PHOTO_BOX.width,
-              height: PHOTO_BOX.height,
-            }}
-          />
-        ) : (
-          /* If no photo is available, paint a subtle placeholder so the box isn't empty */
-          <div
-            className="cert-photo-placeholder"
-            style={{
-              top: PHOTO_BOX.top,
-              right: PHOTO_BOX.right,
-              width: PHOTO_BOX.width,
-              height: PHOTO_BOX.height,
-            }}
-          >
-            <span>Photo</span>
-          </div>
-        )}
-      </div>
-
-      <style>{styles}</style>
-    </div>
-  );
+function MountainOrnament() {
+  return <svg viewBox="0 0 600 120" fill="none" aria-hidden="true" className="certificate-mountains"><path d="M0 116 90 49 144 90 247 12 354 103 416 50 510 115 561 76 600 110"/><path d="m215 37 32-25 34 29-20-7-14 7-12-9-20 5M66 67l24-18 28 23-17-6-11 5-10-8-14 4"/><path d="M0 117h600"/></svg>;
 }
 
-const styles = `
-  :root { color-scheme: light; }
-
-  .cp-msg {
-    min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 1rem; font-family: system-ui, sans-serif; color: #334155; background: #eef0ee;
-  }
-  .cp-msg button { padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; }
-
-  .cp-root { min-height: 100vh; background: #e9ebe8; padding: 1.5rem 1rem 3rem; }
-
-  .cp-toolbar {
-    width: 210mm; max-width: 100%; margin: 0 auto 1.25rem; display: flex; align-items: center; gap: 1rem;
-    flex-wrap: wrap; font-family: "Segoe UI", system-ui, sans-serif;
-  }
-  .cp-hint { font-size: 0.82rem; color: #5b6660; flex: 1; min-width: 180px; }
-  .cp-btn {
-    display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.5rem 1rem; border-radius: 999px;
-    border: 1px solid #124143; background: #124143; color: #fff; font-size: 0.85rem; font-weight: 600;
-    cursor: pointer; font-family: inherit;
-  }
-  .cp-btn.ghost { background: transparent; color: #124143; }
-  .cp-btn:hover { opacity: 0.92; }
-
-  /* ---- A4 sheet ---- */
-  .sheet {
-    position: relative; width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff;
-    box-shadow: 0 20px 55px -20px rgba(20, 55, 40, 0.4); overflow: hidden;
-  }
-  .template { display: block; width: 100%; height: auto; }
-
-  .name-cover { position: absolute; background: #ffffff; }
-
-  .holder-name {
-    position: absolute; transform: translateY(-50%);
-    font-family: "Georgia", "Times New Roman", serif;
-    color: #1c2b36; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    line-height: 1;
-  }
-
-  .cert-photo {
-    position: absolute;
-    object-fit: cover;
-    object-position: center top;
-    border: 1px solid #b0b8b0;
-  }
-
-  .cert-photo-placeholder {
-    position: absolute;
-    background: #f0f0ec;
-    border: 1px dashed #aab0aa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #888;
-    font-size: 0.6rem;
-    font-family: system-ui, sans-serif;
-  }
-
-  .cp-missing {
-    padding: 40mm 24mm; font-family: system-ui, sans-serif; color: #475569; font-size: 0.9rem; line-height: 1.6;
-  }
-  .cp-missing code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
-
-  /* ---- Print ---- */
-  @page { size: A4; margin: 0; }
-  @media print {
-    .cp-root { background: #fff; padding: 0; }
-    .cp-toolbar { display: none; }
-    .sheet { box-shadow: none; margin: 0; width: 210mm; min-height: 297mm; }
-  }
-`;
+function CertificateLoader() {
+  return <section className="certificate-loading-card" aria-labelledby="certificate-loading-title">
+    <div className="certificate-woven-band" aria-hidden="true" />
+    <div className="certificate-loader-art" aria-hidden="true">
+      <div className="certificate-loader-orbit" />
+      <div className="certificate-loader-petals">{Array.from({ length: 8 }, (_, i) => <span key={i} style={{ '--petal-angle': `${i * 45}deg` }} />)}</div>
+      <div className="certificate-loader-seal"><img src="/images/dzongjuk-seal-transparent.png" alt="" /></div>
+    </div>
+    <p className="certificate-eyebrow">A milestone worth celebrating</p>
+    <h1 id="certificate-loading-title">Your achievement,<br/><span>beautifully certified.</span></h1>
+    <div role="status" aria-live="polite" className="certificate-loading-status"><span className="certificate-status-dot" aria-hidden="true"/>Preparing your certificate</div>
+    <p className="certificate-loading-copy">We’re bringing your details together into your official DSTS certificate. Your PDF will appear here when it’s ready.</p>
+    <div className="certificate-loading-track" aria-hidden="true"><span /></div>
+    <p className="certificate-loading-hint">The first PDF may take 10–20 seconds. Please keep this page open.</p>
+    <div className="certificate-loading-footer"><ShieldCheck size={15}/><span>Securely prepared for you</span></div>
+    <MountainOrnament />
+  </section>;
+}
+export default function CertificatePrint() {
+  const { id } = useParams(); const navigate = useNavigate();
+  const [url, setUrl] = useState(null); const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => { let active = true; let objectUrl; const controller = new AbortController();
+    const deadline = setTimeout(() => { if (active) { active = false; controller.abort(); setError('Certificate generation took too long. Please retry.'); } }, 60000);
+    const previousTitle = document.title;
+    document.title = 'DSTS Certificate'; setError(''); setUrl(null);
+    certificateService.download(id, { signal: controller.signal }).then(response => {
+      if (!(response.data instanceof Blob) || response.data.size === 0) throw new Error('The certificate PDF is unavailable.');
+      clearTimeout(deadline); objectUrl = URL.createObjectURL(response.data); if (active) setUrl(objectUrl); else URL.revokeObjectURL(objectUrl);
+    }).catch(() => { clearTimeout(deadline); if (active) setError('We couldn’t prepare your certificate. Please try again, or return to your certificates.'); });
+    return () => { clearTimeout(deadline); controller.abort(); active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); document.title = previousTitle; };
+  }, [id, attempt]);
+  return <main className="certificate-print-shell">
+    <header className="certificate-print-toolbar">
+      <button className="certificate-back-button" onClick={() => navigate(-1)}><ArrowLeft size={16}/><span>Back</span></button>
+      <div className="certificate-toolbar-brand"><FileCheck2 size={20}/><div><strong>DSTS Certificate</strong><span>Dzongkha Standard Testing System</span></div></div>
+      {url ? <a className="certificate-download-button" href={url} download="DSTS_Certificate.pdf"><Download size={16}/><span>Download PDF</span></a> : <span className="certificate-toolbar-label">Official certificate</span>}
+    </header>
+    {error ? <div className="certificate-loading-stage"><section className="certificate-loading-card certificate-error-card" role="alert"><div className="certificate-woven-band" aria-hidden="true"/><div className="certificate-error-icon"><AlertCircle size={30}/></div><p className="certificate-eyebrow">Let’s try that again</p><h1>Your certificate<br/>needs a moment.</h1><p className="certificate-loading-copy">{error}</p><button className="certificate-download-button" onClick={() => setAttempt(value => value + 1)}><RefreshCw size={16}/>Try again</button><MountainOrnament/></section></div>
+      : !url ? <div className="certificate-loading-stage"><CertificateLoader/></div>
+      : <div className="certificate-pdf-frame"><iframe title="DSTS certificate PDF" src={url}/><p>If the preview isn’t supported on your device, use <a href={url} download="DSTS_Certificate.pdf">Download PDF</a>.</p></div>}
+  </main>;
+}

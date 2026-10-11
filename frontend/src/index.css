@@ -520,6 +520,23 @@
 }
 
 /* Light theme */
+.portal-sidebar {
+  --sidebar-active-text: #FCD34D;
+  --sidebar-active-bg: rgba(245, 158, 11, 0.12);
+}
+.portal-sidebar .sidebar-link { color: var(--color-text-primary); }
+.portal-sidebar .sidebar-link-active {
+  color: var(--sidebar-active-text);
+  background: var(--sidebar-active-bg);
+}
+.portal-sidebar .sidebar-link:focus-visible {
+  outline: 2px solid var(--sidebar-active-text);
+  outline-offset: -2px;
+}
+.light .portal-sidebar {
+  --sidebar-active-text: #92400E;
+  --sidebar-active-bg: #FEF3C7;
+}
 .light {
   --color-surface-bg: #F1F5F9;
   --color-surface-card: #FFFFFF;

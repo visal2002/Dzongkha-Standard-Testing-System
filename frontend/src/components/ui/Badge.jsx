@@ -5,6 +5,8 @@
  */
 
 import { useTranslation } from 'react-i18next';
+import { humanizeStatus } from '@/lib/statusLabels';
+export { humanizeStatus } from '@/lib/statusLabels';
 
 const variants = {
   default: 'bg-[#1E2D4A] text-[#94A3C8] border border-[#243055]',
@@ -47,7 +49,6 @@ export default function Badge({ children, variant = 'default', size = 'md', dot 
     </span>
   );
 }
-
 export function StatusBadge({ status }) {
   const { t } = useTranslation();
   const normalizedStatus = String(status ?? '').trim().toLowerCase();
@@ -87,15 +88,8 @@ export function StatusBadge({ status }) {
     cancelled: { label: 'Cancelled', variant: 'error' },
     waitlisted: { label: 'Waitlisted', variant: 'warning' },
   };
-  const config = map[normalizedStatus] || { label: humanizeStatus(status), variant: 'default' };
+  const config = map[normalizedStatus] || { variant: 'default' };
+  config.label = humanizeStatus(status);
   return <Badge variant={config.variant} dot>{t(`status.${normalizedStatus}`, { defaultValue: config.label })}</Badge>;
 }
 
-export function humanizeStatus(status) {
-  const value = String(status ?? '').trim().toLowerCase();
-  if (!value) return 'Unknown';
-  return value
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/\b\w/g, character => character.toUpperCase());
-}

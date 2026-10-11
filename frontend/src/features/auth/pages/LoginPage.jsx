@@ -216,9 +216,9 @@ export default function LoginPage() {
             <div className="flex flex-col items-center gap-3 pt-7 px-6 pb-4">
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#124143] shadow-lg shadow-[#124143]/30 ring-4 ring-[#124143]/10">
                 <img
-                  src="/images/Dzongjuk logo.png"
+                  src="/images/dzongjuk-default.png"
                   alt="Dzongjuk Logo"
-                  className="h-14 w-14 object-contain filter-[brightness(0)_invert(1)]"
+                  className="h-14 w-14 object-contain"
                 />
               </div>
               <div className="text-center">

@@ -12,9 +12,10 @@ import { StatCard } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
 import { questionService } from '@/features/questions/api';
 import { examService } from '@/features/exams/api';
+import { canAccess } from '@/features/rbac/accessMatrix';
 import { useApi } from '@/hooks/useApi';
 
-// Exam windows the Exam Head still needs to think about - not yet archived, not
+// Exam windows the Chief of Examination still needs to think about - not yet archived, not
 // cancelled, and results aren't in. Everything else is history.
 const UPCOMING_STATUSES = ['draft', 'published', 'registration_open', 'registration_closed', 'in_progress'];
 
@@ -59,18 +60,25 @@ export default function ExamHeadDashboard() {
         className="relative overflow-hidden bg-gradient-to-r from-[#1B2A4A] to-[#2A1B3A] border border-brand-gold/20 rounded-2xl p-6"
       >
         <div className="relative">
-          <p className="text-xs text-brand-gold font-medium uppercase tracking-wider mb-1">Exam Head</p>
+          <p className="text-xs text-brand-gold font-medium uppercase tracking-wider mb-1">Chief of Examination</p>
           <h1 className="text-xl font-bold text-white mb-1">Welcome, {user?.name?.split(' ')[0]}!</h1>
           <p className="text-sm text-[#94A3C8]">Manage question papers and oversee examination documents securely.</p>
         </div>
       </motion.div>
+
+      {canAccess(user, 'appeals', 'approve') && (
+        <Link to="/appeals" className="block bg-surface-card border border-brand-gold/30 rounded-xl p-5 hover:border-brand-gold transition-colors">
+          <p className="text-sm font-semibold text-brand-gold">Chief of Examination Approval</p>
+          <p className="text-xs text-text-muted mt-1">Approve or reject committee-reviewed re-evaluations, including no-change recommendations.</p>
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Papers Uploaded" value={(questionPapers || []).length} icon={<BookOpen size={18} />} color="gold" />
         <StatCard title="Pending Uploads" value={totalPendingSkills} icon={<AlertTriangle size={18} />} color={totalPendingSkills ? 'warning' : 'success'} />
         {/* BRD §5.4.2 asks for a verified-applicant count for upcoming sessions, but
             GET /applications requires the `registration.application.verify`
-            permission server-side and the Exam Head does not hold it (only
+            permission server-side and the Chief of Examination does not hold it (only
             question.secure.* and report.run - see migrations 0001/0002/0006).
             Granting it would also grant the verify/start-review/return actions that
             permission guards, which this role should not have. Shown disabled with

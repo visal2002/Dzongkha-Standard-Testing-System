@@ -9,8 +9,9 @@ import { motion } from 'framer-motion';
 import { User, Mail, CreditCard, GraduationCap, Shield, Phone, Lock, Save, Edit2, X, Camera, Calendar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/features/auth/api';
-import { validatePassportPhotoFile } from '@/features/profile/passportPhoto';
+import PhotoUploader from '@/features/profile/PhotoUploader';
 import toast from 'react-hot-toast';
+import PasswordInput from '@/components/ui/PasswordInput';
 
 function InfoRow({ icon: Icon, label, value, placeholder = '—' }) {
   return (
@@ -31,17 +32,20 @@ const QUALIFICATION_LEVELS = ['Below Class X', 'Class X', 'Class XII', 'Certific
 function EditProfileForm({ user, onSave, onCancel, emailRequired }) {
   // Don't prefill the CID-derived placeholder address - the user must type a real one.
   const [email, setEmail] = useState(user.emailSet ? (user.email || '') : '');
+  const [fullNameDz, setFullNameDz] = useState(user.fullNameDz || '');
   const [phone, setPhone] = useState(user.phone || user.contactNumber || '');
   const [qualification, setQualification] = useState(user.education || '');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!/^[\u0F00-\u0FFF\s]*$/.test(fullNameDz)) return toast.error('Please enter your Dzongkha name using Dzongkha script.');
     if (!email.trim()) return toast.error('Email address is required.');
     setLoading(true);
     try {
       await onSave({
         email: email.trim(),
+        fullNameDz: fullNameDz.trim(),
         contactNumber: phone.trim(),
         education: qualification,
       });
@@ -79,6 +83,11 @@ function EditProfileForm({ user, onSave, onCancel, emailRequired }) {
             {QUALIFICATION_LEVELS.map(level => <option key={level} value={level}>{level}</option>)}
           </select>
         </div>
+      </div>
+      <div>
+        <label htmlFor="profile-dzongkha-name" className="block text-xs text-text-muted mb-1.5 font-medium">Full Name (Dzongkha)</label>
+        <input id="profile-dzongkha-name" value={fullNameDz} onChange={e => setFullNameDz(e.target.value)} maxLength={160} lang="dz" className={inputCls} />
+        <p className="mt-1 text-[10px] text-text-muted">Enter the correct Dzongkha spelling of your name for your certificate. Your English name remains unchanged.</p>
       </div>
       <div className="flex gap-2 pt-2">
         <button
@@ -131,15 +140,15 @@ function ChangePasswordForm({ onClose }) {
     <form onSubmit={handleSubmit} className="space-y-3 mt-4">
       <div>
         <label className="block text-xs text-text-muted mb-1.5 font-medium">Current Password</label>
-        <input type="password" value={current} onChange={e => setCurrent(e.target.value)} required className={inputCls} />
+        <PasswordInput aria-label="Current Password" autoComplete="current-password" value={current} onChange={e => setCurrent(e.target.value)} required className={inputCls} />
       </div>
       <div>
         <label className="block text-xs text-text-muted mb-1.5 font-medium">New Password</label>
-        <input type="password" value={next} onChange={e => setNext(e.target.value)} required className={inputCls} />
+        <PasswordInput aria-label="New Password" autoComplete="new-password" value={next} onChange={e => setNext(e.target.value)} required className={inputCls} />
       </div>
       <div>
         <label className="block text-xs text-text-muted mb-1.5 font-medium">Confirm New Password</label>
-        <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required className={inputCls} />
+        <PasswordInput aria-label="Confirm New Password" autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} required className={inputCls} />
       </div>
       <div className="flex gap-2 pt-1">
         <button type="submit" disabled={loading} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-gold text-white text-sm font-medium hover:bg-brand-gold-dark disabled:opacity-60 transition-colors">
@@ -181,11 +190,11 @@ function CreatePasswordForm({ onDone }) {
     <form onSubmit={handleSubmit} className="space-y-3 mt-4">
       <div>
         <label className="block text-xs text-text-muted mb-1.5 font-medium">New Password</label>
-        <input type="password" value={next} onChange={e => setNext(e.target.value)} required minLength={12} placeholder="At least 12 characters" className={inputCls} />
+        <PasswordInput aria-label="New Password" autoComplete="new-password" value={next} onChange={e => setNext(e.target.value)} required minLength={12} placeholder="At least 12 characters" className={inputCls} />
       </div>
       <div>
         <label className="block text-xs text-text-muted mb-1.5 font-medium">Confirm Password</label>
-        <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required minLength={12} className={inputCls} />
+        <PasswordInput aria-label="Confirm New Password" autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} required minLength={12} className={inputCls} />
       </div>
       <button type="submit" disabled={loading} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-gold text-white text-sm font-medium hover:bg-brand-gold-dark disabled:opacity-60 transition-colors">
         <Lock size={14} /> {loading ? 'Saving…' : 'Create Password'}
@@ -203,7 +212,6 @@ export default function ProfilePage() {
 
   const [editing, setEditing] = useState(needsEmail);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [savingPhoto, setSavingPhoto] = useState(false);
 
   // Keep the edit form open while an email is still required.
   useEffect(() => {
@@ -215,33 +223,6 @@ export default function ProfilePage() {
     setEditing(false);
   };
 
-  // Passport-size photo: mandatory for Test Takers before the rest of the app unlocks.
-  const handlePassportUpload = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    try {
-      await validatePassportPhotoFile(file);
-    } catch (error) {
-      toast.error(error?.message || 'The selected passport photo is invalid.');
-      return;
-    }
-    setSavingPhoto(true);
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const dataUrl = String(ev.target?.result || '');
-      try {
-        await updateProfile({ photo: dataUrl });
-        toast.success(needsPassportPhoto ? 'Passport photo saved — you now have full access.' : 'Passport photo updated.');
-      } catch (error) {
-        toast.error(error?.message || 'Failed to save the passport photo.');
-      } finally {
-        setSavingPhoto(false);
-      }
-    };
-    reader.onerror = () => { toast.error('Could not read the selected photo.'); setSavingPhoto(false); };
-    reader.readAsDataURL(file);
-  };
 
   const initials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -290,30 +271,7 @@ export default function ProfilePage() {
               {initials}
             </div>
           )}
-          {!isTestTaker && (
-            <label className="mt-2 flex items-center gap-1 text-sm text-brand-gold cursor-pointer">
-              <input type="file" accept="image/jpeg,image/png" className="hidden" disabled={savingPhoto} onChange={handlePassportUpload} />
-              <Camera size={16} className="text-brand-gold" /> {savingPhoto ? 'Saving…' : 'Change Photo'}
-            </label>
-          )}
-
-          {isTestTaker && (
-            <label
-              className={`flex items-center gap-1.5 text-sm cursor-pointer rounded-lg px-3 py-1.5 border transition-colors ${
-                needsPassportPhoto
-                  ? 'border-rose-500/40 text-rose-400 bg-rose-500/10 hover:bg-rose-500/15 font-semibold'
-                  : 'border-surface-border text-text-secondary hover:bg-surface-border/60'
-              }`}
-            >
-              <input type="file" accept="image/jpeg,image/png" className="hidden" disabled={savingPhoto} onChange={handlePassportUpload} />
-              <Camera size={14} />
-              {savingPhoto ? 'Saving…' : needsPassportPhoto ? 'Upload passport-size photo (required)' : 'Replace passport-size photo'}
-            </label>
-          )}
-
-          <p className="text-[10px] text-text-muted leading-relaxed max-w-52">
-            JPEG or PNG | portrait 35:45 | minimum 350 x 450 px | maximum 3 MB
-          </p>
+          <PhotoUploader onSave={photo => updateProfile({ photo })} />
 
           <div className="text-center">
             <p className="text-sm font-bold text-text-primary">{user?.name}</p>
@@ -350,6 +308,7 @@ export default function ProfilePage() {
           ) : (
             <>
               <InfoRow icon={User}       label="Full Name"     value={user?.name} />
+              <InfoRow icon={User} label="Full Name (Dzongkha)" value={user?.fullNameDz} placeholder="Add your Dzongkha name using Edit Profile" />
               <InfoRow icon={Mail}       label="Email"         value={needsEmail ? null : user?.email} placeholder="Not set" />
               <InfoRow icon={CreditCard} label="User ID"       value={user?.userId} placeholder="Not assigned" />
               <InfoRow icon={CreditCard} label="CID"           value={user?.cid} placeholder="Not set" />

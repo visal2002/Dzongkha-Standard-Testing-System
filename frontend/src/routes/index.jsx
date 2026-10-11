@@ -7,7 +7,6 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { rolesFor } from '@/features/rbac/outOfMatrix';
 import { RouteGuard as PrivateRoute } from '@/features/rbac/RouteGuard';
 import PageLoader from '@/components/ui/PageLoader';
 
@@ -38,6 +37,7 @@ const AppealList = lazy(() => import('@/features/appeals/pages/AppealList'));
 const RevisionTracker = lazy(() => import('@/features/appeals/pages/RevisionTracker'));
 const SubmitAppeal = lazy(() => import('@/features/appeals/pages/SubmitAppeal'));
 const CertificateList = lazy(() => import('@/features/certificates/pages/CertificateList'));
+const CertificateVerify = lazy(() => import('@/features/certificates/pages/CertificateVerify'));
 const CertificatePrint = lazy(() => import('@/features/certificates/pages/CertificatePrint'));
 const QuestionPapers = lazy(() => import('@/features/questions/pages/QuestionPapers'));
 const UploadQuestionPaper = lazy(() => import('@/features/questions/pages/UploadQuestionPaper'));
@@ -73,6 +73,7 @@ export default function AppRoutes() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/verify-certificate/:token" element={<CertificateVerify />} />
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
         <Route path="/ndi-login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <NdiLoginPage />} />
         <Route path="/ndi-register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <NdiRegistrationPage />} />
@@ -110,7 +111,7 @@ export default function AppRoutes() {
           {/* Scores */}
           <Route path="/scores" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'submit' }}><ScoreEntry /></PrivateRoute>} />
           <Route path="/scores/view" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read' }}><ViewScores /></PrivateRoute>} />
-          <Route path="/scores/committee" element={<PrivateRoute requiredRoles={rolesFor('committeeSetup')}><CommitteeSetup /></PrivateRoute>} />
+          <Route path="/scores/committee" element={<PrivateRoute requiredOperation="committeeSetup"><CommitteeSetup /></PrivateRoute>} />
           <Route path="/scores/summary" element={<PrivateRoute requiredAccess={{ module: 'scores', action: 'read_all' }}><ScoreSummary /></PrivateRoute>} />
           {/* Committee Member's dedicated read-only screen (BRD §5.5.2 BR-2/BR-3):
               search by Exam ID or candidate Registration Number, plus the reviewing
@@ -122,10 +123,8 @@ export default function AppRoutes() {
           {/* Appeals & Certificates */}
           <Route path="/appeals" element={<PrivateRoute requiredAccess={{ module: 'appeals', action: 'read' }}><AppealList /></PrivateRoute>} />
           <Route path="/appeals/new" element={<PrivateRoute requiredAccess={{ module: 'appeals', action: 'submit_own' }}><SubmitAppeal /></PrivateRoute>} />
-          {/* BRD §5.6.2 Committee BR-2: only the Committee Head runs the committee
-              review step that produces a revision request, so 'process' - not the
-              broader 'read' every other appeals-facing role holds - is what actually
-              distinguishes this role here. */}
+          {/* BRD §5.6.2 Committee BR-2: Committee Heads and Members run the committee
+              review step that produces a revision request; this route requires the 'process' permission. */}
           <Route path="/appeals/revisions" element={<PrivateRoute requiredAccess={{ module: 'appeals', action: 'process' }}><RevisionTracker /></PrivateRoute>} />
           <Route path="/certificates" element={<PrivateRoute requiredAccess={{ module: 'certificates', action: 'read' }}><CertificateList /></PrivateRoute>} />
 
@@ -140,11 +139,11 @@ export default function AppRoutes() {
           {/* Administration */}
           <Route path="/admin/users" element={<PrivateRoute requiredAccess={{ module: 'users', action: 'read' }}><UserManagement /></PrivateRoute>} />
           <Route path="/admin/roles" element={<PrivateRoute requiredAccess={{ module: 'roles', action: 'read' }}><RoleManagement /></PrivateRoute>} />
-          <Route path="/admin/permissions" element={<PrivateRoute requiredRoles={rolesFor('permissionManagement')}><PermissionManagement /></PrivateRoute>} />
-          <Route path="/admin/role-assignment" element={<PrivateRoute requiredRoles={rolesFor('roleAssignment')}><RoleAssignment /></PrivateRoute>} />
-          <Route path="/admin/audit-logs" element={<PrivateRoute requiredRoles={rolesFor('systemAuditLogs')}><AuditLogs /></PrivateRoute>} />
-          <Route path="/admin/technical" element={<PrivateRoute requiredRoles={rolesFor('technicalSettings')}><TechnicalSettings /></PrivateRoute>} />
-          <Route path="/masters" element={<PrivateRoute requiredRoles={rolesFor('examConfiguration')}><MasterConfiguration /></PrivateRoute>} />
+          <Route path="/admin/permissions" element={<PrivateRoute requiredOperation="permissionManagement"><PermissionManagement /></PrivateRoute>} />
+          <Route path="/admin/role-assignment" element={<PrivateRoute requiredOperation="roleAssignment"><RoleAssignment /></PrivateRoute>} />
+          <Route path="/admin/audit-logs" element={<PrivateRoute requiredOperation="systemAuditLogs"><AuditLogs /></PrivateRoute>} />
+          <Route path="/admin/technical" element={<PrivateRoute requiredOperation="technicalSettings"><TechnicalSettings /></PrivateRoute>} />
+          <Route path="/masters" element={<PrivateRoute requiredOperation="examConfiguration"><MasterConfiguration /></PrivateRoute>} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Route>

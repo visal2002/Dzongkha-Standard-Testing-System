@@ -14,8 +14,12 @@ import { NotificationEntity } from './entities';
 export class NotificationService {
   constructor(@InjectRepository(NotificationEntity) private readonly notifications: Repository<NotificationEntity>) {}
 
-  list(userId: string, limit: number) {
-    return this.notifications.find({ where: { userId, archivedAt: IsNull() }, order: { createdAt: 'DESC' }, take: Math.min(Math.max(limit || 30, 1), 100) });
+  list(userId: string, limit: number, offset = 0) {
+    return this.notifications.find({ where: { userId, archivedAt: IsNull() }, order: { createdAt: 'DESC', id: 'DESC' }, take: Math.min(Math.max(Math.trunc(limit) || 30, 1), 100), skip: Number.isFinite(offset) ? Math.max(0, Math.trunc(offset)) : 0 });
+  }
+
+  async unreadCount(userId: string) {
+    return { unreadCount: await this.notifications.count({ where: { userId, readAt: IsNull(), archivedAt: IsNull() } }) };
   }
 
   async read(id: string, userId: string) {

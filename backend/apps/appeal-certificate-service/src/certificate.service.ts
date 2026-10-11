@@ -25,6 +25,7 @@ import { CertificateResultSource, CertificateSourceClientService } from './certi
 export class CertificateService {
   private readonly verificationSecret: string;
   private readonly publicApiBaseUrl: string;
+  private readonly publicWebBaseUrl: string;
   private readonly production: boolean;
   private readonly privilegedAssurance: Set<string>;
 
@@ -42,6 +43,7 @@ export class CertificateService {
   ) {
     this.verificationSecret = config.get<string>('CERTIFICATE_VERIFICATION_SECRET', '');
     this.publicApiBaseUrl = config.get<string>('PUBLIC_API_BASE_URL', 'http://localhost:8000/api/v1').replace(/\/$/, '');
+    this.publicWebBaseUrl = config.get<string>('PUBLIC_WEB_BASE_URL', '').replace(/\/$/, '');
     this.production = config.get<string>('NODE_ENV') === 'production';
     this.privilegedAssurance = new Set(config.get<string>('PRIVILEGED_ASSURANCE_LEVELS', 'MFA,NDI').split(',').map(value => value.trim()));
   }
@@ -70,12 +72,13 @@ export class CertificateService {
   // <img src>, rather than a raw byte array or a separate download route.
   private serializeTemplate(template: CertificateTemplateEntity) {
     const asDataUri = (data: Buffer | null, mimeType: string | null) => (data && mimeType ? `data:${mimeType};base64,${data.toString('base64')}` : null);
-    const { leftLogoData, leftLogoMimeType, rightLogoData, rightLogoMimeType, borderImageData, borderImageMimeType, signatureImageData, signatureImageMimeType, sealImageData, sealImageMimeType, ...fields } = template;
+    const { leftLogoData, leftLogoMimeType, rightLogoData, rightLogoMimeType, borderImageData, borderImageMimeType, signatureImageData, signatureImageMimeType, sealImageData, sealImageMimeType, examinationSignatureImageData, examinationSignatureImageMimeType, ...fields } = template;
     return {
       ...fields,
       leftLogo: asDataUri(leftLogoData, leftLogoMimeType),
       rightLogo: asDataUri(rightLogoData, rightLogoMimeType),
       borderImage: asDataUri(borderImageData, borderImageMimeType),
+      examinationSignatureImage: asDataUri(examinationSignatureImageData, examinationSignatureImageMimeType),
       signatureImage: asDataUri(signatureImageData, signatureImageMimeType),
       sealImage: asDataUri(sealImageData, sealImageMimeType),
     };
@@ -86,13 +89,52 @@ export class CertificateService {
     return templates.map((template) => this.serializeTemplate(template));
   }
 
+  async retireTemplate(id: string, actor: AccessClaims, requestId: string) {
+    this.assertPrivileged(actor);
+    return this.dataSource.transaction(async manager => {
+      const template = await manager.findOne(CertificateTemplateEntity, { where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!template) throw new DomainException('CERTIFICATE_TEMPLATE_NOT_FOUND', 'Certificate template not found.', 404);
+      if (template.status !== CertificateTemplateStatus.Retired) {
+        template.status = CertificateTemplateStatus.Retired;
+        template.isDefault = false;
+        await manager.save(template);
+        await this.audit(manager, 'CERTIFICATE_TEMPLATE_RETIRED', id, actor.sub, requestId, { code: template.code, versionNumber: template.versionNumber }, 'CertificateTemplate');
+      }
+      return { retired: true, message: 'Template retired. Existing certificates and verification links are preserved.' };
+    });
+  }
+
+  async activateTemplate(id: string, actor: AccessClaims, requestId: string) {
+    this.assertPrivileged(actor);
+    return this.dataSource.transaction(async manager => {
+      // Serialize switches, including switches between different template codes.
+      await manager.query('SELECT pg_advisory_xact_lock(73810429)');
+      const template = await manager.findOne(CertificateTemplateEntity, { where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!template) throw new DomainException('CERTIFICATE_TEMPLATE_NOT_FOUND', 'Certificate template not found.', 404);
+      const now = new Date();
+      if (template.status !== CertificateTemplateStatus.Approved) throw new DomainException('CERTIFICATE_TEMPLATE_NOT_APPROVED', 'Only approved templates can be set active.', 409);
+      const restartPeriod = template.effectiveFrom > now || !!(template.effectiveTo && template.effectiveTo <= now);
+      const previousPeriod = { effectiveFrom: template.effectiveFrom, effectiveTo: template.effectiveTo };
+      if (template.testOnly && this.production) throw new DomainException('TEST_TEMPLATE_FORBIDDEN', 'Test-only templates cannot be active in production.', 403);
+      const defaults = await manager.find(CertificateTemplateEntity, { where: { isDefault: true }, lock: { mode: 'pessimistic_write' } });
+      if (template.isDefault && !restartPeriod) return this.serializeTemplate(template);
+      for (const previous of defaults) { previous.isDefault = false; await manager.save(previous); }
+      // Explicit reactivation starts a new effective period without changing issued certificates.
+      if (restartPeriod) { template.effectiveFrom = now; template.effectiveTo = null; }
+      template.isDefault = true;
+      await manager.save(template);
+      await this.audit(manager, 'CERTIFICATE_TEMPLATE_ACTIVATED', id, actor.sub, requestId, { previousTemplateIds: defaults.map(previous => previous.id), code: template.code, versionNumber: template.versionNumber, previousPeriod, effectiveFrom: template.effectiveFrom, effectiveTo: template.effectiveTo }, 'CertificateTemplate');
+      return this.serializeTemplate(template);
+    });
+  }
+
   async createTemplate(dto: CreateCertificateTemplateDto, actor: AccessClaims, requestId: string) {
     this.assertPrivileged(actor);
     if (dto.testOnly && this.production) throw new DomainException('TEST_TEMPLATE_FORBIDDEN', 'Test-only certificate templates cannot be created in production.', 403);
     const from = new Date(dto.effectiveFrom);
     const to = dto.effectiveTo ? new Date(dto.effectiveTo) : null;
     if (to && to <= from) throw new DomainException('CERTIFICATE_TEMPLATE_PERIOD_INVALID', 'Template effectiveTo must be after effectiveFrom.');
-    const { leftLogo, rightLogo, borderImage, signatureImage, sealImage, ...fields } = dto;
+    const { leftLogo, rightLogo, borderImage, signatureImage, sealImage, examinationSignatureImage, ...fields } = dto;
     // Each `??` fallback below used to be written inline five times over inside the
     // transaction (once per asset, `data` and `mimeType` each) - the repetition, not
     // any real branching, was what pushed that function's complexity to 22.
@@ -100,15 +142,17 @@ export class CertificateService {
     const leftLogoColumns = this.assetColumns(this.decodeAsset(leftLogo, 'leftLogo'));
     const rightLogoColumns = this.assetColumns(this.decodeAsset(rightLogo, 'rightLogo'));
     const borderImageColumns = this.assetColumns(this.decodeAsset(borderImage, 'borderImage'));
+    const examinationSignatureColumns = this.assetColumns(this.decodeAsset(examinationSignatureImage, 'examinationSignatureImage'));
     const signatureImageColumns = this.assetColumns(this.decodeAsset(signatureImage, 'signatureImage'));
     const sealImageColumns = this.assetColumns(this.decodeAsset(sealImage, 'sealImage'));
     return this.dataSource.transaction(async (manager) => {
       const template = await manager.save(CertificateTemplateEntity, manager.create(CertificateTemplateEntity, {
-        ...fields, effectiveFrom: from, effectiveTo: to, testOnly: dto.testOnly ?? false,
+        ...fields, dzongkhaFont: dto.dzongkhaFont ?? 'DDC Uchen', effectiveFrom: from, effectiveTo: to, testOnly: dto.testOnly ?? false,
         status: CertificateTemplateStatus.Draft, createdByUserId: actor.sub,
         leftLogoData: leftLogoColumns.data, leftLogoMimeType: leftLogoColumns.mimeType,
         rightLogoData: rightLogoColumns.data, rightLogoMimeType: rightLogoColumns.mimeType,
         borderImageData: borderImageColumns.data, borderImageMimeType: borderImageColumns.mimeType,
+        examinationSignatureImageData: examinationSignatureColumns.data, examinationSignatureImageMimeType: examinationSignatureColumns.mimeType,
         signatureImageData: signatureImageColumns.data, signatureImageMimeType: signatureImageColumns.mimeType,
         sealImageData: sealImageColumns.data, sealImageMimeType: sealImageColumns.mimeType,
       }));
@@ -129,6 +173,7 @@ export class CertificateService {
       });
       const superseded = approved.filter((other) => this.periodsOverlap(template, other));
       for (const other of superseded) {
+        other.isDefault = false;
         if (other.effectiveFrom < template.effectiveFrom) {
           other.effectiveTo = template.effectiveFrom;
         } else {
@@ -215,7 +260,7 @@ export class CertificateService {
     const buffer = this.encryption.decrypt(ciphertext, file);
     if (createHash('sha256').update(buffer).digest('hex') !== file.sha256) throw new DomainException('CERTIFICATE_INTEGRITY_FAILED', 'Certificate integrity verification failed.', 503);
     await this.access(certificate.id, CertificateAccessType.Download, actor.sub, requestId);
-    return { buffer, filename: `${certificate.certificateNumber}.pdf` };
+    return { buffer: await this.renderOwnerCopy(certificate), filename: `${certificate.certificateNumber}.pdf` };
   }
 
   // Self-service variant used by the "Download my certificate" button: the caller
@@ -246,22 +291,61 @@ export class CertificateService {
   private async renderOwnerCopy(certificate: CertificateEntity) {
     const template = await this.templates.findOneBy({ id: certificate.templateId });
     if (!template) throw new DomainException('CERTIFICATE_TEMPLATE_NOT_FOUND', 'The certificate template is unavailable.', 503);
-    const snapshot = (certificate.scoreSnapshot ?? {}) as { scores?: Record<string, number>; overallScore?: string | number };
+    // The archive retains the issued template. Current owner copies may use the
+    // active approved template's two signatures, without reissuing
+    // the certificate or changing its scores, validity or verification identity.
+    const now = new Date();
+    const candidates = (await this.templates.findBy({ code: template.code, status: CertificateTemplateStatus.Approved }))
+      .filter(item => item.code === template.code && item.status === CertificateTemplateStatus.Approved && !item.testOnly
+        && item.effectiveFrom <= now && (!item.effectiveTo || item.effectiveTo > now));
+    const current = candidates.find(item => item.isDefault) ?? (candidates.length === 1 ? candidates[0] : undefined);
+    const copyTemplate = Object.assign(new CertificateTemplateEntity(), template);
+    // Refresh each signatory independently; a missing upload must not remove the
+    // issued signature or prevent the other signatory's new image from appearing.
+    for (const field of ['examinationSignatureImage', 'signatureImage'] as const) {
+      const data = current?.[`${field}Data`];
+      const mimeType = current?.[`${field}MimeType`];
+      if (data?.length && mimeType) {
+        copyTemplate[`${field}Data`] = data;
+        copyTemplate[`${field}MimeType`] = mimeType;
+      }
+    }
+    const snapshot = (certificate.scoreSnapshot ?? {}) as { scores?: Record<string, number>; overallScore?: string | number; skillStandards?: Record<string, number> };
+    // Fetch the verified bilingual profile; do not translate official names.
+    let profile = await this.sources.profile(certificate.applicationId).catch(error => {
+      if (error instanceof DomainException && error.getStatus() === 404) return undefined;
+      throw error;
+    });
+    if (profile && (profile.testTakerUserId !== certificate.testTakerUserId || profile.examId !== certificate.examId)) throw new DomainException('CERTIFICATE_SOURCE_MISMATCH', 'Certificate and profile ownership do not match.', 409);
+    if (!certificate.cid || !certificate.dateOfBirth || !certificate.examDate) {
+      profile = await this.sources.profile(certificate.applicationId);
+      if (profile.testTakerUserId !== certificate.testTakerUserId || profile.examId !== certificate.examId) throw new DomainException('CERTIFICATE_SOURCE_MISMATCH', 'Certificate and profile ownership do not match.', 409);
+    }
+    const examDate = certificate.examDate ?? new Date((await this.sources.exam(certificate.examId)).examDate);
+    const dateOfBirth = certificate.dateOfBirth ?? new Date(profile!.dateOfBirth);
+    const cid = certificate.cid || profile?.cid || '';
+    if (!cid || !Number.isFinite(new Date(dateOfBirth).getTime()) || !Number.isFinite(new Date(examDate).getTime())) throw new DomainException('CERTIFICATE_PROFILE_INCOMPLETE', 'Verified CID, date of birth and examination date are required.', 409);
+    let skillStandards = snapshot.skillStandards;
+    if (!skillStandards) {
+      const result = (await this.sources.results(certificate.examId)).find(result => result.scoreSheetId === certificate.scoreSheetId && result.scoreVersionNumber === certificate.scoreVersionNumber);
+      skillStandards = result?.skillStandards;
+      if (!skillStandards && Object.values(snapshot.scores ?? {}).some(score => score > 10)) throw new DomainException('CERTIFICATE_RESULT_INCOMPLETE', 'Approved skill standards for this published result are unavailable.', 409);
+    }
+    const { photo, fullNameDz } = await this.sources.photo(certificate.testTakerUserId);
     const token = this.tokenFor(certificate.id);
-    return this.renderer.render(template, {
+    return this.renderer.render(copyTemplate, {
       certificateNumber: certificate.certificateNumber,
       holderName: certificate.holderName,
+      holderNameDz: profile?.fullNameDz || fullNameDz,
       registrationNumber: certificate.registrationNumber,
-      cid: certificate.cid ?? '',
-      dateOfBirth: certificate.dateOfBirth ?? new Date(0),
-      examDate: certificate.examDate ?? certificate.issuedAt,
+      cid, dateOfBirth: new Date(dateOfBirth), examDate: new Date(examDate), photo, skillStandards,
       issuedAt: certificate.issuedAt,
       validUntil: certificate.validUntil,
       scores: snapshot.scores ?? {},
       overallScore: String(snapshot.overallScore ?? ''),
       bandLabel: certificate.bandLabel,
       cefrLevel: certificate.cefrLevel,
-      verificationUrl: `${this.publicApiBaseUrl}/public/certificates/verify/${token}`,
+      verificationUrl: this.verificationUrl(token),
     });
   }
 
@@ -327,12 +411,13 @@ export class CertificateService {
     const priorCount = await this.certificates.countBy({ applicationId: result.applicationId });
     const certificateNumber = `DSTS-${issuedAt.getUTCFullYear()}-${randomBytes(6).toString('hex').toUpperCase()}`;
     const dateOfBirth = new Date(profile.dateOfBirth);
+    const holderProfile = await this.sources.photo(result.testTakerUserId);
     const pdf = await this.renderer.render(template, {
-      certificateNumber, holderName: profile.fullName, registrationNumber: profile.registrationNumber,
+      certificateNumber, holderName: profile.fullName, holderNameDz: profile.fullNameDz || holderProfile.fullNameDz, registrationNumber: profile.registrationNumber,
       cid: profile.cid, dateOfBirth, examDate,
-      issuedAt, validUntil, scores: result.scores, overallScore: result.overallScore,
+      issuedAt, validUntil, scores: result.scores, skillStandards: result.skillStandards, photo: holderProfile.photo, overallScore: result.overallScore,
       bandLabel: result.bandLabel, cefrLevel: result.cefrLevel,
-      verificationUrl: `${this.publicApiBaseUrl}/public/certificates/verify/${token}`,
+      verificationUrl: this.verificationUrl(token),
     });
     const encrypted = this.encryption.encrypt(pdf);
     const fileId = randomUUID();
@@ -347,7 +432,7 @@ export class CertificateService {
         scoreSheetId: result.scoreSheetId, scoreVersionNumber: result.scoreVersionNumber, versionNumber: priorCount + 1,
         templateId: template.id, templateVersionNumber: template.versionNumber, holderName: profile.fullName,
         registrationNumber: profile.registrationNumber, cid: profile.cid, dateOfBirth, examDate,
-        scoreSnapshot: { scores: result.scores, overallScore: result.overallScore },
+        scoreSnapshot: { scores: result.scores, skillStandards: result.skillStandards, overallScore: result.overallScore },
         bandLabel: result.bandLabel, cefrLevel: result.cefrLevel, verificationTokenHash: createHash('sha256').update(token).digest('hex'),
         fileId, status: CertificateStatus.Active, issuedAt, validUntil,
       }));
@@ -377,6 +462,8 @@ export class CertificateService {
     const now = new Date();
     const templates = await this.templates.findBy({ status: CertificateTemplateStatus.Approved });
     const active = templates.filter((item) => item.effectiveFrom <= now && (!item.effectiveTo || item.effectiveTo > now));
+    const selected = active.find(item => item.isDefault);
+    if (selected) return selected;
     if (active.length !== 1) throw new DomainException('CERTIFICATE_TEMPLATE_UNAVAILABLE', 'Exactly one approved certificate template must be effective.', 409);
     return active[0];
   }
@@ -403,7 +490,7 @@ export class CertificateService {
   }
 
   private ownerView(certificate: CertificateEntity) {
-    return { ...certificate, verificationTokenHash: undefined, fileId: undefined, verificationToken: this.tokenFor(certificate.id) };
+    return { ...certificate, verificationTokenHash: undefined, fileId: undefined, verificationToken: this.tokenFor(certificate.id), verificationUrl: this.verificationUrl(this.tokenFor(certificate.id)) };
   }
 
   private refreshExpiry(certificate: CertificateEntity) {
@@ -411,6 +498,7 @@ export class CertificateService {
     return certificate;
   }
 
+  private verificationUrl(token: string) { return this.publicWebBaseUrl ? `${this.publicWebBaseUrl}/verify-certificate/${encodeURIComponent(token)}` : `${this.publicApiBaseUrl}/public/certificates/verify/${encodeURIComponent(token)}`; }
   private tokenFor(id: string) { this.assertVerificationSecret(); return `${id}.${this.signatureFor(id)}`; }
   private signatureFor(id: string) { return createHmac('sha256', this.verificationSecret).update(id).digest('base64url'); }
   private assertVerificationSecret() { if (this.verificationSecret.length < 32) throw new DomainException('CERTIFICATE_VERIFICATION_UNAVAILABLE', 'Certificate verification is not configured.', 503); }

@@ -5,10 +5,13 @@
  */
 
 import { useState, useMemo } from 'react';
+import { humanizeStatus } from '@/lib/statusLabels';
 import { useLocation } from 'react-router-dom';
 import { createColumnHelper } from '@tanstack/react-table';
 import { CheckCircle, CreditCard, Eye, RotateCcw, Send } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import RecordReference from '@/components/ui/RecordReference';
+import { referenceSearch } from '@/lib/recordReferences';
 import DataTable from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -26,7 +29,7 @@ const columnHelper = createColumnHelper();
 export default function VerificationList() {
   const location = useLocation();
   const { user } = useAuth();
-  const canManage = canAccess(user?.role, 'verification', 'manage');
+  const canManage = canAccess(user, 'verification', 'manage');
   const showAllApplications = location.pathname === '/registration/applications';
   const loadApplications = showAllApplications ? applicationService.getAll : verificationService.getPendingApplications;
   const { data: dataArray, loading, error, setData, execute } = useApi(loadApplications);
@@ -98,7 +101,7 @@ export default function VerificationList() {
   const filteredData = statusFilter ? data.filter(a => a.status === statusFilter) : data;
 
   const columns = useMemo(() => [
-    columnHelper.accessor('id', { header: 'Application ID', cell: i => <span className="font-mono text-xs text-text-muted">{i.getValue()}</span> }),
+    columnHelper.accessor(row => referenceSearch(row.id, 'APP', data.map(item => item.id)), { id: 'id', header: 'Application reference', cell: i => <RecordReference id={i.row.original.id} ids={data.map(item => item.id)} className="font-mono text-xs text-text-muted" /> }),
     columnHelper.accessor('testTakerName', {
       header: 'Applicant',
       cell: i => (
@@ -148,7 +151,7 @@ export default function VerificationList() {
         );
       }
     }),
-  ], [canManage, notifyingId]);
+  ], [canManage, notifyingId, data]);
 
   return (
     <div className="space-y-6">
@@ -204,7 +207,7 @@ export default function VerificationList() {
                 ['Employment', selected.employmentStatus],
                 ['Organization', selected.organization || '—'],
                 ['Exam', selected.examId],
-                ['Payment', `Nu. ${selected.paymentAmount} (${selected.paymentStatus})`],
+                ['Payment', `Nu. ${selected.paymentAmount} (${humanizeStatus(selected.paymentStatus)})`],
               ].map(([label, val]) => (
                 <div key={label}>
                   <p className="text-xs text-text-muted mb-0.5">{label}</p>

@@ -1,3 +1,5 @@
+import { hasExplicitPermissions, hasGrantedAccess } from './runtimePermissions';
+
 export const ACCESS_MODULES = [
   { key: 'users', label: 'User Management' },
   { key: 'roles', label: 'Role Management' },
@@ -15,10 +17,9 @@ export const ROLE_LABELS = {
   admin: 'System Administrator',
   dcdd: 'DCDD Administrator',
   // The BRD itself is inconsistent about this role's name - §5.4.1's process-flow
-  // lane calls it "Exam Head", §5.4.2 BR-1 calls it "DCDD Chief of Examination". This
-  // is the single label the product uses everywhere (account badge, dashboard,
-  // notifications, audit trail) so that ambiguity does not carry into the UI.
-  exam_head: 'Exam Head',
+  // Keep this display label consistent across account badges, dashboards,
+  // notifications, audit trails, and the stored identity.roles.name.
+  exam_head: 'Chief of Examination',
   committee_head: 'Committee Head',
   committee_member: 'Committee Member',
   chief_executive: 'Chief of Examiner',
@@ -57,14 +58,14 @@ export const ACCESS_MATRIX = {
   },
   exam_head: {
     registration: 'read', verification: 'read', attendance: 'read', questions: 'full',
-    scores: 'read', appeals: 'read', certificates: 'read', reports: 'read',
+    scores: 'read', appeals: 'approve', certificates: 'read', reports: 'read',
   },
   committee_head: {
     registration: 'read', scores: 'submit', appeals: 'process',
     certificates: 'read', reports: 'read',
   },
   committee_member: {
-    registration: 'read', scores: 'read', appeals: 'read', reports: 'read',
+    registration: 'read', scores: 'read', appeals: 'process', reports: 'read',
   },
   chief_executive: {
     registration: 'read', scores: 'read', appeals: 'approve',
@@ -88,8 +89,8 @@ export const ACCESS_MATRIX = {
 // Two actions are narrower than they look, and the narrowness is the point:
 //
 //   `approve`      the Chief of Examiner's final decision on a re-evaluation. It is
-//                  separate from `process` in both directions - the Committee Head
-//                  processes a request but cannot approve it, and the Chief approves
+//                  separate from `process` in both directions - Committee Heads and Members
+//                  process requests but cannot approve them, and the Chief approves
 //                  but does not run the committee review step.
 //   `secure_read`  opening the encrypted question paper or answer sheet. Only `full`
 //                  grants it, so a role holding Question Upload "Read" sees the
@@ -112,7 +113,8 @@ export function getAccessLevel(role, module) {
 }
 
 export function canAccess(role, module, action = 'read') {
-  const level = getAccessLevel(role, module);
+  if (hasExplicitPermissions(role)) return hasGrantedAccess(role, module, action);
+  const level = getAccessLevel(typeof role === 'object' ? role?.role : role, module);
   return (ALLOWED_ACTIONS[level] || []).includes(action);
 }
 

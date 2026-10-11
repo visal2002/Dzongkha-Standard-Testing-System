@@ -24,7 +24,7 @@ import {
 const uuid = () => `20000000-0000-4000-8000-${Math.random().toString().slice(2, 14).padEnd(12, '0')}`;
 
 const config = new ConfigService({ PRIVILEGED_ASSURANCE_LEVELS: 'MFA', INTERNAL_SERVICE_SECRET: 'a'.repeat(32) });
-const identityClient = { nameFor: jest.fn(), namesFor: jest.fn().mockResolvedValue(new Map()) } as unknown as IdentityClientService;
+const identityClient = { nameFor: jest.fn(), namesFor: jest.fn().mockResolvedValue(new Map()), applicationProfilesFor: jest.fn().mockResolvedValue(new Map()) } as unknown as IdentityClientService;
 
 const managerActor: AccessClaims = { sub: uuid(), sessionId: uuid(), roles: ['identity_admin'], permissions: ['*'], assurance: 'MFA' };
 
@@ -59,12 +59,18 @@ describe('ResultService batched version lookups', () => {
     const eligibility = {} as never;
 
     const service = new ResultService({} as never, {} as ScoringService, config, identityClient, committees, members, eligibility, sheets, versions);
+    (identityClient.applicationProfilesFor as jest.Mock).mockResolvedValueOnce(new Map([
+      ['app-a', { name: 'QA Candidate', registrationNumber: 'ཀ-༢༦-༠༠༡' }],
+      ['app-b', { name: 'Legacy Candidate', registrationNumber: 'DSTS-2026-38F2A5AE' }],
+    ]));
 
     const result = await service.getExamScores('exam-1', managerActor);
 
     expect(versionsFind).toHaveBeenCalledTimes(1);
     expect(result.find((r) => r.id === 'sheet-a')!.versions.map((v: ScoreVersionEntity) => v.versionNumber)).toEqual([2, 1]);
     expect(result.find((r) => r.id === 'sheet-b')!.versions.map((v: ScoreVersionEntity) => v.versionNumber)).toEqual([1]);
+    expect(result.find(r => r.id === 'sheet-a')).toMatchObject({ registrationNumber: 'ཀ-༢༦-༠༠༡', testTakerName: 'QA Candidate' });
+    expect(result.find(r => r.id === 'sheet-b')).toMatchObject({ registrationNumber: 'DSTS-2026-38F2A5AE', testTakerName: 'Legacy Candidate' });
   });
 
   it('getExamScores gives a sheet with no versions an empty array, not undefined', async () => {
@@ -77,6 +83,7 @@ describe('ResultService batched version lookups', () => {
     const service = new ResultService({} as never, {} as ScoringService, config, identityClient, committees, members, {} as never, sheets, versions);
     const result = await service.getExamScores('exam-1', managerActor);
     expect(result[0].versions).toEqual([]);
+    expect(result[0].registrationNumber).toBeNull();
   });
 
   it('myResults matches each sheet to the version its currentVersion actually points at', async () => {
@@ -101,6 +108,18 @@ describe('ResultService batched version lookups', () => {
 
     expect(await service.myResults('user-1')).toEqual([]);
     expect((sheets as { findBy: jest.Mock }).findBy).not.toHaveBeenCalled();
+  });
+
+  it('uses the published version scoring rule to provide skill standards without changing raw scores', async () => {
+    const current = version('sheet-a', 1);
+    current.scores = {WRITING:28,READING:36.5,LISTENING:33.5,SPEAKING:46.5};
+    const scoring = {ruleForRevision:jest.fn().mockResolvedValue({bands:[{min:27,max:33.5,standard:5},{min:34,max:40.5,standard:6},{min:45,max:47.5,standard:8}]})} as unknown as ScoringService;
+    const manager = {};
+    const service = new ResultService({manager} as never,scoring,config,identityClient,{} as never,{} as never,{findBy:jest.fn().mockResolvedValue([{applicationId:'app-a',testTakerUserId:'user-1'}])} as never,{findBy:jest.fn().mockResolvedValue([sheet('sheet-a','app-a',1)])} as never,{findBy:jest.fn().mockResolvedValue([current])} as never);
+    const [result] = await service.certificateResults('exam-1','a'.repeat(32));
+    expect(result.scores).toEqual(current.scores);
+    expect(result.skillStandards).toEqual({WRITING:5,READING:6,LISTENING:5,SPEAKING:8});
+    expect(scoring.ruleForRevision).toHaveBeenCalledWith(manager,current.scoringRuleId);
   });
 
   it('certificateResults raises CERTIFICATE_RESULT_INCOMPLETE when a sheet has no matching current version', async () => {

@@ -40,6 +40,17 @@ configMapGenerator:
       - 0030_exam_head_question_bank_only.sql=../../../backend/database/migrations/0030_exam_head_question_bank_only.sql
       - 0031_publish_submitted_results.sql=../../../backend/database/migrations/0031_publish_submitted_results.sql
       - 0032_appeal_fee_waiver.sql=../../../backend/database/migrations/0032_appeal_fee_waiver.sql
+      - 0033_committee_member_appeal_review.sql=../../../backend/database/migrations/0033_committee_member_appeal_review.sql
+      - 0034_chief_of_examination_role_name.sql=../../../backend/database/migrations/0034_chief_of_examination_role_name.sql
+      - 0035_chief_of_examination_appeal_approval.sql=../../../backend/database/migrations/0035_chief_of_examination_appeal_approval.sql
+      - 0036_staff_user_handover.sql=../../../backend/database/migrations/0036_staff_user_handover.sql
+      - 0037_certificate_dzongkha_font.sql=../../../backend/database/migrations/0037_certificate_dzongkha_font.sql
+      - 0038_certificate_default_template.sql=../../../backend/database/migrations/0038_certificate_default_template.sql
+      - 0039_certificate_second_signature.sql=../../../backend/database/migrations/0039_certificate_second_signature.sql
+      - 0040_profile_dzongkha_name.sql=../../../backend/database/migrations/0040_profile_dzongkha_name.sql
+      - 0041_dzongkha_dsts_numbers.sql=../../../backend/database/migrations/0041_dzongkha_dsts_numbers.sql
+      - 0042_chief_committee_setup.sql=../../../backend/database/migrations/0042_chief_committee_setup.sql
+      - 0043_remove_chief_committee_setup.sql=../../../backend/database/migrations/0043_remove_chief_committee_setup.sql
   - name: api-gateway-config
     files:
       - nginx.conf=api-gateway.conf

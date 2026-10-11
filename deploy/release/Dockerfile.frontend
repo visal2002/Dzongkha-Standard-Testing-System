@@ -1,0 +1,9 @@
+FROM nginx:1.29-alpine
+COPY nginx.staging.conf /etc/nginx/nginx.conf
+COPY dist/ /usr/share/nginx/html/
+ARG REVISION
+ARG VERSION
+LABEL org.opencontainers.image.revision=$REVISION org.opencontainers.image.version=$VERSION
+USER 101:101
+EXPOSE 8080
+ENTRYPOINT ["nginx", "-g", "daemon off;"]

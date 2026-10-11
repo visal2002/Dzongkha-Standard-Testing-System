@@ -6,6 +6,7 @@
 
 import { forwardRef, useId } from 'react';
 import { AlertCircle, Calendar } from 'lucide-react';
+import PasswordInput from './PasswordInput';
 
 const Input = forwardRef(function Input(
   { label, error, hint, icon, iconRight, className = '', required, id, ...props },
@@ -13,6 +14,7 @@ const Input = forwardRef(function Input(
 ) {
   const generatedId = useId();
   const inputId = id || generatedId;
+  const FieldInput = props.type === 'password' ? PasswordInput : 'input';
   const hasDatePicker = ['date', 'datetime-local'].includes(props.type);
   return (
     <div className="flex flex-col gap-1.5">
@@ -27,7 +29,7 @@ const Input = forwardRef(function Input(
             {icon}
           </span>
         )}
-        <input
+        <FieldInput
           id={inputId}
           ref={ref}
           className={[

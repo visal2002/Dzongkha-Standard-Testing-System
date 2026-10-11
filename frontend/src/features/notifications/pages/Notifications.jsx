@@ -8,7 +8,7 @@ import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
-import Badge, { StatusBadge } from '@/components/ui/Badge';
+import Badge from '@/components/ui/Badge';
 import { useNotifications } from '@/features/notifications/useNotifications';
 import { notificationService } from '@/features/notifications/api';
 import toast from 'react-hot-toast';
@@ -21,16 +21,14 @@ const TYPE_COLORS = {
 };
 
 export default function Notifications() {
-  const { notifications: notifs, unreadCount, markAsRead, markAllAsRead, refresh, loading } = useNotifications();
-  const unread = notifs.filter(n => !n.read);
+  const { notifications: notifs, unreadCount, markAsRead, markAllAsRead, refresh, loading, error, hasMore, loadMore } = useNotifications(100);
 
   const markAll = async () => {
-    await markAllAsRead();
-    toast.success('All notifications marked as read');
+    if (await markAllAsRead()) toast.success('All notifications marked as read');
   };
 
   const dismiss = async (id) => {
-    try { await notificationService.delete(id); await refresh(); }
+    try { await notificationService.delete(id); window.dispatchEvent(new Event('notifications-changed')); }
     catch (error) { toast.error(error.message || 'Could not archive notification.'); }
   };
 
@@ -43,21 +41,22 @@ export default function Notifications() {
         icon={<Bell size={18} />}
         action={
           <div className="flex gap-2">
-            {unread.length > 0 && (
+            {unreadCount > 0 && (
               <Button variant="secondary" size="sm" icon={<CheckCheck size={13} />} onClick={markAll}>Mark all read</Button>
             )}
           </div>
         }
       />
 
-      {unread.length > 0 && (
+      {unreadCount > 0 && (
         <div className="flex items-center gap-2">
           <Badge variant="gold" dot>{unreadCount} unread</Badge>
         </div>
       )}
 
       <div className="space-y-2">
-        {loading ? (
+        {error && <div role="alert" className="text-sm text-red-400">{error} <button onClick={refresh} className="underline">Retry</button></div>}
+        {loading && notifs.length === 0 ? (
           <div className="text-center py-16 text-text-muted">Loading notifications...</div>
         ) : notifs.length === 0 ? (
           <div className="text-center py-16 text-text-muted">
@@ -70,7 +69,7 @@ export default function Notifications() {
             key={n.id}
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.03 }}
+            transition={{ delay: Math.min(i * 0.03, 0.3) }}
             className={[
               'flex items-start gap-3 p-4 border border-l-4 rounded-xl transition-all',
               TYPE_COLORS[n.type] || 'border-l-[var(--color-surface-border)] bg-surface-card',
@@ -98,6 +97,7 @@ export default function Notifications() {
             </div>
           </motion.div>
         ))}
+        {hasMore && <Button variant="secondary" onClick={loadMore} disabled={loading}>{loading ? 'Loading...' : 'Load more notifications'}</Button>}
       </div>
     </div>
   );

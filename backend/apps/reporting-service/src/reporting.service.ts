@@ -95,8 +95,12 @@ export class ReportingService {
     if (dto.groupBy) this.assertFields([dto.groupBy], definition.fields);
     for (const filter of dto.filters ?? []) this.assertFields([filter.field], definition.fields);
 
-    const { projections, scanTruncated } = await this.scan(definition.resourceType);
-    const allRows = projections.map((item) => this.row(item)).filter((row) => this.matches(row, dto));
+    const { projections, scanTruncated } = definition.resourceType
+      ? await this.scan(definition.resourceType) : { projections: [], scanTruncated: false };
+    const datasetRows: Record<string, unknown>[] = dto.dataset === ReportDataset.Summary
+      ? Object.entries(await this.summary()).map(([metric, value]) => ({ metric, value }))
+      : projections.map((item) => this.row(item));
+    const allRows = datasetRows.filter((row) => this.matches(row, dto));
     const rows = allRows.slice(0, dto.limit ?? 1000).map((row) => Object.fromEntries(fields.map((field) => [field, row[field] ?? null])));
     const grouped = dto.groupBy ? this.group(allRows, dto.groupBy) : undefined;
     const truncatedBy = this.truncationReason(scanTruncated, allRows.length, rows.length);

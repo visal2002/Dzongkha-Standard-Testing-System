@@ -8,7 +8,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseOptions, PlatformModule } from '@dzongjuk/common';
-import { SecurityModule } from '@dzongjuk/security';
+import { SecurityModule, createStaffTransferController } from '@dzongjuk/security';
+const StaffTransferController = createStaffTransferController('result');
 import { CommitteeController, ScoresController, ScoringRulesController } from './result.controller';
 import { CandidateEligibilityEntity, CommitteeEntity, CommitteeMemberEntity, ProcessedEventEntity, ResultAuditEntity, ResultDeclarationEntity, ResultIdempotencyEntity, ResultOutboxEntity, ScoreSheetEntity, ScoreVersionEntity, ScoringRuleEntity } from './entities';
 import { ResultService } from './result.service';
@@ -25,7 +26,7 @@ import { RegistrationEventConsumer } from './event-consumer.service';
     SecurityModule,
     PlatformModule,
   ],
-  controllers: [CommitteeController, ScoresController, ScoringRulesController],
+  controllers: [StaffTransferController, CommitteeController, ScoresController, ScoringRulesController],
   providers: [ResultService, IdentityClientService, ScoringService, ResultOutboxPublisher, RegistrationEventConsumer],
 })
 export class AppModule {}

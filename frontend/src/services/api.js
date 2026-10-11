@@ -102,7 +102,7 @@ apiClient.interceptors.response.use(
 
     if (status === 401 && !USE_MOCK_DATA) {
       clearSession();
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login' && !window.location.pathname.startsWith('/verify-certificate/')) {
         window.location.href = '/login';
       }
     }

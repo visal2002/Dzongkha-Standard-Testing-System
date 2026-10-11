@@ -10,7 +10,7 @@
  */
 import apiClient from '@/services/api';
 import { USE_MOCK_DATA } from '@/lib/env';
-import { registerMockAccount, removeMockAccount, listRuntimeMockAccounts } from '@/features/auth/api';
+import { registerMockAccount, removeMockAccount, listRuntimeMockAccounts, resetMockAccountPassword } from '@/features/auth/api';
 import { recordAuditEvent } from '@/services/audit';
 import { ACCESS_MODULES, ROLE_LABELS } from '@/features/rbac/accessMatrix';
 
@@ -196,6 +196,7 @@ export const adminService = {
     }
 
     const { data } = await apiClient.put(`/admin/users/${id}`, payload);
+    if (payload.roleCodes) window.dispatchEvent(new Event('dsts:permissions-changed'));
     return normalizeUser(data?.data || data);
   },
 
@@ -212,6 +213,18 @@ export const adminService = {
 
     const { data } = await apiClient.patch(`/admin/users/${id}/status`, { status: status === 'active' ? 'ACTIVE' : 'DISABLED' });
     return data;
+  },
+
+  resetPassword: async (id, password) => {
+    if (USE_MOCK_DATA) {
+      const user = [...mockUsers, ...listRuntimeMockAccounts()].find(user => user.id === id);
+      if (!user) throw new Error('User account not found.');
+      const result = resetMockAccountPassword(user.email, password);
+      recordAuditEvent({ action: 'Admin Password Reset', actorUserId: id, status: 'Success' });
+      return result;
+    }
+    const { data } = await apiClient.post(`/admin/users/${id}/reset-password`, { password });
+    return data?.data ?? data;
   },
 
   /** Clear a temporary login lock and reset its failed-attempt counter. */
@@ -251,6 +264,18 @@ export const adminService = {
     return data;
   },
 
+  getTransferPlan: async id => {
+    if (USE_MOCK_DATA) throw new Error('Role handover requires the live backend to transfer responsibilities safely.');
+    const { data } = await apiClient.get('/admin/users/'+id+'/transfer-plan',{timeout:60000});
+    return data.data;
+  },
+  transferAndDeleteUser: async (id,payload) => {
+    if (USE_MOCK_DATA) throw new Error('Role handover requires the live backend.');
+    const { data } = await apiClient.post('/admin/users/'+id+'/transfer-and-delete',payload,{timeout:120000});
+    window.dispatchEvent(new Event('dsts:permissions-changed'));
+    return data.data;
+  },
+
   // ── Roles ────────────────────────────────────────────────────────────────────
 
   /** @returns {Promise<{data: import('@/constants/domain').SystemRole[]}>} */
@@ -284,6 +309,7 @@ export const adminService = {
   updateRolePermissions: async (id, permissions) => {
 
     const { data } = await apiClient.put(`/admin/roles/${id}/permissions`, { permissions });
+    window.dispatchEvent(new Event('dsts:permissions-changed'));
     return data;
   },
 

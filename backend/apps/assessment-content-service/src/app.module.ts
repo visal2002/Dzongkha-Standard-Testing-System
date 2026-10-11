@@ -8,7 +8,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseOptions, PlatformModule } from '@dzongjuk/common';
-import { SecurityModule } from '@dzongjuk/security';
+import { SecurityModule, createStaffTransferController } from '@dzongjuk/security';
+const StaffTransferController = createStaffTransferController('assessment');
 import { AssessmentController, SamplePapersController } from './assessment.controller';
 import { AssessmentService } from './assessment.service';
 import { AccessAuditEntity, AssessmentOutboxEntity, ExamContentAssignmentEntity, QuestionDocumentEntity, QuestionPaperEntity, ResultDeclarationProjectionEntity, SamplePublicationEntity } from './entities';
@@ -26,7 +27,7 @@ import { ResultEventConsumer } from './event-consumer.service';
     SecurityModule,
     PlatformModule,
   ],
-  controllers: [AssessmentController, SamplePapersController],
+  controllers: [StaffTransferController, AssessmentController, SamplePapersController],
   providers: [AssessmentService, EncryptionService, MalwareScannerService, ObjectStorageService, AssessmentOutboxPublisher, ResultEventConsumer],
 })
 export class AppModule {}

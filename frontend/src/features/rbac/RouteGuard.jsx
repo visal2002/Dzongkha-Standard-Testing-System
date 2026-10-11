@@ -15,6 +15,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import PageLoader from '@/components/ui/PageLoader';
 import { canAccess } from './accessMatrix';
+import { canPerform } from './outOfMatrix';
 
 const rolesOf = user => (Array.isArray(user?.roles) ? user.roles : [user?.role]);
 
@@ -24,7 +25,7 @@ const rolesOf = user => (Array.isArray(user?.roles) ? user.roles : [user?.role])
  * @param {string[]} [props.requiredRoles] roles listed for an out-of-matrix operation
  * @param {{module: string, action: string}} [props.requiredAccess] matrix entry to satisfy
  */
-export function RouteGuard({ children, requiredRoles, requiredAccess }) {
+export function RouteGuard({ children, requiredRoles, requiredAccess, requiredOperation }) {
   const { isAuthenticated, user, isLoading } = useAuth();
   const location = useLocation();
 
@@ -42,15 +43,14 @@ export function RouteGuard({ children, requiredRoles, requiredAccess }) {
     return <Navigate to="/profile" replace />;
   }
 
-  // A System Administrator is not admitted to a route just for being one. The
-  // backend keeps a `*` wildcard as documented break-glass, but the frontend follows
-  // the approved matrix and the out-of-matrix registry, so `admin` reaches a
-  // role-listed route only where it is actually listed.
+  // Explicit role-only constraints remain available, but normal routes follow
+  // the saved permission grants also used by navigation and page actions.
   const roles = rolesOf(user);
   const hasRequiredRole = !requiredRoles || requiredRoles.some(role => roles.includes(role) || user?.role === role);
   if (!hasRequiredRole) return <Navigate to="/dashboard" replace />;
 
-  if (requiredAccess && !canAccess(user?.role, requiredAccess.module, requiredAccess.action)) {
+  if ((requiredOperation && !canPerform(requiredOperation, user))
+    || (requiredAccess && !canAccess(user, requiredAccess.module, requiredAccess.action))) {
     return <Navigate to="/dashboard" replace />;
   }
 

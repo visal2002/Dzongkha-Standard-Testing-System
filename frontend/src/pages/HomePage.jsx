@@ -32,9 +32,9 @@ export default function HomePage() {
         <div className="flex items-center gap-4">
           {/* Logo */}
           <img
-            src="/images/Dzongjuk logo.png"
+            src="/images/dzongjuk-default.png"
             alt="Dzongjuk Logo"
-            className="h-12 w-auto object-contain [filter:brightness(0)_invert(1)]"
+            className="h-12 w-auto object-contain"
           />
           <div>
             <div className="flex items-baseline gap-1">

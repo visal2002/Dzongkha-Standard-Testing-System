@@ -25,7 +25,7 @@ const SKILLS = ['WRITING', 'READING', 'LISTENING', 'SPEAKING'];
 
 export default function AttendanceList() {
   const { user } = useAuth();
-  const canManage = canAccess(user?.role, 'attendance', 'manage');
+  const canManage = canAccess(user, 'attendance', 'manage');
   const { data: appsData, loading, error, execute } = useApi(attendanceService.getEligible);
   const eligibleApps = appsData || [];
   const [data, setLocalData] = useState([]);

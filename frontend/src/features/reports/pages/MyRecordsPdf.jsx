@@ -10,6 +10,7 @@
  * (Document/Page/View/Text), not regular DOM/Tailwind markup.
  */
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { humanizeStatus } from '@/lib/statusLabels';
 
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 10, fontFamily: 'Helvetica' },
@@ -43,7 +44,7 @@ export default function MyRecordsDocument({ userName, generatedAt, rows = [] }) 
             <Text style={styles.cellDate}>{row.date}</Text>
             <Text style={styles.cellType}>{row.type}</Text>
             <Text style={styles.cellRef}>{row.reference}</Text>
-            <Text style={styles.cellStatus}>{row.status}</Text>
+            <Text style={styles.cellStatus}>{humanizeStatus(row.status)}</Text>
           </View>
         ))}
 

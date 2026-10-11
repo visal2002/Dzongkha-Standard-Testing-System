@@ -15,6 +15,7 @@ import {
   ToggleLeft, ToggleRight, Info
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PasswordInput from '@/components/ui/PasswordInput';
 import { appealService } from '@/features/appeals/api';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -222,7 +223,7 @@ function NDISection() {
           <Field label="Client Secret">
             <div className="relative">
               <input type={showSecret ? 'text' : 'password'} className={inputCls + ' pr-9'} value={cfg.clientSecret} onChange={e => set('clientSecret', e.target.value)} />
-              <button onClick={() => setShowSecret(s => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary">
+              <button type="button" aria-label={showSecret ? 'Hide Client Secret' : 'Show Client Secret'} aria-pressed={showSecret} onClick={() => setShowSecret(s => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary">
                 {showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
@@ -240,7 +241,7 @@ function NDISection() {
         <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">DCRC / Census Integration</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="API Endpoint"><input className={inputCls} value={cfg.dcrcEndpoint} onChange={e => set('dcrcEndpoint', e.target.value)} placeholder="https://dcrc.gov.bt/api" /></Field>
-          <Field label="Authentication Token"><input className={inputCls} value={cfg.dcrcToken} onChange={e => set('dcrcToken', e.target.value)} type="password" /></Field>
+          <Field label="Authentication Token"><PasswordInput aria-label="Authentication Token" className={inputCls} value={cfg.dcrcToken} onChange={e => set('dcrcToken', e.target.value)} /></Field>
         </div>
         <div className="mt-3 p-3 rounded-lg bg-surface-elevated flex items-center gap-2 text-xs text-text-muted">
           <Activity size={13} className="text-text-muted" /> Sync history is not reported by the API yet.
@@ -275,7 +276,7 @@ function EmailSection() {
         <Field label="Sender Name"><input className={inputCls} value={cfg.senderName} onChange={e => set('senderName', e.target.value)} /></Field>
         <Field label="Sender Email"><input type="email" className={inputCls} value={cfg.senderEmail} onChange={e => set('senderEmail', e.target.value)} /></Field>
         <Field label="SMTP Username"><input className={inputCls} value={cfg.username} onChange={e => set('username', e.target.value)} /></Field>
-        <Field label="SMTP Password"><input type="password" className={inputCls} value={cfg.password} onChange={e => set('password', e.target.value)} /></Field>
+        <Field label="SMTP Password"><PasswordInput aria-label="SMTP Password" className={inputCls} value={cfg.password} onChange={e => set('password', e.target.value)} /></Field>
       </div>
       <div className="divide-y divide-surface-border border border-surface-border rounded-lg overflow-hidden">
         <ToggleRow id="ts-email-enable" label="Enable Email Notifications" checked={cfg.enabled} onChange={v => set('enabled', v)} />

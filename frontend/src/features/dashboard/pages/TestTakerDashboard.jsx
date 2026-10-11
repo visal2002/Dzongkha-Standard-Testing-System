@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Award, FileText, AlertCircle, Calendar, ArrowRight, Download, CheckCircle, BarChart2, Edit3, Check, Headphones, MessageCircle, BookOpen, MapPin } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import RecordReference from '@/components/ui/RecordReference';
 import { applicationService } from '@/features/registration/api';
 import { certificateService } from '@/features/certificates/api';
 import { examService } from '@/features/exams/api';
@@ -350,7 +351,7 @@ export default function TestTakerDashboard() {
           <div className="flex-1 flex flex-col justify-between min-h-0">
             <div className="flex justify-between items-start">
                <div>
-                  <h4 className="text-base font-bold text-text-primary leading-tight">{latestApp.id}</h4>
+                  <h4 className="text-base font-bold text-text-primary leading-tight"><RecordReference id={latestApp.id} ids={(applications || []).map(item => item.id)} /></h4>
                   {latestApp.registrationNumber && (
                     <p className="text-[11px] text-text-muted">{latestApp.registrationNumber}</p>
                   )}

@@ -44,6 +44,7 @@ export class ApplicationEntity {
   @Column({ type: 'jsonb' }) profileSnapshot: Record<string, unknown>;
   @Column({ type: 'enum', enum: ApplicationStatus }) status: ApplicationStatus;
   @Index({ unique: true }) @Column({ type: 'varchar', length: 64, nullable: true }) registrationNumber: string | null;
+  @Column({ type: 'varchar', length: 64, nullable: true }) releasedRegistrationNumber: string | null;
   @Column({ type: 'timestamptz', nullable: true }) reviewStartedAt: Date | null;
   @Column({ type: 'timestamptz', nullable: true }) submittedAt: Date | null;
   @Column({ type: 'timestamptz', nullable: true }) verifiedAt: Date | null;

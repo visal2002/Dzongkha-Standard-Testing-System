@@ -62,6 +62,7 @@ export class PlausibleDateOfBirth implements ValidatorConstraintInterface {
  */
 export class ProfileSnapshotDto {
   @IsString() @Length(2, 160) fullName: string;
+  @IsOptional() @IsString() @Length(2, 160) @Matches(/^[\u0F00-\u0FFF\s]+$/, { message: 'Dzongkha name must use Dzongkha script.' }) fullNameDz?: string;
 
   // Bhutanese CIDs are digits; the field also carries prefixed forms such as
   // CID-10701000001 in existing data, so letters and hyphens are permitted. The

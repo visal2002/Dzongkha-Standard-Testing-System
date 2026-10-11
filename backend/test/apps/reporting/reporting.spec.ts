@@ -31,6 +31,14 @@ describe('ReportingService', () => {
     expect(result.grouped).toEqual(expect.arrayContaining([{ value: 'VERIFIED', count: 1 }, { value: 'WAITLISTED', count: 1 }]));
   });
 
+  it('exports real cross-module overview totals instead of application records', async () => {
+    const summary = jest.spyOn(service, 'summary').mockResolvedValue({ totalApplications: 17, totalScores: 5, totalCertificates: 6, activeAppeals: 2 });
+    const result = await service.query({ dataset: ReportDataset.Summary, fields: [], limit: 100 });
+    expect(result.fields).toEqual(['metric', 'value']);
+    expect(result.rows).toEqual([{ metric: 'totalApplications', value: 17 }, { metric: 'totalScores', value: 5 }, { metric: 'totalCertificates', value: 6 }, { metric: 'activeAppeals', value: 2 }]);
+    summary.mockRestore();
+  });
+
   it('rejects arbitrary fields instead of translating them into SQL', async () => {
     await expect(service.query({ dataset: ReportDataset.Applications, fields: ['passwordHash'], limit: 10 }))
       .rejects.toBeInstanceOf(DomainException);

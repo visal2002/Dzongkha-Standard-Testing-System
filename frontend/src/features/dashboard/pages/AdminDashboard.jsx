@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Users, Shield, Activity, ArrowRight, CheckCircle, AlertCircle, CalendarClock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import LastLogin from '@/components/ui/LastLogin';
 import { StatCard } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
 import { adminService } from '@/features/admin/api';
@@ -26,7 +27,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const { data: systemUsers, loading: loadingUsers, error: usersError } = useApi(adminService.getUsers);
+  const { data: systemUsers, loading: loadingUsers, error: usersError, execute: reloadUsers } = useApi(adminService.getUsers);
   const { data: systemRoles, loading: loadingRoles } = useApi(adminService.getRoles);
   const { data: examWindows, loading: loadingExams } = useApi(examService.getAll);
 
@@ -39,11 +40,6 @@ export default function AdminDashboard() {
     counts[role] = (counts[role] || 0) + 1;
     return counts;
   }, {})).map(([name, users]) => ({ name, users }));
-  const formatLastLogin = value => {
-    if (!value) return 'Never';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? 'Never' : date.toLocaleDateString();
-  };
 
   return (
     <div className="space-y-6">
@@ -73,13 +69,14 @@ export default function AdminDashboard() {
           <div>
             <h4 className="text-sm font-semibold text-red-400 mb-1">Failed to load dashboard data</h4>
             <p className="text-xs text-text-muted">{usersError}</p>
+            <button type="button" onClick={() => reloadUsers().catch(() => undefined)} disabled={loadingUsers} className="mt-2 text-xs text-brand-gold hover:underline">Retry loading users</button>
           </div>
         </div>
       )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Total Users" value={isLoading ? '...' : systemUsers?.length || 0} icon={<Users size={18} />} color="purple" />
+        <StatCard title="Total Users" value={loadingUsers ? '...' : usersError ? 'Unavailable' : systemUsers?.length || 0} icon={<Users size={18} />} color="purple" />
         <StatCard title="System Roles" value={isLoading ? '...' : systemRoles?.length || 0} icon={<Shield size={18} />} color="info" />
         <StatCard title="Pending Windows" value={loadingExams ? '...' : pendingWindows} icon={<CalendarClock size={18} />} color="warning" subtitle="Registration" />
         <StatCard title="System Status" value="100%" icon={<Activity size={18} />} color="success" subtitle="Uptime" />
@@ -157,7 +154,7 @@ export default function AdminDashboard() {
                     <td className="py-2.5 pr-4 text-text-secondary">{u.role}</td>
                     <td className="py-2.5 pr-4 text-text-muted font-mono">{u.cid}</td>
                     <td className="py-2.5 pr-4"><StatusBadge status={u.status} /></td>
-                    <td className="py-2.5 text-text-muted">{formatLastLogin(u.lastLogin)}</td>
+                    <td className="py-2.5 text-text-muted"><LastLogin value={u.lastLogin} /></td>
                   </tr>
                 ))}
               </tbody>

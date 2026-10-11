@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ACCESS_MODULES, MATRIX_ROLES, canAccess, getAccessLevel, isOwnScoped } from './accessMatrix';
+import { ACCESS_MODULES, MATRIX_ROLES, ROLE_LABELS, canAccess, getAccessLevel, isOwnScoped } from './accessMatrix';
 
-// Transcribed cell by cell from the signed-off access matrix document. Rows follow
-// the document's module order, columns its role order. If a grant is ever changed
-// in accessMatrix.js without the document being reissued, this table fails.
+// Expected module/role levels. Committee Members now share committee-review processing
+// with Committee Heads by explicit user direction; the Chief of Examination also has final approval.
+// Any future permissions changes should be reflected here and in the backend migration.
 //
 // The admin column is the exception: the v2 sidebar decision withdrew System Admin's
 // grant on every exam-workflow module (registration through reports), scoping the role
@@ -18,7 +18,7 @@ const APPROVED = {
   attendance:   ['none',  'full',  'read',    'none',         'none',           'none',          'none'],
   questions:    ['none',  'none',  'full',    'none',         'none',           'none',          'sample'],
   scores:       ['none',  'read',  'read',    'submit',       'read',           'read',          'read_own'],
-  appeals:      ['none',  'read',  'read',    'process',      'read',           'approve',       'submit_own'],
+  appeals:      ['none',  'read',  'approve',    'process',      'process',        'approve',       'submit_own'],
   certificates: ['none',  'full',  'read',    'read',         'none',           'read',          'read_own'],
   reports:      ['none',  'full',  'read',    'read',         'read',           'read',          'read_own'],
 };
@@ -27,9 +27,10 @@ describe('approved access matrix', () => {
   it('covers exactly the modules and roles the document defines', () => {
     expect(ACCESS_MODULES.map(module => module.key)).toEqual(Object.keys(APPROVED));
     expect(MATRIX_ROLES).toHaveLength(7);
+    expect(ROLE_LABELS.exam_head).toBe('Chief of Examination');
   });
 
-  it.each(Object.entries(APPROVED))('matches the document for %s', (moduleKey, expectedLevels) => {
+  it.each(Object.entries(APPROVED))('matches configured access for %s', (moduleKey, expectedLevels) => {
     MATRIX_ROLES.forEach((role, index) => {
       expect(getAccessLevel(role, moduleKey), `${role} / ${moduleKey}`).toBe(expectedLevels[index]);
     });
@@ -46,9 +47,11 @@ describe('approved access matrix', () => {
     expect(canAccess('dcdd', 'roles', 'read')).toBe(true);
   });
 
-  it('allows committee heads to submit scores and process re-evaluations', () => {
+  it('allows committee heads and members to process reviews, while only the head enters scores', () => {
     expect(canAccess('committee_head', 'scores', 'submit')).toBe(true);
     expect(canAccess('committee_head', 'appeals', 'process')).toBe(true);
+    expect(canAccess('committee_member', 'scores', 'submit')).toBe(false);
+    expect(canAccess('committee_member', 'appeals', 'process')).toBe(true);
   });
 
   it('limits test takers to owned records and samples', () => {
@@ -90,9 +93,9 @@ describe('approve and process are distinct steps in the re-evaluation workflow',
     expect(canAccess('chief_executive', 'appeals', 'process')).toBe(false);
   });
 
-  it('leaves Committee Members able to do neither', () => {
+  it('allows Committee Members to process reviews but not approve them', () => {
     expect(canAccess('committee_member', 'appeals', 'read_all')).toBe(true);
-    expect(canAccess('committee_member', 'appeals', 'process')).toBe(false);
+    expect(canAccess('committee_member', 'appeals', 'process')).toBe(true);
     expect(canAccess('committee_member', 'appeals', 'approve')).toBe(false);
   });
 });
@@ -110,7 +113,7 @@ describe('question paper metadata is separate from the encrypted document', () =
       .forEach(role => expect(canAccess(role, 'questions', 'secure_read'), role).toBe(false));
   });
 
-  it('refuses the Question Bank listing to every non-Exam Head role', () => {
+  it('refuses the Question Bank listing to every role except the Chief of Examination', () => {
     ['dcdd', 'committee_head', 'chief_executive']
       .forEach(role => expect(canAccess(role, 'questions', 'read'), role).toBe(false));
   });

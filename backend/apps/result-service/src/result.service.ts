@@ -11,7 +11,7 @@ import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import { AccessClaims, DomainEventTypes, ScoreSheetStatus } from '@dzongjuk/contracts';
 import { assertInternalService, DomainException } from '@dzongjuk/common';
 import { AppealScoreChangesDto, ApplyAppealRevisionDto, CreateCommitteeDto, ScoreValuesDto } from './dtos';
-import { CandidateEligibilityEntity, CommitteeEntity, CommitteeMemberEntity, CommitteeRole, EligibilityStatus, ResultAuditEntity, ResultDeclarationEntity, ResultIdempotencyEntity, ResultOutboxEntity, ScoreSheetEntity, ScoreValues, ScoreVersionEntity } from './entities';
+import { certificateScoreValues, CandidateEligibilityEntity, CommitteeEntity, CommitteeMemberEntity, CommitteeRole, EligibilityStatus, ResultAuditEntity, ResultDeclarationEntity, ResultIdempotencyEntity, ResultOutboxEntity, ScoreSheetEntity, ScoreValues, ScoreVersionEntity } from './entities';
 import { IdentityClientService } from './identity-client.service';
 import { ScoringService } from './scoring.service';
 
@@ -163,8 +163,11 @@ export class ResultService {
       if (!committee || !await this.members.existsBy({ committeeId: committee.id, userId: actor.sub, removedAt: IsNull() })) throw new DomainException('COMMITTEE_ACCESS_REQUIRED', 'Only the assigned committee may view these scores.', 403);
     }
     const sheets = await this.sheets.find({ where: { examId }, order: { updatedAt: 'DESC' } });
-    const versionsBySheet = await this.versionsBySheet(sheets.map((sheet) => sheet.id));
-    return sheets.map((sheet) => ({ ...sheet, versions: versionsBySheet.get(sheet.id) ?? [] }));
+    const [versionsBySheet, profiles] = await Promise.all([
+      this.versionsBySheet(sheets.map((sheet) => sheet.id)),
+      this.identityClient.applicationProfilesFor(sheets.map((sheet) => sheet.applicationId)),
+    ]);
+    return sheets.map((sheet) => ({ ...sheet, registrationNumber: profiles.get(sheet.applicationId)?.registrationNumber ?? null, testTakerName: profiles.get(sheet.applicationId)?.name ?? null, versions: versionsBySheet.get(sheet.id) ?? [] }));
   }
 
   async getCandidates(examId: string, actor: AccessClaims) {
@@ -190,6 +193,7 @@ export class ResultService {
       ...candidate,
       testTakerName: profiles.get(candidate.applicationId)?.name ?? names.get(candidate.testTakerUserId) ?? null,
       identityKey: profiles.get(candidate.applicationId)?.cid ?? null,
+      registrationNumber: profiles.get(candidate.applicationId)?.registrationNumber ?? null,
       scoreSheet: sheetByApplication.get(candidate.applicationId) ?? null,
     }));
   }
@@ -210,16 +214,25 @@ export class ResultService {
     const candidates = await this.eligibility.findBy({ examId, status: EligibilityStatus.Eligible });
     const candidateByApplication = new Map(candidates.map((candidate) => [candidate.applicationId, candidate]));
     const currentBySheet = await this.currentVersionBySheet(sheets);
-    return sheets.map((sheet) => {
+    return Promise.all(sheets.map(async (sheet) => {
       const candidate = candidateByApplication.get(sheet.applicationId);
       const score = currentBySheet.get(sheet.id);
       if (!candidate || !score) throw new DomainException('CERTIFICATE_RESULT_INCOMPLETE', 'Published result data is incomplete.', 409);
+      const rule = await this.scoring.ruleForRevision(this.dataSource.manager, score.scoringRuleId);
+      const scores = certificateScoreValues(score.scores);
+      const skillStandards = rule.bands.every(band => Number.isFinite(band.standard))
+        ? Object.fromEntries(Object.entries(scores).map(([skill, value]) => {
+          const band = rule.bands.find(range => value >= range.min && value <= range.max);
+          if (!band?.standard) throw new DomainException('SCORING_BAND_UNMAPPED', 'Published skill total has no approved standard.', 409);
+          return [skill, band.standard];
+        })) : undefined;
       return {
+        skillStandards,
         examId: sheet.examId, applicationId: sheet.applicationId, testTakerUserId: candidate.testTakerUserId,
-        scoreSheetId: sheet.id, scoreVersionNumber: score.versionNumber, scores: score.scores,
+        scoreSheetId: sheet.id, scoreVersionNumber: score.versionNumber, scores,
         overallScore: score.overallScore, bandLabel: score.bandLabel, cefrLevel: score.cefrLevel,
       };
-    });
+    }));
   }
 
   async applyAppealRevision(

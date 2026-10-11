@@ -285,7 +285,7 @@ describe('AppealService — Payment confirmation (BRD §2.6)', () => {
 // ─── committee review tests ───────────────────────────────────────────────────
 
 describe('AppealService — Committee review (BRD §2.6)', () => {
-  it('NoChange recommendation immediately completes the appeal', async () => {
+  it('NoChange recommendation awaits Chief approval without completing the appeal', async () => {
     const appealId = uuid();
     const pendingAppeal = Object.assign(new AppealEntity(), {
       id: appealId, examId: uuid(), scoreSheetId: uuid(), scoreVersionNumber: 1,
@@ -317,7 +317,9 @@ describe('AppealService — Committee review (BRD §2.6)', () => {
       undefined,
       'req-8',
     );
-    expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealCompleted)).toBe(true);
+    expect(pendingAppeal.status).toBe(AppealStatus.PendingChiefApproval);
+    expect(pendingAppeal.completedAt).toBeNull();
+    expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealCompleted)).toBe(false);
   });
 
   it('Revise recommendation advances to PendingChiefApproval', async () => {
@@ -388,12 +390,34 @@ describe('AppealService — Committee review (BRD §2.6)', () => {
 // ─── chief executive decision tests ──────────────────────────────────────────
 
 describe('AppealService — Chief Executive decision (BRD §2.6)', () => {
+  it.each([AppealDecision.Approved, AppealDecision.Rejected])('Chief can decide a no-change recommendation: %s without revising scores', async decision => {
+    const appeal = Object.assign(new AppealEntity(), { id: uuid(), status: AppealStatus.PendingChiefApproval, committeeRecommendation: AppealRecommendation.NoChange, chiefDecision: null });
+    const skills = [Object.assign(new AppealSkillEntity(), { skill: Skill.Writing, originalScore: '7', proposedScore: null, chiefDecision: null })];
+    const manager = makeManager({ findOne: jest.fn().mockResolvedValue(appeal), findOneBy: jest.fn().mockImplementation(async entity => entity === AppealEntity ? appeal : null), findBy: jest.fn().mockResolvedValue(skills) });
+    const resultClient = makeResultClient();
+    const service = buildService({ manager, resultClient });
+    const apply = jest.spyOn(service, 'applyApprovedRevision');
+    await service.decide(appeal.id, { skillDecisions: { WRITING: decision }, remarks: 'Chief reviewed.' }, mfaActor({ roles: ['exam_head'] }), 'no-change-decision');
+    expect(appeal.status).toBe(AppealStatus.Completed);
+    expect(appeal.chiefDecision).toBe(decision);
+    expect(apply).not.toHaveBeenCalled();
+    expect(resultClient.applyAppealRevision).not.toHaveBeenCalled();
+  });
+
   it('blocks non-privileged assurance from deciding', async () => {
     const service = buildService();
     const localActor = mfaActor({ assurance: 'LOCAL', roles: ['chief_executive'] });
     await expect(
       service.decide(uuid(), { skillDecisions: { WRITING: AppealDecision.Approved }, remarks: '' }, localActor, 'req-11'),
     ).rejects.toMatchObject({ response: { code: 'PRIVILEGED_ASSURANCE_REQUIRED' } });
+  });
+
+  it('does not allow a Chief of Examination decision before committee review', async () => {
+    const pending = Object.assign(new AppealEntity(), { id: uuid(), status: AppealStatus.PendingCommittee });
+    const manager = makeManager({ findOne: jest.fn().mockResolvedValue(pending) });
+    const service = buildService({ manager });
+    await expect(service.decide(pending.id, { skillDecisions: { WRITING: AppealDecision.Approved }, remarks: 'Premature.' }, mfaActor({ roles: ['exam_head'] }), 'req-before-review'))
+      .rejects.toMatchObject({ response: { code: 'APPEAL_DECISION_STATE_INVALID' } });
   });
 
   it('Approved decision transitions appeal to ApprovedPendingScoreUpdate and emits AppealApproved', async () => {
@@ -422,7 +446,7 @@ describe('AppealService — Chief Executive decision (BRD §2.6)', () => {
       create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     });
     const service = buildService({ manager, appeals: makeRepo<AppealEntity>([pendingAppeal]) });
-    await service.decide(appealId, { skillDecisions: { WRITING: AppealDecision.Approved }, remarks: 'Approved.' }, mfaActor(), 'req-12');
+    await service.decide(appealId, { skillDecisions: { WRITING: AppealDecision.Approved }, remarks: 'Approved.' }, mfaActor({ roles: ['exam_head'] }), 'req-12');
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealApproved)).toBe(true);
   });
 
@@ -452,7 +476,7 @@ describe('AppealService — Chief Executive decision (BRD §2.6)', () => {
       create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
     });
     const service = buildService({ manager, appeals: makeRepo<AppealEntity>([pendingAppeal]) });
-    await service.decide(appealId, { skillDecisions: { WRITING: AppealDecision.Rejected }, remarks: 'No merit.' }, mfaActor(), 'req-13');
+    await service.decide(appealId, { skillDecisions: { WRITING: AppealDecision.Rejected }, remarks: 'No merit.' }, mfaActor({ roles: ['exam_head'] }), 'req-13');
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealRejected)).toBe(true);
     expect(outboxEvents.some((e) => e.eventType === DomainEventTypes.AppealCompleted)).toBe(true);
   });

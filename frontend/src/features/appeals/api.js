@@ -133,7 +133,7 @@ export const appealService = {
   },
 
   /**
-   * Chief Executive approves or rejects a score revision, skill by skill.
+   * Chief of Examination approves or rejects a score revision, skill by skill.
    * @param {string} id
    * @param {Object.<string, 'APPROVED'|'REJECTED'>} skillDecisions
    * @param {string} [remarks]

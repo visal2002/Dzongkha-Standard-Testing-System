@@ -24,7 +24,7 @@ const roleRoutes = [
     ],
   },
   {
-    role: 'Exam Head',
+    role: 'Chief of Examination',
     email: 'exam.head@demo.com',
     routes: ['/dashboard', '/registration/windows', '/registration/applications', '/verification', '/attendance', '/questions/upload', '/questions', '/questions/samples', '/scores/summary', '/certificates', '/reports'],
   },
@@ -227,7 +227,7 @@ const deniedRoutes = [
     routes: ['/verification', '/attendance', '/questions/upload', '/admin/users', '/admin/roles'],
   },
   {
-    role: 'Exam Head',
+    role: 'Chief of Examination',
     email: 'exam.head@demo.com',
     routes: ['/admin/users', '/admin/roles', '/scores'],
   },

@@ -12,6 +12,7 @@ interface ApiEnvelope<T> {
   data: T;
   error?: { code?: string; message?: string };
 }
+interface ApplicationDisplayProfile { name: string; cid: string; registrationNumber: string | null; }
 
 @Injectable()
 export class IdentityClientService {
@@ -50,7 +51,7 @@ export class IdentityClientService {
     return new Map(entries.filter((entry): entry is [string, string] => entry[1] !== null));
   }
 
-  async applicationProfilesFor(applicationIds: string[]): Promise<Map<string, { name: string; cid: string }>> {
+  async applicationProfilesFor(applicationIds: string[]): Promise<Map<string, ApplicationDisplayProfile>> {
     if (this.internalKey.length < 32) return new Map();
     const unique = [...new Set(applicationIds)];
     const entries = await Promise.all(unique.map(async (applicationId) => {
@@ -59,15 +60,16 @@ export class IdentityClientService {
           headers: { 'x-internal-service-key': this.internalKey },
         });
         if (!response.ok) return null;
-        const payload = (await response.json()) as ApiEnvelope<{ fullName?: string; cid?: string }>;
+        const payload = (await response.json()) as ApiEnvelope<{ fullName?: string; cid?: string; registrationNumber?: string }>;
         const name = payload?.data?.fullName?.trim();
         const cid = payload?.data?.cid?.trim();
-        return name ? [applicationId, { name, cid: cid ?? '' }] as const : null;
+        const registrationNumber = payload?.data?.registrationNumber?.trim() || null;
+        return name ? [applicationId, { name, cid: cid ?? '', registrationNumber }] as const : null;
       } catch {
         return null;
       }
     }));
-    return new Map(entries.filter((entry): entry is readonly [string, { name: string; cid: string }] => entry !== null));
+    return new Map(entries.filter((entry): entry is readonly [string, ApplicationDisplayProfile] => entry !== null));
   }
 
   // Committee authority is derived from the user's active identity role, never from

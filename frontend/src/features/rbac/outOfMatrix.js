@@ -1,3 +1,5 @@
+import { hasExplicitPermissions, hasGrantedOperation } from './runtimePermissions';
+
 /**
  * Operations the approved access matrix does not describe.
  *
@@ -39,9 +41,9 @@ export const OUT_OF_MATRIX_OPERATIONS = [
       'administrative act over the committee, not access to the scores themselves, and the ' +
       'matrix has no row for it. The System Administrator held this too until the v2 sidebar ' +
       'decision withdrew every exam-workflow operation from that role, including this one. ' +
-      'The Committee Head cannot assemble or designate themselves. System Admin now owns ' +
-      'the visible setup workflow and DCDD retains its existing administrative entitlement; ' +
-      'both require the backend committee.manage permission.',
+      'The Committee Head cannot assemble or designate themselves. Committee setup is ' +
+      'available to DCDD and System Admin; each requires the ' +
+      'backend committee.manage permission.',
   },
   {
     key: 'examConfiguration',
@@ -132,5 +134,8 @@ export function rolesFor(operationKey) {
  * `canAccess` does: an unknown operation or an unlisted role returns false.
  */
 export function canPerform(operationKey, role) {
-  return rolesFor(operationKey).includes(role);
+  if (operationKey === 'committeeSetup' && typeof role === 'object'
+    && ![...(role?.roles || []), role?.role].some(code => rolesFor(operationKey).includes(code))) return false;
+  if (hasExplicitPermissions(role) && operationKey !== 'technicalSettings') return hasGrantedOperation(role, operationKey);
+  return rolesFor(operationKey).includes(typeof role === 'object' ? role?.role : role);
 }

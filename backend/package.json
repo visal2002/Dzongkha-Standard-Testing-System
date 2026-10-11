@@ -1,6 +1,6 @@
 {
   "name": "dzongjuk-backend",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -53,6 +53,7 @@
     "reflect-metadata": "^0.2.2",
     "regenerator-runtime": "^0.14.1",
     "rxjs": "^7.8.2",
+    "sharp": "^0.35.5",
     "typeorm": "^0.3.26"
   },
   "devDependencies": {
