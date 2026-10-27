@@ -57,7 +57,7 @@ function NdiQrFrame({ qrUrl, isLoading, error, label = 'Bhutan NDI QR code' }) {
   );
 }
 
-function NdiInstructions({ status, error, onRetry }) {
+function NdiInstructions({ error, onRetry }) {
   const { t } = useTranslation();
   const reason = error ? describeNdiError(error) : null;
   return (
@@ -98,12 +98,20 @@ function NdiInstructions({ status, error, onRetry }) {
             </button>
           )}
         </div>
-      ) : status === 'PENDING' ? (
-        <p style={{ paddingTop:'6px', fontSize:'12px', fontWeight:600, color:'#38ad78', textAlign:'center' }} aria-live="polite">
-          {t('auth.waiting_approval')}
-        </p>
       ) : null}
     </div>
+  );
+}
+
+/** The NDI service places this live waiting notice above the QR instructions. */
+function NdiSystemStatus({ status }) {
+  const { t } = useTranslation();
+  if (status !== 'PENDING') return null;
+
+  return (
+    <p className="ndi-system-status" role="status" aria-live="polite">
+      {t('auth.ndi_waiting_message')}
+    </p>
   );
 }
 
@@ -191,7 +199,6 @@ function NdiSupport() {
  */
 export default function NdiScannerPanel({
   qrUrl,
-  deepLinkUrl,
   isLoading,
   error,
   status,
@@ -199,35 +206,21 @@ export default function NdiScannerPanel({
   embedded = false,
   titleId,
 }) {
-  const { t } = useTranslation();
-  // The mock backend hands back a `mock:` proof URL that no wallet can open, so only
-  // fall back to the QR value when it is a real navigable link.
-  const walletHref = deepLinkUrl
-    || (qrUrl && !qrUrl.startsWith('mock:') ? qrUrl : undefined);
+  const { t, i18n } = useTranslation();
   return (
     <section className={embedded ? 'ndi-scanner-panel ndi-scanner-panel-embedded' : 'ndi-scanner-panel'}>
+      <NdiSystemStatus status={status} />
       <h1 id={titleId} className="ndi-scanner-title">
-        <span className="ndi-title-web">{t('auth.scan_title')}</span>
-        <span className="ndi-title-mobile">{t('auth.ndi_wallet_login_title')}</span>
+        <span className="ndi-title-web">
+          {i18n.language.startsWith('en') ? (
+            <>
+              <span className="ndi-title-plain">Scan with </span>
+              <span className="ndi-title-accent">Bhutan NDI</span>
+              <span className="ndi-title-plain"> Wallet</span>
+            </>
+          ) : t('auth.scan_title')}
+        </span>
       </h1>
-
-      {/* Mobile-only lead: the deep-link button and an OR separator sit above the QR
-          on small screens so a phone user can jump straight into the wallet app. */}
-      <div className="ndi-mobile-lead">
-        <a
-          href={walletHref}
-          target="_blank"
-          rel="noreferrer"
-          className="ndi-open-wallet"
-        >
-          {t('auth.ndi_open_wallet_btn')}
-        </a>
-        <div className="ndi-scanner-divider" aria-hidden="true">
-          <span />
-          <em>{t('auth.or')}</em>
-          <span />
-        </div>
-      </div>
 
       <NdiQrFrame
         qrUrl={qrUrl}
@@ -236,7 +229,7 @@ export default function NdiScannerPanel({
         label="Bhutan NDI scanner QR code"
       />
 
-      <NdiInstructions status={status} error={error} onRetry={onRetry} />
+      <NdiInstructions error={error} onRetry={onRetry} />
 
       <a
         href="https://www.youtube.com/@bhutanndi"

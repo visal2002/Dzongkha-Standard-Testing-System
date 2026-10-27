@@ -56,8 +56,8 @@ export default function NdiProofModal({ login, status, error, onClose, onRetry }
         style={{
           position:'relative',
           width:'100%',
-          maxWidth:'520px',
-          maxHeight:'94vh',
+          maxWidth:'590px',
+          maxHeight:'calc(100vh - 24px)',
           overflowY:'auto',
           borderRadius:'32px',
           background:'#F8F8F8',
@@ -83,7 +83,6 @@ export default function NdiProofModal({ login, status, error, onClose, onRetry }
         </button>
         <NdiScannerPanel
           qrUrl={login.proofRequestUrl}
-          deepLinkUrl={login.deepLinkUrl}
           isLoading={false}
           error={error}
           status={status}

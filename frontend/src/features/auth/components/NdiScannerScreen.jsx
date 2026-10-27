@@ -24,7 +24,6 @@ export default function NdiScannerScreen({ session, onBack }) {
       </button>
       <NdiScannerPanel
         qrUrl={session.request?.proofRequestUrl}
-        deepLinkUrl={session.request?.deepLinkUrl}
         isLoading={session.isLoading}
         error={session.error}
         status={session.status}
