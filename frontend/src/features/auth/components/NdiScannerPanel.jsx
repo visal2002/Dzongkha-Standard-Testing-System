@@ -189,7 +189,16 @@ function NdiSupport() {
  * The central NDI scanner panel — matches the reference design.
  * Used both as a full-page panel and inside the modal.
  */
-export default function NdiScannerPanel({ qrUrl, deepLinkUrl, isLoading, error, status, onRetry, embedded = false }) {
+export default function NdiScannerPanel({
+  qrUrl,
+  deepLinkUrl,
+  isLoading,
+  error,
+  status,
+  onRetry,
+  embedded = false,
+  titleId,
+}) {
   const { t } = useTranslation();
   // The mock backend hands back a `mock:` proof URL that no wallet can open, so only
   // fall back to the QR value when it is a real navigable link.
@@ -197,7 +206,7 @@ export default function NdiScannerPanel({ qrUrl, deepLinkUrl, isLoading, error, 
     || (qrUrl && !qrUrl.startsWith('mock:') ? qrUrl : undefined);
   return (
     <section className={embedded ? 'ndi-scanner-panel ndi-scanner-panel-embedded' : 'ndi-scanner-panel'}>
-      <h1 className="ndi-scanner-title">
+      <h1 id={titleId} className="ndi-scanner-title">
         <span className="ndi-title-web">{t('auth.scan_title')}</span>
         <span className="ndi-title-mobile">{t('auth.ndi_wallet_login_title')}</span>
       </h1>

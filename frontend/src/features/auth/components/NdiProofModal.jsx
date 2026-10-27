@@ -4,6 +4,7 @@
  * Phone: +975 - 1750 - 5267
  */
 
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +13,28 @@ import NdiScannerPanel from './NdiScannerPanel';
 /** NDI login modal shown over the main LoginPage */
 export default function NdiProofModal({ login, status, error, onClose, onRetry }) {
   const { t } = useTranslation();
+  const closeButtonRef = useRef(null);
+
+  // A modal must not leave the page behind it scrollable, and keyboard users
+  // need the same dismiss action as pointer users. Both are restored on close.
+  useEffect(() => {
+    if (!login) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    closeButtonRef.current?.focus();
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [login, onClose]);
+
   if (!login) return null;
   return (
     <div
@@ -44,6 +67,7 @@ export default function NdiProofModal({ login, status, error, onClose, onRetry }
         <button
           type="button"
           onClick={onClose}
+          ref={closeButtonRef}
           aria-label={t('auth.close_ndi')}
           style={{
             position:'absolute', top:16, right:16, zIndex:1,
@@ -65,6 +89,7 @@ export default function NdiProofModal({ login, status, error, onClose, onRetry }
           status={status}
           onRetry={onRetry}
           embedded
+          titleId="ndi-modal-title"
         />
       </motion.div>
     </div>

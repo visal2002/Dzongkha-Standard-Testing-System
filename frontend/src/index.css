@@ -133,6 +133,21 @@
   box-shadow: none;
 }
 
+/* The QR modal has one documented content order at every viewport. The
+   full-page scanner retains its phone-only wallet deep link, but it is not an
+   additional action inside the modal. */
+.ndi-scanner-panel-embedded .ndi-mobile-lead {
+  display: none;
+}
+
+.ndi-scanner-panel-embedded .ndi-title-web {
+  display: inline;
+}
+
+.ndi-scanner-panel-embedded .ndi-title-mobile {
+  display: none;
+}
+
 .ndi-scanner-title {
   margin: 0 0 30px;
   color: #0a0a0a;
@@ -400,6 +415,19 @@
     border-radius: 24px;
     padding: 30px 16px;
     overflow-y: auto;
+  }
+
+  .ndi-scanner-panel-embedded {
+    padding: 30px 16px 18px;
+  }
+
+  .ndi-scanner-panel-embedded .ndi-title-web {
+    display: inline;
+  }
+
+  .ndi-scanner-panel-embedded .ndi-title-mobile,
+  .ndi-scanner-panel-embedded .ndi-mobile-lead {
+    display: none;
   }
 
   .ndi-scanner-title {
