@@ -201,7 +201,6 @@ const resources = {
         ndi_step1: '1. Open Bhutan NDI Wallet on your phone',
         ndi_step2_a: '2. Tap the scan button',
         ndi_step2_b: 'located on the menu bar and scan the QR code',
-        ndi_waiting_message: 'Please wait while we receive data from the Bhutan NDI Wallet.',
         waiting_approval: 'Waiting for NDI data...',
         watch_video: 'Watch video guide',
         dont_have_wallet: "Don't have the Bhutan NDI Wallet?",

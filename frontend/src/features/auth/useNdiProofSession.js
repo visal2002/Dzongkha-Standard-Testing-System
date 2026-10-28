@@ -15,7 +15,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 const POLL_INTERVAL_MS = 2000;
@@ -44,7 +43,6 @@ export function useNdiProofSession({
 
   const { loginWithNDI, checkNDILogin, cancelNDILogin } = useAuth();
   const { t } = useTranslation();
-  const navigate = useNavigate();
 
   const fail = useCallback((message) => {
     setError(message);
@@ -93,7 +91,12 @@ export function useNdiProofSession({
         if (result.status === 'VALIDATED') {
           setStatus('VALIDATED');
           toast.success(t(successMessageKey, { name: result.user.name }));
-          navigate('/dashboard');
+          // Do NOT call navigate('/dashboard') here.
+          // AuthContext.checkNDILogin already called setUser() which flips
+          // isAuthenticated → true. The route definition in routes/index.jsx
+          // then replaces <NdiLoginPage/> with <Navigate to="/dashboard" replace />
+          // automatically. A second imperative navigate() racing that declarative
+          // redirect is what caused the QR page to collapse and loop.
         } else if (result.status !== 'PENDING') {
           setStatus(result.status);
           setError(statusMessages[result.status] || unavailableMessage);
@@ -111,7 +114,7 @@ export function useNdiProofSession({
     void poll();
     const timer = window.setInterval(poll, POLL_INTERVAL_MS);
     return () => { stopped = true; window.clearInterval(timer); };
-  }, [request, status, checkNDILogin, navigate, t, successMessageKey, statusMessages, unavailableMessage]);
+  }, [request, status, checkNDILogin, t, successMessageKey, statusMessages, unavailableMessage]);
 
   /** Abandon an in-flight request so the wallet stops waiting on it. */
   const cancel = useCallback(() => {

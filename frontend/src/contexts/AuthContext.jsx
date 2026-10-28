@@ -169,12 +169,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   const loginWithNDI = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      return await authService.loginWithNDI();
-    } finally {
-      setIsLoading(false);
-    }
+    // NOTE: Do NOT touch the global isLoading flag here.
+    // isLoading is consumed by RouteGuard to decide whether to show a loader
+    // or redirect to /login. Flipping it true during NDI QR initiation
+    // (which can be slow) causes the route to re-evaluate mid-flow, which
+    // tears down the QR page before the proof request is shown to the user.
+    // NDI init loading is managed locally inside useNdiProofSession instead.
+    return authService.loginWithNDI();
   }, []);
 
   const checkNDILogin = useCallback(async (pollToken) => {

@@ -103,18 +103,6 @@ function NdiInstructions({ error, onRetry }) {
   );
 }
 
-/** The NDI service places this live waiting notice above the QR instructions. */
-function NdiSystemStatus({ status }) {
-  const { t } = useTranslation();
-  if (status !== 'PENDING') return null;
-
-  return (
-    <p className="ndi-system-status" role="status" aria-live="polite">
-      {t('auth.ndi_waiting_message')}
-    </p>
-  );
-}
-
 // Official store badges, drawn as self-contained SVGs whose fixed viewBox keeps
 // the artwork at its correct aspect ratio. The link only sizes the SVG by
 // height, so the "GET IT ON / Google Play" and "Download on the / App Store"
@@ -201,7 +189,6 @@ export default function NdiScannerPanel({
   qrUrl,
   isLoading,
   error,
-  status,
   onRetry,
   embedded = false,
   titleId,
@@ -209,7 +196,6 @@ export default function NdiScannerPanel({
   const { t, i18n } = useTranslation();
   return (
     <section className={embedded ? 'ndi-scanner-panel ndi-scanner-panel-embedded' : 'ndi-scanner-panel'}>
-      <NdiSystemStatus status={status} />
       <h1 id={titleId} className="ndi-scanner-title">
         <span className="ndi-title-web">
           {i18n.language.startsWith('en') ? (
