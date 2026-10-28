@@ -17,8 +17,21 @@ export const MOCK_DATA_ALLOWED = import.meta.env.DEV || import.meta.env.MODE ===
 /** True when fixture-backed responses should actually be served. */
 export const USE_MOCK_DATA = MOCK_DATA_ALLOWED && import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
-/** Temporary NDI-only demo flow for staging before verifier credentials are issued. */
-export const NDI_DEMO_MODE = import.meta.env.VITE_NDI_DEMO_MODE === 'true';
+/** Whether an NDI demo flag can enable a local mock proof flow. */
+export const isNdiDemoModeAllowed = (mockDataAllowed, demoModeEnabled) =>
+  mockDataAllowed && demoModeEnabled;
+
+/**
+ * Temporary NDI-only demo flow for local development and automated tests.
+ *
+ * Keep this behind the same build-time boundary as fixture data: a deployed bundle
+ * must always wait for the verifier-backed NDI result and must never mint a mock
+ * session after the scanner delay.
+ */
+export const NDI_DEMO_MODE = isNdiDemoModeAllowed(
+  MOCK_DATA_ALLOWED,
+  import.meta.env.VITE_NDI_DEMO_MODE === 'true',
+);
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   || (import.meta.env.DEV ? 'http://localhost:8000/api/v1' : '/api/v1');
