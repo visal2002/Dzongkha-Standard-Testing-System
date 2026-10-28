@@ -60,7 +60,7 @@ export default function NdiProofModal({ login, status, error, onClose, onRetry }
           maxHeight:'calc(100vh - 24px)',
           overflowY:'auto',
           borderRadius:'32px',
-          background:'#F8F8F8',
+          background:'#FFFFFF',
           boxShadow:'0 32px 80px rgba(0,0,0,0.28)',
         }}
       >

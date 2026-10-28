@@ -114,7 +114,7 @@
   height: 750px;
   max-height: calc(100vh - 24px);
   border-radius: 32px;
-  background: var(--ndi-popup-bg);
+  background: #ffffff;
   display: flex;
   flex-direction: column;
   align-items: center;
