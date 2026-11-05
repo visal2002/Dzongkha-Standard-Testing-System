@@ -20,14 +20,19 @@ RUN mkdir -p apps/${SERVICE}/assets
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
+ARG SERVICE
 RUN apk upgrade --no-cache
 RUN addgroup -S dzongjuk && adduser -S dzongjuk -G dzongjuk
 COPY package*.json .npmrc* ./
 RUN npm ci --omit=dev --ignore-scripts \
     && npm cache clean --force \
     && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
-RUN apk add --no-cache libreoffice ttf-liberation
-ARG SERVICE
+# Only certificate rendering invokes LibreOffice. Keeping the office suite out of
+# the other seven images substantially reduces their package count and attack
+# surface while preserving the certificate service's DOCX-to-PDF workflow.
+RUN if [ "$SERVICE" = "appeal-certificate-service" ]; then \
+      apk add --no-cache libreoffice ttf-liberation; \
+    fi
 ENV SERVICE_NAME=${SERVICE}
 COPY --from=build /workspace/dist/apps/${SERVICE} ./dist
 COPY --from=build /workspace/apps/${SERVICE}/assets ./assets
