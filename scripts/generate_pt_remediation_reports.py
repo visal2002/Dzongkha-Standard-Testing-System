@@ -7,6 +7,7 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
+from PIL import Image as PILImage
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
@@ -15,6 +16,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
+    Image as RLImage,
     KeepTogether,
     PageBreak,
     PageTemplate,
@@ -27,6 +29,9 @@ from reportlab.platypus import (
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "output" / "pdf"
 OUT.mkdir(parents=True, exist_ok=True)
+EVIDENCE = OUT / "evidence"
+TMP = ROOT / "tmp" / "pdfs"
+TMP.mkdir(parents=True, exist_ok=True)
 
 NAVY = colors.HexColor("#0B1730")
 BLUE = colors.HexColor("#234A84")
@@ -144,6 +149,67 @@ def build_pdf(filename: str, title: str, subtitle: str, story: list[object]):
     return path
 
 
+def scaled_image(path: Path, max_width: float, max_height: float) -> RLImage:
+    with PILImage.open(path) as source:
+        width, height = source.size
+    scale = min(max_width / width, max_height / height)
+    return RLImage(str(path), width=width * scale, height=height * scale)
+
+
+def crop_api_evidence(source: Path, target: Path) -> Path:
+    with PILImage.open(source) as image:
+        # Browser JSON rendering is located at the top of the viewport. Retain
+        # the full width and enough vertical context to show it is a live page.
+        crop = image.crop((0, 0, image.width, min(125, image.height)))
+        crop.save(target)
+    return target
+
+
+API_READY_CROP = crop_api_evidence(EVIDENCE / "03-live-api-ready.png", TMP / "03-live-api-ready-crop.png")
+PROTECTED_404_CROP = crop_api_evidence(EVIDENCE / "04-live-protected-404.png", TMP / "04-live-protected-404-crop.png")
+
+
+def screenshot_evidence_page() -> list[object]:
+    homepage = scaled_image(EVIDENCE / "01-live-homepage.png", 81 * mm, 54 * mm)
+    login = scaled_image(EVIDENCE / "02-live-login.png", 81 * mm, 54 * mm)
+    image_grid = Table([[homepage, login]], colWidths=[84 * mm, 84 * mm], hAlign="CENTER")
+    image_grid.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("BOX", (0, 0), (0, 0), .6, LINE),
+        ("BOX", (1, 0), (1, 0), .6, LINE),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    captions = Table([[
+        p("Figure 1. Deployed staging homepage - HTTP 200", "SmallX"),
+        p("Figure 2. Deployed login interface - HTTP 200", "SmallX"),
+    ]], colWidths=[84 * mm, 84 * mm])
+    captions.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER"), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
+
+    ready = scaled_image(API_READY_CROP, 168 * mm, 18 * mm)
+    protected = scaled_image(PROTECTED_404_CROP, 168 * mm, 18 * mm)
+    return [
+        PageBreak(),
+        p("Live testing screenshots", "H1X"),
+        p("Captured directly from the deployed government staging NodePorts on 6 Nov 2026. No credentials or personal data are displayed."),
+        image_grid,
+        captions,
+        Spacer(1, 4 * mm),
+        p("API readiness response", "H2X"),
+        ready,
+        p("Figure 3. GET staging:30431/health/ready - HTTP 200; service and database report UP.", "SmallX"),
+        Spacer(1, 3 * mm),
+        p("Protected internal route response", "H2X"),
+        protected,
+        p("Figure 4. Public request to the internal-contact route - HTTP 404 JSON; the internal endpoint remains unreachable through the public gateway.", "SmallX"),
+        Spacer(1, 4 * mm),
+        callout("Screenshot integrity", "The PNG files were captured after the Kubernetes rollout from the same staging URLs used by the live response matrix. Header controls are recorded separately because browser page screenshots do not display HTTP response headers."),
+    ]
+
+
 timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
 commit = run(["git", "rev-parse", "HEAD"])
 branch = run(["git", "branch", "--show-current"])
@@ -201,7 +267,7 @@ dependency_story = [
     p("Additional current-state observation", "H2X"),
     callout("Residual item — migration required", "The 6 Nov 2026 npm advisory database also reports a Moderate TypeORM/glob/minimatch chain. npm proposes TypeORM 1.1.2, a major database-layer change. It was not in the supplied report and is recorded for a separately tested ORM migration; forcing it into this patch would create unacceptable schema/runtime risk.", AMBER),
     PageBreak(),
-] + common_proof
+] + common_proof + screenshot_evidence_page()
 
 trivy_story = [
     p("Scope and outcome", "H1X"),
@@ -217,7 +283,7 @@ trivy_story = [
     p("The exact deployed identity image was scanned after publication to the government Harbor registry. Only OS packages were selected because application dependencies are verified separately with npm lockfile/audit evidence."),
     p("\n".join(trivy.splitlines()[-18:]), "CodeX"),
     PageBreak(),
-] + common_proof
+] + common_proof + screenshot_evidence_page()
 
 zap_finding_rows = [
     ["Content Security Policy missing", "Enforced CSP on frontend and API, including errors", status("Fixed")],
@@ -243,7 +309,7 @@ def zap_story(authenticated: bool) -> list[object]:
         table(["Route", "HTTP", "Type", "CSP", "XFO", "nosniff", "COEP", "COOP", "CORP", "Perm."], live_rows, [43*mm, 9*mm, 27*mm, 11*mm, 12*mm, 13*mm, 13*mm, 13*mm, 13*mm, 12*mm], 6.2),
         callout("Live browser evidence", "A visible staging browser capture was taken after rollout. The application home page rendered successfully from 172.30.3.63:30430, while command-level evidence above verifies the headers that are not visible in a page screenshot."),
         PageBreak(),
-    ] + common_proof
+    ] + common_proof + screenshot_evidence_page()
 
 consolidated_story = [
     p("Executive result", "H1X"),
@@ -280,7 +346,7 @@ consolidated_story = [
         ["TLS / HSTS", "NodePort is HTTP. Enable HSTS only after the system administrator provisions the final DNS name, certificate and HTTPS ingress."],
         ["Independent rescan", "Security Testing Team should rerun Dependency-Check, full Trivy and authenticated/anonymous ZAP against the released HTTPS endpoint."],
     ], [54*mm, 112*mm]),
-]
+] + screenshot_evidence_page()
 
 outputs = [
     build_pdf("01-Dzongjuk-PT-Remediation-Consolidated.pdf", "PT Remediation — Consolidated Closure Report", "Dependency-Check · Trivy · ZAP Anonymous · ZAP Authenticated", consolidated_story),
