@@ -35,7 +35,19 @@ export async function bootstrapService(app: INestApplication, options: Bootstrap
   const config = app.get(ConfigService);
   assertConfiguration(config, [...SHARED_REQUIRED_SETTINGS, ...(options.requires ?? [])], options.name);
   app.setGlobalPrefix('api/v1', { exclude: ['health/live', 'health/ready', 'metrics'] });
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginEmbedderPolicy: { policy: 'require-corp' },
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginResourcePolicy: { policy: 'same-origin' },
+    frameguard: { action: 'deny' },
+  }));
+  app.use((_request: Request, response: Response, next: NextFunction) => {
+    response.setHeader(
+      'Permissions-Policy',
+      'accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=()',
+    );
+    next();
+  });
   app.use(cookieParser());
   app.use((request: Request, response: Response, next: NextFunction) => {
     request.id = request.header('x-request-id') ?? randomUUID();

@@ -2,8 +2,9 @@
 # Website: ambhutan.com | aakash-pradhan.com
 # Phone: +975 - 1750 - 5267
 
-FROM node:22.19.0-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /workspace
+RUN apk upgrade --no-cache
 COPY package*.json nest-cli.json tsconfig*.json .npmrc* ./
 RUN npm ci --ignore-scripts
 COPY apps ./apps
@@ -16,12 +17,15 @@ RUN npx nest build ${SERVICE}
 # below never fails for the services that have nothing to ship.
 RUN mkdir -p apps/${SERVICE}/assets
 
-FROM node:22.19.0-alpine AS runtime
+FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
+RUN apk upgrade --no-cache
 RUN addgroup -S dzongjuk && adduser -S dzongjuk -G dzongjuk
 COPY package*.json .npmrc* ./
-RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+RUN npm ci --omit=dev --ignore-scripts \
+    && npm cache clean --force \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 RUN apk add --no-cache libreoffice ttf-liberation
 ARG SERVICE
 ENV SERVICE_NAME=${SERVICE}

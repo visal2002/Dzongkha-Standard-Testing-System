@@ -1,6 +1,7 @@
-FROM node:22.19.0-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /workspace
+RUN apk upgrade --no-cache
 COPY package*.json ./
 RUN npm ci --ignore-scripts
 COPY . .
@@ -15,7 +16,9 @@ RUN npm run build
 
 FROM nginx:1.29-alpine
 
+RUN apk upgrade --no-cache
 COPY nginx.staging.conf /etc/nginx/nginx.conf
+COPY security-headers.conf /etc/nginx/security-headers.conf
 COPY --from=build /workspace/dist /usr/share/nginx/html
 
 USER 101:101
